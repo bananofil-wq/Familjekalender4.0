@@ -1,5 +1,9 @@
 package se.familjekalender.app
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,7 +17,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
@@ -21,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +47,65 @@ private val Purple = Color(0xFFB47CFF)
 private val SoftPurple = Color(0xFF2B2038)
 private val Muted = Color(0xFFAAA4B2)
 private val MemberColors = listOf(0xFFB47CFF, 0xFFFF77A8, 0xFF62A9FF, 0xFF6DD6A7, 0xFFFFB86B)
+
+enum class ThemeMode(val label: String, val emoji: String) {
+    AUTO("Automatisk", "✨"),
+    SPRING("Vår", "🌸"),
+    SUMMER("Sommar", "☀️"),
+    AUTUMN("Höst", "🍂"),
+    WINTER("Vinter", "❄️"),
+    CLASSIC("Klassisk", "💜")
+}
+
+data class SeasonPalette(
+    val mode: ThemeMode,
+    val accent: Color,
+    val soft: Color,
+    val heroStart: Color,
+    val heroEnd: Color,
+    val title: String,
+    val note: String,
+    val decoration: String
+)
+
+private fun resolvedTheme(mode: ThemeMode, date: LocalDate = LocalDate.now()): ThemeMode {
+    if (mode != ThemeMode.AUTO) return mode
+    return when (date.monthValue) {
+        3, 4, 5 -> ThemeMode.SPRING
+        6, 7, 8 -> ThemeMode.SUMMER
+        9, 10, 11 -> ThemeMode.AUTUMN
+        else -> ThemeMode.WINTER
+    }
+}
+
+private fun paletteFor(mode: ThemeMode): SeasonPalette = when (resolvedTheme(mode)) {
+    ThemeMode.SPRING -> SeasonPalette(
+        ThemeMode.SPRING,
+        Color(0xFFF19BC2), Color(0xFF342531), Color(0xFF21372E), Color(0xFF56384A),
+        "Våren är här 🌸", "Små planer växer till fina dagar.", "🌿  🌸  🌱"
+    )
+    ThemeMode.SUMMER -> SeasonPalette(
+        ThemeMode.SUMMER,
+        Color(0xFFFFC96B), Color(0xFF3A3022), Color(0xFF17374A), Color(0xFF5A4631),
+        "Sommarkänsla ☀️", "Långa dagar, glass och plats för spontana äventyr.", "☀️  🌊  🏖️"
+    )
+    ThemeMode.AUTUMN -> SeasonPalette(
+        ThemeMode.AUTUMN,
+        Color(0xFFFFA45B), Color(0xFF3A281F), Color(0xFF3C211E), Color(0xFF6A3D25),
+        "Höstmys 🍂", "Planera vardagen och spara tid för det mjuka.", "🍁  🍂  ☕"
+    )
+    ThemeMode.WINTER -> SeasonPalette(
+        ThemeMode.WINTER,
+        Color(0xFF9DBBFF), Color(0xFF222A3A), Color(0xFF142036), Color(0xFF34294A),
+        "Vinterlugnet ❄️", "Håll koll på allt och lämna plats för mys.", "❄️  ✨  🏠"
+    )
+    ThemeMode.CLASSIC -> SeasonPalette(
+        ThemeMode.CLASSIC,
+        Purple, SoftPurple, Color(0xFF20182A), Color(0xFF38264A),
+        "Familjekalendern 💜", "Allt som händer. På ett ställe.", "💜  📅  ✨"
+    )
+    ThemeMode.AUTO -> error("AUTO resolves before palette creation")
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,10 +129,17 @@ fun FamilyCalendarApp() {
             }
         )
     }
+    var themeMode by remember {
+        mutableStateOf(
+            runCatching { ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.AUTO.name) ?: ThemeMode.AUTO.name) }
+                .getOrDefault(ThemeMode.AUTO)
+        )
+    }
+    val palette = paletteFor(themeMode)
 
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Purple,
+            primary = palette.accent,
             background = Bg,
             surface = CardBg,
             onBackground = Color.White,
@@ -87,7 +160,12 @@ fun FamilyCalendarApp() {
                 SyncedApp(
                     session = session!!,
                     sportUrl = prefs.getString("sport_url", "") ?: "",
-                    onSportUrlSaved = { prefs.edit().putString("sport_url", it).apply() }
+                    themeMode = themeMode,
+                    onSportUrlSaved = { prefs.edit().putString("sport_url", it).apply() },
+                    onThemeModeSaved = {
+                        themeMode = it
+                        prefs.edit().putString("theme_mode", it.name).apply()
+                    }
                 )
             }
         }
@@ -102,19 +180,11 @@ private fun FamilySetupScreen(onReady: (FamilySession) -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
 
-    Column(
-        Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
+    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
         Text("Familjekalendern", fontSize = 30.sp, fontWeight = FontWeight.Bold)
         Text("Skapa familjen på första telefonen, anslut med koden på nästa.", color = Muted)
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(
-            value = familyName,
-            onValueChange = { familyName = it },
-            label = { Text("Familjens namn") },
-            modifier = Modifier.fillMaxWidth()
-        )
+        OutlinedTextField(familyName, { familyName = it }, label = { Text("Familjens namn") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         Button(
             onClick = {
@@ -136,8 +206,8 @@ private fun FamilySetupScreen(onReady: (FamilySession) -> Unit) {
         Text("Har familjen redan skapats?", fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
-            value = joinCode,
-            onValueChange = { joinCode = it.uppercase() },
+            joinCode,
+            { joinCode = it.uppercase() },
             label = { Text("Familjekod") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -164,8 +234,15 @@ private fun FamilySetupScreen(onReady: (FamilySession) -> Unit) {
 }
 
 @Composable
-private fun SyncedApp(session: FamilySession, sportUrl: String, onSportUrlSaved: (String) -> Unit) {
+private fun SyncedApp(
+    session: FamilySession,
+    sportUrl: String,
+    themeMode: ThemeMode,
+    onSportUrlSaved: (String) -> Unit,
+    onThemeModeSaved: (ThemeMode) -> Unit
+) {
     val scope = rememberCoroutineScope()
+    val palette = paletteFor(themeMode)
     var members by remember { mutableStateOf(emptyList<SyncMember>()) }
     var shopping by remember { mutableStateOf(emptyList<SyncShoppingItem>()) }
     var events by remember { mutableStateOf(emptyList<SyncEvent>()) }
@@ -179,6 +256,8 @@ private fun SyncedApp(session: FamilySession, sportUrl: String, onSportUrlSaved:
             members = SupabaseSync.loadMembers(session)
             shopping = SupabaseSync.loadShopping(session)
             events = SupabaseSync.loadEvents(session)
+        }.onSuccess {
+            if (message.startsWith("Synkfel:")) message = ""
         }.onFailure { message = "Synkfel: ${it.message ?: "okänt fel"}" }
     }
 
@@ -196,24 +275,22 @@ private fun SyncedApp(session: FamilySession, sportUrl: String, onSportUrlSaved:
             if (selectedTab == 0) {
                 FloatingActionButton(
                     onClick = { showAddEvent = true },
-                    containerColor = Purple,
-                    contentColor = Color(0xFF1A1022),
+                    containerColor = palette.accent,
+                    contentColor = Color(0xFF17131C),
                     shape = CircleShape
                 ) { Icon(Icons.Default.Add, contentDescription = "Lägg till aktivitet") }
             }
         },
         bottomBar = { BottomNav(selectedTab) { selectedTab = it } }
     ) { padding ->
-        Column(
-            Modifier.padding(padding).padding(horizontal = 18.dp).fillMaxSize()
-        ) {
+        Column(Modifier.padding(padding).padding(horizontal = 18.dp).fillMaxSize()) {
             Spacer(Modifier.height(14.dp))
             if (message.isNotBlank()) {
                 Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 Spacer(Modifier.height(6.dp))
             }
             when (selectedTab) {
-                0 -> CalendarScreen(selectedDate, { selectedDate = it }, events, members)
+                0 -> CalendarScreen(selectedDate, { selectedDate = it }, events, members, palette)
                 1 -> ShoppingScreen(
                     items = shopping,
                     onAdd = { name -> scope.launch { SupabaseSync.addShopping(session, name); refresh() } },
@@ -234,6 +311,8 @@ private fun SyncedApp(session: FamilySession, sportUrl: String, onSportUrlSaved:
                     session = session,
                     members = members,
                     initialSportUrl = sportUrl,
+                    themeMode = themeMode,
+                    onThemeChanged = onThemeModeSaved,
                     onSaveUrl = onSportUrlSaved,
                     onImport = { url, memberId ->
                         scope.launch {
@@ -266,18 +345,44 @@ private fun SyncedApp(session: FamilySession, sportUrl: String, onSportUrlSaved:
 }
 
 @Composable
+private fun SeasonHeader(palette: SeasonPalette) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            Modifier
+                .background(Brush.linearGradient(listOf(palette.heroStart, palette.heroEnd)))
+                .padding(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(palette.title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(palette.note, color = Color.White.copy(alpha = 0.78f), fontSize = 13.sp)
+                }
+                Text(palette.decoration, fontSize = 20.sp)
+            }
+        }
+    }
+}
+
+@Composable
 private fun CalendarScreen(
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit,
     events: List<SyncEvent>,
-    members: List<SyncMember>
+    members: List<SyncMember>,
+    palette: SeasonPalette
 ) {
     Text("Familjekalendern", fontSize = 28.sp, fontWeight = FontWeight.Bold)
     Text("Allt som händer. På ett ställe.", color = Muted, fontSize = 14.sp)
-    Spacer(Modifier.height(20.dp))
-    MonthCalendar(selectedDate, onSelect)
+    Spacer(Modifier.height(14.dp))
+    SeasonHeader(palette)
+    Spacer(Modifier.height(16.dp))
+    MonthCalendar(selectedDate, onSelect, palette.accent)
     Spacer(Modifier.height(18.dp))
-    DayOverview(selectedDate, events.filter { it.date == selectedDate }, members)
+    DayOverview(selectedDate, events.filter { it.date == selectedDate }, members, palette.accent)
 }
 
 @Composable
@@ -351,26 +456,71 @@ private fun FamilyScreen(members: List<SyncMember>, onAdd: (String, String) -> U
     ) { Text("Lägg till person") }
 }
 
+private fun shareFamilyInvite(context: Context, session: FamilySession) {
+    val text = "Du är inbjuden till ${session.name} i Familjekalendern 💜\n\nFamiljekod: ${session.code}\n\nÖppna Familjekalendern och välj Anslut till familj."
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "Inbjudan till ${session.name}")
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    context.startActivity(Intent.createChooser(intent, "Bjud in till familjen"))
+}
+
+private fun copyFamilyCode(context: Context, code: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("Familjekod", code))
+}
+
 @Composable
 private fun SettingsScreen(
     session: FamilySession,
     members: List<SyncMember>,
     initialSportUrl: String,
+    themeMode: ThemeMode,
+    onThemeChanged: (ThemeMode) -> Unit,
     onSaveUrl: (String) -> Unit,
     onImport: (String, String?) -> Unit
 ) {
+    val context = LocalContext.current
     var url by remember(initialSportUrl) { mutableStateOf(initialSportUrl) }
     var selectedMemberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
+    var copied by remember { mutableStateOf(false) }
+
     Text("Inställningar", fontSize = 28.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(16.dp))
+
     Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
+            Text("Familjen", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(4.dp))
+            Text(session.name, fontSize = 18.sp)
+            Spacer(Modifier.height(10.dp))
             Text("Familjekod", color = Muted, fontSize = 12.sp)
-            Text(session.code, color = Purple, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text("Skriv in koden på den andra telefonen för att ansluta.", color = Muted, fontSize = 12.sp)
+            Text(session.code, color = MaterialTheme.colorScheme.primary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { shareFamilyInvite(context, session) }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Share, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Bjud in till familjen")
+            }
+            OutlinedButton(
+                onClick = { copyFamilyCode(context, session.code); copied = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.ContentCopy, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (copied) "Familjekod kopierad" else "Kopiera familjekod")
+            }
         }
     }
-    Spacer(Modifier.height(18.dp))
+
+    Spacer(Modifier.height(20.dp))
+    Text("Tema", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    Text("Automatisk följer årstiden. Du kan också låsa ett tema.", color = Muted, fontSize = 13.sp)
+    Spacer(Modifier.height(10.dp))
+    ThemeSelector(themeMode, onThemeChanged)
+
+    Spacer(Modifier.height(22.dp))
     Text("SportAdmin", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
     Text("Klistra in kalenderlänken från SportAdmin en gång.", color = Muted, fontSize = 13.sp)
     Spacer(Modifier.height(8.dp))
@@ -397,7 +547,33 @@ private fun SettingsScreen(
 }
 
 @Composable
-private fun MonthCalendar(selected: LocalDate, onSelect: (LocalDate) -> Unit) {
+private fun ThemeSelector(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    Column {
+        ThemeMode.entries.chunked(2).forEach { rowThemes ->
+            Row(Modifier.fillMaxWidth()) {
+                rowThemes.forEach { mode ->
+                    val active = selected == mode
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = if (active) paletteFor(mode).soft else CardBg),
+                        border = if (active) androidx.compose.foundation.BorderStroke(1.dp, paletteFor(mode).accent) else null,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f).padding(4.dp).clickable { onSelect(mode) }
+                    ) {
+                        Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(mode.emoji, fontSize = 22.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Text(mode.label, fontSize = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+                if (rowThemes.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthCalendar(selected: LocalDate, onSelect: (LocalDate) -> Unit, accent: Color = Purple) {
     var visibleMonth by remember(selected) { mutableStateOf(YearMonth.from(selected)) }
     val offset = visibleMonth.atDay(1).dayOfWeek.value - 1
     val monthName = visibleMonth.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
@@ -409,7 +585,9 @@ private fun MonthCalendar(selected: LocalDate, onSelect: (LocalDate) -> Unit) {
                 IconButton(onClick = { visibleMonth = visibleMonth.plusMonths(1) }) { Icon(Icons.Default.ChevronRight, null) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                listOf("M", "T", "O", "T", "F", "L", "S").forEach { Text(it, color = Muted, modifier = Modifier.width(36.dp), textAlign = TextAlign.Center, fontSize = 12.sp) }
+                listOf("M", "T", "O", "T", "F", "L", "S").forEach {
+                    Text(it, color = Muted, modifier = Modifier.width(36.dp), textAlign = TextAlign.Center, fontSize = 12.sp)
+                }
             }
             Spacer(Modifier.height(8.dp))
             repeat(6) { week ->
@@ -420,10 +598,10 @@ private fun MonthCalendar(selected: LocalDate, onSelect: (LocalDate) -> Unit) {
                             val date = visibleMonth.atDay(day)
                             val active = date == selected
                             Box(
-                                Modifier.size(36.dp).clip(CircleShape).background(if (active) Purple else Color.Transparent).clickable { onSelect(date) },
+                                Modifier.size(36.dp).clip(CircleShape).background(if (active) accent else Color.Transparent).clickable { onSelect(date) },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(day.toString(), color = if (active) Color(0xFF1A1022) else Color.White, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+                                Text(day.toString(), color = if (active) Color(0xFF17131C) else Color.White, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                             }
                         } else Spacer(Modifier.size(36.dp))
                     }
@@ -436,14 +614,14 @@ private fun MonthCalendar(selected: LocalDate, onSelect: (LocalDate) -> Unit) {
 }
 
 @Composable
-private fun DayOverview(date: LocalDate, events: List<SyncEvent>, members: List<SyncMember>) {
+private fun DayOverview(date: LocalDate, events: List<SyncEvent>, members: List<SyncMember>, accent: Color = Purple) {
     Text("Dagens aktiviteter", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
     Text("${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))}", color = Muted, fontSize = 13.sp)
     Spacer(Modifier.height(10.dp))
     if (events.isEmpty()) Text("Inget planerat ännu", color = Muted)
     events.forEach { event ->
         val member = members.find { it.id == event.memberId }
-        val color = member?.let { Color(it.colorArgb.toInt()) } ?: Purple
+        val color = member?.let { Color(it.colorArgb.toInt()) } ?: accent
         Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
             Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.width(4.dp).height(42.dp).clip(RoundedCornerShape(4.dp)).background(color))
