@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -628,7 +629,8 @@ private fun FamilyScreen(members: List<SyncMember>, onAdd: (String, String) -> U
 }
 
 private fun shareFamilyInvite(context: Context, session: FamilySession) {
-    val text = "Du är inbjuden till ${session.name} i Familjekalendern 💜\n\nFamiljekod: ${session.code}\n\nÖppna Familjekalendern och välj Anslut till familj."
+    val inviteLink = "familjekalendern://join?code=${Uri.encode(session.code)}"
+    val text = "Du är inbjuden till ${session.name} i Familjekalendern 💜\n\nTryck här för att gå med:\n$inviteLink\n\nFamiljekod: ${session.code}\n\nOm länken inte öppnas kan du ange familjekoden manuellt i appen."
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_SUBJECT, "Inbjudan till ${session.name}")
