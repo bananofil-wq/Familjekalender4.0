@@ -5,11 +5,13 @@ import android.content.SharedPreferences
 import com.onesignal.OneSignal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 class FamilyCalendarApplication : Application() {
     private lateinit var prefs: SharedPreferences
+    private val appScope = CoroutineScope(Dispatchers.IO)
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "family_id") attachPushIdentity()
     }
@@ -22,7 +24,7 @@ class FamilyCalendarApplication : Application() {
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         attachPushIdentity()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             OneSignal.Notifications.requestPermission(false)
         }
     }
@@ -36,11 +38,16 @@ class FamilyCalendarApplication : Application() {
         }
 
         OneSignal.login(deviceId)
-        OneSignal.User.addTags(
-            mapOf(
-                "family_id" to familyId,
-                "platform" to "android"
-            )
-        )
+        appScope.launch {
+            repeat(4) { attempt ->
+                if (attempt > 0) delay(1500L * attempt)
+                OneSignal.User.addTags(
+                    mapOf(
+                        "family_id" to familyId,
+                        "platform" to "android"
+                    )
+                )
+            }
+        }
     }
 }
