@@ -12,8 +12,8 @@ android {
         applicationId = "se.familjekalender.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "4.0.0"
+        versionCode = 2
+        versionName = "4.1.0"
     }
 
     buildFeatures { compose = true }
@@ -33,5 +33,6 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
