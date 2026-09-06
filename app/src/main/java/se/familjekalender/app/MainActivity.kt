@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -20,9 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -33,13 +39,7 @@ private val CardBg = Color(0xFF1B191F)
 private val Purple = Color(0xFFB47CFF)
 private val SoftPurple = Color(0xFF2B2038)
 private val Muted = Color(0xFFAAA4B2)
-private val MemberColors = listOf(
-    Purple,
-    Color(0xFFFF77A8),
-    Color(0xFF62A9FF),
-    Color(0xFF6DD6A7),
-    Color(0xFFFFB86B)
-)
+private val MemberColors = listOf(0xFFB47CFF, 0xFFFF77A8, 0xFF62A9FF, 0xFF6DD6A7, 0xFFFFB86B)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,12 +48,22 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-data class FamilyMember(val name: String, val role: String, val color: Color)
-data class FamilyEvent(val title: String, val time: String, val member: String, val color: Color)
-data class ShoppingItem(val name: String, val checked: Boolean = false)
-
 @Composable
 fun FamilyCalendarApp() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("family_calendar", 0) }
+    var session by remember {
+        mutableStateOf(
+            prefs.getString("family_id", null)?.let {
+                FamilySession(
+                    it,
+                    prefs.getString("family_name", "Min familj") ?: "Min familj",
+                    prefs.getString("family_code", "") ?: ""
+                )
+            }
+        )
+    }
+
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = Purple,
@@ -63,84 +73,195 @@ fun FamilyCalendarApp() {
             onSurface = Color.White
         )
     ) {
-        var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-        var members by remember { mutableStateOf(emptyList<FamilyMember>()) }
-        var events by remember { mutableStateOf(emptyList<FamilyEvent>()) }
-        var shopping by remember { mutableStateOf(emptyList<ShoppingItem>()) }
-        var selectedTab by remember { mutableIntStateOf(0) }
-        var showAddEvent by remember { mutableStateOf(false) }
-        var showPeople by remember { mutableStateOf(false) }
+        Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
+            if (session == null) {
+                FamilySetupScreen { created ->
+                    prefs.edit()
+                        .putString("family_id", created.id)
+                        .putString("family_name", created.name)
+                        .putString("family_code", created.code)
+                        .apply()
+                    session = created
+                }
+            } else {
+                SyncedApp(
+                    session = session!!,
+                    sportUrl = prefs.getString("sport_url", "") ?: "",
+                    onSportUrlSaved = { prefs.edit().putString("sport_url", it).apply() }
+                )
+            }
+        }
+    }
+}
 
-        Scaffold(
-            containerColor = Bg,
-            floatingActionButton = {
-                if (selectedTab == 0) {
-                    FloatingActionButton(
-                        onClick = { showAddEvent = true },
-                        containerColor = Purple,
-                        contentColor = Color(0xFF1A1022),
-                        shape = CircleShape
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Lägg till aktivitet")
-                    }
+@Composable
+private fun FamilySetupScreen(onReady: (FamilySession) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var familyName by remember { mutableStateOf("Min familj") }
+    var joinCode by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Familjekalendern", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Text("Skapa familjen på första telefonen, anslut med koden på nästa.", color = Muted)
+        Spacer(Modifier.height(24.dp))
+        OutlinedTextField(
+            value = familyName,
+            onValueChange = { familyName = it },
+            label = { Text("Familjens namn") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(10.dp))
+        Button(
+            onClick = {
+                scope.launch {
+                    busy = true; error = ""
+                    runCatching { SupabaseSync.createFamily(familyName) }
+                        .onSuccess(onReady)
+                        .onFailure { error = it.message ?: "Kunde inte skapa familjen" }
+                    busy = false
                 }
             },
-            bottomBar = {
-                BottomNav(selectedTab) { newTab ->
-                    if (newTab == 2) {
-                        showPeople = true
-                    } else {
-                        selectedTab = newTab
-                    }
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(if (busy) "Skapar…" else "Skapa familj") }
+
+        Spacer(Modifier.height(28.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(20.dp))
+        Text("Har familjen redan skapats?", fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = joinCode,
+            onValueChange = { joinCode = it.uppercase() },
+            label = { Text("Familjekod") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    busy = true; error = ""
+                    runCatching { SupabaseSync.joinFamily(joinCode) }
+                        .onSuccess(onReady)
+                        .onFailure { error = it.message ?: "Kunde inte ansluta" }
+                    busy = false
                 }
+            },
+            enabled = !busy && joinCode.isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Anslut till familj") }
+        if (error.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text(error, color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun SyncedApp(session: FamilySession, sportUrl: String, onSportUrlSaved: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var members by remember { mutableStateOf(emptyList<SyncMember>()) }
+    var shopping by remember { mutableStateOf(emptyList<SyncShoppingItem>()) }
+    var events by remember { mutableStateOf(emptyList<SyncEvent>()) }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var showAddEvent by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("") }
+
+    suspend fun refresh() {
+        runCatching {
+            members = SupabaseSync.loadMembers(session)
+            shopping = SupabaseSync.loadShopping(session)
+            events = SupabaseSync.loadEvents(session)
+        }.onFailure { message = "Synkfel: ${it.message ?: "okänt fel"}" }
+    }
+
+    LaunchedEffect(session.id) {
+        refresh()
+        while (true) {
+            delay(8000)
+            refresh()
+        }
+    }
+
+    Scaffold(
+        containerColor = Bg,
+        floatingActionButton = {
+            if (selectedTab == 0) {
+                FloatingActionButton(
+                    onClick = { showAddEvent = true },
+                    containerColor = Purple,
+                    contentColor = Color(0xFF1A1022),
+                    shape = CircleShape
+                ) { Icon(Icons.Default.Add, contentDescription = "Lägg till aktivitet") }
             }
-        ) { padding ->
-            Column(
-                Modifier
-                    .padding(padding)
-                    .padding(horizontal = 18.dp)
-                    .fillMaxSize()
-            ) {
-                Spacer(Modifier.height(14.dp))
-                when (selectedTab) {
-                    0 -> CalendarScreen(selectedDate, { selectedDate = it }, events)
-                    1 -> ShoppingScreen(
-                        items = shopping,
-                        onAdd = { shopping = shopping + ShoppingItem(it) },
-                        onToggle = { index ->
-                            shopping = shopping.mapIndexed { i, item ->
-                                if (i == index) item.copy(checked = !item.checked) else item
-                            }
-                        },
-                        onClear = { shopping = shopping.filterNot { it.checked } }
-                    )
-                    else -> CalendarScreen(selectedDate, { selectedDate = it }, events)
-                }
+        },
+        bottomBar = { BottomNav(selectedTab) { selectedTab = it } }
+    ) { padding ->
+        Column(
+            Modifier.padding(padding).padding(horizontal = 18.dp).fillMaxSize()
+        ) {
+            Spacer(Modifier.height(14.dp))
+            if (message.isNotBlank()) {
+                Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                Spacer(Modifier.height(6.dp))
+            }
+            when (selectedTab) {
+                0 -> CalendarScreen(selectedDate, { selectedDate = it }, events, members)
+                1 -> ShoppingScreen(
+                    items = shopping,
+                    onAdd = { name -> scope.launch { SupabaseSync.addShopping(session, name); refresh() } },
+                    onToggle = { item -> scope.launch { SupabaseSync.toggleShopping(session, item); refresh() } },
+                    onClear = { scope.launch { SupabaseSync.clearChecked(session); refresh() } }
+                )
+                2 -> FamilyScreen(
+                    members = members,
+                    onAdd = { name, role ->
+                        scope.launch {
+                            val color = MemberColors[members.size % MemberColors.size]
+                            SupabaseSync.addMember(session, name, role, color)
+                            refresh()
+                        }
+                    }
+                )
+                3 -> SettingsScreen(
+                    session = session,
+                    members = members,
+                    initialSportUrl = sportUrl,
+                    onSaveUrl = onSportUrlSaved,
+                    onImport = { url, memberId ->
+                        scope.launch {
+                            message = "Importerar SportAdmin…"
+                            runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
+                                .onSuccess { count -> message = "$count SportAdmin-aktiviteter synkade" }
+                                .onFailure { message = "SportAdmin-fel: ${it.message}" }
+                            refresh()
+                        }
+                    }
+                )
             }
         }
+    }
 
-        if (showAddEvent) {
-            AddEventDialog(
-                members = members,
-                onDismiss = { showAddEvent = false },
-                onAdd = {
-                    events = events + it
+    if (showAddEvent) {
+        AddEventDialog(
+            members = members,
+            selectedDate = selectedDate,
+            onDismiss = { showAddEvent = false },
+            onAdd = { title, time, memberId ->
+                scope.launch {
+                    SupabaseSync.addEvent(session, title, selectedDate, time, memberId)
+                    refresh()
                     showAddEvent = false
                 }
-            )
-        }
-
-        if (showPeople) {
-            PeopleDialog(
-                members = members,
-                onDismiss = { showPeople = false },
-                onAdd = { member ->
-                    members = members + member.copy(
-                        color = MemberColors[members.size % MemberColors.size]
-                    )
-                }
-            )
-        }
+            }
+        )
     }
 }
 
@@ -148,217 +269,188 @@ fun FamilyCalendarApp() {
 private fun CalendarScreen(
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit,
-    events: List<FamilyEvent>
+    events: List<SyncEvent>,
+    members: List<SyncMember>
 ) {
     Text("Familjekalendern", fontSize = 28.sp, fontWeight = FontWeight.Bold)
     Text("Allt som händer. På ett ställe.", color = Muted, fontSize = 14.sp)
     Spacer(Modifier.height(20.dp))
     MonthCalendar(selectedDate, onSelect)
     Spacer(Modifier.height(18.dp))
-    DayOverview(selectedDate, events)
+    DayOverview(selectedDate, events.filter { it.date == selectedDate }, members)
 }
 
 @Composable
 private fun ShoppingScreen(
-    items: List<ShoppingItem>,
+    items: List<SyncShoppingItem>,
     onAdd: (String) -> Unit,
-    onToggle: (Int) -> Unit,
+    onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit
 ) {
     var text by remember { mutableStateOf("") }
-
     Text("Inköpslista", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-    Text("Gemensamma saker att komma ihåg", color = Muted, fontSize = 14.sp)
+    Text("Synkas mellan era telefoner", color = Muted, fontSize = 14.sp)
     Spacer(Modifier.height(20.dp))
-
     Row(verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            label = { Text("Lägg till vara") },
-            singleLine = true,
-            modifier = Modifier.weight(1f)
-        )
+        OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, singleLine = true, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
-        FilledIconButton(
-            onClick = {
-                if (text.isNotBlank()) {
-                    onAdd(text.trim())
-                    text = ""
-                }
-            },
-            colors = IconButtonDefaults.filledIconButtonColors(containerColor = Purple)
-        ) {
+        FilledIconButton(onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } }) {
             Icon(Icons.Default.Add, contentDescription = "Lägg till")
         }
     }
-
     Spacer(Modifier.height(14.dp))
-
-    if (items.isEmpty()) {
-        Text("Listan är tom. Lägg till något ovan.", color = Muted)
-    }
-
-    items.forEachIndexed { index, item ->
+    if (items.isEmpty()) Text("Listan är tom.", color = Muted)
+    items.forEach { item ->
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBg),
             shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-                .clickable { onToggle(index) }
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onToggle(item) }
         ) {
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(item.checked, { onToggle(item) })
+                Spacer(Modifier.width(8.dp))
+                Text(item.name, color = if (item.checked) Muted else Color.White, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+    if (items.any { it.checked }) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onClear) { Text("Rensa avbockade") }
+        }
+    }
+}
+
+@Composable
+private fun FamilyScreen(members: List<SyncMember>, onAdd: (String, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("") }
+    Text("Familjen", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+    Text("Lägg till personer och valfria roller", color = Muted)
+    Spacer(Modifier.height(18.dp))
+    members.forEach { member ->
+        Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(member.name, fontWeight = FontWeight.SemiBold)
+                    if (member.role.isNotBlank()) Text(member.role, color = Muted, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(18.dp))
+    OutlinedTextField(name, { name = it }, label = { Text("Namn") }, modifier = Modifier.fillMaxWidth())
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(role, { role = it }, label = { Text("Valfri roll") }, modifier = Modifier.fillMaxWidth())
+    Spacer(Modifier.height(10.dp))
+    Button(
+        onClick = { if (name.isNotBlank()) { onAdd(name.trim(), role.trim()); name = ""; role = "" } },
+        enabled = name.isNotBlank(),
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Lägg till person") }
+}
+
+@Composable
+private fun SettingsScreen(
+    session: FamilySession,
+    members: List<SyncMember>,
+    initialSportUrl: String,
+    onSaveUrl: (String) -> Unit,
+    onImport: (String, String?) -> Unit
+) {
+    var url by remember(initialSportUrl) { mutableStateOf(initialSportUrl) }
+    var selectedMemberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
+    Text("Inställningar", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(16.dp))
+    Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Familjekod", color = Muted, fontSize = 12.sp)
+            Text(session.code, color = Purple, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text("Skriv in koden på den andra telefonen för att ansluta.", color = Muted, fontSize = 12.sp)
+        }
+    }
+    Spacer(Modifier.height(18.dp))
+    Text("SportAdmin", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    Text("Klistra in kalenderlänken från SportAdmin en gång.", color = Muted, fontSize = 13.sp)
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(url, { url = it }, label = { Text("SportAdmin webcal-länk") }, modifier = Modifier.fillMaxWidth())
+    if (members.isNotEmpty()) {
+        Spacer(Modifier.height(10.dp))
+        Text("Koppla aktiviteterna till:", color = Muted, fontSize = 12.sp)
+        members.forEach { member ->
             Row(
-                Modifier.padding(14.dp),
+                Modifier.fillMaxWidth().clickable { selectedMemberId = member.id }.padding(vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(
-                    checked = item.checked,
-                    onCheckedChange = { onToggle(index) }
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    item.name,
-                    color = if (item.checked) Muted else Color.White,
-                    modifier = Modifier.weight(1f)
-                )
+                RadioButton(selected = selectedMemberId == member.id, onClick = { selectedMemberId = member.id })
+                Text(member.name)
             }
         }
     }
-
-    if (items.any { it.checked }) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(onClick = onClear) {
-                Text("Rensa avbockade")
-            }
-        }
-    }
+    Spacer(Modifier.height(10.dp))
+    Button(
+        onClick = { if (url.isNotBlank()) { onSaveUrl(url.trim()); onImport(url.trim(), selectedMemberId) } },
+        enabled = url.isNotBlank(),
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Spara och importera SportAdmin") }
 }
 
 @Composable
 private fun MonthCalendar(selected: LocalDate, onSelect: (LocalDate) -> Unit) {
-    val month = YearMonth.from(selected)
-    val offset = month.atDay(1).dayOfWeek.value - 1
-    val monthName = month.month
-        .getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
-        .replaceFirstChar { it.uppercase() }
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = CardBg),
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    var visibleMonth by remember(selected) { mutableStateOf(YearMonth.from(selected)) }
+    val offset = visibleMonth.atDay(1).dayOfWeek.value - 1
+    val monthName = visibleMonth.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+    Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "$monthName ${month.year}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Surface(color = SoftPurple, shape = RoundedCornerShape(20.dp)) {
-                    Text(
-                        "Idag",
-                        color = Purple,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                        fontSize = 12.sp
-                    )
-                }
+                IconButton(onClick = { visibleMonth = visibleMonth.minusMonths(1) }) { Icon(Icons.Default.ChevronLeft, null) }
+                Text("$monthName ${visibleMonth.year}", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                IconButton(onClick = { visibleMonth = visibleMonth.plusMonths(1) }) { Icon(Icons.Default.ChevronRight, null) }
             }
-
-            Spacer(Modifier.height(16.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                listOf("M", "T", "O", "T", "F", "L", "S").forEach { label ->
-                    Text(
-                        label,
-                        color = Muted,
-                        modifier = Modifier.width(36.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        fontSize = 12.sp
-                    )
-                }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf("M", "T", "O", "T", "F", "L", "S").forEach { Text(it, color = Muted, modifier = Modifier.width(36.dp), textAlign = TextAlign.Center, fontSize = 12.sp) }
             }
-
             Spacer(Modifier.height(8.dp))
-
             repeat(6) { week ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     repeat(7) { dayOfWeek ->
                         val day = week * 7 + dayOfWeek - offset + 1
-                        if (day in 1..month.lengthOfMonth()) {
-                            val date = month.atDay(day)
+                        if (day in 1..visibleMonth.lengthOfMonth()) {
+                            val date = visibleMonth.atDay(day)
                             val active = date == selected
                             Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(if (active) Purple else Color.Transparent)
-                                    .clickable { onSelect(date) },
+                                Modifier.size(36.dp).clip(CircleShape).background(if (active) Purple else Color.Transparent).clickable { onSelect(date) },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    day.toString(),
-                                    color = if (active) Color(0xFF1A1022) else Color.White,
-                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
-                                )
+                                Text(day.toString(), color = if (active) Color(0xFF1A1022) else Color.White, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                             }
-                        } else {
-                            Spacer(Modifier.size(36.dp))
-                        }
+                        } else Spacer(Modifier.size(36.dp))
                     }
                 }
                 Spacer(Modifier.height(5.dp))
             }
+            TextButton(onClick = { val today = LocalDate.now(); visibleMonth = YearMonth.from(today); onSelect(today) }) { Text("Idag") }
         }
     }
 }
 
 @Composable
-private fun DayOverview(date: LocalDate, events: List<FamilyEvent>) {
+private fun DayOverview(date: LocalDate, events: List<SyncEvent>, members: List<SyncMember>) {
     Text("Dagens aktiviteter", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
-    Text(
-        "${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))}",
-        color = Muted,
-        fontSize = 13.sp
-    )
+    Text("${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))}", color = Muted, fontSize = 13.sp)
     Spacer(Modifier.height(10.dp))
-
-    if (events.isEmpty()) {
-        Text("Inget planerat ännu", color = Muted)
-    }
-
+    if (events.isEmpty()) Text("Inget planerat ännu", color = Muted)
     events.forEach { event ->
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBg),
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 5.dp)
-        ) {
-            Row(
-                Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .width(4.dp)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(event.color)
-                )
+        val member = members.find { it.id == event.memberId }
+        val color = member?.let { Color(it.colorArgb.toInt()) } ?: Purple
+        Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(4.dp).height(42.dp).clip(RoundedCornerShape(4.dp)).background(color))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(event.title, fontWeight = FontWeight.SemiBold)
-                    Text(event.member, color = event.color, fontSize = 12.sp)
+                    Text(member?.name ?: if (event.source == "sportadmin") "SportAdmin" else "Familjen", color = color, fontSize = 12.sp)
                 }
                 Text(event.time, color = Muted)
             }
@@ -369,166 +461,41 @@ private fun DayOverview(date: LocalDate, events: List<FamilyEvent>) {
 @Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     NavigationBar(containerColor = Color(0xFF17151A)) {
-        NavigationBarItem(
-            selected = selected == 0,
-            onClick = { onSelect(0) },
-            icon = { Icon(Icons.Default.CalendarMonth, null) },
-            label = { Text("Kalender") }
-        )
-        NavigationBarItem(
-            selected = selected == 1,
-            onClick = { onSelect(1) },
-            icon = { Icon(Icons.Default.ShoppingCart, null) },
-            label = { Text("Inköp") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = { onSelect(2) },
-            icon = { Icon(Icons.Default.People, null) },
-            label = { Text("Familj") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = {},
-            icon = { Icon(Icons.Default.Settings, null) },
-            label = { Text("Inställningar") }
-        )
+        NavigationBarItem(selected == 0, { onSelect(0) }, { Icon(Icons.Default.CalendarMonth, null) }, label = { Text("Kalender") })
+        NavigationBarItem(selected == 1, { onSelect(1) }, { Icon(Icons.Default.ShoppingCart, null) }, label = { Text("Inköp") })
+        NavigationBarItem(selected == 2, { onSelect(2) }, { Icon(Icons.Default.People, null) }, label = { Text("Familj") })
+        NavigationBarItem(selected == 3, { onSelect(3) }, { Icon(Icons.Default.Settings, null) }, label = { Text("Inställningar") })
     }
 }
 
 @Composable
 private fun AddEventDialog(
-    members: List<FamilyMember>,
+    members: List<SyncMember>,
+    selectedDate: LocalDate,
     onDismiss: () -> Unit,
-    onAdd: (FamilyEvent) -> Unit
+    onAdd: (String, String, String?) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("18:00") }
-    var member by remember { mutableStateOf(members.firstOrNull()?.name ?: "Familjen") }
-
+    var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Ny aktivitet") },
         text = {
             Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Aktivitet") }
-                )
+                Text("${selectedDate.dayOfMonth} ${selectedDate.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))}", color = Muted)
+                OutlinedTextField(title, { title = it }, label = { Text("Aktivitet") })
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = time,
-                    onValueChange = { time = it },
-                    label = { Text("Tid") }
-                )
-                Spacer(Modifier.height(8.dp))
-                if (members.isEmpty()) {
-                    Text(
-                        "Ingen person tillagd ännu. Aktiviteten läggs på Familjen.",
-                        color = Muted
-                    )
-                } else {
-                    members.forEach { m ->
-                        Text(
-                            m.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { member = m.name }
-                                .padding(vertical = 6.dp),
-                            color = if (m.name == member) m.color else Color.White
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        onAdd(
-                            FamilyEvent(
-                                title = title.trim(),
-                                time = time,
-                                member = member,
-                                color = members.find { it.name == member }?.color ?: Purple
-                            )
-                        )
-                    }
-                }
-            ) {
-                Text("Lägg till")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Avbryt")
-            }
-        }
-    )
-}
-
-@Composable
-private fun PeopleDialog(
-    members: List<FamilyMember>,
-    onDismiss: () -> Unit,
-    onAdd: (FamilyMember) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Familjen") },
-        text = {
-            Column {
-                if (members.isEmpty()) {
-                    Text("Inga personer tillagda ännu", color = Muted)
-                }
+                OutlinedTextField(time, { time = it }, label = { Text("Tid, t.ex. 18:00") })
                 members.forEach { member ->
-                    Text(
-                        "${member.name} · ${member.role}",
-                        color = member.color,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Namn") }
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = role,
-                    onValueChange = { role = it },
-                    label = { Text("Valfri roll") }
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        onAdd(
-                            FamilyMember(
-                                name = name.trim(),
-                                role = role.ifBlank { "Familj" },
-                                color = Purple
-                            )
-                        )
-                        name = ""
-                        role = ""
+                    Row(Modifier.fillMaxWidth().clickable { memberId = member.id }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(memberId == member.id, { memberId = member.id })
+                        Text(member.name)
                     }
                 }
-            ) {
-                Text("Lägg till person")
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Klar")
-            }
-        }
+        confirmButton = { TextButton(onClick = { if (title.isNotBlank()) onAdd(title.trim(), time.trim(), memberId) }) { Text("Lägg till") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
     )
 }
