@@ -9,6 +9,16 @@
         android:label="Familjekalendern"
         android:theme="@style/Theme.Familjekalender">
         <activity
+            android:name=".JoinFamilyActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="familjekalendern" android:host="join" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
