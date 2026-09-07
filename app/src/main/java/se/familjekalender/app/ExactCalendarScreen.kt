@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -73,9 +74,9 @@ internal fun ExactCalendarScreen(
             .fillMaxSize()
             .background(Color(0xFF07090F))
     ) {
-        val heroH = maxHeight * 0.34f
-        val panelsH = maxHeight * 0.39f
-        val panelTop = heroH - 18.dp
+        val heroH = maxHeight * 0.30f
+        val panelsH = maxHeight * 0.36f
+        val panelTop = heroH - 14.dp
 
         SeasonalPhoto(
             mode = mode,
@@ -183,6 +184,17 @@ internal fun ExactCalendarScreen(
 
 @Composable
 private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
+    if (mode == ThemeMode.AUTUMN) {
+        Image(
+            painter = painterResource(R.drawable.season_autumn),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.Center
+        )
+        return
+    }
+
     val bmp = remember(mode) {
         runCatching {
             val bytes = Base64.decode(SeasonAtlas.DATA, Base64.DEFAULT)
