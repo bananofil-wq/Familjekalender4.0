@@ -73,9 +73,11 @@ internal fun ExactCalendarScreen(
             .fillMaxSize()
             .background(Color(0xFF07090F))
     ) {
-        val heroH = maxHeight * 0.34f
-        val panelTop = heroH - 12.dp
-        val panelsH = maxHeight - panelTop - 10.dp
+        // On tall Android phones the approved composition needs to use the full body.
+        // Keep the scenic hero dominant while preventing the calendar cards from becoming huge.
+        val heroH = maxHeight * 0.47f
+        val panelTop = heroH - 10.dp
+        val panelsH = maxHeight * 0.50f
 
         SeasonalPhoto(
             mode = mode,
@@ -94,13 +96,13 @@ internal fun ExactCalendarScreen(
                     imageVector = Icons.Default.Groups,
                     contentDescription = null,
                     tint = Color(0xFF9C4DFF),
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "Familjekalendern",
                     color = Color.White,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.weight(1f))
@@ -108,18 +110,18 @@ internal fun ExactCalendarScreen(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Sök",
                     tint = Color.White,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(15.dp))
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Inställningar",
                     tint = Color.White,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
@@ -135,7 +137,7 @@ internal fun ExactCalendarScreen(
                 Text(
                     text = "$monthName ${month.year}",
                     color = Color.White,
-                    fontSize = 17.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
@@ -167,7 +169,7 @@ internal fun ExactCalendarScreen(
                 onSelect = onSelect,
                 events = events,
                 accent = p.accent,
-                modifier = Modifier.weight(1.76f)
+                modifier = Modifier.weight(1.78f)
             )
             DayPanel(
                 date = date,
@@ -292,7 +294,7 @@ private fun MonthPanel(
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(22.dp)
+                                            .size(23.dp)
                                             .clip(CircleShape)
                                             .background(if (day == selected) accent else Color.Transparent),
                                         contentAlignment = Alignment.Center
@@ -300,7 +302,7 @@ private fun MonthPanel(
                                         Text(
                                             text = "$number",
                                             color = Color.White,
-                                            fontSize = 8.sp,
+                                            fontSize = 8.5.sp,
                                             fontWeight = if (day == selected) FontWeight.Bold else FontWeight.Normal
                                         )
                                     }
@@ -357,7 +359,7 @@ private fun DayPanel(
                 Text(
                     text = "${date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))}",
                     color = Color.White,
-                    fontSize = 10.sp,
+                    fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(9.dp))
@@ -409,8 +411,8 @@ private fun DayPanel(
                 Text(
                     text = quote(p.mode),
                     color = p.accent,
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp,
+                    fontSize = 10.5.sp,
+                    lineHeight = 12.5.sp,
                     fontStyle = FontStyle.Italic,
                     fontFamily = FontFamily.Cursive,
                     modifier = Modifier.padding(bottom = 31.dp)
@@ -425,12 +427,12 @@ private fun DayPanel(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(9.dp)
-                    .size(36.dp)
+                    .size(38.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Lägg till",
-                    modifier = Modifier.size(21.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
