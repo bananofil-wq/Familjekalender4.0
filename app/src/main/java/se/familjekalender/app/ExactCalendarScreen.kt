@@ -73,11 +73,9 @@ internal fun ExactCalendarScreen(
             .fillMaxSize()
             .background(Color(0xFF07090F))
     ) {
-        // Tall phones get more room for the seasonal hero while the cards keep
-        // proportions much closer to the approved design instead of stretching.
-        val heroH = maxHeight * 0.55f
+        val heroH = maxHeight * 0.43f
         val panelTop = heroH - 10.dp
-        val panelsH = maxHeight * 0.42f
+        val panelsH = maxHeight * 0.54f
 
         SeasonalPhoto(
             mode = mode,
