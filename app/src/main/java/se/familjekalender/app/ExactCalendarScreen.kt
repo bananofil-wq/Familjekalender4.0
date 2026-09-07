@@ -58,11 +58,22 @@ internal fun ExactCalendarScreen(selectedDate: LocalDate, onSelect: (LocalDate) 
 private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
     val bitmap = remember(mode) {
         runCatching {
-            val bytes = Base64.decode(SeasonAtlas.DATA, Base64.DEFAULT)
-            val atlas = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@runCatching null
-            val segment = when (mode) { ThemeMode.WINTER -> 0; ThemeMode.SPRING -> 1; ThemeMode.SUMMER -> 2; ThemeMode.AUTUMN -> 3; else -> 3 }
-            val h = atlas.height / 4
-            Bitmap.createBitmap(atlas, 0, segment * h, atlas.width, if (segment == 3) atlas.height - segment * h else h)
+            if (mode == ThemeMode.AUTUMN) {
+                val exactData = SeasonAutumnExact0.DATA + SeasonAutumnExact1.DATA
+                val bytes = Base64.decode(exactData, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            } else {
+                val bytes = Base64.decode(SeasonAtlas.DATA, Base64.DEFAULT)
+                val atlas = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@runCatching null
+                val segment = when (mode) {
+                    ThemeMode.WINTER -> 0
+                    ThemeMode.SPRING -> 1
+                    ThemeMode.SUMMER -> 2
+                    else -> 0
+                }
+                val h = atlas.height / 4
+                Bitmap.createBitmap(atlas, 0, segment * h, atlas.width, h)
+            }
         }.getOrNull()
     }
     if (bitmap != null) AndroidView(
