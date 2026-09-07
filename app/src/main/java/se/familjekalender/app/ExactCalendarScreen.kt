@@ -22,7 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -95,16 +95,19 @@ internal fun ExactCalendarScreen(
 
 @Composable
 private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
-    when (mode) {
-        ThemeMode.SUMMER -> {
-            Image(painterResource(R.drawable.season_summer), null, modifier, contentScale = ContentScale.Crop)
-            return
+    val context = LocalContext.current
+    val resourceId = when (mode) {
+        ThemeMode.SUMMER -> R.drawable.season_summer
+        ThemeMode.AUTUMN -> R.drawable.season_autumn
+        else -> null
+    }
+    if (resourceId != null) {
+        val bmp = remember(resourceId) {
+            runCatching { BitmapFactory.decodeResource(context.resources, resourceId) }.getOrNull()
         }
-        ThemeMode.AUTUMN -> {
-            Image(painterResource(R.drawable.season_autumn), null, modifier, contentScale = ContentScale.Crop)
-            return
-        }
-        else -> Unit
+        if (bmp != null) Image(bmp.asImageBitmap(), null, modifier, contentScale = ContentScale.Crop)
+        else Box(modifier.background(Color(0xFF202431)))
+        return
     }
     val encoded = when (mode) {
         ThemeMode.WINTER -> SeasonWinter.DATA
