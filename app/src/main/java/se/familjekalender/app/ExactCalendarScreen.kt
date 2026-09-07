@@ -1,6 +1,5 @@
 package se.familjekalender.app
 
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
@@ -74,9 +73,9 @@ internal fun ExactCalendarScreen(
             .fillMaxSize()
             .background(Color(0xFF07090F))
     ) {
-        val heroH = maxHeight * 0.30f
-        val panelsH = maxHeight * 0.36f
-        val panelTop = heroH - 14.dp
+        val heroH = maxHeight * 0.34f
+        val panelTop = heroH - 12.dp
+        val panelsH = maxHeight - panelTop - 10.dp
 
         SeasonalPhoto(
             mode = mode,
@@ -88,20 +87,20 @@ internal fun ExactCalendarScreen(
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.Groups,
                     contentDescription = null,
                     tint = Color(0xFF9C4DFF),
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(19.dp)
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "Familjekalendern",
                     color = Color.White,
-                    fontSize = 14.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.weight(1f))
@@ -109,18 +108,18 @@ internal fun ExactCalendarScreen(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Sök",
                     tint = Color.White,
-                    modifier = Modifier.size(21.dp)
+                    modifier = Modifier.size(19.dp)
                 )
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(15.dp))
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Inställningar",
                     tint = Color.White,
-                    modifier = Modifier.size(21.dp)
+                    modifier = Modifier.size(19.dp)
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
@@ -128,7 +127,7 @@ internal fun ExactCalendarScreen(
                         month = month.minusMonths(1)
                         onSelect(month.atDay(1))
                     },
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Icon(Icons.Default.ChevronLeft, null, tint = Color.White)
                 }
@@ -136,7 +135,7 @@ internal fun ExactCalendarScreen(
                 Text(
                     text = "$monthName ${month.year}",
                     color = Color.White,
-                    fontSize = 19.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
@@ -147,7 +146,7 @@ internal fun ExactCalendarScreen(
                         month = month.plusMonths(1)
                         onSelect(month.atDay(1))
                     },
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Icon(Icons.Default.ChevronRight, null, tint = Color.White)
                 }
@@ -168,7 +167,7 @@ internal fun ExactCalendarScreen(
                 onSelect = onSelect,
                 events = events,
                 accent = p.accent,
-                modifier = Modifier.weight(1.62f)
+                modifier = Modifier.weight(1.76f)
             )
             DayPanel(
                 date = date,
@@ -184,32 +183,43 @@ internal fun ExactCalendarScreen(
 
 @Composable
 private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
-    if (mode == ThemeMode.AUTUMN) {
-        Image(
-            painter = painterResource(R.drawable.season_autumn),
-            contentDescription = null,
-            modifier = modifier,
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.Center
-        )
-        return
+    when (mode) {
+        ThemeMode.SUMMER -> {
+            Image(
+                painter = painterResource(R.drawable.season_summer),
+                contentDescription = null,
+                modifier = modifier,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center
+            )
+            return
+        }
+        ThemeMode.AUTUMN -> {
+            Image(
+                painter = painterResource(R.drawable.season_autumn),
+                contentDescription = null,
+                modifier = modifier,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center
+            )
+            return
+        }
+        else -> Unit
+    }
+
+    val encoded = when (mode) {
+        ThemeMode.WINTER -> SeasonWinter.DATA
+        ThemeMode.SPRING -> SeasonSpring.DATA
+        else -> null
     }
 
     val bmp = remember(mode) {
-        runCatching {
-            val bytes = Base64.decode(SeasonAtlas.DATA, Base64.DEFAULT)
-            val atlas = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            val idx = when (mode) {
-                ThemeMode.WINTER -> 0
-                ThemeMode.SPRING -> 1
-                ThemeMode.SUMMER -> 2
-                ThemeMode.AUTUMN -> 3
-                else -> 0
-            }
-            val sh = atlas.height / 4
-            val cleanHeight = if (idx >= 2) (sh * 0.54f).toInt() else sh
-            Bitmap.createBitmap(atlas, 0, idx * sh, atlas.width, cleanHeight)
-        }.getOrNull()
+        encoded?.let {
+            runCatching {
+                val bytes = Base64.decode(it, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }.getOrNull()
+        }
     }
 
     if (bmp != null) {
@@ -238,7 +248,7 @@ private fun MonthPanel(
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xF0151820))
     ) {
         Column(
@@ -258,7 +268,7 @@ private fun MonthPanel(
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(5.dp))
 
             repeat(6) { week ->
                 Row(
@@ -282,7 +292,7 @@ private fun MonthPanel(
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(23.dp)
+                                            .size(22.dp)
                                             .clip(CircleShape)
                                             .background(if (day == selected) accent else Color.Transparent),
                                         contentAlignment = Alignment.Center
@@ -290,7 +300,7 @@ private fun MonthPanel(
                                         Text(
                                             text = "$number",
                                             color = Color.White,
-                                            fontSize = 9.sp,
+                                            fontSize = 8.sp,
                                             fontWeight = if (day == selected) FontWeight.Bold else FontWeight.Normal
                                         )
                                     }
@@ -335,7 +345,7 @@ private fun DayPanel(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xF0151820))
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -347,10 +357,10 @@ private fun DayPanel(
                 Text(
                     text = "${date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))}",
                     color = Color.White,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(9.dp))
 
                 if (events.isEmpty()) {
                     Text(
@@ -370,7 +380,7 @@ private fun DayPanel(
                     )[index % 4]
 
                     Row(
-                        modifier = Modifier.padding(vertical = 3.dp),
+                        modifier = Modifier.padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -403,7 +413,7 @@ private fun DayPanel(
                     lineHeight = 12.sp,
                     fontStyle = FontStyle.Italic,
                     fontFamily = FontFamily.Cursive,
-                    modifier = Modifier.padding(bottom = 34.dp)
+                    modifier = Modifier.padding(bottom = 31.dp)
                 )
             }
 
@@ -415,12 +425,12 @@ private fun DayPanel(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(9.dp)
-                    .size(38.dp)
+                    .size(36.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Lägg till",
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(21.dp)
                 )
             }
         }
