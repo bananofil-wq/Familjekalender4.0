@@ -47,7 +47,24 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: adb install -r app/build/outputs/apk/debug/app-debug.apk && adb shell pm grant se.familjekalender.app android.permission.POST_NOTIFICATIONS || true; adb shell input keyevent KEYCODE_WAKEUP || true; adb shell wm dismiss-keyguard || true; adb shell am force-stop se.familjekalender.app; adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity; sleep 5; adb exec-out screencap -p > app-screen.png; test -s app-screen.png
+          script: |
+            set -e
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm grant se.familjekalender.app android.permission.POST_NOTIFICATIONS || true
+            adb shell input keyevent KEYCODE_WAKEUP || true
+            adb shell wm dismiss-keyguard || true
+            adb shell input keyevent 82 || true
+            adb shell am force-stop se.familjekalender.app
+            adb shell am start -W -a android.intent.action.MAIN -n se.familjekalender.app/.DesignPreviewActivity
+            sleep 2
+            adb shell input keyevent 82 || true
+            sleep 2
+            adb shell am start -W -a android.intent.action.MAIN -n se.familjekalender.app/.DesignPreviewActivity
+            sleep 4
+            adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || true
+            adb shell dumpsys activity top | head -80 || true
+            adb exec-out screencap -p > app-screen.png
+            test -s app-screen.png
 
       - name: Upload rendered app screen
         uses: actions/upload-artifact@v4
