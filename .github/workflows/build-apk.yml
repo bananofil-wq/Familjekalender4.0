@@ -48,10 +48,22 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
+            set -e
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell pm grant se.familjekalender.app android.permission.POST_NOTIFICATIONS || true
+            adb shell input keyevent KEYCODE_WAKEUP || true
+            adb shell wm dismiss-keyguard || true
+            adb logcat -c
+            adb shell am force-stop se.familjekalender.app
             adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity
-            sleep 5
+            sleep 3
+            CURRENT="$(adb shell dumpsys activity activities | grep -m 1 mResumedActivity || true)"
+            echo "Foreground activity: $CURRENT"
+            if ! echo "$CURRENT" | grep -q "se.familjekalender.app/.DesignPreviewActivity"; then
+              echo "Preview activity is not in foreground. Recent app logs:"
+              adb logcat -d -t 300 | grep -E "AndroidRuntime|FATAL EXCEPTION|se.familjekalender.app" || true
+              exit 1
+            fi
             adb exec-out screencap -p > app-screen.png
 
       - name: Upload rendered app screen
