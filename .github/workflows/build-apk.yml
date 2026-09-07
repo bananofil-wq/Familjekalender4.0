@@ -31,3 +31,31 @@ jobs:
         with:
           name: Familjekalender-4.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Render actual app screen
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm grant se.familjekalender.app android.permission.POST_NOTIFICATIONS || true
+            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity
+            sleep 5
+            adb exec-out screencap -p > app-screen.png
+
+      - name: Upload rendered app screen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Familjekalender-app-screen
+          path: app-screen.png
