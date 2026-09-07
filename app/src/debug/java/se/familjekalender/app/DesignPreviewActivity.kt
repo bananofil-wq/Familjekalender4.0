@@ -32,9 +32,7 @@ import java.time.LocalDate
 class DesignPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            PreviewScreen()
-        }
+        setContent { PreviewScreen() }
     }
 }
 
@@ -45,27 +43,38 @@ private fun PreviewScreen() {
 
     val members = remember {
         listOf(
-            SyncMember("a", "Person 1", "", 0xFF45AEFF),
-            SyncMember("b", "Person 2", "", 0xFFFF5AA7),
-            SyncMember("c", "Person 3", "", 0xFF62DB91)
+            SyncMember("a", "Person 1", "", 0xFF16A8FF),
+            SyncMember("b", "Person 2", "", 0xFF08DEA0),
+            SyncMember("c", "Person 3", "", 0xFFFF3D9A),
+            SyncMember("d", "Familjen", "", 0xFFFF9000)
         )
     }
 
     val events = remember {
         listOf(
-            SyncEvent("1", "Träning", LocalDate.of(2026, 10, 21), "17:00", "a", "manual"),
-            SyncEvent("2", "Middag", LocalDate.of(2026, 10, 21), "18:30", "b", "manual"),
-            SyncEvent("3", "Aktivitet", LocalDate.of(2026, 10, 21), "19:15", "c", "manual"),
-            SyncEvent("4", "", LocalDate.of(2026, 10, 6), "", "a", "manual"),
-            SyncEvent("5", "", LocalDate.of(2026, 10, 10), "", "b", "manual"),
-            SyncEvent("6", "", LocalDate.of(2026, 10, 14), "", "c", "manual"),
-            SyncEvent("7", "", LocalDate.of(2026, 10, 27), "", "a", "manual")
+            SyncEvent("1", "Skola", LocalDate.of(2026, 10, 21), "08:00", "a", "manual"),
+            SyncEvent("2", "Tandläkare", LocalDate.of(2026, 10, 21), "14:30", "b", "manual"),
+            SyncEvent("3", "Fotboll", LocalDate.of(2026, 10, 21), "16:30", "c", "manual"),
+            SyncEvent("4", "Middag", LocalDate.of(2026, 10, 21), "19:00", "d", "manual"),
+            SyncEvent("5", "", LocalDate.of(2026, 10, 1), "", "a", "manual"),
+            SyncEvent("6", "", LocalDate.of(2026, 10, 2), "", "d", "manual"),
+            SyncEvent("7", "", LocalDate.of(2026, 10, 8), "", "a", "manual"),
+            SyncEvent("8", "", LocalDate.of(2026, 10, 10), "", "d", "manual"),
+            SyncEvent("9", "", LocalDate.of(2026, 10, 12), "", "c", "manual"),
+            SyncEvent("10", "", LocalDate.of(2026, 10, 13), "", "a", "manual"),
+            SyncEvent("11", "", LocalDate.of(2026, 10, 14), "", "b", "manual"),
+            SyncEvent("12", "", LocalDate.of(2026, 10, 15), "", "d", "manual"),
+            SyncEvent("13", "", LocalDate.of(2026, 10, 19), "", "d", "manual"),
+            SyncEvent("14", "", LocalDate.of(2026, 10, 23), "", "d", "manual"),
+            SyncEvent("15", "", LocalDate.of(2026, 10, 24), "", "d", "manual"),
+            SyncEvent("16", "", LocalDate.of(2026, 10, 28), "", "b", "manual"),
+            SyncEvent("17", "", LocalDate.of(2026, 10, 31), "", "d", "manual")
         )
     }
 
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = palette.accent,
+            primary = Color(0xFF9C4DFF),
             background = Bg,
             surface = CardBg,
             onBackground = Color.White,
@@ -75,13 +84,9 @@ private fun PreviewScreen() {
         Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 containerColor = Bg,
-                bottomBar = { PreviewBottomNav(palette.accent) }
+                bottomBar = { PreviewBottomNav() }
             ) { padding ->
-                Box(
-                    Modifier
-                        .padding(padding)
-                        .fillMaxSize()
-                ) {
+                Box(Modifier.padding(padding).fillMaxSize()) {
                     ExactCalendarScreen(
                         selectedDate = selectedDate,
                         onSelect = { selectedDate = it },
@@ -97,7 +102,8 @@ private fun PreviewScreen() {
 }
 
 @Composable
-private fun PreviewBottomNav(accent: Color) {
+private fun PreviewBottomNav() {
+    val purple = Color(0xFF9C4DFF)
     NavigationBar(containerColor = Color(0xF20F0E13)) {
         val tabs = listOf(
             Icons.Default.CalendarMonth to "Kalender",
@@ -112,9 +118,11 @@ private fun PreviewBottomNav(accent: Color) {
                 icon = { Icon(icon, label) },
                 label = { Text(label) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = accent,
-                    selectedTextColor = accent,
-                    indicatorColor = accent.copy(alpha = 0.15f)
+                    selectedIconColor = purple,
+                    selectedTextColor = purple,
+                    indicatorColor = Color.Transparent,
+                    unselectedIconColor = Color(0xFFB8B3D8),
+                    unselectedTextColor = Color(0xFFB8B3D8)
                 )
             )
         }
