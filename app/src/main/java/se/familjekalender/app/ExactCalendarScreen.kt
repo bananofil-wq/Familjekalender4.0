@@ -35,7 +35,9 @@ internal fun ExactCalendarScreen(selectedDate: LocalDate, onSelect: (LocalDate) 
     val p = palette
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
-        val heroH = maxWidth * (372f / 682f)
+        // Approved seasonal images are 3:2. Keep the hero area at the same ratio so
+        // the image is never stretched or distorted on screen.
+        val heroH = maxWidth * (2f / 3f)
         val panelTop = heroH - 2.dp
         val panelsH = maxHeight * .545f
         SeasonalPhoto(mode, Modifier.fillMaxWidth().height(heroH))
@@ -87,17 +89,16 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
     }
 
     if (bitmap != null) {
-        val scaleType = if (mode == ThemeMode.AUTUMN) ImageView.ScaleType.FIT_XY else ImageView.ScaleType.CENTER_CROP
         AndroidView(
             modifier = modifier,
             factory = { context ->
                 ImageView(context).apply {
-                    this.scaleType = scaleType
+                    scaleType = ImageView.ScaleType.CENTER_CROP
                     setImageBitmap(bitmap)
                 }
             },
             update = {
-                it.scaleType = scaleType
+                it.scaleType = ImageView.ScaleType.CENTER_CROP
                 it.setImageBitmap(bitmap)
             }
         )
