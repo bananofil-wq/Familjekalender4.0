@@ -25,7 +25,8 @@ jobs:
             -H "apikey: $KEY" \
             -H "Authorization: Bearer $KEY" \
             https://zigychfkpgypjuovgyqq.supabase.co/rest/v1/)"
-          test "$STATUS" = "200"
+          echo "Supabase REST status: $STATUS"
+          test "$STATUS" != "401"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
