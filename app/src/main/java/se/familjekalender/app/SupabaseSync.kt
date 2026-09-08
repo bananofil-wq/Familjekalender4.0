@@ -14,8 +14,11 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 private const val SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
-private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXAiLCJyZWYiOiJ6aWd5Y2hma3BneXBqdW92Z3lxcSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg4NjUyNjc0LCJleHAiOjIxMDQyMjg2NzR9.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
+private const val SUPABASE_CONFIG_URL = "$SUPABASE_URL/functions/v1/app-config"
 private val STOCKHOLM = ZoneId.of("Europe/Stockholm")
+
+@Volatile
+private var cachedApiKey: String? = null
 
 data class FamilySession(val id: String, val name: String, val code: String)
 data class SyncMember(val id: String, val name: String, val role: String, val colorArgb: Long)
@@ -235,6 +238,21 @@ object SupabaseSync {
         return connection.inputStream.bufferedReader().use { it.readText() }
     }
 
+    private fun apiKey(): String {
+        cachedApiKey?.let { return it }
+        val connection = URL(SUPABASE_CONFIG_URL).openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.connectTimeout = 15000
+        connection.readTimeout = 15000
+        val code = connection.responseCode
+        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+        val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        if (code !in 200..299) throw IllegalStateException("Konfigurationsfel $code: $text")
+        val key = JSONObject(text).getString("apiKey")
+        cachedApiKey = key
+        return key
+    }
+
     private fun request(
         method: String,
         path: String,
@@ -243,12 +261,13 @@ object SupabaseSync {
         preferRepresentation: Boolean = true,
         preferExtra: String? = null
     ): String {
+        val key = apiKey()
         val connection = URL("$SUPABASE_URL$path").openConnection() as HttpURLConnection
         connection.requestMethod = method
         connection.connectTimeout = 15000
         connection.readTimeout = 20000
-        connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
-        connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+        connection.setRequestProperty("apikey", key)
+        connection.setRequestProperty("Authorization", "Bearer $key")
         connection.setRequestProperty("Content-Type", "application/json")
         if (!familyCode.isNullOrBlank()) connection.setRequestProperty("x-family-code", familyCode.uppercase())
         val prefer = buildList {
