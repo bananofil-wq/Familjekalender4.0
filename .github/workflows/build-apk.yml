@@ -15,18 +15,15 @@ jobs:
       - name: Verify approved seasonal images
         run: python3 scripts/verify-season-images.py
 
-      - name: Verify Supabase client bootstrap
+      - name: Verify family API health
         run: |
           set -euo pipefail
-          CONFIG="$(curl --fail --silent --show-error https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/app-config)"
-          KEY="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["apiKey"])' <<< "$CONFIG")"
-          test -n "$KEY"
-          STATUS="$(curl --silent --output /tmp/supabase-openapi.json --write-out '%{http_code}' \
-            -H "apikey: $KEY" \
-            -H "Authorization: Bearer $KEY" \
-            https://zigychfkpgypjuovgyqq.supabase.co/rest/v1/)"
-          echo "Supabase REST status: $STATUS"
-          test "$STATUS" != "401"
+          RESPONSE="$(curl --fail --silent --show-error \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{"action":"health"}' \
+            https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/family-api)"
+          python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True, data' <<< "$RESPONSE"
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
