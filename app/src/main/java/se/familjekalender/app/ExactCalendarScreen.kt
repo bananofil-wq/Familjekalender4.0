@@ -68,16 +68,14 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
     val bitmap = remember(mode) {
         runCatching {
             val encoded = when (mode) {
-                ThemeMode.AUTUMN -> buildString(69268) {
-                    append(SeasonAutumnExact00.DATA)
-                    append(SeasonAutumnExact01.DATA)
-                    append(SeasonAutumnExact02.DATA)
-                    append(SeasonAutumnExact03.DATA)
-                    append(SeasonAutumnExact04.DATA)
-                    append(SeasonAutumnExact05.DATA)
-                    append(SeasonAutumnExact06.DATA)
-                    append(SeasonAutumnExact07.DATA)
-                    append(SeasonAutumnExact08.DATA)
+                ThemeMode.AUTUMN -> buildString(99748) {
+                    append(SeasonAutumnApproved00.DATA)
+                    append(SeasonAutumnApproved01.DATA)
+                    append(SeasonAutumnApproved02.DATA)
+                    append(SeasonAutumnApproved03.DATA)
+                    append(SeasonAutumnApproved04.DATA)
+                    append(SeasonAutumnApproved05.DATA)
+                    append(SeasonAutumnApproved06.DATA)
                 }
                 ThemeMode.WINTER -> SeasonWinter.DATA
                 ThemeMode.SPRING -> SeasonSpring.DATA
