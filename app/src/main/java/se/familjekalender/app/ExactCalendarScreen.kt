@@ -56,31 +56,41 @@ internal fun ExactCalendarScreen(selectedDate: LocalDate, onSelect: (LocalDate) 
 
 @Composable
 private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
+    if (mode == ThemeMode.AUTUMN || mode == ThemeMode.SUMMER) {
+        val imageRes = if (mode == ThemeMode.AUTUMN) R.drawable.season_autumn else R.drawable.season_summer
+        AndroidView(
+            modifier = modifier,
+            factory = { context ->
+                ImageView(context).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    setImageResource(imageRes)
+                }
+            },
+            update = {
+                it.scaleType = ImageView.ScaleType.CENTER_CROP
+                it.setImageResource(imageRes)
+            }
+        )
+        return
+    }
+
     val bitmap = remember(mode) {
         runCatching {
-            if (mode == ThemeMode.AUTUMN) {
-                val exactData = SeasonAutumnExact0.DATA + SeasonAutumnExact1.DATA
-                val bytes = Base64.decode(exactData, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            } else {
-                val bytes = Base64.decode(SeasonAtlas.DATA, Base64.DEFAULT)
-                val atlas = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@runCatching null
-                val segment = when (mode) {
-                    ThemeMode.WINTER -> 0
-                    ThemeMode.SPRING -> 1
-                    ThemeMode.SUMMER -> 2
-                    else -> 0
-                }
-                val h = atlas.height / 4
-                Bitmap.createBitmap(atlas, 0, segment * h, atlas.width, h)
+            val encoded = when (mode) {
+                ThemeMode.WINTER -> SeasonWinter.DATA
+                ThemeMode.SPRING -> SeasonSpring.DATA
+                else -> return@runCatching null
             }
+            val bytes = Base64.decode(encoded, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         }.getOrNull()
     }
+
     if (bitmap != null) AndroidView(
         modifier = modifier,
         factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP; setImageBitmap(bitmap) } },
         update = { it.scaleType = ImageView.ScaleType.CENTER_CROP; it.setImageBitmap(bitmap) }
-    ) else Box(modifier.background(Color(0xFF5A2516)))
+    ) else Box(modifier.background(Color(0xFF061019)))
 }
 
 @Composable
