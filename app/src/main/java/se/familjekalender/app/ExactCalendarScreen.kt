@@ -51,11 +51,16 @@ internal fun ExactCalendarScreen(
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showWorkMonth by remember { mutableStateOf(false) }
+    var showManageMonth by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mode = palette.mode
     val p = palette
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
+
+    fun refreshActivity() {
+        (context as? Activity)?.recreate()
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
         val heroH = maxWidth * (2f / 3f)
@@ -76,11 +81,19 @@ internal fun ExactCalendarScreen(
                 p = p,
                 modifier = Modifier.weight(1f),
                 onAdd = { showAddMenu = true },
+                onManageMany = { showManageMonth = true },
                 onDelete = { event ->
                     val session = currentFamilySession(context) ?: return@DayPanel
                     scope.launch {
-                        runCatching { deleteCalendarEvent(session, event.id) }
-                            .onSuccess { (context as? Activity)?.recreate() }
+                        runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }
+                            .onSuccess { refreshActivity() }
+                    }
+                },
+                onChangePerson = { event, memberId ->
+                    val session = currentFamilySession(context) ?: return@DayPanel
+                    scope.launch {
+                        runCatching { updateCalendarEventMemberDirect(session, event.id, memberId) }
+                            .onSuccess { refreshActivity() }
                     }
                 }
             )
@@ -126,7 +139,30 @@ internal fun ExactCalendarScreen(
             onDismiss = { showWorkMonth = false },
             onChanged = {
                 showWorkMonth = false
-                (context as? Activity)?.recreate()
+                refreshActivity()
+            }
+        )
+    }
+
+    if (showManageMonth) {
+        ManageMonthEventsDialog(
+            month = month,
+            events = events.filter { YearMonth.from(it.date) == month && it.source != "sportadmin" },
+            members = members,
+            onDismiss = { showManageMonth = false },
+            onDelete = { ids ->
+                val session = currentFamilySession(context)
+                if (session == null) {
+                    showManageMonth = false
+                } else {
+                    scope.launch {
+                        runCatching { deleteCalendarEventsDirect(session, ids) }
+                            .onSuccess {
+                                showManageMonth = false
+                                refreshActivity()
+                            }
+                    }
+                }
             }
         )
     }
@@ -222,7 +258,9 @@ private fun DayPanel(
     p: SeasonPalette,
     modifier: Modifier,
     onAdd: () -> Unit,
-    onDelete: (SyncEvent) -> Unit
+    onManageMany: () -> Unit,
+    onDelete: (SyncEvent) -> Unit,
+    onChangePerson: (SyncEvent, String?) -> Unit
 ) {
     var selectedEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
@@ -231,8 +269,15 @@ private fun DayPanel(
             Column(Modifier.fillMaxSize().padding(12.dp)) {
                 val dayName = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
                 val monthName = date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))
-                Text("$dayName ${date.dayOfMonth} $monthName", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("$dayName ${date.dayOfMonth} $monthName", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if (events.any { it.source != "sportadmin" }) {
+                        TextButton(onClick = onManageMany, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
+                            Text("Hantera", fontSize = 8.sp)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 if (events.isEmpty()) Text("Inget planerat", color = Color.White.copy(alpha = .55f), fontSize = 9.sp)
                 events.take(5).forEach { event ->
                     val member = members.find { it.id == event.memberId }
@@ -268,7 +313,8 @@ private fun DayPanel(
     }
 
     selectedEvent?.let { event ->
-        val member = members.find { it.id == event.memberId }
+        val currentMember = members.find { it.id == event.memberId }
+        var editPerson by remember(event.id) { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { selectedEvent = null },
             title = { Text(event.title) },
@@ -276,8 +322,8 @@ private fun DayPanel(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Tid: ${event.time}")
                     Text("Datum: ${event.date}")
-                    Text("Berör: ${member?.name ?: "Ingen särskild person"}")
-                    if (!member?.role.isNullOrBlank()) Text("Roll: ${member?.role}")
+                    Text("Berör: ${currentMember?.name ?: "Ingen särskild person"}")
+                    if (!currentMember?.role.isNullOrBlank()) Text("Roll: ${currentMember?.role}")
                     Text(
                         "Källa: ${when (event.source) {
                             "sportadmin" -> "SportAdmin"
@@ -285,6 +331,39 @@ private fun DayPanel(
                             else -> "Manuellt tillagd"
                         }}"
                     )
+                    OutlinedButton(
+                        onClick = { editPerson = !editPerson },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (editPerson) "Dölj personer" else "Byt person") }
+
+                    if (editPerson) {
+                        Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    selectedEvent = null
+                                    onChangePerson(event, null)
+                                }.padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = event.memberId == null, onClick = null)
+                                Text("Ingen särskild person")
+                            }
+                            members.forEach { member ->
+                                Row(
+                                    Modifier.fillMaxWidth().clickable {
+                                        selectedEvent = null
+                                        onChangePerson(event, member.id)
+                                    }.padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(selected = event.memberId == member.id, onClick = null)
+                                    Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(member.name)
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = { TextButton(onClick = { selectedEvent = null }) { Text("Stäng") } },
@@ -300,6 +379,89 @@ private fun DayPanel(
             }
         )
     }
+}
+
+@Composable
+private fun ManageMonthEventsDialog(
+    month: YearMonth,
+    events: List<SyncEvent>,
+    members: List<SyncMember>,
+    onDismiss: () -> Unit,
+    onDelete: (List<String>) -> Unit
+) {
+    val selectedIds = remember(month, events) { mutableStateListOf<String>() }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Ta bort ${selectedIds.size} inlägg?") },
+            text = { Text("De markerade kalenderinläggen tas bort permanent.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmDelete = false
+                        onDelete(selectedIds.toList())
+                    }
+                ) { Text("Ta bort") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Avbryt") } }
+        )
+        return
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Hantera $monthName") },
+        text = {
+            Column {
+                if (events.isEmpty()) {
+                    Text("Inga manuella kalenderinlägg att hantera den här månaden.")
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = {
+                            selectedIds.clear()
+                            selectedIds.addAll(events.map { it.id })
+                        }) { Text("Markera alla") }
+                        TextButton(onClick = { selectedIds.clear() }) { Text("Avmarkera") }
+                    }
+                    Column(Modifier.heightIn(max = 430.dp).verticalScroll(rememberScrollState())) {
+                        events.sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time }).forEach { event ->
+                            val member = members.find { it.id == event.memberId }
+                            Row(
+                                Modifier.fillMaxWidth().clickable {
+                                    if (event.id in selectedIds) selectedIds.remove(event.id) else selectedIds.add(event.id)
+                                }.padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = event.id in selectedIds,
+                                    onCheckedChange = {
+                                        if (it) {
+                                            if (event.id !in selectedIds) selectedIds.add(event.id)
+                                        } else selectedIds.remove(event.id)
+                                    }
+                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text("${event.date.dayOfMonth} ${event.date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))}  ${event.time}", fontSize = 12.sp)
+                                    Text(event.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text(member?.name ?: "Ingen särskild person", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f), fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { confirmDelete = true },
+                enabled = selectedIds.isNotEmpty()
+            ) { Text("Ta bort valda (${selectedIds.size})") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+    )
 }
 
 @Composable
