@@ -55,7 +55,7 @@ jobs:
             adb shell pm grant se.familjekalender.app android.permission.POST_NOTIFICATIONS || true
             adb shell input keyevent KEYCODE_WAKEUP || true
             adb shell wm dismiss-keyguard || true
-            adb logcat -c
+            adb logcat -c || true
             adb shell am force-stop se.familjekalender.app
             adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity || true
             sleep 6
@@ -63,7 +63,8 @@ jobs:
             adb shell am force-stop com.google.android.apps.nexuslauncher || true
             adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity || true
             sleep 3
-            adb logcat -d -v threadtime > app-logcat.txt
+            adb logcat -d -v threadtime > app-logcat.txt || true
+            touch app-logcat.txt
             adb shell dumpsys activity top > activity-top.txt || true
             grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top.txt
             ! grep -q "FATAL EXCEPTION.*se.familjekalender.app" app-logcat.txt
