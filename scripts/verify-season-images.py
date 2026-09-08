@@ -4,10 +4,10 @@ import hashlib
 import sys
 
 EXPECTED = {
-    "season_winter.jpg": "5719fff5bb97658d30916dc00a4386c0261a9e3ef0f3e7ec9f2e0d7ae29381dd",
-    "season_spring.jpg": "6e2c10f4ac7a298f2657ea7c5c377a462acd2733f4d9ee5c450e7927ced10e40",
-    "season_autumn.jpg": "d68bdcb1781c8b8f79dfb4a095eac2973546bfdbf874d44f54194db853be90c4",
-    "season_summer.jpg": "7241bd51f1a29ea2bee637cf8305ac8d264caa2664e18e271b4253d4ea5a5822",
+    "season_winter.jpg": "2670b9fa42de076462531af944622fe4f6d8e54eae987f5715778e0e3ea7b5e8",
+    "season_spring.jpg": "346f863bb1f5a370cdec1fa5dae492bd6d8f1ae6c568e17bfe6bf541edbd6f44",
+    "season_autumn.jpg": "74c9e709baf521863767de9d125775319e4238afe974cbbb7773adb72b7c9e09",
+    "season_summer.jpg": "9311ef97ff763ef06088243530329fb2ebbaaef71e04e9f8d3ed5c39555eb97a",
 }
 
 root = Path(__file__).resolve().parents[1] / "app" / "src" / "main" / "res" / "drawable-nodpi"
