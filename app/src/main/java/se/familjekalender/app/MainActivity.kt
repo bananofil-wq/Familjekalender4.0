@@ -1,6 +1,7 @@
 package se.familjekalender.app
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -274,7 +276,7 @@ private fun SyncedApp(
     }
 
     if (showAddEvent) {
-        AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, time, memberId, dates, birthday ->
+        AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday ->
             scope.launch {
                 if (birthday) {
                     val today = LocalDate.now()
@@ -282,11 +284,11 @@ private fun SyncedApp(
                     val day = dates.first().dayOfMonth
                     for (year in today.year..(today.year + 20)) {
                         val birthdayDate = runCatching { LocalDate.of(year, month, day) }.getOrNull() ?: continue
-                        SupabaseSync.addEvent(session, "🎂 $title", birthdayDate, "09:00", memberId)
+                        SupabaseSync.addEvent(session, "🎂 $title", birthdayDate, "09:00", null, memberId)
                     }
                 } else {
                     dates.sorted().forEach { date ->
-                        SupabaseSync.addEvent(session, title, date, time, memberId)
+                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
                     }
                 }
                 refresh()
@@ -421,17 +423,18 @@ private fun AddEventDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
     onDismiss: () -> Unit,
-    onAdd: (String, String, String?, List<LocalDate>, Boolean) -> Unit
+    onAdd: (String, String, String, String?, List<LocalDate>, Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
     var title by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("18:00") }
+    var startTime by remember { mutableStateOf("18:00") }
+    var endTime by remember { mutableStateOf("19:00") }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
     var isBirthday by remember { mutableStateOf(false) }
     val dates = remember { mutableStateListOf(selectedDate) }
 
-    fun openDatePicker() {
+    fun openSingleDatePicker() {
         val base = dates.lastOrNull() ?: selectedDate
         DatePickerDialog(
             context,
@@ -447,6 +450,46 @@ private fun AddEventDialog(
             base.year,
             base.monthValue - 1,
             base.dayOfMonth
+        ).show()
+    }
+
+    fun openRangePicker() {
+        val base = dates.minOrNull() ?: selectedDate
+        DatePickerDialog(
+            context,
+            { _, startYear, startMonth, startDay ->
+                val rangeStart = LocalDate.of(startYear, startMonth + 1, startDay)
+                DatePickerDialog(
+                    context,
+                    { _, endYear, endMonth, endDay ->
+                        val pickedEnd = LocalDate.of(endYear, endMonth + 1, endDay)
+                        val rangeEnd = if (pickedEnd < rangeStart) rangeStart else pickedEnd
+                        dates.clear()
+                        var cursor = rangeStart
+                        while (!cursor.isAfter(rangeEnd)) {
+                            dates.add(cursor)
+                            cursor = cursor.plusDays(1)
+                        }
+                    },
+                    rangeStart.year,
+                    rangeStart.monthValue - 1,
+                    rangeStart.dayOfMonth
+                ).show()
+            },
+            base.year,
+            base.monthValue - 1,
+            base.dayOfMonth
+        ).show()
+    }
+
+    fun openTimePicker(current: String, onPicked: (String) -> Unit) {
+        val parsed = runCatching { LocalTime.parse(current) }.getOrElse { LocalTime.of(18, 0) }
+        TimePickerDialog(
+            context,
+            { _, hour, minute -> onPicked("%02d:%02d".format(hour, minute)) },
+            parsed.hour,
+            parsed.minute,
+            true
         ).show()
     }
 
@@ -485,11 +528,25 @@ private fun AddEventDialog(
                 )
 
                 if (!isBirthday) {
-                    OutlinedTextField(time, { time = it }, label = { Text("Tid") }, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    Text("Tid", fontWeight = FontWeight.Bold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { openTimePicker(startTime) { startTime = it } },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Start $startTime") }
+                        OutlinedButton(
+                            onClick = { openTimePicker(endTime) { endTime = it } },
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Slut $endTime") }
+                    }
+                    if (endTime <= startTime) {
+                        Text("Sluttiden räknas som nästa dag.", color = Muted, fontSize = 12.sp)
+                    }
                 }
 
-                Spacer(Modifier.height(8.dp))
-                Text(if (isBirthday) "Födelsedatum" else "Valda datum", fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                Text(if (isBirthday) "Födelsedatum" else "Valda dagar", fontWeight = FontWeight.Bold)
                 dates.sorted().forEach { date ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(date.format(dateFormatter), modifier = Modifier.weight(1f))
@@ -498,12 +555,24 @@ private fun AddEventDialog(
                         }
                     }
                 }
-                OutlinedButton(onClick = { openDatePicker() }, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (isBirthday) "Välj födelsedatum" else "+ Lägg till datum")
+
+                if (isBirthday) {
+                    OutlinedButton(onClick = { openSingleDatePicker() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Välj födelsedatum")
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { openSingleDatePicker() }, modifier = Modifier.weight(1f)) {
+                            Text("+ En dag")
+                        }
+                        Button(onClick = { openRangePicker() }, modifier = Modifier.weight(1f)) {
+                            Text("Flera dagar")
+                        }
+                    }
                 }
 
                 if (!isBirthday && dates.size > 1) {
-                    Text("Samma aktivitet sparas på ${dates.size} datum.", color = Muted, fontSize = 12.sp)
+                    Text("Samma aktivitet sparas på ${dates.size} dagar samtidigt.", color = Muted, fontSize = 12.sp)
                 }
                 if (isBirthday) {
                     Text("Födelsedagen läggs in årligen i kalendern.", color = Muted, fontSize = 12.sp)
@@ -525,10 +594,10 @@ private fun AddEventDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onAdd(title.trim(), time.trim(), memberId, dates.toList(), isBirthday) },
+                onClick = { onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday) },
                 enabled = title.isNotBlank() && dates.isNotEmpty()
             ) {
-                Text(if (isBirthday) "Lägg till födelsedag" else if (dates.size > 1) "Lägg till ${dates.size} datum" else "Lägg till")
+                Text(if (isBirthday) "Lägg till födelsedag" else if (dates.size > 1) "Lägg till ${dates.size} dagar" else "Lägg till")
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
