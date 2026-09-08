@@ -41,8 +41,6 @@ internal fun ExactCalendarScreen(
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
-        // Approved source images are all 1536x1024 (3:2). The hero keeps the
-        // same ratio, so Android never needs to stretch the image out of shape.
         val heroH = maxWidth * (2f / 3f)
         val panelTop = heroH - 2.dp
         val panelsH = maxHeight * .545f
@@ -53,7 +51,7 @@ internal fun ExactCalendarScreen(
             Modifier.fillMaxWidth().padding(horizontal = 10.dp).offset(y = panelTop).height(panelsH),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            MonthPanel(month, date, onSelect, events, p.accent, Modifier.weight(1.78f))
+            MonthPanel(month, date, onSelect, events, members, p.accent, Modifier.weight(1.78f))
             DayPanel(date, events.filter { it.date == date }, members, p, Modifier.weight(1f), onAdd)
         }
     }
@@ -97,6 +95,7 @@ private fun MonthPanel(
     selected: LocalDate,
     onSelect: (LocalDate) -> Unit,
     events: List<SyncEvent>,
+    members: List<SyncMember>,
     accent: Color,
     modifier: Modifier
 ) {
@@ -124,8 +123,10 @@ private fun MonthPanel(
                                         Text("$number", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        events.filter { it.date == day }.take(3).forEachIndexed { index, _ ->
-                                            Box(Modifier.size(3.5.dp).clip(CircleShape).background(listOf(Color(0xFF16A8FF), Color(0xFFFF3D9A), Color(0xFF08DEA0), Color(0xFFFF9000))[index % 4]))
+                                        events.filter { it.date == day }.take(3).forEach { event ->
+                                            val member = members.find { it.id == event.memberId }
+                                            val dotColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
+                                            Box(Modifier.size(3.5.dp).clip(CircleShape).background(dotColor))
                                         }
                                     }
                                 }
@@ -147,6 +148,8 @@ private fun DayPanel(
     modifier: Modifier,
     onAdd: () -> Unit
 ) {
+    var selectedEvent by remember { mutableStateOf<SyncEvent?>(null) }
+
     Card(modifier, shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
         Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(12.dp)) {
@@ -155,11 +158,13 @@ private fun DayPanel(
                 Text("$dayName ${date.dayOfMonth} $monthName", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
                 if (events.isEmpty()) Text("Inget planerat", color = Color.White.copy(alpha = .55f), fontSize = 9.sp)
-                events.take(5).forEachIndexed { index, event ->
+                events.take(5).forEach { event ->
                     val member = members.find { it.id == event.memberId }
-                    val eventColor = member?.let { Color(it.colorArgb.toInt()) }
-                        ?: listOf(Color(0xFF16A8FF), Color(0xFF08DEA0), Color(0xFFFF3D9A), Color(0xFFFF9000))[index % 4]
-                    Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val eventColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
+                    Row(
+                        Modifier.fillMaxWidth().clickable { selectedEvent = event }.padding(vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(Modifier.size(12.dp).clip(CircleShape).background(eventColor))
                         Spacer(Modifier.width(7.dp))
                         Text(event.time, color = Color.White.copy(alpha = .9f), fontSize = 9.sp)
@@ -184,6 +189,24 @@ private fun DayPanel(
                 Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(29.dp))
             }
         }
+    }
+
+    selectedEvent?.let { event ->
+        val member = members.find { it.id == event.memberId }
+        AlertDialog(
+            onDismissRequest = { selectedEvent = null },
+            title = { Text(event.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Tid: ${event.time}")
+                    Text("Datum: ${event.date}")
+                    Text("Berör: ${member?.name ?: "Ingen särskild person"}")
+                    if (!member?.role.isNullOrBlank()) Text("Roll: ${member?.role}")
+                    Text("Källa: ${if (event.source == "sportadmin") "SportAdmin" else "Manuellt tillagd"}")
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedEvent = null }) { Text("Stäng") } }
+        )
     }
 }
 
