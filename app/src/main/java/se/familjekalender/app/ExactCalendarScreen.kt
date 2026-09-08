@@ -29,18 +29,11 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
-private fun seasonMode(month: Int) = when (month) {
-    3, 4, 5 -> ThemeMode.SPRING
-    6, 7, 8 -> ThemeMode.SUMMER
-    9, 10, 11 -> ThemeMode.AUTUMN
-    else -> ThemeMode.WINTER
-}
-
 @Composable
 internal fun ExactCalendarScreen(selectedDate: LocalDate, onSelect: (LocalDate) -> Unit, events: List<SyncEvent>, members: List<SyncMember>, palette: SeasonPalette, onAdd: () -> Unit) {
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
-    val mode = seasonMode(month.monthValue)
-    val p = paletteFor(mode)
+    val mode = palette.mode
+    val p = palette
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
         val heroH = maxWidth * 0.56f
