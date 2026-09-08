@@ -6,7 +6,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.LocalTime
@@ -73,6 +72,19 @@ object SupabaseSync {
             .put("role", role)
             .put("color_argb", colorArgb)
         request("POST", "/rest/v1/family_members", body, session.code, preferRepresentation = false)
+    }
+
+    suspend fun updateMemberColor(session: FamilySession, memberId: String, colorArgb: Long) = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("color_argb", colorArgb)
+            .put("updated_at", OffsetDateTime.now().toString())
+        request(
+            "PATCH",
+            "/rest/v1/family_members?id=eq.$memberId&family_id=eq.${session.id}",
+            body,
+            session.code,
+            preferRepresentation = false
+        )
     }
 
     suspend fun loadShopping(session: FamilySession): List<SyncShoppingItem> = withContext(Dispatchers.IO) {
