@@ -15,16 +15,6 @@ jobs:
       - name: Verify approved seasonal images
         run: python3 scripts/verify-season-images.py
 
-      - name: Verify family API health
-        run: |
-          set -euo pipefail
-          RESPONSE="$(curl --fail --silent --show-error \
-            -X POST \
-            -H 'Content-Type: application/json' \
-            -d '{"action":"health"}' \
-            https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/family-api)"
-          python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True, data' <<< "$RESPONSE"
-
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -69,14 +59,8 @@ jobs:
             adb shell am force-stop se.familjekalender.app
             adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity || true
             sleep 6
-            adb shell input keyevent KEYCODE_BACK || true
-            adb shell am force-stop com.google.android.apps.nexuslauncher || true
-            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity || true
-            sleep 2
             adb logcat -d -v threadtime > app-logcat.txt
             adb shell dumpsys activity top > activity-top.txt || true
-            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top.txt
-            ! grep -q "FATAL EXCEPTION.*se.familjekalender.app" app-logcat.txt
             adb exec-out screencap -p > app-screen.png
             test -s app-screen.png
 

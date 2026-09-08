@@ -13,7 +13,8 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-private const val FAMILY_API_URL = "https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/family-api"
+private const val SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
+private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
 private val STOCKHOLM = ZoneId.of("Europe/Stockholm")
 
 data class FamilySession(val id: String, val name: String, val code: String)
@@ -108,13 +109,7 @@ object SupabaseSync {
 
     suspend fun toggleShopping(session: FamilySession, item: SyncShoppingItem) = withContext(Dispatchers.IO) {
         val body = JSONObject().put("checked", !item.checked).put("updated_at", OffsetDateTime.now().toString())
-        request(
-            "PATCH",
-            "/rest/v1/shopping_items?id=eq.${item.id}&family_id=eq.${session.id}",
-            body,
-            session.code,
-            preferRepresentation = false
-        )
+        request("PATCH", "/rest/v1/shopping_items?id=eq.${item.id}", body, session.code, preferRepresentation = false)
     }
 
     suspend fun clearChecked(session: FamilySession) = withContext(Dispatchers.IO) {
@@ -124,7 +119,7 @@ object SupabaseSync {
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> = withContext(Dispatchers.IO) {
         val result = request(
             "GET",
-            "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source&family_id=eq.${session.id}&order=starts_at.asc",
+            "/rest/v1/calendar_events?select=id,title,starts_at,member_id,source&family_id=eq.${session.id}&order=starts_at.asc",
             familyCode = session.code
         )
         val array = JSONArray(result)
@@ -132,17 +127,12 @@ object SupabaseSync {
             repeat(array.length()) {
                 val row = array.getJSONObject(it)
                 val zoned = OffsetDateTime.parse(row.getString("starts_at")).atZoneSameInstant(STOCKHOLM)
-                val endZoned = if (row.isNull("ends_at")) null else runCatching {
-                    OffsetDateTime.parse(row.getString("ends_at")).atZoneSameInstant(STOCKHOLM)
-                }.getOrNull()
-                val startText = "%02d:%02d".format(zoned.hour, zoned.minute)
-                val timeText = endZoned?.let { "$startText–%02d:%02d".format(it.hour, it.minute) } ?: startText
                 add(
                     SyncEvent(
                         id = row.getString("id"),
                         title = row.getString("title"),
                         date = zoned.toLocalDate(),
-                        time = timeText,
+                        time = "%02d:%02d".format(zoned.hour, zoned.minute),
                         memberId = if (row.isNull("member_id")) null else row.getString("member_id"),
                         source = row.optString("source", "manual")
                     )
@@ -155,23 +145,16 @@ object SupabaseSync {
         session: FamilySession,
         title: String,
         date: LocalDate,
-        startTime: String,
-        endTime: String?,
+        time: String,
         memberId: String?
     ) = withContext(Dispatchers.IO) {
-        val parsedStart = runCatching { LocalTime.parse(startTime) }.getOrElse { LocalTime.of(18, 0) }
-        val startsAt = ZonedDateTime.of(date, parsedStart, STOCKHOLM)
-        val parsedEnd = endTime?.takeIf { it.isNotBlank() }?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
-        val endsAt = parsedEnd?.let {
-            val endDate = if (it <= parsedStart) date.plusDays(1) else date
-            ZonedDateTime.of(endDate, it, STOCKHOLM)
-        }
+        val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
+        val startsAt = ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
         val body = JSONObject()
             .put("family_id", session.id)
             .put("title", title)
-            .put("starts_at", startsAt.toOffsetDateTime().toString())
+            .put("starts_at", startsAt)
             .put("source", "manual")
-        if (endsAt != null) body.put("ends_at", endsAt.toOffsetDateTime().toString())
         if (memberId == null) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
         request("POST", "/rest/v1/calendar_events", body, session.code, preferRepresentation = false)
     }
@@ -193,9 +176,6 @@ object SupabaseSync {
                 .put("starts_at", start.toOffsetDateTime().toString())
                 .put("source", "sportadmin")
                 .put("external_id", uid)
-            val rawEnd = lines.firstOrNull { it.startsWith("DTEND") }?.substringAfter(':')
-            val end = rawEnd?.let { parseIcsStart(it) }
-            if (end != null) body.put("ends_at", end.toOffsetDateTime().toString())
             if (memberId == null) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
             val location = valueFor(lines, "LOCATION")
             if (!location.isNullOrBlank()) body.put("location", unescapeIcs(location))
@@ -248,21 +228,23 @@ object SupabaseSync {
         preferRepresentation: Boolean = true,
         preferExtra: String? = null
     ): String {
-        val envelope = JSONObject()
-            .put("method", method)
-            .put("path", path)
-            .put("preferRepresentation", preferRepresentation)
-        if (body != null) envelope.put("body", body)
-        if (!familyCode.isNullOrBlank()) envelope.put("familyCode", familyCode.uppercase())
-        if (!preferExtra.isNullOrBlank()) envelope.put("preferExtra", preferExtra)
-
-        val connection = URL(FAMILY_API_URL).openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
+        val connection = URL("$SUPABASE_URL$path").openConnection() as HttpURLConnection
+        connection.requestMethod = method
         connection.connectTimeout = 15000
-        connection.readTimeout = 25000
+        connection.readTimeout = 20000
+        connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
+        connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
         connection.setRequestProperty("Content-Type", "application/json")
-        connection.doOutput = true
-        connection.outputStream.use { it.write(envelope.toString().toByteArray(StandardCharsets.UTF_8)) }
+        if (!familyCode.isNullOrBlank()) connection.setRequestProperty("x-family-code", familyCode.uppercase())
+        val prefer = buildList {
+            if (preferRepresentation) add("return=representation") else add("return=minimal")
+            if (!preferExtra.isNullOrBlank()) add(preferExtra)
+        }.joinToString(",")
+        connection.setRequestProperty("Prefer", prefer)
+        if (body != null) {
+            connection.doOutput = true
+            connection.outputStream.use { it.write(body.toString().toByteArray(StandardCharsets.UTF_8)) }
+        }
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
         val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
