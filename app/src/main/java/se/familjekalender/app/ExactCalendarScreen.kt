@@ -1,7 +1,5 @@
 package se.familjekalender.app
 
-import android.graphics.BitmapFactory
-import android.util.Base64
 import android.widget.ImageView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,8 +33,6 @@ internal fun ExactCalendarScreen(selectedDate: LocalDate, onSelect: (LocalDate) 
     val p = palette
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
-        // Approved seasonal images are 3:2. Keep the hero area at the same ratio so
-        // the image is never stretched or distorted on screen.
         val heroH = maxWidth * (2f / 3f)
         val panelTop = heroH - 2.dp
         val panelsH = maxHeight * .545f
@@ -50,61 +46,34 @@ internal fun ExactCalendarScreen(selectedDate: LocalDate, onSelect: (LocalDate) 
 
 @Composable
 private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
-    if (mode == ThemeMode.SUMMER) {
-        AndroidView(
-            modifier = modifier,
-            factory = { context ->
-                ImageView(context).apply {
-                    scaleType = ImageView.ScaleType.CENTER_CROP
-                    setImageResource(R.drawable.season_summer)
-                }
-            },
-            update = {
-                it.scaleType = ImageView.ScaleType.CENTER_CROP
-                it.setImageResource(R.drawable.season_summer)
-            }
-        )
+    val resourceName = when (mode) {
+        ThemeMode.WINTER -> "season_winter"
+        ThemeMode.SPRING -> "season_spring"
+        ThemeMode.SUMMER -> "season_summer"
+        ThemeMode.AUTUMN -> "season_autumn"
+        else -> null
+    }
+
+    if (resourceName == null) {
+        Box(modifier.background(Color(0xFF061019)))
         return
     }
 
-    val bitmap = remember(mode) {
-        runCatching {
-            val encoded = when (mode) {
-                ThemeMode.AUTUMN -> buildString(99748) {
-                    append(SeasonAutumnApproved00.DATA)
-                    append(SeasonAutumnApproved01.DATA)
-                    append(SeasonAutumnApproved02.DATA)
-                    append(SeasonAutumnApproved03.DATA)
-                    append(SeasonAutumnApproved04.DATA)
-                    append(SeasonAutumnApproved05.DATA)
-                    append(SeasonAutumnApproved06.DATA)
-                }
-                ThemeMode.WINTER -> SeasonWinter.DATA
-                ThemeMode.SPRING -> SeasonSpring.DATA
-                else -> return@runCatching null
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            ImageView(context).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                val resourceId = resources.getIdentifier(resourceName, "drawable", context.packageName)
+                if (resourceId != 0) setImageResource(resourceId)
             }
-            val bytes = Base64.decode(encoded, Base64.NO_WRAP)
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }.getOrNull()
-    }
-
-    if (bitmap != null) {
-        AndroidView(
-            modifier = modifier,
-            factory = { context ->
-                ImageView(context).apply {
-                    scaleType = ImageView.ScaleType.CENTER_CROP
-                    setImageBitmap(bitmap)
-                }
-            },
-            update = {
-                it.scaleType = ImageView.ScaleType.CENTER_CROP
-                it.setImageBitmap(bitmap)
-            }
-        )
-    } else {
-        Box(modifier.background(Color(0xFF061019)))
-    }
+        },
+        update = { view ->
+            view.scaleType = ImageView.ScaleType.CENTER_CROP
+            val resourceId = view.resources.getIdentifier(resourceName, "drawable", view.context.packageName)
+            if (resourceId != 0) view.setImageResource(resourceId) else view.setImageDrawable(null)
+        }
+    )
 }
 
 @Composable
