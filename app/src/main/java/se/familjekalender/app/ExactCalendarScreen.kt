@@ -1,11 +1,15 @@
 package se.familjekalender.app
 
+import android.app.Activity
+import android.app.TimePickerDialog
 import android.widget.ImageView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -14,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -21,10 +26,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
+
+private data class WorkRuleDraft(
+    val weekdays: Set<Int>,
+    val startTime: String,
+    val endTime: String
+)
 
 @Composable
 internal fun ExactCalendarScreen(
@@ -36,6 +49,10 @@ internal fun ExactCalendarScreen(
     onAdd: () -> Unit
 ) {
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    var showAddMenu by remember { mutableStateOf(false) }
+    var showWorkMonth by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val mode = palette.mode
     val p = palette
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
@@ -52,8 +69,66 @@ internal fun ExactCalendarScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MonthPanel(month, date, onSelect, events, members, p.accent, Modifier.weight(1.78f))
-            DayPanel(date, events.filter { it.date == date }, members, p, Modifier.weight(1f), onAdd)
+            DayPanel(
+                date = date,
+                events = events.filter { it.date == date },
+                members = members,
+                p = p,
+                modifier = Modifier.weight(1f),
+                onAdd = { showAddMenu = true },
+                onDelete = { event ->
+                    val session = currentFamilySession(context) ?: return@DayPanel
+                    scope.launch {
+                        runCatching { deleteCalendarEvent(session, event.id) }
+                            .onSuccess { (context as? Activity)?.recreate() }
+                    }
+                }
+            )
         }
+    }
+
+    if (showAddMenu) {
+        AlertDialog(
+            onDismissRequest = { showAddMenu = false },
+            title = { Text("Lägg till") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = {
+                            showAddMenu = false
+                            onAdd()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Enstaka aktivitet / egna datum") }
+                    Button(
+                        onClick = {
+                            showAddMenu = false
+                            showWorkMonth = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Arbetsmånad") }
+                    Text(
+                        "Arbetsmånad låter dig ange olika tider för olika veckodagar och fyller hela månaden åt dig.",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
+                        fontSize = 12.sp
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showAddMenu = false }) { Text("Avbryt") } }
+        )
+    }
+
+    if (showWorkMonth) {
+        WorkMonthDialog(
+            members = members,
+            selectedDate = selectedDate,
+            onDismiss = { showWorkMonth = false },
+            onChanged = {
+                showWorkMonth = false
+                (context as? Activity)?.recreate()
+            }
+        )
     }
 }
 
@@ -146,7 +221,8 @@ private fun DayPanel(
     members: List<SyncMember>,
     p: SeasonPalette,
     modifier: Modifier,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    onDelete: (SyncEvent) -> Unit
 ) {
     var selectedEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
@@ -202,12 +278,240 @@ private fun DayPanel(
                     Text("Datum: ${event.date}")
                     Text("Berör: ${member?.name ?: "Ingen särskild person"}")
                     if (!member?.role.isNullOrBlank()) Text("Roll: ${member?.role}")
-                    Text("Källa: ${if (event.source == "sportadmin") "SportAdmin" else "Manuellt tillagd"}")
+                    Text(
+                        "Källa: ${when (event.source) {
+                            "sportadmin" -> "SportAdmin"
+                            "work_schedule" -> "Arbetsmånad"
+                            else -> "Manuellt tillagd"
+                        }}"
+                    )
                 }
             },
-            confirmButton = { TextButton(onClick = { selectedEvent = null }) { Text("Stäng") } }
+            confirmButton = { TextButton(onClick = { selectedEvent = null }) { Text("Stäng") } },
+            dismissButton = {
+                if (event.source != "sportadmin") {
+                    TextButton(
+                        onClick = {
+                            selectedEvent = null
+                            onDelete(event)
+                        }
+                    ) { Text("Ta bort", color = MaterialTheme.colorScheme.error) }
+                }
+            }
         )
     }
+}
+
+@Composable
+private fun WorkMonthDialog(
+    members: List<SyncMember>,
+    selectedDate: LocalDate,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    var title by remember { mutableStateOf("Jobb") }
+    var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
+    val rules = remember {
+        mutableStateListOf(
+            WorkRuleDraft(setOf(1), "07:00", "15:00"),
+            WorkRuleDraft(setOf(2, 3, 4, 5), "08:00", "16:00")
+        )
+    }
+    var busy by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("") }
+    val weekdayLabels = listOf("M", "Ti", "O", "To", "F", "L", "S")
+
+    fun openTime(current: String, onPicked: (String) -> Unit) {
+        val parsed = runCatching { LocalTime.parse(current) }.getOrElse { LocalTime.of(8, 0) }
+        TimePickerDialog(
+            context,
+            { _, h, m -> onPicked("%02d:%02d".format(h, m)) },
+            parsed.hour,
+            parsed.minute,
+            true
+        ).show()
+    }
+
+    fun toggleWeekday(ruleIndex: Int, weekday: Int) {
+        val current = rules[ruleIndex]
+        if (weekday in current.weekdays) {
+            rules[ruleIndex] = current.copy(weekdays = current.weekdays - weekday)
+        } else {
+            rules.indices.filter { it != ruleIndex }.forEach { i ->
+                val other = rules[i]
+                if (weekday in other.weekdays) rules[i] = other.copy(weekdays = other.weekdays - weekday)
+            }
+            rules[ruleIndex] = current.copy(weekdays = current.weekdays + weekday)
+        }
+    }
+
+    val shiftCount = remember(month, rules.toList()) {
+        (1..month.lengthOfMonth()).count { day ->
+            val weekday = month.atDay(day).dayOfWeek.value
+            rules.any { weekday in it.weekdays }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("Arbetsmånad") },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹") }
+                    Text(
+                        "${month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${month.year}",
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { month = month.plusMonths(1) }) { Text("›") }
+                }
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Namn, t.ex. Jobb") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Vem gäller det?", fontWeight = FontWeight.Bold)
+                members.forEach { member ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { memberId = member.id },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
+                        Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                        Spacer(Modifier.width(8.dp))
+                        Text(member.name)
+                    }
+                }
+
+                Text("Veckotider", fontWeight = FontWeight.Bold)
+                Text(
+                    "Välj dagarna som ska ha samma tid. En dag kan bara ligga i en tidsgrupp.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
+                    fontSize = 12.sp
+                )
+
+                rules.forEachIndexed { index, rule ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF24212A))) {
+                        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                weekdayLabels.forEachIndexed { dayIndex, label ->
+                                    val weekday = dayIndex + 1
+                                    FilterChip(
+                                        selected = weekday in rule.weekdays,
+                                        onClick = { toggleWeekday(index, weekday) },
+                                        label = { Text(label, fontSize = 10.sp) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { openTime(rule.startTime) { rules[index] = rule.copy(startTime = it) } },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Start ${rule.startTime}") }
+                                OutlinedButton(
+                                    onClick = { openTime(rule.endTime) { rules[index] = rule.copy(endTime = it) } },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Slut ${rule.endTime}") }
+                            }
+                            if (rules.size > 1) {
+                                TextButton(onClick = { rules.removeAt(index) }) {
+                                    Text("Ta bort tidsgrupp")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = { rules.add(WorkRuleDraft(emptySet(), "08:00", "16:00")) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("+ Lägg till en tid till") }
+
+                Text(
+                    "$shiftCount arbetspass kommer att läggas in för månaden.",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Sparar du månaden igen ersätts tidigare pass som skapats via Arbetsmånad för samma person och månad.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
+                    fontSize = 11.sp
+                )
+
+                if (message.isNotBlank()) {
+                    Text(message, color = if (message.startsWith("Fel")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        val session = currentFamilySession(context)
+                        if (session == null) {
+                            message = "Fel: familjeanslutningen saknas"
+                        } else {
+                            busy = true
+                            scope.launch {
+                                runCatching { deleteWorkMonth(session, month, memberId) }
+                                    .onSuccess {
+                                        message = "$it arbetspass borttagna"
+                                        onChanged()
+                                    }
+                                    .onFailure { message = "Fel: ${it.message}" }
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy && memberId != null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Ta bort månadens jobbtider", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val session = currentFamilySession(context)
+                    val validRules = rules.filter { it.weekdays.isNotEmpty() }
+                    if (session == null) {
+                        message = "Fel: familjeanslutningen saknas"
+                    } else if (validRules.isEmpty()) {
+                        message = "Fel: välj minst en veckodag"
+                    } else {
+                        busy = true
+                        scope.launch {
+                            runCatching {
+                                saveWorkMonth(
+                                    session = session,
+                                    month = month,
+                                    title = title,
+                                    memberId = memberId,
+                                    rules = validRules.map { WorkRule(it.weekdays, it.startTime, it.endTime) }
+                                )
+                            }.onSuccess {
+                                message = "$it arbetspass sparade"
+                                onChanged()
+                            }.onFailure { message = "Fel: ${it.message}" }
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy && title.isNotBlank() && memberId != null && shiftCount > 0
+            ) { Text(if (busy) "Sparar…" else "Spara hela månaden") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Avbryt") } }
+    )
 }
 
 private fun quote(mode: ThemeMode) = when (mode) {
