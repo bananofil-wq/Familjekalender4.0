@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Share
@@ -245,7 +246,8 @@ private fun SyncedApp(
                             { item -> scope.launch { SupabaseSync.toggleShopping(session, item); refresh() } },
                             { scope.launch { SupabaseSync.clearChecked(session); refresh() } }
                         )
-                        2 -> EditableFamilyScreen(
+                        2 -> ToDoScreen(session)
+                        3 -> EditableFamilyScreen(
                             members,
                             { name, role ->
                                 scope.launch {
@@ -260,7 +262,7 @@ private fun SyncedApp(
                                 }
                             }
                         )
-                        3 -> SettingsScreen(session, members, sportUrl, themeMode, onThemeModeSaved, onSportUrlSaved) { url, memberId ->
+                        4 -> SettingsScreen(session, members, sportUrl, themeMode, onThemeModeSaved, onSportUrlSaved) { url, memberId ->
                             scope.launch {
                                 message = "Importerar SportAdmin…"
                                 runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
@@ -400,6 +402,7 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
         listOf(
             Icons.Default.CalendarMonth to "Kalender",
             Icons.Default.ShoppingCart to "Inköp",
+            Icons.Default.CheckCircle to "To-Do",
             Icons.Default.People to "Familj",
             Icons.Default.Settings to "Inställningar"
         ).forEachIndexed { i, (icon, label) ->
