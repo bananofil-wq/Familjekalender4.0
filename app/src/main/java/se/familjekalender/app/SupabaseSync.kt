@@ -14,7 +14,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 private const val SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
-private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
+private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXAiLCJyZWYiOiJ6aWd5Y2hma3BneXBqdW92Z3lxcSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg4NjUyNjc0LCJleHAiOjIxMDQyMjg2NzR9.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
 private val STOCKHOLM = ZoneId.of("Europe/Stockholm")
 
 data class FamilySession(val id: String, val name: String, val code: String)
@@ -119,7 +119,7 @@ object SupabaseSync {
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> = withContext(Dispatchers.IO) {
         val result = request(
             "GET",
-            "/rest/v1/calendar_events?select=id,title,starts_at,member_id,source&family_id=eq.${session.id}&order=starts_at.asc",
+            "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source&family_id=eq.${session.id}&order=starts_at.asc",
             familyCode = session.code
         )
         val array = JSONArray(result)
@@ -127,12 +127,17 @@ object SupabaseSync {
             repeat(array.length()) {
                 val row = array.getJSONObject(it)
                 val zoned = OffsetDateTime.parse(row.getString("starts_at")).atZoneSameInstant(STOCKHOLM)
+                val endZoned = if (row.isNull("ends_at")) null else runCatching {
+                    OffsetDateTime.parse(row.getString("ends_at")).atZoneSameInstant(STOCKHOLM)
+                }.getOrNull()
+                val startText = "%02d:%02d".format(zoned.hour, zoned.minute)
+                val timeText = endZoned?.let { "$startText–%02d:%02d".format(it.hour, it.minute) } ?: startText
                 add(
                     SyncEvent(
                         id = row.getString("id"),
                         title = row.getString("title"),
                         date = zoned.toLocalDate(),
-                        time = "%02d:%02d".format(zoned.hour, zoned.minute),
+                        time = timeText,
                         memberId = if (row.isNull("member_id")) null else row.getString("member_id"),
                         source = row.optString("source", "manual")
                     )
@@ -145,16 +150,23 @@ object SupabaseSync {
         session: FamilySession,
         title: String,
         date: LocalDate,
-        time: String,
+        startTime: String,
+        endTime: String?,
         memberId: String?
     ) = withContext(Dispatchers.IO) {
-        val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
-        val startsAt = ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
+        val parsedStart = runCatching { LocalTime.parse(startTime) }.getOrElse { LocalTime.of(18, 0) }
+        val startsAt = ZonedDateTime.of(date, parsedStart, STOCKHOLM)
+        val parsedEnd = endTime?.takeIf { it.isNotBlank() }?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+        val endsAt = parsedEnd?.let {
+            val endDate = if (it <= parsedStart) date.plusDays(1) else date
+            ZonedDateTime.of(endDate, it, STOCKHOLM)
+        }
         val body = JSONObject()
             .put("family_id", session.id)
             .put("title", title)
-            .put("starts_at", startsAt)
+            .put("starts_at", startsAt.toOffsetDateTime().toString())
             .put("source", "manual")
+        if (endsAt != null) body.put("ends_at", endsAt.toOffsetDateTime().toString())
         if (memberId == null) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
         request("POST", "/rest/v1/calendar_events", body, session.code, preferRepresentation = false)
     }
@@ -176,6 +188,9 @@ object SupabaseSync {
                 .put("starts_at", start.toOffsetDateTime().toString())
                 .put("source", "sportadmin")
                 .put("external_id", uid)
+            val rawEnd = lines.firstOrNull { it.startsWith("DTEND") }?.substringAfter(':')
+            val end = rawEnd?.let { parseIcsStart(it) }
+            if (end != null) body.put("ends_at", end.toOffsetDateTime().toString())
             if (memberId == null) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
             val location = valueFor(lines, "LOCATION")
             if (!location.isNullOrBlank()) body.put("location", unescapeIcs(location))
