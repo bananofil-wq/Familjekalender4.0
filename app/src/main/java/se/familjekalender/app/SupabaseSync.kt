@@ -13,12 +13,8 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-private const val SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
-private const val SUPABASE_CONFIG_URL = "$SUPABASE_URL/functions/v1/app-config"
+private const val FAMILY_API_URL = "https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/family-api"
 private val STOCKHOLM = ZoneId.of("Europe/Stockholm")
-
-@Volatile
-private var cachedApiKey: String? = null
 
 data class FamilySession(val id: String, val name: String, val code: String)
 data class SyncMember(val id: String, val name: String, val role: String, val colorArgb: Long)
@@ -112,7 +108,13 @@ object SupabaseSync {
 
     suspend fun toggleShopping(session: FamilySession, item: SyncShoppingItem) = withContext(Dispatchers.IO) {
         val body = JSONObject().put("checked", !item.checked).put("updated_at", OffsetDateTime.now().toString())
-        request("PATCH", "/rest/v1/shopping_items?id=eq.${item.id}", body, session.code, preferRepresentation = false)
+        request(
+            "PATCH",
+            "/rest/v1/shopping_items?id=eq.${item.id}&family_id=eq.${session.id}",
+            body,
+            session.code,
+            preferRepresentation = false
+        )
     }
 
     suspend fun clearChecked(session: FamilySession) = withContext(Dispatchers.IO) {
@@ -238,21 +240,6 @@ object SupabaseSync {
         return connection.inputStream.bufferedReader().use { it.readText() }
     }
 
-    private fun apiKey(): String {
-        cachedApiKey?.let { return it }
-        val connection = URL(SUPABASE_CONFIG_URL).openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 15000
-        connection.readTimeout = 15000
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        if (code !in 200..299) throw IllegalStateException("Konfigurationsfel $code: $text")
-        val key = JSONObject(text).getString("apiKey")
-        cachedApiKey = key
-        return key
-    }
-
     private fun request(
         method: String,
         path: String,
@@ -261,24 +248,21 @@ object SupabaseSync {
         preferRepresentation: Boolean = true,
         preferExtra: String? = null
     ): String {
-        val key = apiKey()
-        val connection = URL("$SUPABASE_URL$path").openConnection() as HttpURLConnection
-        connection.requestMethod = method
+        val envelope = JSONObject()
+            .put("method", method)
+            .put("path", path)
+            .put("preferRepresentation", preferRepresentation)
+        if (body != null) envelope.put("body", body)
+        if (!familyCode.isNullOrBlank()) envelope.put("familyCode", familyCode.uppercase())
+        if (!preferExtra.isNullOrBlank()) envelope.put("preferExtra", preferExtra)
+
+        val connection = URL(FAMILY_API_URL).openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
         connection.connectTimeout = 15000
-        connection.readTimeout = 20000
-        connection.setRequestProperty("apikey", key)
-        connection.setRequestProperty("Authorization", "Bearer $key")
+        connection.readTimeout = 25000
         connection.setRequestProperty("Content-Type", "application/json")
-        if (!familyCode.isNullOrBlank()) connection.setRequestProperty("x-family-code", familyCode.uppercase())
-        val prefer = buildList {
-            if (preferRepresentation) add("return=representation") else add("return=minimal")
-            if (!preferExtra.isNullOrBlank()) add(preferExtra)
-        }.joinToString(",")
-        connection.setRequestProperty("Prefer", prefer)
-        if (body != null) {
-            connection.doOutput = true
-            connection.outputStream.use { it.write(body.toString().toByteArray(StandardCharsets.UTF_8)) }
-        }
+        connection.doOutput = true
+        connection.outputStream.use { it.write(envelope.toString().toByteArray(StandardCharsets.UTF_8)) }
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
         val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
