@@ -1,0 +1,3 @@
+package se.familjekalender.app
+
+internal object SeasonAutumnApproved01A33 { const val DATA = "6VC01jc2pkHc8Rm7T04XyUW5A7WIruRHBJedscxW8ld2+yfzaaYRzzrFOIdFaczDnyfJWS5gKkTpdMBX6TJH3xt4dFtb001lZFShC3KIL+2QAA8X+OVBLf6dTRVcqgoFoqPNQugxeonrbtRoPteidxPs0oOM+aOMWPhsbTT1wBwtixelSmBH4Kji9s2V37kEbxhoV6/j/kioB5Uw5RtUIM6t9n0Boph+4aXi+NrymAncANkMGWHKVRBJk4" }
