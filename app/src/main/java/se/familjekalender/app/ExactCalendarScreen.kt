@@ -327,86 +327,85 @@ private fun DayPanel(
     var selectedEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
     Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
-        Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 11.dp)) {
-                val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
-                val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "$dayName ${date.dayOfMonth} $monthName",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        "${events.size} ${if (events.size == 1) "aktivitet" else "aktiviteter"}",
-                        color = Color.White.copy(alpha = .68f),
-                        fontSize = 11.sp
-                    )
-                    if (events.any { it.source != "sportadmin" }) {
-                        TextButton(onClick = onManageMany, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
-                            Text("Hantera", fontSize = 9.sp)
-                        }
+        Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 11.dp)) {
+            val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+            val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$dayName ${date.dayOfMonth} $monthName",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    "${events.size} ${if (events.size == 1) "aktivitet" else "aktiviteter"}",
+                    color = Color.White.copy(alpha = .68f),
+                    fontSize = 11.sp
+                )
+                if (events.any { it.source != "sportadmin" }) {
+                    TextButton(onClick = onManageMany, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
+                        Text("Hantera", fontSize = 9.sp)
                     }
                 }
-                Spacer(Modifier.height(4.dp))
-                if (events.isEmpty()) {
-                    Text("Inget planerat", color = Color.White.copy(alpha = .55f), fontSize = 11.sp)
-                }
-                events.take(4).forEach { event ->
-                    val member = members.find { it.id == event.memberId }
-                    val eventColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF11161D)),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp)
-                            .clickable { selectedEvent = event }
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(Modifier.size(19.dp), contentAlignment = Alignment.Center) {
-                                when {
-                                    isBirthdayEvent(event) -> Text("🌈", fontSize = 17.sp)
-                                    event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                                    else -> Box(Modifier.size(16.dp).clip(CircleShape).background(eventColor))
-                                }
-                            }
-                            Spacer(Modifier.width(9.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    event.title.removePrefix("🎂 ").removePrefix("🌈 "),
-                                    color = Color.White,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(event.time, color = Color.White.copy(alpha = .67f), fontSize = 10.sp)
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                member?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "",
-                                color = Color.White.copy(alpha = .72f),
-                                fontSize = 10.sp,
-                                maxLines = 1
-                            )
-                        }
-                    }
+                FilledIconButton(
+                    onClick = onAdd,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color(0xFF9C35FF),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(22.dp))
                 }
             }
-            FloatingActionButton(
-                onClick = onAdd,
-                containerColor = Color(0xFF9C35FF),
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).size(44.dp)
-            ) {
-                Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(27.dp))
+            Spacer(Modifier.height(4.dp))
+            if (events.isEmpty()) {
+                Text("Inget planerat", color = Color.White.copy(alpha = .55f), fontSize = 11.sp)
+            }
+            events.take(4).forEach { event ->
+                val member = members.find { it.id == event.memberId }
+                val eventColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF11161D)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp)
+                        .clickable { selectedEvent = event }
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.size(19.dp), contentAlignment = Alignment.Center) {
+                            when {
+                                isBirthdayEvent(event) -> Text("🌈", fontSize = 17.sp)
+                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                else -> Box(Modifier.size(16.dp).clip(CircleShape).background(eventColor))
+                            }
+                        }
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                event.title.removePrefix("🎂 ").removePrefix("🌈 "),
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(event.time, color = Color.White.copy(alpha = .67f), fontSize = 10.sp)
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            member?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "",
+                            color = Color.White.copy(alpha = .72f),
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
         }
     }
