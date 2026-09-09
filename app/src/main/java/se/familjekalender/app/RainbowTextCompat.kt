@@ -2,7 +2,7 @@ package se.familjekalender.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -40,22 +40,29 @@ internal fun Text(
 ) {
     val marker = text == "🌈" || text == "★"
     val rainbow = text == "🌈"
+    val effectiveFontSize = if (rainbow && fontSize != TextUnit.Unspecified && fontSize.value < 15f) 15.sp else fontSize
+    val markerLineHeight = when {
+        effectiveFontSize == TextUnit.Unspecified -> 18.sp
+        effectiveFontSize.value >= 18f -> 21.sp
+        else -> 18.sp
+    }
+
     androidx.compose.material3.Text(
         text = text,
         modifier = if (marker) {
             modifier
                 .wrapContentSize(unbounded = true)
-                .heightIn(min = 24.dp)
+                .offset(y = (-2).dp)
         } else modifier,
         color = color,
-        fontSize = if (rainbow && fontSize != TextUnit.Unspecified && fontSize.value < 15f) 15.sp else fontSize,
+        fontSize = effectiveFontSize,
         fontStyle = fontStyle,
         fontWeight = fontWeight,
         fontFamily = fontFamily,
         letterSpacing = letterSpacing,
         textDecoration = textDecoration,
         textAlign = textAlign,
-        lineHeight = if (marker) 24.sp else lineHeight,
+        lineHeight = if (marker) markerLineHeight else lineHeight,
         overflow = overflow,
         softWrap = softWrap,
         maxLines = if (marker) 1 else maxLines,
