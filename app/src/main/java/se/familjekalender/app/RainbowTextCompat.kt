@@ -48,12 +48,12 @@ internal fun Text(
     when (text) {
         "★" -> {
             val iconSize = if (fontSize != TextUnit.Unspecified && fontSize.value >= 18f) 18.dp else 14.dp
-            StarMarker(modifier = modifier.offset(y = (-8).dp), size = iconSize, tint = if (color == Color.Unspecified) Color(0xFFFFD75E) else color)
+            StarMarker(modifier = modifier.offset(y = (-4).dp), size = iconSize, tint = if (color == Color.Unspecified) Color(0xFFFFD75E) else color)
             return
         }
         "🌈" -> {
             val iconSize = if (fontSize != TextUnit.Unspecified && fontSize.value >= 17f) 20.dp else 16.dp
-            RainbowMarker(modifier = modifier.offset(y = (-8).dp), size = iconSize)
+            RainbowMarker(modifier = modifier.offset(y = (-4).dp), size = iconSize)
             return
         }
     }
