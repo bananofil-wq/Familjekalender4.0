@@ -91,8 +91,9 @@ internal fun ExactCalendarScreen(
                 },
                 onChangePerson = { event, memberId ->
                     val session = currentFamilySession(context) ?: return@DayPanel
+                    val persistedMemberId = memberId?.takeUnless { it == ALL_FAMILY_MEMBER_ID }
                     scope.launch {
-                        runCatching { updateCalendarEventMemberDirect(session, event.id, memberId) }
+                        runCatching { updateCalendarEventMemberDirect(session, event.id, persistedMemberId) }
                             .onSuccess { refreshActivity() }
                     }
                 }
@@ -134,7 +135,7 @@ internal fun ExactCalendarScreen(
 
     if (showWorkMonth) {
         WorkMonthDialog(
-            members = members,
+            members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
             selectedDate = selectedDate,
             onDismiss = { showWorkMonth = false },
             onChanged = {
@@ -233,11 +234,17 @@ private fun MonthPanel(
                                     ) {
                                         Text("$number", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                                     }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                                         events.filter { it.date == day }.take(3).forEach { event ->
-                                            val member = members.find { it.id == event.memberId }
-                                            val dotColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-                                            Box(Modifier.size(3.5.dp).clip(CircleShape).background(dotColor))
+                                            when {
+                                                isBirthdayEvent(event) -> Text("🌈", fontSize = 6.sp)
+                                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                                                else -> {
+                                                    val member = members.find { it.id == event.memberId }
+                                                    val dotColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
+                                                    Box(Modifier.size(3.5.dp).clip(CircleShape).background(dotColor))
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -286,11 +293,17 @@ private fun DayPanel(
                         Modifier.fillMaxWidth().clickable { selectedEvent = event }.padding(vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(Modifier.size(12.dp).clip(CircleShape).background(eventColor))
+                        Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
+                            when {
+                                isBirthdayEvent(event) -> Text("🌈", fontSize = 11.sp)
+                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                else -> Box(Modifier.size(12.dp).clip(CircleShape).background(eventColor))
+                            }
+                        }
                         Spacer(Modifier.width(7.dp))
                         Text(event.time, color = Color.White.copy(alpha = .9f), fontSize = 9.sp)
                         Spacer(Modifier.width(7.dp))
-                        Text(event.title, color = Color.White, fontSize = 9.sp, maxLines = 1)
+                        Text(event.title.removePrefix("🎂 ").removePrefix("🌈 "), color = Color.White, fontSize = 9.sp, maxLines = 1)
                     }
                 }
                 Spacer(Modifier.weight(1f))
@@ -317,7 +330,7 @@ private fun DayPanel(
         var editPerson by remember(event.id) { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { selectedEvent = null },
-            title = { Text(event.title) },
+            title = { Text(event.title.removePrefix("🎂 ").removePrefix("🌈 ")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Tid: ${event.time}")
@@ -338,16 +351,6 @@ private fun DayPanel(
 
                     if (editPerson) {
                         Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
-                            Row(
-                                Modifier.fillMaxWidth().clickable {
-                                    selectedEvent = null
-                                    onChangePerson(event, null)
-                                }.padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(selected = event.memberId == null, onClick = null)
-                                Text("Ingen särskild person")
-                            }
                             members.forEach { member ->
                                 Row(
                                     Modifier.fillMaxWidth().clickable {
@@ -357,7 +360,11 @@ private fun DayPanel(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     RadioButton(selected = event.memberId == member.id, onClick = null)
-                                    Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                                    if (member.id == ALL_FAMILY_MEMBER_ID) {
+                                        Text("★", color = Color(0xFFFFD75E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    } else {
+                                        Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                                    }
                                     Spacer(Modifier.width(8.dp))
                                     Text(member.name)
                                 }
@@ -445,7 +452,7 @@ private fun ManageMonthEventsDialog(
                                 )
                                 Column(Modifier.weight(1f)) {
                                     Text("${event.date.dayOfMonth} ${event.date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))}  ${event.time}", fontSize = 12.sp)
-                                    Text(event.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text(event.title.removePrefix("🎂 ").removePrefix("🌈 "), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                     Text(member?.name ?: "Ingen särskild person", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f), fontSize = 11.sp)
                                 }
                             }
@@ -675,6 +682,9 @@ private fun WorkMonthDialog(
         dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Avbryt") } }
     )
 }
+
+private fun isBirthdayEvent(event: SyncEvent): Boolean =
+    event.title.startsWith("🎂") || event.title.startsWith("🌈")
 
 private fun quote(mode: ThemeMode) = when (mode) {
     ThemeMode.WINTER -> "Kalla dagar,\nvarma stunder ♡"
