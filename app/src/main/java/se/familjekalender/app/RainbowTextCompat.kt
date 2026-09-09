@@ -37,10 +37,11 @@ internal fun Text(
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
     style: TextStyle = LocalTextStyle.current
 ) {
+    val marker = text == "🌈" || text == "★"
     val rainbow = text == "🌈"
     androidx.compose.material3.Text(
         text = text,
-        modifier = if (rainbow) modifier.heightIn(min = 20.dp) else modifier,
+        modifier = if (marker) modifier.heightIn(min = 22.dp) else modifier,
         color = color,
         fontSize = if (rainbow && fontSize != TextUnit.Unspecified && fontSize.value < 15f) 15.sp else fontSize,
         fontStyle = fontStyle,
@@ -49,10 +50,10 @@ internal fun Text(
         letterSpacing = letterSpacing,
         textDecoration = textDecoration,
         textAlign = textAlign,
-        lineHeight = if (rainbow) 20.sp else lineHeight,
+        lineHeight = if (marker) 22.sp else lineHeight,
         overflow = overflow,
         softWrap = softWrap,
-        maxLines = if (rainbow) 1 else maxLines,
+        maxLines = if (marker) 1 else maxLines,
         minLines = minLines,
         onTextLayout = onTextLayout,
         style = style
