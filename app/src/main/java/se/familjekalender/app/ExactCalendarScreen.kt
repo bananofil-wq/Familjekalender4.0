@@ -19,10 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -55,7 +54,6 @@ internal fun ExactCalendarScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mode = palette.mode
-    val p = palette
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
 
     fun refreshActivity() {
@@ -64,22 +62,34 @@ internal fun ExactCalendarScreen(
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
         val heroH = maxWidth * (2f / 3f)
-        val panelTop = heroH - 2.dp
-        val panelsH = maxHeight * .545f
+        val contentTop = heroH - 2.dp
+        val availableH = (maxHeight - contentTop).coerceAtLeast(360.dp)
 
         SeasonalPhoto(mode, Modifier.fillMaxWidth().height(heroH))
 
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp).offset(y = panelTop).height(panelsH),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp)
+                .offset(y = contentTop)
+                .height(availableH),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            MonthPanel(month, date, onSelect, events, members, p.accent, Modifier.weight(1.78f))
+            MonthPanel(
+                month = month,
+                selected = date,
+                onSelect = onSelect,
+                events = events,
+                members = members,
+                accent = palette.accent,
+                modifier = Modifier.fillMaxWidth().weight(1.72f)
+            )
             DayPanel(
                 date = date,
                 events = events.filter { it.date == date },
                 members = members,
-                p = p,
-                modifier = Modifier.weight(1f),
+                p = palette,
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 onAdd = { showAddMenu = true },
                 onManageMany = { showManageMonth = true },
                 onDelete = { event ->
@@ -212,37 +222,82 @@ private fun MonthPanel(
     modifier: Modifier
 ) {
     val offset = month.atDay(1).dayOfWeek.value - 1
-    Card(modifier, shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 14.dp)) {
+    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+
+    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 10.dp)) {
+            Text(
+                "$monthName ${month.year}",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            )
             Row(Modifier.fillMaxWidth()) {
-                listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN").forEach {
-                    Text(it, color = Color(0xFFD5D4DB), fontSize = 7.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {
+                    Text(
+                        it,
+                        color = Color(0xFFBBBAC2),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(5.dp))
             repeat(6) { week ->
                 Row(Modifier.fillMaxWidth().weight(1f)) {
                     repeat(7) { column ->
                         val number = week * 7 + column - offset + 1
-                        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                            if (number in 1..month.lengthOfMonth()) {
-                                val day = month.atDay(number)
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onSelect(day) }) {
-                                    Box(
-                                        Modifier.size(27.dp).clip(CircleShape).background(if (day == selected) accent else Color.Transparent),
-                                        contentAlignment = Alignment.Center
+                        val validDay = number in 1..month.lengthOfMonth()
+                        val day = if (validDay) month.atDay(number) else null
+                        val selectedDay = day == selected
+                        val dayEvents = if (day == null) emptyList() else events.filter { it.date == day }.take(3)
+
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selectedDay) accent.copy(alpha = .88f) else Color(0xFF1B2028)
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(2.dp)
+                                .then(if (day != null) Modifier.clickable { onSelect(day) } else Modifier)
+                        ) {
+                            Column(
+                                Modifier.fillMaxSize().padding(vertical = 3.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                if (day != null) {
+                                    Text(
+                                        "$number",
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = 15.sp
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("$number", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        events.filter { it.date == day }.take(3).forEach { event ->
+                                        dayEvents.forEach { event ->
                                             when {
-                                                isBirthdayEvent(event) -> Text("🌈", fontSize = 6.sp)
-                                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                                                isBirthdayEvent(event) -> Text("🌈", fontSize = 13.sp, lineHeight = 14.sp)
+                                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text(
+                                                    "★",
+                                                    color = Color(0xFFFFD75E),
+                                                    fontSize = 15.sp,
+                                                    lineHeight = 15.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
                                                 else -> {
                                                     val member = members.find { it.id == event.memberId }
                                                     val dotColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-                                                    Box(Modifier.size(3.5.dp).clip(CircleShape).background(dotColor))
+                                                    Box(Modifier.size(9.dp).clip(CircleShape).background(dotColor))
                                                 }
                                             }
                                         }
@@ -271,56 +326,87 @@ private fun DayPanel(
 ) {
     var selectedEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
-    Card(modifier, shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
+    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
         Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().padding(12.dp)) {
-                val dayName = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
-                val monthName = date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))
+            Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 11.dp)) {
+                val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+                val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("$dayName ${date.dayOfMonth} $monthName", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(
+                        "$dayName ${date.dayOfMonth} $monthName",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        "${events.size} ${if (events.size == 1) "aktivitet" else "aktiviteter"}",
+                        color = Color.White.copy(alpha = .68f),
+                        fontSize = 11.sp
+                    )
                     if (events.any { it.source != "sportadmin" }) {
-                        TextButton(onClick = onManageMany, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
-                            Text("Hantera", fontSize = 8.sp)
+                        TextButton(onClick = onManageMany, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
+                            Text("Hantera", fontSize = 9.sp)
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                if (events.isEmpty()) Text("Inget planerat", color = Color.White.copy(alpha = .55f), fontSize = 9.sp)
-                events.take(5).forEach { event ->
+                Spacer(Modifier.height(4.dp))
+                if (events.isEmpty()) {
+                    Text("Inget planerat", color = Color.White.copy(alpha = .55f), fontSize = 11.sp)
+                }
+                events.take(4).forEach { event ->
                     val member = members.find { it.id == event.memberId }
                     val eventColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-                    Row(
-                        Modifier.fillMaxWidth().clickable { selectedEvent = event }.padding(vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF11161D)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                            .clickable { selectedEvent = event }
                     ) {
-                        Box(Modifier.size(12.dp), contentAlignment = Alignment.Center) {
-                            when {
-                                isBirthdayEvent(event) -> Text("🌈", fontSize = 11.sp)
-                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                else -> Box(Modifier.size(12.dp).clip(CircleShape).background(eventColor))
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(Modifier.size(19.dp), contentAlignment = Alignment.Center) {
+                                when {
+                                    isBirthdayEvent(event) -> Text("🌈", fontSize = 17.sp)
+                                    event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    else -> Box(Modifier.size(16.dp).clip(CircleShape).background(eventColor))
+                                }
                             }
+                            Spacer(Modifier.width(9.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    event.title.removePrefix("🎂 ").removePrefix("🌈 "),
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(event.time, color = Color.White.copy(alpha = .67f), fontSize = 10.sp)
+                            }
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                member?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "",
+                                color = Color.White.copy(alpha = .72f),
+                                fontSize = 10.sp,
+                                maxLines = 1
+                            )
                         }
-                        Spacer(Modifier.width(7.dp))
-                        Text(event.time, color = Color.White.copy(alpha = .9f), fontSize = 9.sp)
-                        Spacer(Modifier.width(7.dp))
-                        Text(event.title.removePrefix("🎂 ").removePrefix("🌈 "), color = Color.White, fontSize = 9.sp, maxLines = 1)
                     }
                 }
-                Spacer(Modifier.weight(1f))
-                Text(
-                    quote(p.mode), color = p.accent, fontSize = 14.sp, lineHeight = 16.sp,
-                    fontStyle = FontStyle.Italic, fontFamily = FontFamily.Cursive,
-                    modifier = Modifier.padding(bottom = 43.dp)
-                )
             }
             FloatingActionButton(
                 onClick = onAdd,
                 containerColor = Color(0xFF9C35FF),
                 contentColor = Color.White,
                 shape = CircleShape,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).size(48.dp)
+                modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).size(44.dp)
             ) {
-                Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(29.dp))
+                Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(27.dp))
             }
         }
     }
@@ -335,7 +421,7 @@ private fun DayPanel(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Tid: ${event.time}")
                     Text("Datum: ${event.date}")
-                    Text("Berör: ${currentMember?.name ?: "Ingen särskild person"}")
+                    Text("Berör: ${currentMember?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "Ingen särskild person"}")
                     if (!currentMember?.role.isNullOrBlank()) Text("Roll: ${currentMember?.role}")
                     Text(
                         "Källa: ${when (event.source) {
@@ -453,7 +539,7 @@ private fun ManageMonthEventsDialog(
                                 Column(Modifier.weight(1f)) {
                                     Text("${event.date.dayOfMonth} ${event.date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))}  ${event.time}", fontSize = 12.sp)
                                     Text(event.title.removePrefix("🎂 ").removePrefix("🌈 "), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                    Text(member?.name ?: "Ingen särskild person", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f), fontSize = 11.sp)
+                                    Text(member?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "Ingen särskild person", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f), fontSize = 11.sp)
                                 }
                             }
                         }
@@ -685,11 +771,3 @@ private fun WorkMonthDialog(
 
 private fun isBirthdayEvent(event: SyncEvent): Boolean =
     event.title.startsWith("🎂") || event.title.startsWith("🌈")
-
-private fun quote(mode: ThemeMode) = when (mode) {
-    ThemeMode.WINTER -> "Kalla dagar,\nvarma stunder ♡"
-    ThemeMode.SPRING -> "Nya dagar,\nnya möjligheter ♡"
-    ThemeMode.SUMMER -> "Sommar,\nmer tillsammans ♡"
-    ThemeMode.AUTUMN -> "Hösten\nsamlar oss ♡"
-    else -> "Tillsammans ♡"
-}
