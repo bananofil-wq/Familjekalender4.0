@@ -1,6 +1,7 @@
 package se.familjekalender.app
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
@@ -47,12 +48,12 @@ internal fun Text(
     when (text) {
         "★" -> {
             val iconSize = if (fontSize != TextUnit.Unspecified && fontSize.value >= 18f) 18.dp else 14.dp
-            StarMarker(modifier = modifier, size = iconSize, tint = if (color == Color.Unspecified) Color(0xFFFFD75E) else color)
+            StarMarker(modifier = modifier.offset(y = (-8).dp), size = iconSize, tint = if (color == Color.Unspecified) Color(0xFFFFD75E) else color)
             return
         }
         "🌈" -> {
-            val iconSize = if (fontSize != TextUnit.Unspecified && fontSize.value >= 17f) 18.dp else 14.dp
-            RainbowMarker(modifier = modifier, size = iconSize)
+            val iconSize = if (fontSize != TextUnit.Unspecified && fontSize.value >= 17f) 20.dp else 16.dp
+            RainbowMarker(modifier = modifier.offset(y = (-8).dp), size = iconSize)
             return
         }
     }
@@ -86,7 +87,6 @@ private fun StarMarker(modifier: Modifier, size: androidx.compose.ui.unit.Dp, ti
         val outer = this.size.minDimension * 0.48f
         val inner = outer * 0.46f
         val path = Path()
-
         for (i in 0 until 10) {
             val radius = if (i % 2 == 0) outer else inner
             val angle = -PI / 2 + i * PI / 5
@@ -102,33 +102,31 @@ private fun StarMarker(modifier: Modifier, size: androidx.compose.ui.unit.Dp, ti
 @Composable
 private fun RainbowMarker(modifier: Modifier, size: androidx.compose.ui.unit.Dp) {
     Canvas(modifier = modifier.size(size)) {
-        val stroke = this.size.minDimension * 0.13f
-        val left = stroke / 2f
-        val top = stroke / 2f
-        val arcWidth = this.size.width - stroke
-        val arcHeight = (this.size.height - stroke) * 1.55f
         val colors = listOf(
-            Color(0xFFFF4B4B),
-            Color(0xFFFF9F43),
-            Color(0xFFFFE45E),
-            Color(0xFF57D163),
-            Color(0xFF4FA3FF),
-            Color(0xFFA565FF)
+            Color(0xFFFF1744),
+            Color(0xFFFF7A00),
+            Color(0xFFFFD600),
+            Color(0xFF32D74B),
+            Color(0xFF00A8FF),
+            Color(0xFF6C5CE7),
+            Color(0xFFC44DFF)
         )
-
+        val band = this.size.minDimension * 0.085f
+        val baseWidth = this.size.width - band
+        val baseHeight = this.size.height * 1.75f
         colors.forEachIndexed { index, arcColor ->
-            val inset = index * stroke * 0.72f
+            val inset = index * band * 0.95f
             drawArc(
                 color = arcColor,
                 startAngle = 180f,
                 sweepAngle = 180f,
                 useCenter = false,
-                topLeft = Offset(left + inset, top + inset),
+                topLeft = Offset(band / 2f + inset, band / 2f + inset),
                 size = Size(
-                    width = (arcWidth - inset * 2f).coerceAtLeast(stroke),
-                    height = (arcHeight - inset * 1.4f).coerceAtLeast(stroke)
+                    width = (baseWidth - inset * 2f).coerceAtLeast(band),
+                    height = (baseHeight - inset * 1.65f).coerceAtLeast(band)
                 ),
-                style = Stroke(width = stroke)
+                style = Stroke(width = band)
             )
         }
     }
