@@ -6,6 +6,8 @@
     <application
         android:name=".FamilyCalendarApplication"
         android:allowBackup="true"
+        android:icon="@drawable/ic_launcher_calendar"
+        android:roundIcon="@drawable/ic_launcher_calendar"
         android:label="Familjekalendern"
         android:theme="@style/Theme.Familjekalender">
         <activity
