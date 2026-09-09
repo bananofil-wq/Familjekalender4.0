@@ -333,8 +333,7 @@ private fun ShoppingScreen(
 private fun shareFamilyInvite(context: Context, session: FamilySession) {
     val encodedCode = Uri.encode(session.code)
     val appLink = "familjekalendern://join?code=$encodedCode"
-    val androidIntentLink = "intent://join?code=$encodedCode#Intent;scheme=familjekalendern;package=se.familjekalender.app;end"
-    val text = "Du är inbjuden till ${session.name} i Familjekalendern 💜\n\nÖppna länken på Android:\n$androidIntentLink\n\nOm länken inte öppnas: öppna Familjekalendern, välj 'Anslut till familj' och skriv koden ${session.code}.\n\nDirektlänk: $appLink"
+    val text = "Du är inbjuden till ${session.name} i Familjekalendern 💜\n\nFamiljekod: ${session.code}\n\nHar du Familjekalendern installerad kan du öppna den här direktlänken:\n$appLink\n\nOm telefonen inte gör länken klickbar: öppna Familjekalendern och skriv familjekoden ovan under 'Anslut till familj'."
     context.startActivity(
         Intent.createChooser(
             Intent(Intent.ACTION_SEND).apply {
