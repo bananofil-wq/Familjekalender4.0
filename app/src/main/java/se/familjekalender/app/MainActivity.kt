@@ -248,10 +248,11 @@ private fun SyncedApp(
                         )
                         2 -> ToDoScreen(session)
                         3 -> EditableFamilyScreen(
-                            members,
+                            members.filter { it.id != ALL_FAMILY_MEMBER_ID },
                             { name, role ->
                                 scope.launch {
-                                    SupabaseSync.addMember(session, name, role, MemberColors[members.size % MemberColors.size])
+                                    val realMemberCount = members.count { it.id != ALL_FAMILY_MEMBER_ID }
+                                    SupabaseSync.addMember(session, name, role, MemberColors[realMemberCount % MemberColors.size])
                                     refresh()
                                 }
                             },
@@ -262,7 +263,7 @@ private fun SyncedApp(
                                 }
                             }
                         )
-                        4 -> SettingsScreen(session, members, sportUrl, themeMode, onThemeModeSaved, onSportUrlSaved) { url, memberId ->
+                        4 -> SettingsScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID }, sportUrl, themeMode, onThemeModeSaved, onSportUrlSaved) { url, memberId ->
                             scope.launch {
                                 message = "Importerar SportAdmin…"
                                 runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
@@ -286,7 +287,7 @@ private fun SyncedApp(
                     val day = dates.first().dayOfMonth
                     for (year in today.year..(today.year + 20)) {
                         val birthdayDate = runCatching { LocalDate.of(year, month, day) }.getOrNull() ?: continue
-                        SupabaseSync.addEvent(session, "🎂 $title", birthdayDate, "09:00", null, memberId)
+                        SupabaseSync.addEvent(session, "🌈 $title", birthdayDate, "09:00", null, memberId)
                     }
                 } else {
                     dates.sorted().forEach { date ->
@@ -330,8 +331,10 @@ private fun ShoppingScreen(
 }
 
 private fun shareFamilyInvite(context: Context, session: FamilySession) {
-    val link = "familjekalendern://join?code=${Uri.encode(session.code)}"
-    val text = "Du är inbjuden till ${session.name} i Familjekalendern 💜\n\nTryck här för att gå med:\n$link\n\nFamiljekod: ${session.code}"
+    val encodedCode = Uri.encode(session.code)
+    val appLink = "familjekalendern://join?code=$encodedCode"
+    val androidIntentLink = "intent://join?code=$encodedCode#Intent;scheme=familjekalendern;package=se.familjekalender.app;end"
+    val text = "Du är inbjuden till ${session.name} i Familjekalendern 💜\n\nÖppna länken på Android:\n$androidIntentLink\n\nOm länken inte öppnas: öppna Familjekalendern, välj 'Anslut till familj' och skriv koden ${session.code}.\n\nDirektlänk: $appLink"
     context.startActivity(
         Intent.createChooser(
             Intent(Intent.ACTION_SEND).apply {
@@ -588,7 +591,11 @@ private fun AddEventDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(memberId == member.id, { memberId = member.id })
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                        if (member.id == ALL_FAMILY_MEMBER_ID) {
+                            Text("★", color = Color(0xFFFFD75E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        } else {
+                            Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                        }
                         Spacer(Modifier.width(8.dp))
                         Text(member.name)
                     }
