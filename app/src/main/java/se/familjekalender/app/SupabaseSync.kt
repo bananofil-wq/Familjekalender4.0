@@ -16,6 +16,7 @@ import java.time.ZonedDateTime
 private const val SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
 private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
 private val STOCKHOLM = ZoneId.of("Europe/Stockholm")
+internal const val ALL_FAMILY_MEMBER_ID = "__all_family__"
 
 data class FamilySession(val id: String, val name: String, val code: String)
 data class SyncMember(val id: String, val name: String, val role: String, val colorArgb: Long)
@@ -58,6 +59,7 @@ object SupabaseSync {
         )
         val array = JSONArray(result)
         buildList {
+            add(SyncMember(ALL_FAMILY_MEMBER_ID, "⭐ Alla", "Hela familjen", 0xFFFFD75E))
             repeat(array.length()) {
                 val row = array.getJSONObject(it)
                 add(SyncMember(row.getString("id"), row.getString("name"), row.optString("role"), row.getLong("color_argb")))
@@ -75,6 +77,7 @@ object SupabaseSync {
     }
 
     suspend fun updateMemberColor(session: FamilySession, memberId: String, colorArgb: Long) = withContext(Dispatchers.IO) {
+        if (memberId == ALL_FAMILY_MEMBER_ID) return@withContext
         val body = JSONObject()
             .put("color_argb", colorArgb)
             .put("updated_at", OffsetDateTime.now().toString())
@@ -133,7 +136,7 @@ object SupabaseSync {
                         title = row.getString("title"),
                         date = zoned.toLocalDate(),
                         time = "%02d:%02d".format(zoned.hour, zoned.minute),
-                        memberId = if (row.isNull("member_id")) null else row.getString("member_id"),
+                        memberId = if (row.isNull("member_id")) ALL_FAMILY_MEMBER_ID else row.getString("member_id"),
                         source = row.optString("source", "manual")
                     )
                 )
@@ -155,7 +158,7 @@ object SupabaseSync {
             .put("title", title)
             .put("starts_at", startsAt)
             .put("source", "manual")
-        if (memberId == null) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
+        if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
         request("POST", "/rest/v1/calendar_events", body, session.code, preferRepresentation = false)
     }
 
@@ -176,7 +179,7 @@ object SupabaseSync {
                 .put("starts_at", start.toOffsetDateTime().toString())
                 .put("source", "sportadmin")
                 .put("external_id", uid)
-            if (memberId == null) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
+            if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
             val location = valueFor(lines, "LOCATION")
             if (!location.isNullOrBlank()) body.put("location", unescapeIcs(location))
             try {
