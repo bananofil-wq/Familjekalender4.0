@@ -3,6 +3,7 @@ package se.familjekalender.app
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -41,7 +42,11 @@ internal fun Text(
     val rainbow = text == "🌈"
     androidx.compose.material3.Text(
         text = text,
-        modifier = if (marker) modifier.heightIn(min = 22.dp) else modifier,
+        modifier = if (marker) {
+            modifier
+                .wrapContentSize(unbounded = true)
+                .heightIn(min = 24.dp)
+        } else modifier,
         color = color,
         fontSize = if (rainbow && fontSize != TextUnit.Unspecified && fontSize.value < 15f) 15.sp else fontSize,
         fontStyle = fontStyle,
@@ -50,7 +55,7 @@ internal fun Text(
         letterSpacing = letterSpacing,
         textDecoration = textDecoration,
         textAlign = textAlign,
-        lineHeight = if (marker) 22.sp else lineHeight,
+        lineHeight = if (marker) 24.sp else lineHeight,
         overflow = overflow,
         softWrap = softWrap,
         maxLines = if (marker) 1 else maxLines,
