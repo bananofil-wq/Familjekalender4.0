@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Öppna Familjekalendern</title>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0f0e13;color:#fff;display:grid;place-items:center;min-height:100vh}
+    main{width:min(92vw,440px);background:#1b191f;border-radius:22px;padding:28px;box-sizing:border-box;text-align:center}
+    h1{margin-top:0}.code{font-size:26px;font-weight:800;letter-spacing:1px;color:#b47cff;margin:18px 0}
+    a{display:block;background:#9c35ff;color:#fff;text-decoration:none;padding:16px;border-radius:14px;font-weight:800;font-size:18px}
+    p{color:#bbb6c2;line-height:1.45}.small{font-size:13px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Familjekalendern</h1>
+  <p>Du har fått en familjeinbjudan.</p>
+  <div id="code" class="code"></div>
+  <a id="open" href="#">Öppna Familjekalendern</a>
+  <p class="small">Om appen inte öppnas, starta Familjekalendern och skriv koden ovan under “Anslut till familj”.</p>
+</main>
+<script>
+  const code = new URLSearchParams(location.search).get('code') || '';
+  document.getElementById('code').textContent = code || 'Kod saknas';
+  const encoded = encodeURIComponent(code);
+  document.getElementById('open').href = `intent://join?code=${encoded}#Intent;scheme=familjekalendern;package=se.familjekalender.app;end`;
+</script>
+</body>
+</html>
