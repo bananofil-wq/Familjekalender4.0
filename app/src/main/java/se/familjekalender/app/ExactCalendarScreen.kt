@@ -103,10 +103,10 @@ internal fun ExactCalendarScreen(
                   onDragStart = { scope.launch { monthDrag.stop() } },
                   onHorizontalDrag = { change, amount ->
                       change.consume()
-                      scope.scope.launch { monthDrag.snapTo(monthDrag.value + amount) }
+                      scope.launch { monthDrag.snapTo(monthDrag.value + amount) }
                   },
                   onDragEnd = {
-                      launch {
+                      scope.launch {
                           val width = size.width.toFloat().coerceAtLeast(1f)
                           if (abs(monthDrag.value) >= width * 0.18f) {
                               val direction = if (monthDrag.value < 0f) -1f else 1f
