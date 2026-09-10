@@ -290,7 +290,12 @@ private fun SyncedApp(
                         SupabaseSync.addEvent(session, "🌈 $title", birthdayDate, "09:00", null, memberId)
                     }
                 } else {
-                    dates.sorted().forEach { date ->
+                    val targetDates = if (recurrence == RecurrenceMode.NONE) {
+                        dates.sorted()
+                    } else {
+                        dates.sorted().flatMap { recurringDates(it, recurrence) }.distinct().sorted()
+                    }
+                    targetDates.forEach { date ->
                         SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
                     }
                 }
