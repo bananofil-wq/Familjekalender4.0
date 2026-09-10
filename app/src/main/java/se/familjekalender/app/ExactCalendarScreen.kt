@@ -3,8 +3,10 @@ package se.familjekalender.app
 import android.app.Activity
 import android.app.TimePickerDialog
 import android.widget.ImageView
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -18,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,18 +64,18 @@ internal fun ExactCalendarScreen(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
-        val heroH = maxWidth * (2f / 3f)
-        val contentTop = heroH - 2.dp
-        val availableH = (maxHeight - contentTop).coerceAtLeast(360.dp)
+        SeasonalPhoto(mode, Modifier.matchParentSize())
 
-        SeasonalPhoto(mode, Modifier.fillMaxWidth().height(heroH))
+        fun moveMonth(delta: Long) {
+            val next = month.plusMonths(delta)
+            month = next
+            onSelect(next.atDay(1))
+        }
 
         Column(
             Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp)
-                .offset(y = contentTop)
-                .height(availableH),
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MonthPanel(
@@ -82,7 +85,26 @@ internal fun ExactCalendarScreen(
                 events = events,
                 members = members,
                 accent = palette.accent,
-                modifier = Modifier.fillMaxWidth().weight(1.72f)
+                onPreviousMonth = { moveMonth(-1) },
+                onNextMonth = { moveMonth(1) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1.72f)
+                    .pointerInput(month) {
+                        var drag = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { drag = 0f },
+                            onHorizontalDrag = { _, amount -> drag += amount },
+                            onDragEnd = {
+                                when {
+                                    drag <= -70f -> moveMonth(1)
+                                    drag >= 70f -> moveMonth(-1)
+                                }
+                                drag = 0f
+                            },
+                            onDragCancel = { drag = 0f }
+                        )
+                    }
             )
             DayPanel(
                 date = date,
@@ -219,20 +241,30 @@ private fun MonthPanel(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     accent: Color,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
     modifier: Modifier
 ) {
     val offset = month.atDay(1).dayOfWeek.value - 1
     val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
 
-    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
+    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xBF131820))) {
         Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 10.dp)) {
-            Text(
-                "$monthName ${month.year}",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$monthName ${month.year}",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f).padding(start = 4.dp, bottom = 8.dp)
+                )
+                TextButton(onClick = onPreviousMonth, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
+                    Text("‹", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                }
+                TextButton(onClick = onNextMonth, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
+                    Text("›", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                }
+            }
             Row(Modifier.fillMaxWidth()) {
                 listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {
                     Text(
@@ -257,7 +289,14 @@ private fun MonthPanel(
 
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (selectedDay) accent.copy(alpha = .88f) else Color(0xFF1B2028)
+                                containerColor = if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (selectedDay) accent.copy(alpha = .95f) else Color.White.copy(alpha = .18f)
+                            ),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = if (selectedDay) 6.dp else 3.dp
                             ),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
@@ -326,7 +365,7 @@ private fun DayPanel(
 ) {
     var selectedEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
-    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xF3131820))) {
+    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xBF131820))) {
         Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 11.dp)) {
             val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
             val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
@@ -367,7 +406,7 @@ private fun DayPanel(
                 val member = members.find { it.id == event.memberId }
                 val eventColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF11161D)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xBF11161D)),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
