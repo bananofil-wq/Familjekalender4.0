@@ -703,6 +703,7 @@ private fun WorkRotationDialog(
             Button(
                 enabled = !saving && session != null && selectedMemberId.isNotBlank() && weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White),
                 onClick = {
                     val activeSession = session ?: return@Button
                     saving = true
@@ -807,6 +808,11 @@ private fun WorkMonthDialog(
 
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
+        modifier = Modifier.fillMaxWidth(0.94f),
+        shape = RoundedCornerShape(22.dp),
+        containerColor = Color(0xFF17131D),
+        titleContentColor = Color.White,
+        textContentColor = Color.White,
         title = { Text("Arbetsmånad") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
