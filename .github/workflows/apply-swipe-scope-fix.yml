@@ -1,0 +1,31 @@
+name: Apply swipe scope fix
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Fix swipe coroutine scope
+        run: python3 scripts/fix_swipe_scope.py
+      - name: Commit source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          if git diff --cached --quiet; then
+            echo "No swipe scope change needed"
+            exit 0
+          fi
+          git commit -m "Fix swipe animation coroutine scope"
+          git push
