@@ -103,7 +103,7 @@ internal fun ExactCalendarScreen(
                   onDragStart = { scope.launch { monthDrag.stop() } },
                   onHorizontalDrag = { change, amount ->
                       change.consume()
-                      scope.launch { monthDrag.snapTo(monthDrag.value + amount) }
+                      scope.scope.launch { monthDrag.snapTo(monthDrag.value + amount) }
                   },
                   onDragEnd = {
                       launch {
