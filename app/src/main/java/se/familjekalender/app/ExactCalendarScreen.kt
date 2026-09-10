@@ -97,21 +97,31 @@ internal fun ExactCalendarScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1.72f)
-                    .pointerInput(month) {
-                        var drag = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { drag = 0f },
-                            onHorizontalDrag = { _, amount -> drag += amount },
-                            onDragEnd = {
-                                when {
-                                    drag <= -70f -> moveMonth(1)
-                                    drag >= 70f -> moveMonth(-1)
-                                }
-                                drag = 0f
-                            },
-                            onDragCancel = { drag = 0f }
-                        )
-                    }
+          .graphicsLayer { translationX = monthDrag.value }
+          .pointerInput(month) {
+              detectHorizontalDragGestures(
+                  onDragStart = { launch { monthDrag.stop() } },
+                  onHorizontalDrag = { change, amount ->
+                      change.consume()
+                      launch { monthDrag.snapTo(monthDrag.value + amount) }
+                  },
+                  onDragEnd = {
+                      launch {
+                          val width = size.width.toFloat().coerceAtLeast(1f)
+                          if (abs(monthDrag.value) >= width * 0.18f) {
+                              val direction = if (monthDrag.value < 0f) -1f else 1f
+                              monthDrag.animateTo(direction * width, tween(130))
+                              moveMonth(if (direction < 0f) 1 else -1)
+                              monthDrag.snapTo(-direction * width)
+                              monthDrag.animateTo(0f, tween(190))
+                          } else {
+                              monthDrag.animateTo(0f, tween(160))
+                          }
+                      }
+                  },
+                  onDragCancel = { launch { monthDrag.animateTo(0f, tween(160)) } }
+              )
+          }
             )
             DayPanel(
                 date = date,
