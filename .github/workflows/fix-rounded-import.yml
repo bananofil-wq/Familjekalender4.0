@@ -1,0 +1,32 @@
+name: Fix Rounded Import
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/fix-rounded-import.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply import fix
+        run: python3 scripts/fix-rounded-import.py
+      - name: Commit fix
+        run: |
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git commit -m "Fix RoundedCornerShape import"
+          git push
