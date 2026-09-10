@@ -1,0 +1,118 @@
+name: Force calendar Kotlin source patch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch sources and commit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+          s = p.read_text()
+          if 'import java.time.temporal.WeekFields' not in s:
+              s = s.replace('import java.time.format.TextStyle\n', 'import java.time.format.TextStyle\nimport java.time.temporal.WeekFields\n')
+          if 'import androidx.compose.animation.core.Animatable' not in s:
+              s = s.replace('import android.app.TimePickerDialog\n', 'import android.app.TimePickerDialog\nimport androidx.compose.animation.core.Animatable\nimport androidx.compose.animation.core.tween\n')
+          if 'import androidx.compose.ui.graphics.graphicsLayer' not in s:
+              s = s.replace('import androidx.compose.ui.graphics.Color\n', 'import androidx.compose.ui.graphics.Color\nimport androidx.compose.ui.graphics.graphicsLayer\n')
+          if 'import kotlin.math.abs' not in s:
+              s = s.replace('import java.util.Locale\n', 'import java.util.Locale\nimport kotlin.math.abs\n')
+          if 'val monthDrag = remember { Animatable(0f) }' not in s:
+              s = s.replace('    val mode = palette.mode\n', '    val mode = palette.mode\n    val monthDrag = remember { Animatable(0f) }\n', 1)
+          if 'val weekFields = WeekFields.of' not in s:
+              s = s.replace('    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }\n', '    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }\n    val weekFields = WeekFields.of(Locale("sv", "SE"))\n', 1)
+          if 'Text("v",' not in s:
+              s = s.replace('            Row(Modifier.fillMaxWidth()) {\n                listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {', '            Row(Modifier.fillMaxWidth()) {\n                Text("v", color = Color.White.copy(alpha = .55f), fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.width(18.dp))\n                listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {', 1)
+          if 'val weekNumber =' not in s:
+              s = s.replace('            repeat(6) { week ->\n                Row(Modifier.fillMaxWidth().weight(1f)) {', '            repeat(6) { week ->\n                val rowMonday = month.atDay(1).minusDays(offset.toLong()).plusWeeks(week.toLong())\n                val weekNumber = rowMonday.get(weekFields.weekOfWeekBasedYear())\n                Row(Modifier.fillMaxWidth().weight(1f)) {\n                    Text("$weekNumber", color = Color.White.copy(alpha = .58f), fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.width(18.dp).align(Alignment.CenterVertically))', 1)
+          if 'val todayDay = day == LocalDate.now()' not in s:
+              s = s.replace('                        val selectedDay = day == selected\n', '                        val selectedDay = day == selected\n                        val todayDay = day == LocalDate.now()\n', 1)
+          s = s.replace('containerColor = if (day == null) Color.Transparent else if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)', 'containerColor = when { day == null -> Color.Transparent; selectedDay -> accent.copy(alpha = .88f); todayDay -> accent.copy(alpha = .42f); else -> Color(0x991B2028) }', 1)
+          s = s.replace('                                1.dp,\n                                if (selectedDay) accent.copy(alpha = .95f) else Color.White.copy(alpha = .18f)', '                                if (todayDay && !selectedDay) 2.dp else 1.dp,\n                                when { selectedDay -> accent.copy(alpha = .95f); todayDay -> accent; else -> Color.White.copy(alpha = .18f) }', 1)
+          old_swipe = '''                    .weight(1.72f)
+                    .pointerInput(month) {
+                        var drag = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { drag = 0f },
+                            onHorizontalDrag = { _, amount -> drag += amount },
+                            onDragEnd = {
+                                when {
+                                    drag <= -70f -> moveMonth(1)
+                                    drag >= 70f -> moveMonth(-1)
+                                }
+                                drag = 0f
+                            },
+                            onDragCancel = { drag = 0f }
+                        )
+                    }'''
+          new_swipe = '''                    .weight(1.72f)
+                    .graphicsLayer { translationX = monthDrag.value }
+                    .pointerInput(month) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { launch { monthDrag.stop() } },
+                            onHorizontalDrag = { change, amount ->
+                                change.consume()
+                                launch { monthDrag.snapTo(monthDrag.value + amount) }
+                            },
+                            onDragEnd = {
+                                launch {
+                                    val width = size.width.toFloat().coerceAtLeast(1f)
+                                    if (abs(monthDrag.value) >= width * .18f) {
+                                        val direction = if (monthDrag.value < 0f) -1f else 1f
+                                        monthDrag.animateTo(direction * width, tween(130))
+                                        moveMonth(if (direction < 0f) 1 else -1)
+                                        monthDrag.snapTo(-direction * width)
+                                        monthDrag.animateTo(0f, tween(190))
+                                    } else monthDrag.animateTo(0f, tween(160))
+                                }
+                            },
+                            onDragCancel = { launch { monthDrag.animateTo(0f, tween(160)) } }
+                        )
+                    }'''
+          if old_swipe in s:
+              s = s.replace(old_swipe, new_swipe, 1)
+          p.write_text(s)
+
+          p = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
+          s = p.read_text()
+          s = s.replace('AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday ->', 'AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday, recurrence ->', 1)
+          s = s.replace('''                } else {
+                    dates.sorted().forEach { date ->
+                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
+                    }
+                }''', '''                } else {
+                    val targetDates = if (recurrence == RecurrenceMode.NONE) dates.sorted() else dates.sorted().flatMap { recurringDates(it, recurrence) }.distinct().sorted()
+                    targetDates.forEach { date -> SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId) }
+                }''', 1)
+          s = s.replace('onAdd: (String, String, String, String?, List<LocalDate>, Boolean) -> Unit', 'onAdd: (String, String, String, String?, List<LocalDate>, Boolean, RecurrenceMode) -> Unit', 1)
+          if 'var recurrence by remember' not in s:
+              s = s.replace('    var isBirthday by remember { mutableStateOf(false) }\n', '    var isBirthday by remember { mutableStateOf(false) }\n    var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }\n', 1)
+          s = s.replace('                        isBirthday = !isBirthday\n                        if (isBirthday && dates.size > 1) {', '                        isBirthday = !isBirthday\n                        if (isBirthday) recurrence = RecurrenceMode.NONE\n                        if (isBirthday && dates.size > 1) {', 1)
+          s = s.replace('                        isBirthday = checked\n                        if (checked && dates.size > 1) {', '                        isBirthday = checked\n                        if (checked) recurrence = RecurrenceMode.NONE\n                        if (checked && dates.size > 1) {', 1)
+          if 'Text("Upprepning"' not in s:
+              marker = '                    Text("Födelsedag – upprepas varje år")\n                }\n\n                OutlinedTextField('
+              insert = '                    Text("Födelsedag – upprepas varje år")\n                }\n\n                if (!isBirthday) {\n                    Spacer(Modifier.height(6.dp))\n                    Text("Upprepning", fontWeight = FontWeight.Bold)\n                    RecurrenceMode.values().forEach { mode ->\n                        Row(Modifier.fillMaxWidth().clickable { recurrence = mode }, verticalAlignment = Alignment.CenterVertically) {\n                            RadioButton(selected = recurrence == mode, onClick = { recurrence = mode })\n                            Text(mode.label)\n                        }\n                    }\n                }\n\n                OutlinedTextField('
+              s = s.replace(marker, insert, 1)
+          s = s.replace('onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday)', 'onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday, recurrence)', 1)
+          p.write_text(s)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git diff --cached --quiet && exit 0
+          git commit -m "Implement requested calendar enhancements in Kotlin"
+          git push
