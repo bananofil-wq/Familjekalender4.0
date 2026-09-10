@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -43,10 +44,10 @@ private fun PreviewScreen() {
 
     val members = remember {
         listOf(
-            SyncMember("a", "Person 1", "", 0xFF16A8FF),
-            SyncMember("b", "Person 2", "", 0xFF08DEA0),
-            SyncMember("c", "Person 3", "", 0xFFFF3D9A),
-            SyncMember("d", "Familjen", "", 0xFFFF9000)
+            SyncMember("a", "Kim", "Pappa", 0xFF16A8FF),
+            SyncMember("b", "Gabriella", "Mamma", 0xFF08DEA0),
+            SyncMember("c", "Barn", "Barn", 0xFFFF3D9A),
+            SyncMember(ALL_FAMILY_MEMBER_ID, "Hela familjen", "Familj", 0xFFFFD75E)
         )
     }
 
@@ -54,21 +55,21 @@ private fun PreviewScreen() {
         listOf(
             SyncEvent("1", "Skola", LocalDate.of(2026, 10, 21), "08:00", "a", "manual"),
             SyncEvent("2", "Tandläkare", LocalDate.of(2026, 10, 21), "14:30", "b", "manual"),
-            SyncEvent("3", "Fotboll", LocalDate.of(2026, 10, 21), "16:30", "c", "manual"),
-            SyncEvent("4", "Middag", LocalDate.of(2026, 10, 21), "19:00", "d", "manual"),
+            SyncEvent("3", "🌈 Födelsedag", LocalDate.of(2026, 10, 21), "09:00", "c", "manual"),
+            SyncEvent("4", "Middag", LocalDate.of(2026, 10, 21), "19:00", ALL_FAMILY_MEMBER_ID, "manual"),
             SyncEvent("5", "", LocalDate.of(2026, 10, 1), "", "a", "manual"),
-            SyncEvent("6", "", LocalDate.of(2026, 10, 2), "", "d", "manual"),
-            SyncEvent("7", "", LocalDate.of(2026, 10, 8), "", "a", "manual"),
-            SyncEvent("8", "", LocalDate.of(2026, 10, 10), "", "d", "manual"),
+            SyncEvent("6", "", LocalDate.of(2026, 10, 2), "", ALL_FAMILY_MEMBER_ID, "manual"),
+            SyncEvent("7", "🌈 Födelsedag", LocalDate.of(2026, 10, 8), "09:00", "a", "manual"),
+            SyncEvent("8", "", LocalDate.of(2026, 10, 10), "", ALL_FAMILY_MEMBER_ID, "manual"),
             SyncEvent("9", "", LocalDate.of(2026, 10, 12), "", "c", "manual"),
             SyncEvent("10", "", LocalDate.of(2026, 10, 13), "", "a", "manual"),
             SyncEvent("11", "", LocalDate.of(2026, 10, 14), "", "b", "manual"),
-            SyncEvent("12", "", LocalDate.of(2026, 10, 15), "", "d", "manual"),
-            SyncEvent("13", "", LocalDate.of(2026, 10, 19), "", "d", "manual"),
-            SyncEvent("14", "", LocalDate.of(2026, 10, 23), "", "d", "manual"),
-            SyncEvent("15", "", LocalDate.of(2026, 10, 24), "", "d", "manual"),
+            SyncEvent("12", "", LocalDate.of(2026, 10, 15), "", ALL_FAMILY_MEMBER_ID, "manual"),
+            SyncEvent("13", "", LocalDate.of(2026, 10, 19), "", ALL_FAMILY_MEMBER_ID, "manual"),
+            SyncEvent("14", "", LocalDate.of(2026, 10, 23), "", ALL_FAMILY_MEMBER_ID, "manual"),
+            SyncEvent("15", "", LocalDate.of(2026, 10, 24), "", ALL_FAMILY_MEMBER_ID, "manual"),
             SyncEvent("16", "", LocalDate.of(2026, 10, 28), "", "b", "manual"),
-            SyncEvent("17", "", LocalDate.of(2026, 10, 31), "", "d", "manual")
+            SyncEvent("17", "", LocalDate.of(2026, 10, 31), "", ALL_FAMILY_MEMBER_ID, "manual")
         )
     }
 
@@ -82,10 +83,7 @@ private fun PreviewScreen() {
         )
     ) {
         Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
-            Scaffold(
-                containerColor = Bg,
-                bottomBar = { PreviewBottomNav() }
-            ) { padding ->
+            Scaffold(containerColor = Bg, bottomBar = { PreviewBottomNav() }) { padding ->
                 Box(Modifier.padding(padding).fillMaxSize()) {
                     ExactCalendarScreen(
                         selectedDate = selectedDate,
@@ -108,6 +106,7 @@ private fun PreviewBottomNav() {
         val tabs = listOf(
             Icons.Default.CalendarMonth to "Kalender",
             Icons.Default.ShoppingCart to "Inköp",
+            Icons.Default.CheckCircle to "To-Do",
             Icons.Default.People to "Familj",
             Icons.Default.Settings to "Inställningar"
         )
@@ -120,7 +119,7 @@ private fun PreviewBottomNav() {
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = purple,
                     selectedTextColor = purple,
-                    indicatorColor = Color.Transparent,
+                    indicatorColor = purple.copy(alpha = .15f),
                     unselectedIconColor = Color(0xFFB8B3D8),
                     unselectedTextColor = Color(0xFFB8B3D8)
                 )
