@@ -117,7 +117,10 @@ fun FamilyCalendarApp() {
     val palette = paletteFor(themeMode)
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = palette.accent,
+            primary = Purple,
+            secondary = Purple,
+            surfaceVariant = SoftPurple,
+            outline = Purple.copy(alpha = .55f),
             background = Bg,
             surface = CardBg,
             onBackground = Color.White,
@@ -512,7 +515,12 @@ private fun AddEventDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isBirthday) "Ny födelsedag" else "Ny aktivitet") },
+        modifier = Modifier.fillMaxWidth(0.94f),
+        shape = RoundedCornerShape(22.dp),
+        containerColor = Color(0xFF17131D),
+        titleContentColor = Color.White,
+        textContentColor = Color.White,
+        title = { Text(if (isBirthday) "Ny födelsedag" else "Ny aktivitet", fontWeight = FontWeight.Bold) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Row(
@@ -629,7 +637,8 @@ private fun AddEventDialog(
         confirmButton = {
             Button(
                 onClick = { onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday, recurrence) },
-                enabled = title.isNotBlank() && dates.isNotEmpty()
+                enabled = title.isNotBlank() && dates.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = Purple, contentColor = Color.White)
             ) {
                 Text(if (isBirthday) "Lägg till födelsedag" else if (dates.size > 1) "Lägg till ${dates.size} dagar" else "Lägg till")
             }

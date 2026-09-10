@@ -560,6 +560,11 @@ private fun WorkRotationDialog(
 
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
+        modifier = Modifier.fillMaxWidth(0.94f),
+        shape = RoundedCornerShape(22.dp),
+        containerColor = Color(0xFF17131D),
+        titleContentColor = Color.White,
+        textContentColor = Color.White,
         title = {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { if (!saving) onDismiss() }, contentPadding = PaddingValues(0.dp)) {
@@ -582,13 +587,13 @@ private fun WorkRotationDialog(
                     Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(9.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .35f))
+                        .background(Color(0xFF21182B))
                 ) {
                     TextButton(
                         onClick = { rotating = false; rotationWeeks = 1 },
                         modifier = Modifier
                             .weight(1f)
-                            .background(if (!rotating) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .background(if (!rotating) Color(0xFF9C4DFF) else Color.Transparent)
                     ) {
                         Text("Fast schema", color = if (!rotating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                     }
@@ -596,7 +601,7 @@ private fun WorkRotationDialog(
                         onClick = { rotating = true; rotationWeeks = 4 },
                         modifier = Modifier
                             .weight(1f)
-                            .background(if (rotating) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .background(if (rotating) Color(0xFF9C4DFF) else Color.Transparent)
                     ) {
                         Text("Roterande schema", color = if (rotating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                     }
@@ -653,8 +658,8 @@ private fun WorkRotationDialog(
                         Surface(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .35f))
+                            color = Color(0xFF201925),
+                            border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .38f))
                         ) {
                             Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("Vecka ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
@@ -666,6 +671,7 @@ private fun WorkRotationDialog(
                                 Button(
                                     onClick = { editingWeek = index },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White),
                                     modifier = Modifier.fillMaxWidth().height(32.dp)
                                 ) {
                                     Text("Redigera", fontSize = 9.sp, maxLines = 1)
@@ -678,8 +684,8 @@ private fun WorkRotationDialog(
                 if (rotating) {
                     Surface(
                         shape = RoundedCornerShape(9.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .22f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .35f)),
+                        color = Color(0xFF21182B),
+                        border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .38f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
@@ -696,6 +702,7 @@ private fun WorkRotationDialog(
         confirmButton = {
             Button(
                 enabled = !saving && session != null && selectedMemberId.isNotBlank() && weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White),
                 onClick = {
                     val activeSession = session ?: return@Button
                     saving = true
@@ -727,7 +734,12 @@ private fun WorkRotationDialog(
         val week = weeks[index]
         AlertDialog(
             onDismissRequest = { editingWeek = null },
-            title = { Text("Redigera vecka ${index + 1}") },
+            modifier = Modifier.fillMaxWidth(0.92f),
+            shape = RoundedCornerShape(22.dp),
+            containerColor = Color(0xFF17131D),
+            titleContentColor = Color.White,
+            textContentColor = Color.White,
+            title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Arbetsdagar", fontWeight = FontWeight.SemiBold)
@@ -758,7 +770,7 @@ private fun WorkRotationDialog(
                     }
                 }
             },
-            confirmButton = { Button(onClick = { editingWeek = null }) { Text("Klar") } },
+            confirmButton = { Button(onClick = { editingWeek = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White)) { Text("Klar") } },
             dismissButton = {}
         )
     }
