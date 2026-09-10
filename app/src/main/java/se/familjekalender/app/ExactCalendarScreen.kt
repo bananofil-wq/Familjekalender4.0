@@ -2,6 +2,8 @@ package se.familjekalender.app
 
 import android.app.Activity
 import android.app.TimePickerDialog
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -34,7 +37,9 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.TextStyle
+import java.time.temporal.WeekFields
 import java.util.Locale
+import kotlin.math.abs
 
 private data class WorkRuleDraft(
     val weekdays: Set<Int>,
@@ -58,6 +63,7 @@ internal fun ExactCalendarScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mode = palette.mode
+    val monthDrag = remember { Animatable(0f) }
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
 
     fun refreshActivity() {
@@ -237,6 +243,7 @@ private fun MonthPanel(
 ) {
     val offset = month.atDay(1).dayOfWeek.value - 1
     val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+    val weekFields = WeekFields.of(Locale("sv", "SE"))
 
     Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xBF131820))) {
         Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 10.dp)) {
@@ -256,6 +263,7 @@ private fun MonthPanel(
                 }
             }
             Row(Modifier.fillMaxWidth()) {
+                Text("v", color = Color.White.copy(alpha = .55f), fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.width(18.dp))
                 listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {
                     Text(
                         it,
@@ -269,21 +277,25 @@ private fun MonthPanel(
             }
             Spacer(Modifier.height(5.dp))
             repeat(6) { week ->
+                val rowMonday = month.atDay(1).minusDays(offset.toLong()).plusWeeks(week.toLong())
+                val weekNumber = rowMonday.get(weekFields.weekOfWeekBasedYear())
                 Row(Modifier.fillMaxWidth().weight(1f)) {
+                    Text("$weekNumber", color = Color.White.copy(alpha = .58f), fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.width(18.dp).align(Alignment.CenterVertically))
                     repeat(7) { column ->
                         val number = week * 7 + column - offset + 1
                         val validDay = number in 1..month.lengthOfMonth()
                         val day = if (validDay) month.atDay(number) else null
                         val selectedDay = day == selected
+                        val todayDay = day == LocalDate.now()
                         val dayEvents = if (day == null) emptyList() else events.filter { it.date == day }.take(3)
 
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (day == null) Color.Transparent else if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)
+                                containerColor = when { day == null -> Color.Transparent; selectedDay -> accent.copy(alpha = .88f); todayDay -> accent.copy(alpha = .42f); else -> Color(0x991B2028) }
                             ),
                             border = if (day == null) null else BorderStroke(
-                                1.dp,
-                                if (selectedDay) accent.copy(alpha = .95f) else Color.White.copy(alpha = .18f)
+                                if (todayDay && !selectedDay) 2.dp else 1.dp,
+                                when { selectedDay -> accent.copy(alpha = .95f); todayDay -> accent; else -> Color.White.copy(alpha = .18f) }
                             ),
                             elevation = CardDefaults.cardElevation(
                                 defaultElevation = if (day == null) 0.dp else if (selectedDay) 6.dp else 3.dp

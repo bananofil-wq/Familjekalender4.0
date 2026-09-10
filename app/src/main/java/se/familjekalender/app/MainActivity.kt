@@ -279,7 +279,7 @@ private fun SyncedApp(
     }
 
     if (showAddEvent) {
-        AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday ->
+        AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday, recurrence ->
             scope.launch {
                 if (birthday) {
                     val today = LocalDate.now()
@@ -428,7 +428,7 @@ private fun AddEventDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
     onDismiss: () -> Unit,
-    onAdd: (String, String, String, String?, List<LocalDate>, Boolean) -> Unit
+    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, RecurrenceMode) -> Unit
 ) {
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
@@ -437,6 +437,7 @@ private fun AddEventDialog(
     var endTime by remember { mutableStateOf("19:00") }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
     var isBirthday by remember { mutableStateOf(false) }
+    var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }
     val dates = remember { mutableStateListOf(selectedDate) }
 
     fun openSingleDatePicker() {
@@ -506,6 +507,7 @@ private fun AddEventDialog(
                 Row(
                     Modifier.fillMaxWidth().clickable {
                         isBirthday = !isBirthday
+                        if (isBirthday) recurrence = RecurrenceMode.NONE
                         if (isBirthday && dates.size > 1) {
                             val first = dates.first()
                             dates.clear()
@@ -516,6 +518,7 @@ private fun AddEventDialog(
                 ) {
                     Checkbox(isBirthday, { checked ->
                         isBirthday = checked
+                        if (checked) recurrence = RecurrenceMode.NONE
                         if (checked && dates.size > 1) {
                             val first = dates.first()
                             dates.clear()
@@ -523,6 +526,17 @@ private fun AddEventDialog(
                         }
                     })
                     Text("Födelsedag – upprepas varje år")
+                }
+
+                if (!isBirthday) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Upprepning", fontWeight = FontWeight.Bold)
+                    RecurrenceMode.values().forEach { mode ->
+                        Row(Modifier.fillMaxWidth().clickable { recurrence = mode }, verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = recurrence == mode, onClick = { recurrence = mode })
+                            Text(mode.label)
+                        }
+                    }
                 }
 
                 OutlinedTextField(
@@ -603,7 +617,7 @@ private fun AddEventDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday) },
+                onClick = { onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday, recurrence) },
                 enabled = title.isNotBlank() && dates.isNotEmpty()
             ) {
                 Text(if (isBirthday) "Lägg till födelsedag" else if (dates.size > 1) "Lägg till ${dates.size} dagar" else "Lägg till")
