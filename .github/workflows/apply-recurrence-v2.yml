@@ -1,0 +1,31 @@
+name: Apply recurrence v2
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch recurrence source
+        run: python3 scripts/patch_recurrence.py
+      - name: Commit source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+          if git diff --cached --quiet; then
+            echo "No recurrence change needed"
+            exit 0
+          fi
+          git commit -m "Wire recurring events into calendar saving"
+          git push
