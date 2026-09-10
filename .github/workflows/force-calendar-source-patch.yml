@@ -15,54 +15,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Patch remaining Kotlin blocks and commit
+      - name: Patch recurrence behavior and commit
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          exact = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
-          s = exact.read_text()
-          old_start = '                    .weight(1.72f)\n                    .pointerInput(month) {'
-          if old_start in s:
-              start = s.index(old_start)
-              end = s.index('\n            )', start)
-              replacement = '''                    .weight(1.72f)
-                    .graphicsLayer { translationX = monthDrag.value }
-                    .pointerInput(month) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { launch { monthDrag.stop() } },
-                            onHorizontalDrag = { change, amount ->
-                                change.consume()
-                                launch { monthDrag.snapTo(monthDrag.value + amount) }
-                            },
-                            onDragEnd = {
-                                launch {
-                                    val width = size.width.toFloat().coerceAtLeast(1f)
-                                    if (abs(monthDrag.value) >= width * 0.18f) {
-                                        val direction = if (monthDrag.value < 0f) -1f else 1f
-                                        monthDrag.animateTo(direction * width, tween(130))
-                                        moveMonth(if (direction < 0f) 1 else -1)
-                                        monthDrag.snapTo(-direction * width)
-                                        monthDrag.animateTo(0f, tween(190))
-                                    } else {
-                                        monthDrag.animateTo(0f, tween(160))
-                                    }
-                                }
-                            },
-                            onDragCancel = { launch { monthDrag.animateTo(0f, tween(160)) } }
-                        )
-                    }'''
-              s = s[:start] + replacement + s[end:]
-          exact.write_text(s)
-
-          main = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
-          s = main.read_text()
-          old = '''                } else {
-                    dates.sorted().forEach { date ->
-                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
-                    }
-                }'''
-          new = '''                } else {
+          p = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
+          s = p.read_text()
+          anchor = '    if (showAddEvent) {'
+          start_scope = s.index(anchor)
+          if 'val targetDates = if (recurrence == RecurrenceMode.NONE)' not in s[start_scope:]:
+              else_pos = s.index('                } else {', start_scope)
+              refresh_pos = s.index('                refresh()', else_pos)
+              replacement = '''                } else {
                     val targetDates = if (recurrence == RecurrenceMode.NONE) {
                         dates.sorted()
                     } else {
@@ -71,14 +36,14 @@ jobs:
                     targetDates.forEach { date ->
                         SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
                     }
-                }'''
-          if old in s:
-              s = s.replace(old, new, 1)
-          main.write_text(s)
+                }
+'''
+              s = s[:else_pos] + replacement + s[refresh_pos:]
+          p.write_text(s)
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt
           git diff --cached --quiet && exit 0
-          git commit -m "Finish calendar swipe and recurring event behavior"
+          git commit -m "Wire recurring events into calendar saving"
           git push
