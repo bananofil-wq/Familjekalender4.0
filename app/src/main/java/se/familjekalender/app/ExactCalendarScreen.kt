@@ -47,6 +47,12 @@ private data class WorkRuleDraft(
     val endTime: String
 )
 
+private data class WorkRotationWeekDraft(
+    val weekdays: Set<Int>,
+    val startTime: String,
+    val endTime: String
+)
+
 @Composable
 internal fun ExactCalendarScreen(
     selectedDate: LocalDate,
@@ -59,6 +65,7 @@ internal fun ExactCalendarScreen(
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var showAddMenu by remember { mutableStateOf(false) }
     var showWorkMonth by remember { mutableStateOf(false) }
+    var showWorkRotation by remember { mutableStateOf(false) }
     var showManageMonth by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -170,6 +177,13 @@ internal fun ExactCalendarScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Arbetsmånad") }
+                    Button(
+                        onClick = {
+                            showAddMenu = false
+                            showWorkRotation = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Roterande arbetsvecka · 4 veckor") }
                     Text(
                         "Arbetsmånad låter dig ange olika tider för olika veckodagar och fyller hela månaden åt dig.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
@@ -189,6 +203,18 @@ internal fun ExactCalendarScreen(
             onDismiss = { showWorkMonth = false },
             onChanged = {
                 showWorkMonth = false
+                refreshActivity()
+            }
+        )
+    }
+
+    if (showWorkRotation) {
+        WorkRotationDialog(
+            members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+            selectedDate = selectedDate,
+            onDismiss = { showWorkRotation = false },
+            onChanged = {
+                showWorkRotation = false
                 refreshActivity()
             }
         )
@@ -337,7 +363,7 @@ private fun MonthPanel(
                                     ) {
                                         dayEvents.forEach { event ->
                                             when {
-                                                isBirthdayEvent(event) -> Text("🌈", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1)
+                                                isBirthdayEvent(event) -> Box(Modifier.width(20.dp), contentAlignment = Alignment.Center) { Text("🌈", fontSize = 15.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false) }
                                                 event.memberId == ALL_FAMILY_MEMBER_ID -> Text(
                                                     "★",
                                                     color = Color(0xFFFFD75E),
@@ -487,6 +513,135 @@ private fun DayPanel(
             }
         )
     }
+}
+
+
+@Composable
+private fun WorkRotationDialog(
+    members: List<SyncMember>,
+    selectedDate: LocalDate,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val session = currentFamilySession(context)
+    var title by remember { mutableStateOf("Jobb") }
+    var selectedMemberId by remember { mutableStateOf(members.firstOrNull()?.id.orEmpty()) }
+    var startDate by remember { mutableStateOf(selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())) }
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var weeks by remember {
+        mutableStateOf(
+            listOf(
+                WorkRotationWeekDraft(setOf(1,2,3,4,5), "06:00", "14:00"),
+                WorkRotationWeekDraft(setOf(1,2,3,4,5), "14:00", "22:00"),
+                WorkRotationWeekDraft(setOf(1,2,3,4,5), "08:00", "16:00"),
+                WorkRotationWeekDraft(emptySet(), "06:00", "14:00")
+            )
+        )
+    }
+
+    fun pickTime(index: Int, start: Boolean) {
+        val current = if (start) weeks[index].startTime else weeks[index].endTime
+        val parsed = runCatching { LocalTime.parse(current) }.getOrDefault(LocalTime.of(6, 0))
+        TimePickerDialog(context, { _, h, m ->
+            val value = "%02d:%02d".format(h, m)
+            weeks = weeks.toMutableList().also { list ->
+                val old = list[index]
+                list[index] = if (start) old.copy(startTime = value) else old.copy(endTime = value)
+            }
+        }, parsed.hour, parsed.minute, true).show()
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!saving) onDismiss() },
+        title = { Text("Roterande arbetsvecka") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("4 veckors rotation · upprepas automatiskt i 52 veckor", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f), fontSize = 12.sp)
+                OutlinedTextField(title, { title = it }, label = { Text("Rubrik") }, modifier = Modifier.fillMaxWidth())
+                Text("Person", fontWeight = FontWeight.SemiBold)
+                members.forEach { member ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedMemberId == member.id, onClick = { selectedMemberId = member.id })
+                        Text(member.name)
+                    }
+                }
+                OutlinedButton(
+                    onClick = {
+                        android.app.DatePickerDialog(
+                            context,
+                            { _, y, m, d ->
+                                val picked = LocalDate.of(y, m + 1, d)
+                                startDate = picked.minusDays((picked.dayOfWeek.value - 1).toLong())
+                            },
+                            startDate.year,
+                            startDate.monthValue - 1,
+                            startDate.dayOfMonth
+                        ).show()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Startvecka: ${startDate}") }
+
+                weeks.forEachIndexed { index, week ->
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .5f), shape = RoundedCornerShape(12.dp)) {
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Vecka ${index + 1}", fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                listOf("M" to 1, "T" to 2, "O" to 3, "T" to 4, "F" to 5, "L" to 6, "S" to 7).forEach { (label, day) ->
+                                    FilterChip(
+                                        selected = day in week.weekdays,
+                                        onClick = {
+                                            val days = if (day in week.weekdays) week.weekdays - day else week.weekdays + day
+                                            weeks = weeks.toMutableList().also { it[index] = week.copy(weekdays = days) }
+                                        },
+                                        label = { Text(label, fontSize = 9.sp) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                            if (week.weekdays.isEmpty()) {
+                                Text("Ledig vecka", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f))
+                            } else {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(onClick = { pickTime(index, true) }, modifier = Modifier.weight(1f)) { Text("Från ${week.startTime}", fontSize = 11.sp) }
+                                    OutlinedButton(onClick = { pickTime(index, false) }, modifier = Modifier.weight(1f)) { Text("Till ${week.endTime}", fontSize = 11.sp) }
+                                }
+                            }
+                        }
+                    }
+                }
+                Text("Rotation: vecka 1 → 2 → 3 → 4 → 1 …", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f))
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !saving && session != null && selectedMemberId.isNotBlank() && weeks.any { it.weekdays.isNotEmpty() },
+                onClick = {
+                    val activeSession = session ?: return@Button
+                    saving = true
+                    error = null
+                    scope.launch {
+                        runCatching {
+                            repeat(52) { weekIndex ->
+                                val template = weeks[weekIndex % 4]
+                                val monday = startDate.plusWeeks(weekIndex.toLong())
+                                template.weekdays.sorted().forEach { day ->
+                                    val date = monday.plusDays((day - 1).toLong())
+                                    val eventTitle = "${title.trim().ifBlank { "Jobb" }} · ${template.startTime}–${template.endTime}"
+                                    SupabaseSync.addEvent(activeSession, eventTitle, date, template.startTime, selectedMemberId)
+                                }
+                            }
+                        }.onSuccess { onChanged() }.onFailure { error = it.message ?: "Kunde inte spara rotationsschemat" }
+                        saving = false
+                    }
+                }
+            ) { Text(if (saving) "Sparar…" else "Spara rotation") }
+        },
+        dismissButton = { TextButton(enabled = !saving, onClick = onDismiss) { Text("Avbryt") } }
+    )
 }
 
 @Composable

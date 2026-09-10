@@ -317,9 +317,15 @@ private fun ShoppingScreen(
     Text("Inköpslista", fontSize = 28.sp, fontWeight = FontWeight.Bold)
     Text("Synkas mellan era telefoner", color = Muted)
     Spacer(Modifier.height(18.dp))
-    Row {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, modifier = Modifier.weight(1f))
-        FilledIconButton(onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } }) { Icon(Icons.Default.Add, null) }
+        FilledIconButton(
+            onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } },
+            modifier = Modifier.size(56.dp)
+        ) { Icon(Icons.Default.Add, null) }
     }
     items.forEach { item ->
         Card(
@@ -417,7 +423,7 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
                 selected == i,
                 { onSelect(i) },
                 { Icon(icon, label) },
-                label = { Text(label) },
+                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 9.sp) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = accent,
                     selectedTextColor = accent,
