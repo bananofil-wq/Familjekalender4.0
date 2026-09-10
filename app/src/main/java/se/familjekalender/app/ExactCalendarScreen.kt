@@ -221,7 +221,7 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
         painter = painterResource(imageRes),
         contentDescription = null,
         modifier = modifier,
-        contentScale = ContentScale.Crop
+        contentScale = ContentScale.FillWidth
     )
 }
 
