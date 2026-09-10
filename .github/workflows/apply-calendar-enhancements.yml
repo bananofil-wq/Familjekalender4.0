@@ -1,0 +1,188 @@
+name: Apply calendar enhancements
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch calendar UI and recurrence controls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          exact = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+          s = exact.read_text()
+          if 'java.time.temporal.WeekFields' not in s:
+              s = s.replace('import java.time.format.TextStyle\n', 'import java.time.format.TextStyle\nimport java.time.temporal.WeekFields\n')
+          if 'val weekFields = WeekFields.of' not in s:
+              s = s.replace('    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }\n', '    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }\n    val weekFields = WeekFields.of(Locale("sv", "SE"))\n')
+          old_header = '''            Row(Modifier.fillMaxWidth()) {
+                listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {
+                    Text(
+                        it,
+                        color = Color(0xFFBBBAC2),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }'''
+          new_header = '''            Row(Modifier.fillMaxWidth()) {
+                Text(
+                    "v",
+                    color = Color(0xFF8F929A),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(18.dp)
+                )
+                listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {
+                    Text(
+                        it,
+                        color = Color(0xFFBBBAC2),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }'''
+          if old_header in s:
+              s = s.replace(old_header, new_header)
+          old_week = '''            repeat(6) { week ->
+                Row(Modifier.fillMaxWidth().weight(1f)) {
+                    repeat(7) { column ->'''
+          new_week = '''            repeat(6) { week ->
+                val rowMonday = month.atDay(1).minusDays(offset.toLong()).plusWeeks(week.toLong())
+                val weekNumber = rowMonday.get(weekFields.weekOfWeekBasedYear())
+                Row(Modifier.fillMaxWidth().weight(1f)) {
+                    Text(
+                        "$weekNumber",
+                        color = Color.White.copy(alpha = .58f),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(18.dp).align(Alignment.CenterVertically)
+                    )
+                    repeat(7) { column ->'''
+          if old_week in s:
+              s = s.replace(old_week, new_week)
+          s = s.replace('''                        val selectedDay = day == selected
+                        val dayEvents''', '''                        val selectedDay = day == selected
+                        val todayDay = day == LocalDate.now()
+                        val dayEvents''')
+          s = s.replace('''                                containerColor = if (day == null) Color.Transparent else if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)
+                            ),
+                            border = if (day == null) null else BorderStroke(
+                                1.dp,
+                                if (selectedDay) accent.copy(alpha = .95f) else Color.White.copy(alpha = .18f)
+                            ),''', '''                                containerColor = when {
+                                    day == null -> Color.Transparent
+                                    selectedDay -> accent.copy(alpha = .88f)
+                                    todayDay -> accent.copy(alpha = .42f)
+                                    else -> Color(0x991B2028)
+                                }
+                            ),
+                            border = if (day == null) null else BorderStroke(
+                                if (todayDay && !selectedDay) 2.dp else 1.dp,
+                                when {
+                                    selectedDay -> accent.copy(alpha = .95f)
+                                    todayDay -> accent
+                                    else -> Color.White.copy(alpha = .18f)
+                                }
+                            ),''')
+          exact.write_text(s)
+
+          main = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
+          s = main.read_text()
+          s = s.replace('''        AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday ->''', '''        AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday, recurrence ->''')
+          old_else = '''                } else {
+                    dates.sorted().forEach { date ->
+                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
+                    }
+                }
+                refresh()'''
+          new_else = '''                } else {
+                    val targetDates = if (recurrence == RecurrenceMode.NONE) {
+                        dates.sorted()
+                    } else {
+                        dates.sorted().flatMap { recurringDates(it, recurrence) }.distinct().sorted()
+                    }
+                    targetDates.forEach { date ->
+                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
+                    }
+                }
+                refresh()'''
+          if old_else in s:
+              s = s.replace(old_else, new_else)
+          s = s.replace('''    onAdd: (String, String, String, String?, List<LocalDate>, Boolean) -> Unit''', '''    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, RecurrenceMode) -> Unit''')
+          s = s.replace('''    var isBirthday by remember { mutableStateOf(false) }
+    val dates''', '''    var isBirthday by remember { mutableStateOf(false) }
+    var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }
+    val dates''')
+          s = s.replace('''                        isBirthday = !isBirthday
+                        if (isBirthday && dates.size > 1) {''', '''                        isBirthday = !isBirthday
+                        if (isBirthday) recurrence = RecurrenceMode.NONE
+                        if (isBirthday && dates.size > 1) {''')
+          s = s.replace('''                        isBirthday = checked
+                        if (checked && dates.size > 1) {''', '''                        isBirthday = checked
+                        if (checked) recurrence = RecurrenceMode.NONE
+                        if (checked && dates.size > 1) {''')
+          marker = '''                    Text("Födelsedag – upprepas varje år")
+                }
+
+                OutlinedTextField('''
+          replacement = '''                    Text("Födelsedag – upprepas varje år")
+                }
+
+                if (!isBirthday) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Upprepning", fontWeight = FontWeight.Bold)
+                    RecurrenceMode.values().forEach { mode ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { recurrence = mode },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = recurrence == mode, onClick = { recurrence = mode })
+                            Text(mode.label)
+                        }
+                    }
+                    if (recurrence != RecurrenceMode.NONE) {
+                        Text(
+                            when (recurrence) {
+                                RecurrenceMode.WEEKLY -> "Skapas varje vecka i två år."
+                                RecurrenceMode.MONTHLY -> "Skapas varje månad i fem år."
+                                RecurrenceMode.YEARLY -> "Skapas varje år i tjugo år."
+                                RecurrenceMode.NONE -> ""
+                            },
+                            color = Muted,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                OutlinedTextField('''
+          if marker in s:
+              s = s.replace(marker, replacement)
+          s = s.replace('''onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday)''', '''onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday, recurrence)''')
+          main.write_text(s)
+          PY
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git commit -m "Add week numbers today highlight and recurring events"
+          git push
