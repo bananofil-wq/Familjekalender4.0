@@ -2,7 +2,6 @@ package se.familjekalender.app
 
 import android.app.Activity
 import android.app.TimePickerDialog
-import android.widget.ImageView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -280,36 +279,30 @@ private fun MonthPanel(
                         val selectedDay = day == selected
                         val dayEvents = if (day == null) emptyList() else events.filter { it.date == day }.take(3)
 
-                        if (day == null) {
-                            Spacer(
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .padding(2.dp)
-                            )
-                        } else Card(
+                        Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)
+                                containerColor = if (day == null) Color.Transparent else if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)
                             ),
-                            border = BorderStroke(
+                            border = if (day == null) null else BorderStroke(
                                 1.dp,
                                 if (selectedDay) accent.copy(alpha = .95f) else Color.White.copy(alpha = .18f)
                             ),
                             elevation = CardDefaults.cardElevation(
-                                defaultElevation = if (selectedDay) 6.dp else 3.dp
+                                defaultElevation = if (day == null) 0.dp else if (selectedDay) 6.dp else 3.dp
                             ),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .padding(2.dp)
-                                .clickable { onSelect(day) }
+                                .then(if (day != null) Modifier.clickable { onSelect(day) } else Modifier)
                         ) {
                             Column(
                                 Modifier.fillMaxSize().padding(vertical = 3.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
+                                if (day != null) {
                                     Text(
                                         "$number",
                                         color = Color.White,
@@ -340,6 +333,7 @@ private fun MonthPanel(
                                             }
                                         }
                                     }
+                                }
                             }
                         }
                     }
