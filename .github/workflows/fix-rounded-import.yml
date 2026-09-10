@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'scripts/fix-rounded-import.py'
+      - '.github/workflows/fix-rounded-import.yml'
   workflow_dispatch:
 
 permissions:
