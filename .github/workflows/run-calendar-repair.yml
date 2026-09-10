@@ -1,0 +1,23 @@
+name: Run calendar repair
+on:
+  push:
+    paths:
+      - '.github/workflows/run-calendar-repair.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repair calendar source
+        run: python3 scripts/repair-calendar-clean.py
+      - name: Commit repaired source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git commit -m 'Repair calendar empty slots and background scaling'
+          git push
