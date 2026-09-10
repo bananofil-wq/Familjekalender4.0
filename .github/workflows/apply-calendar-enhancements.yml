@@ -186,3 +186,4 @@ jobs:
           git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/MainActivity.kt
           git commit -m "Add week numbers today highlight and recurring events"
           git push
+# trigger 2
