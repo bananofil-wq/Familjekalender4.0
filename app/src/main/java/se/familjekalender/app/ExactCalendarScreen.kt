@@ -27,7 +27,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -216,20 +218,11 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
         return
     }
 
-    AndroidView(
+    Image(
+        painter = painterResource(imageRes),
+        contentDescription = null,
         modifier = modifier,
-        factory = { context ->
-            ImageView(context).apply {
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                adjustViewBounds = false
-                setImageResource(imageRes)
-            }
-        },
-        update = {
-            it.scaleType = ImageView.ScaleType.CENTER_CROP
-            it.adjustViewBounds = false
-            it.setImageResource(imageRes)
-        }
+        contentScale = ContentScale.Crop
     )
 }
 
@@ -287,7 +280,14 @@ private fun MonthPanel(
                         val selectedDay = day == selected
                         val dayEvents = if (day == null) emptyList() else events.filter { it.date == day }.take(3)
 
-                        Card(
+                        if (day == null) {
+                            Spacer(
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .padding(2.dp)
+                            )
+                        } else Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)
                             ),
@@ -303,14 +303,13 @@ private fun MonthPanel(
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .padding(2.dp)
-                                .then(if (day != null) Modifier.clickable { onSelect(day) } else Modifier)
+                                .clickable { onSelect(day) }
                         ) {
                             Column(
                                 Modifier.fillMaxSize().padding(vertical = 3.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                if (day != null) {
                                     Text(
                                         "$number",
                                         color = Color.White,
