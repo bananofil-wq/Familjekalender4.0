@@ -1,0 +1,36 @@
+name: Fix calendar brace
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-calendar-brace.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Fix extra closing brace
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+          s = p.read_text()
+          old = '''                                    }\n                                }\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n}\n\n@Composable\nprivate fun DayPanel'''
+          new = '''                                    }\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n}\n\n@Composable\nprivate fun DayPanel'''
+          if old not in s:
+              raise SystemExit('Expected brace pattern not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git commit -m "Fix calendar slot brace syntax"
+          git push origin main
