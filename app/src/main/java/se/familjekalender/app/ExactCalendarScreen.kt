@@ -64,8 +64,8 @@ internal fun ExactCalendarScreen(
         (context as? Activity)?.recreate()
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF061019))) {
-        SeasonalPhoto(mode, Modifier.matchParentSize())
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+        SeasonalPhoto(mode, Modifier.align(Alignment.TopCenter))
 
         fun moveMonth(delta: Long) {
             val next = month.plusMonths(delta)
@@ -76,7 +76,7 @@ internal fun ExactCalendarScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp, vertical = 10.dp),
+                .padding(horizontal = 6.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MonthPanel(
@@ -212,16 +212,14 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
         ThemeMode.CLASSIC, ThemeMode.AUTO -> null
     }
 
-    if (imageRes == null) {
-        Box(modifier.background(Color(0xFF061019)))
-        return
-    }
+    if (imageRes == null) return
 
     Image(
         painter = painterResource(imageRes),
         contentDescription = null,
-        modifier = modifier,
-        contentScale = ContentScale.Crop
+        modifier = modifier.fillMaxWidth().aspectRatio(1.52f),
+        contentScale = ContentScale.Fit,
+        alignment = Alignment.TopCenter
     )
 }
 
@@ -241,7 +239,7 @@ private fun MonthPanel(
     val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
 
     Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xBF131820))) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 10.dp)) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "$monthName ${month.year}",
@@ -294,7 +292,7 @@ private fun MonthPanel(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .padding(2.dp)
+                                .padding(horizontal = 1.dp, vertical = 2.dp)
                                 .then(if (day != null) Modifier.clickable { onSelect(day) } else Modifier)
                         ) {
                             Column(
@@ -312,17 +310,17 @@ private fun MonthPanel(
                                     )
                                     Spacer(Modifier.height(2.dp))
                                     Row(
-                                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         dayEvents.forEach { event ->
                                             when {
-                                                isBirthdayEvent(event) -> Text("🌈", fontSize = 13.sp, lineHeight = 14.sp)
+                                                isBirthdayEvent(event) -> Text("🌈", fontSize = 13.sp, lineHeight = 18.sp, maxLines = 1)
                                                 event.memberId == ALL_FAMILY_MEMBER_ID -> Text(
                                                     "★",
                                                     color = Color(0xFFFFD75E),
                                                     fontSize = 15.sp,
-                                                    lineHeight = 15.sp,
+                                                    lineHeight = 18.sp,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                                 else -> {
@@ -379,62 +377,57 @@ private fun DayPanel(
                         Text("Hantera", fontSize = 9.sp)
                     }
                 }
-                FilledIconButton(
+                FloatingActionButton(
                     onClick = onAdd,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Color(0xFF9C35FF),
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(22.dp))
-                }
+                    containerColor = Color(0xFF8B21FF),
+                    contentColor = Color.White,
+                    modifier = Modifier.size(44.dp)
+                ) { Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(26.dp)) }
             }
-            Spacer(Modifier.height(4.dp))
-            if (events.isEmpty()) {
-                Text("Inget planerat", color = Color.White.copy(alpha = .55f), fontSize = 11.sp)
-            }
-            events.take(4).forEach { event ->
-                val member = members.find { it.id == event.memberId }
-                val eventColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xBF11161D)),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp)
-                        .clickable { selectedEvent = event }
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            Spacer(Modifier.height(6.dp))
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                events.forEach { event ->
+                    val member = members.find { it.id == event.memberId }
+                    val allFamily = event.memberId == ALL_FAMILY_MEMBER_ID
+                    val birthday = isBirthdayEvent(event)
+                    val dotColor = if (allFamily) Color(0xFFFFD75E) else member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
+                    Surface(
+                        color = Color(0xD9191D24),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { selectedEvent = event }
                     ) {
-                        Box(Modifier.size(19.dp), contentAlignment = Alignment.Center) {
-                            when {
-                                isBirthdayEvent(event) -> Text("🌈", fontSize = 17.sp)
-                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text("★", color = Color(0xFFFFD75E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                                else -> Box(Modifier.size(16.dp).clip(CircleShape).background(eventColor))
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (birthday) {
+                                Text("🌈", fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.width(32.dp))
+                            } else if (allFamily) {
+                                Text("★", color = Color(0xFFFFD75E), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(32.dp))
+                            } else {
+                                Box(Modifier.size(14.dp).clip(CircleShape).background(dotColor))
+                                Spacer(Modifier.width(12.dp))
                             }
-                        }
-                        Spacer(Modifier.width(9.dp))
-                        Column(Modifier.weight(1f)) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    event.title.removePrefix("🌈").trim(),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (event.time.isNotBlank()) Text(event.time, color = Color.White.copy(alpha = .62f), fontSize = 11.sp)
+                            }
                             Text(
-                                event.title.removePrefix("🎂 ").removePrefix("🌈 "),
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                if (allFamily) "Hela familjen" else member?.name ?: "Familjen",
+                                color = Color.White.copy(alpha = .72f),
+                                fontSize = 10.sp
                             )
-                            Text(event.time, color = Color.White.copy(alpha = .67f), fontSize = 10.sp)
                         }
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            member?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "",
-                            color = Color.White.copy(alpha = .72f),
-                            fontSize = 10.sp,
-                            maxLines = 1
-                        )
                     }
                 }
             }
@@ -443,48 +436,20 @@ private fun DayPanel(
 
     selectedEvent?.let { event ->
         val currentMember = members.find { it.id == event.memberId }
-        var editPerson by remember(event.id) { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { selectedEvent = null },
-            title = { Text(event.title.removePrefix("🎂 ").removePrefix("🌈 ")) },
+            title = { Text(event.title.removePrefix("🌈").trim()) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Tid: ${event.time}")
-                    Text("Datum: ${event.date}")
-                    Text("Berör: ${currentMember?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "Ingen särskild person"}")
-                    if (!currentMember?.role.isNullOrBlank()) Text("Roll: ${currentMember?.role}")
-                    Text(
-                        "Källa: ${when (event.source) {
-                            "sportadmin" -> "SportAdmin"
-                            "work_schedule" -> "Arbetsmånad"
-                            else -> "Manuellt tillagd"
-                        }}"
-                    )
-                    OutlinedButton(
-                        onClick = { editPerson = !editPerson },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text(if (editPerson) "Dölj personer" else "Byt person") }
-
-                    if (editPerson) {
-                        Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
-                            members.forEach { member ->
-                                Row(
-                                    Modifier.fillMaxWidth().clickable {
-                                        selectedEvent = null
-                                        onChangePerson(event, member.id)
-                                    }.padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = event.memberId == member.id, onClick = null)
-                                    if (member.id == ALL_FAMILY_MEMBER_ID) {
-                                        Text("★", color = Color(0xFFFFD75E), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    } else {
-                                        Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(member.name)
-                                }
-                            }
+                    Text("Tid: ${event.time.ifBlank { "Ingen tid" }}")
+                    Text("Gäller: ${if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else currentMember?.name ?: "Familjen"}")
+                    if (event.source != "sportadmin") {
+                        Text("Ändra person", fontWeight = FontWeight.SemiBold)
+                        members.forEach { member ->
+                            TextButton(onClick = {
+                                onChangePerson(event, member.id)
+                                selectedEvent = null
+                            }) { Text(member.name) }
                         }
                     }
                 }
@@ -492,99 +457,14 @@ private fun DayPanel(
             confirmButton = { TextButton(onClick = { selectedEvent = null }) { Text("Stäng") } },
             dismissButton = {
                 if (event.source != "sportadmin") {
-                    TextButton(
-                        onClick = {
-                            selectedEvent = null
-                            onDelete(event)
-                        }
-                    ) { Text("Ta bort", color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = {
+                        onDelete(event)
+                        selectedEvent = null
+                    }) { Text("Ta bort") }
                 }
             }
         )
     }
-}
-
-@Composable
-private fun ManageMonthEventsDialog(
-    month: YearMonth,
-    events: List<SyncEvent>,
-    members: List<SyncMember>,
-    onDismiss: () -> Unit,
-    onDelete: (List<String>) -> Unit
-) {
-    val selectedIds = remember(month, events) { mutableStateListOf<String>() }
-    var confirmDelete by remember { mutableStateOf(false) }
-    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
-
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text("Ta bort ${selectedIds.size} inlägg?") },
-            text = { Text("De markerade kalenderinläggen tas bort permanent.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        confirmDelete = false
-                        onDelete(selectedIds.toList())
-                    }
-                ) { Text("Ta bort") }
-            },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Avbryt") } }
-        )
-        return
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Hantera $monthName") },
-        text = {
-            Column {
-                if (events.isEmpty()) {
-                    Text("Inga manuella kalenderinlägg att hantera den här månaden.")
-                } else {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = {
-                            selectedIds.clear()
-                            selectedIds.addAll(events.map { it.id })
-                        }) { Text("Markera alla") }
-                        TextButton(onClick = { selectedIds.clear() }) { Text("Avmarkera") }
-                    }
-                    Column(Modifier.heightIn(max = 430.dp).verticalScroll(rememberScrollState())) {
-                        events.sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time }).forEach { event ->
-                            val member = members.find { it.id == event.memberId }
-                            Row(
-                                Modifier.fillMaxWidth().clickable {
-                                    if (event.id in selectedIds) selectedIds.remove(event.id) else selectedIds.add(event.id)
-                                }.padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = event.id in selectedIds,
-                                    onCheckedChange = {
-                                        if (it) {
-                                            if (event.id !in selectedIds) selectedIds.add(event.id)
-                                        } else selectedIds.remove(event.id)
-                                    }
-                                )
-                                Column(Modifier.weight(1f)) {
-                                    Text("${event.date.dayOfMonth} ${event.date.month.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))}  ${event.time}", fontSize = 12.sp)
-                                    Text(event.title.removePrefix("🎂 ").removePrefix("🌈 "), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                    Text(member?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Alla" else "Ingen särskild person", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f), fontSize = 11.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { confirmDelete = true },
-                enabled = selectedIds.isNotEmpty()
-            ) { Text("Ta bort valda (${selectedIds.size})") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
-    )
 }
 
 @Composable
@@ -596,208 +476,143 @@ private fun WorkMonthDialog(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val session = currentFamilySession(context)
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var title by remember { mutableStateOf("Jobb") }
-    var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
-    val rules = remember {
-        mutableStateListOf(
-            WorkRuleDraft(setOf(1), "07:00", "15:00"),
-            WorkRuleDraft(setOf(2, 3, 4, 5), "08:00", "16:00")
+    var selectedMemberId by remember { mutableStateOf(members.firstOrNull()?.id.orEmpty()) }
+    var replaceExisting by remember { mutableStateOf(true) }
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var rules by remember {
+        mutableStateOf(
+            listOf(
+                WorkRuleDraft(setOf(1, 2, 3, 4, 5), "06:00", "14:18")
+            )
         )
     }
-    var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf("") }
-    val weekdayLabels = listOf("M", "Ti", "O", "To", "F", "L", "S")
 
-    fun openTime(current: String, onPicked: (String) -> Unit) {
-        val parsed = runCatching { LocalTime.parse(current) }.getOrElse { LocalTime.of(8, 0) }
-        TimePickerDialog(
-            context,
-            { _, h, m -> onPicked("%02d:%02d".format(h, m)) },
-            parsed.hour,
-            parsed.minute,
-            true
-        ).show()
-    }
-
-    fun toggleWeekday(ruleIndex: Int, weekday: Int) {
-        val current = rules[ruleIndex]
-        if (weekday in current.weekdays) {
-            rules[ruleIndex] = current.copy(weekdays = current.weekdays - weekday)
-        } else {
-            rules.indices.filter { it != ruleIndex }.forEach { i ->
-                val other = rules[i]
-                if (weekday in other.weekdays) rules[i] = other.copy(weekdays = other.weekdays - weekday)
-            }
-            rules[ruleIndex] = current.copy(weekdays = current.weekdays + weekday)
-        }
-    }
-
-    val shiftCount = remember(month, rules.toList()) {
-        (1..month.lengthOfMonth()).count { day ->
-            val weekday = month.atDay(day).dayOfWeek.value
-            rules.any { weekday in it.weekdays }
-        }
+    fun pickTime(current: String, onPicked: (String) -> Unit) {
+        val parsed = runCatching { LocalTime.parse(current) }.getOrDefault(LocalTime.of(6, 0))
+        TimePickerDialog(context, { _, h, m -> onPicked("%02d:%02d".format(h, m)) }, parsed.hour, parsed.minute, true).show()
     }
 
     AlertDialog(
-        onDismissRequest = { if (!busy) onDismiss() },
+        onDismissRequest = { if (!saving) onDismiss() },
         title = { Text("Arbetsmånad") },
         text = {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹") }
-                    Text(
-                        "${month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${month.year}",
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Text("${month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${month.year}", modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                     TextButton(onClick = { month = month.plusMonths(1) }) { Text("›") }
                 }
-
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Namn, t.ex. Jobb") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text("Vem gäller det?", fontWeight = FontWeight.Bold)
+                OutlinedTextField(title, { title = it }, label = { Text("Rubrik") }, modifier = Modifier.fillMaxWidth())
+                Text("Person", fontWeight = FontWeight.SemiBold)
                 members.forEach { member ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { memberId = member.id },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
-                        Spacer(Modifier.width(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedMemberId == member.id, onClick = { selectedMemberId = member.id })
                         Text(member.name)
                     }
                 }
-
-                Text("Veckotider", fontWeight = FontWeight.Bold)
-                Text(
-                    "Välj dagarna som ska ha samma tid. En dag kan bara ligga i en tidsgrupp.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
-                    fontSize = 12.sp
-                )
-
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(replaceExisting, { replaceExisting = it })
+                    Text("Ersätt befintliga '$title'-pass för personen denna månad")
+                }
                 rules.forEachIndexed { index, rule ->
-                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF24212A))) {
-                        Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                weekdayLabels.forEachIndexed { dayIndex, label ->
-                                    val weekday = dayIndex + 1
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .5f), shape = RoundedCornerShape(12.dp)) {
+                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Regel ${index + 1}", fontWeight = FontWeight.SemiBold)
+                            Row {
+                                listOf("M" to 1, "T" to 2, "O" to 3, "T" to 4, "F" to 5, "L" to 6, "S" to 7).forEach { (label, day) ->
                                     FilterChip(
-                                        selected = weekday in rule.weekdays,
-                                        onClick = { toggleWeekday(index, weekday) },
+                                        selected = day in rule.weekdays,
+                                        onClick = {
+                                            val nextDays = if (day in rule.weekdays) rule.weekdays - day else rule.weekdays + day
+                                            rules = rules.toMutableList().also { it[index] = rule.copy(weekdays = nextDays) }
+                                        },
                                         label = { Text(label, fontSize = 10.sp) },
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.padding(end = 2.dp)
                                     )
                                 }
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = { openTime(rule.startTime) { rules[index] = rule.copy(startTime = it) } },
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("Start ${rule.startTime}") }
-                                OutlinedButton(
-                                    onClick = { openTime(rule.endTime) { rules[index] = rule.copy(endTime = it) } },
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("Slut ${rule.endTime}") }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { pickTime(rule.startTime) { value -> rules = rules.toMutableList().also { it[index] = rule.copy(startTime = value) } } }) { Text("Från ${rule.startTime}") }
+                                OutlinedButton(onClick = { pickTime(rule.endTime) { value -> rules = rules.toMutableList().also { it[index] = rule.copy(endTime = value) } } }) { Text("Till ${rule.endTime}") }
                             }
-                            if (rules.size > 1) {
-                                TextButton(onClick = { rules.removeAt(index) }) {
-                                    Text("Ta bort tidsgrupp")
-                                }
-                            }
+                            if (rules.size > 1) TextButton(onClick = { rules = rules.toMutableList().also { it.removeAt(index) } }) { Text("Ta bort regel") }
                         }
                     }
                 }
-
-                OutlinedButton(
-                    onClick = { rules.add(WorkRuleDraft(emptySet(), "08:00", "16:00")) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("+ Lägg till en tid till") }
-
-                Text(
-                    "$shiftCount arbetspass kommer att läggas in för månaden.",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    "Sparar du månaden igen ersätts tidigare pass som skapats via Arbetsmånad för samma person och månad.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
-                    fontSize = 11.sp
-                )
-
-                if (message.isNotBlank()) {
-                    Text(message, color = if (message.startsWith("Fel")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-                }
-
-                OutlinedButton(
-                    onClick = {
-                        val session = currentFamilySession(context)
-                        if (session == null) {
-                            message = "Fel: familjeanslutningen saknas"
-                        } else {
-                            busy = true
-                            scope.launch {
-                                runCatching { deleteWorkMonth(session, month, memberId) }
-                                    .onSuccess {
-                                        message = "$it arbetspass borttagna"
-                                        onChanged()
-                                    }
-                                    .onFailure { message = "Fel: ${it.message}" }
-                                busy = false
-                            }
-                        }
-                    },
-                    enabled = !busy && memberId != null,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Ta bort månadens jobbtider", color = MaterialTheme.colorScheme.error)
-                }
+                TextButton(onClick = { rules = rules + WorkRuleDraft(emptySet(), "14:00", "22:00") }) { Text("+ Lägg till regel") }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = {
             Button(
+                enabled = !saving && session != null && selectedMemberId.isNotBlank() && rules.any { it.weekdays.isNotEmpty() },
                 onClick = {
-                    val session = currentFamilySession(context)
-                    val validRules = rules.filter { it.weekdays.isNotEmpty() }
-                    if (session == null) {
-                        message = "Fel: familjeanslutningen saknas"
-                    } else if (validRules.isEmpty()) {
-                        message = "Fel: välj minst en veckodag"
-                    } else {
-                        busy = true
-                        scope.launch {
-                            runCatching {
-                                saveWorkMonth(
-                                    session = session,
-                                    month = month,
-                                    title = title,
-                                    memberId = memberId,
-                                    rules = validRules.map { WorkRule(it.weekdays, it.startTime, it.endTime) }
-                                )
-                            }.onSuccess {
-                                message = "$it arbetspass sparade"
-                                onChanged()
-                            }.onFailure { message = "Fel: ${it.message}" }
-                            busy = false
-                        }
+                    val activeSession = session ?: return@Button
+                    saving = true
+                    error = null
+                    scope.launch {
+                        runCatching {
+                            val rows = mutableListOf<WorkMonthEventInput>()
+                            for (day in 1..month.lengthOfMonth()) {
+                                val date = month.atDay(day)
+                                rules.filter { date.dayOfWeek.value in it.weekdays }.forEach { rule ->
+                                    rows += WorkMonthEventInput(title.trim().ifBlank { "Jobb" }, date, rule.startTime, selectedMemberId)
+                                }
+                            }
+                            saveWorkMonthDirect(activeSession, month, title.trim().ifBlank { "Jobb" }, selectedMemberId, rows, replaceExisting)
+                        }.onSuccess { onChanged() }.onFailure { error = it.message ?: "Kunde inte spara arbetsmånaden" }
+                        saving = false
                     }
-                },
-                enabled = !busy && title.isNotBlank() && memberId != null && shiftCount > 0
-            ) { Text(if (busy) "Sparar…" else "Spara hela månaden") }
+                }
+            ) { Text(if (saving) "Sparar…" else "Spara månaden") }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Avbryt") } }
+        dismissButton = { TextButton(enabled = !saving, onClick = onDismiss) { Text("Avbryt") } }
     )
 }
 
-private fun isBirthdayEvent(event: SyncEvent): Boolean =
-    event.title.startsWith("🎂") || event.title.startsWith("🌈")
+@Composable
+private fun ManageMonthEventsDialog(
+    month: YearMonth,
+    events: List<SyncEvent>,
+    members: List<SyncMember>,
+    onDismiss: () -> Unit,
+    onDelete: (List<String>) -> Unit
+) {
+    var selectedIds by remember(events) { mutableStateOf(events.map { it.id }.toSet()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Hantera månadens aktiviteter") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Markera aktiviteterna du vill ta bort. SportAdmin-poster lämnas orörda.")
+                Row {
+                    TextButton(onClick = { selectedIds = events.map { it.id }.toSet() }) { Text("Markera alla") }
+                    TextButton(onClick = { selectedIds = emptySet() }) { Text("Avmarkera") }
+                }
+                events.forEach { event ->
+                    val memberName = members.find { it.id == event.memberId }?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else "Familjen"
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = event.id in selectedIds,
+                            onCheckedChange = { checked -> selectedIds = if (checked) selectedIds + event.id else selectedIds - event.id }
+                        )
+                        Column {
+                            Text("${event.date.dayOfMonth}/${event.date.monthValue} ${event.time} ${event.title}")
+                            Text(memberName, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(enabled = selectedIds.isNotEmpty(), onClick = { onDelete(selectedIds.toList()) }) {
+                Text("Ta bort ${selectedIds.size}")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+    )
+}
