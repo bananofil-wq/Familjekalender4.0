@@ -100,10 +100,10 @@ internal fun ExactCalendarScreen(
           .graphicsLayer { translationX = monthDrag.value }
           .pointerInput(month) {
               detectHorizontalDragGestures(
-                  onDragStart = { launch { monthDrag.stop() } },
+                  onDragStart = { scope.launch { monthDrag.stop() } },
                   onHorizontalDrag = { change, amount ->
                       change.consume()
-                      launch { monthDrag.snapTo(monthDrag.value + amount) }
+                      scope.launch { monthDrag.snapTo(monthDrag.value + amount) }
                   },
                   onDragEnd = {
                       launch {
@@ -119,7 +119,7 @@ internal fun ExactCalendarScreen(
                           }
                       }
                   },
-                  onDragCancel = { launch { monthDrag.animateTo(0f, tween(160)) } }
+                  onDragCancel = { scope.launch { monthDrag.animateTo(0f, tween(160)) } }
               )
           }
             )
