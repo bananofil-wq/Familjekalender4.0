@@ -1,0 +1,42 @@
+name: Fix calendar empty slots and background
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fix-calendar-empty-slots-background.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch ExactCalendarScreen
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+          s = p.read_text()
+          s = s.replace('import androidx.compose.ui.viewinterop.AndroidView\n', 'import androidx.compose.foundation.Image\nimport androidx.compose.ui.layout.ContentScale\nimport androidx.compose.ui.res.painterResource\n')
+          old = '''    AndroidView(\n        modifier = modifier,\n        factory = { context ->\n            ImageView(context).apply {\n                scaleType = ImageView.ScaleType.CENTER_CROP\n                adjustViewBounds = false\n                setImageResource(imageRes)\n            }\n        },\n        update = {\n            it.scaleType = ImageView.ScaleType.CENTER_CROP\n            it.adjustViewBounds = false\n            it.setImageResource(imageRes)\n        }\n    )'''
+          new = '''    Image(\n        painter = painterResource(imageRes),\n        contentDescription = null,\n        modifier = modifier,\n        contentScale = ContentScale.Crop\n    )'''
+          if old not in s:
+              raise SystemExit('SeasonalPhoto block not found')
+          s = s.replace(old, new)
+          old2 = '''                        Card(\n                            colors = CardDefaults.cardColors(\n                                containerColor = if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)\n                            ),\n                            border = BorderStroke(\n                                1.dp,\n                                if (selectedDay) accent.copy(alpha = .95f) else Color.White.copy(alpha = .18f)\n                            ),\n                            elevation = CardDefaults.cardElevation(\n                                defaultElevation = if (selectedDay) 6.dp else 3.dp\n                            ),\n                            shape = RoundedCornerShape(10.dp),\n                            modifier = Modifier\n                                .weight(1f)\n                                .fillMaxHeight()\n                                .padding(2.dp)\n                                .then(if (day != null) Modifier.clickable { onSelect(day) } else Modifier)\n                        ) {\n                            Column(\n                                Modifier.fillMaxSize().padding(vertical = 3.dp),\n                                horizontalAlignment = Alignment.CenterHorizontally,\n                                verticalArrangement = Arrangement.Center\n                            ) {\n                                if (day != null) {'''
+          new2 = '''                        if (day == null) {\n                            Spacer(\n                                Modifier\n                                    .weight(1f)\n                                    .fillMaxHeight()\n                                    .padding(2.dp)\n                            )\n                        } else Card(\n                            colors = CardDefaults.cardColors(\n                                containerColor = if (selectedDay) accent.copy(alpha = .88f) else Color(0x991B2028)\n                            ),\n                            border = BorderStroke(\n                                1.dp,\n                                if (selectedDay) accent.copy(alpha = .95f) else Color.White.copy(alpha = .18f)\n                            ),\n                            elevation = CardDefaults.cardElevation(\n                                defaultElevation = if (selectedDay) 6.dp else 3.dp\n                            ),\n                            shape = RoundedCornerShape(10.dp),\n                            modifier = Modifier\n                                .weight(1f)\n                                .fillMaxHeight()\n                                .padding(2.dp)\n                                .clickable { onSelect(day) }\n                        ) {\n                            Column(\n                                Modifier.fillMaxSize().padding(vertical = 3.dp),\n                                horizontalAlignment = Alignment.CenterHorizontally,\n                                verticalArrangement = Arrangement.Center\n                            ) {'''
+          if old2 not in s:
+              raise SystemExit('Calendar cell block not found')
+          s = s.replace(old2, new2)
+          s = s.replace('''                                    }\n                                }\n                            }\n                        }\n                    }\n''', '''                                    }\n                                }\n                            }\n                        }\n                    }\n''', 1)
+          p.write_text(s)
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git commit -m "Hide empty calendar slots and preserve background aspect ratio"
+          git push
