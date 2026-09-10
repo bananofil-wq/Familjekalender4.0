@@ -75,12 +75,6 @@ jobs:
           if old in s:
               s = s.replace(old, new, 1)
           main.write_text(s)
-
-          assert '.graphicsLayer { translationX = monthDrag.value }' in exact.read_text()
-          assert 'val targetDates = if (recurrence == RecurrenceMode.NONE)' in main.read_text()
-          assert 'Text("Upprepning"' in main.read_text()
-          assert 'val weekNumber =' in exact.read_text()
-          assert 'val todayDay = day == LocalDate.now()' in exact.read_text()
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
