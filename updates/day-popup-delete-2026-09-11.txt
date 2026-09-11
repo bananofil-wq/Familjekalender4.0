@@ -1,0 +1,1 @@
+Day overview popup now supports deleting regular calendar events directly from the selected day. SportAdmin-imported events remain protected from local deletion.
