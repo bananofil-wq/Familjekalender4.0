@@ -14,9 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_KEYSTORE_PASSWORD: ${{ secrets.FAMILJEKALENDER_KEYSTORE_PASSWORD }}
-      FAMILJEKALENDER_KEY_ALIAS: ${{ secrets.FAMILJEKALENDER_KEY_ALIAS }}
-      FAMILJEKALENDER_KEY_PASSWORD: ${{ secrets.FAMILJEKALENDER_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,34 +24,33 @@ jobs:
           echo "FAMILJEKALENDER_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
           echo "FAMILJEKALENDER_VERSION_NAME=4.3.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
-      - name: Check signing configuration
+      - name: Restore signing configuration
         id: signing
         shell: bash
         env:
-          KEYSTORE_B64: ${{ secrets.FAMILJEKALENDER_KEYSTORE_B64 }}
+          SIGNING_BUNDLE: ${{ secrets.FAMILJEKALENDER_SIGNING_BUNDLE }}
         run: |
           set -euo pipefail
-          configured=true
-          for name in KEYSTORE_B64 FAMILJEKALENDER_KEYSTORE_PASSWORD FAMILJEKALENDER_KEY_ALIAS FAMILJEKALENDER_KEY_PASSWORD; do
-            if [ -z "${!name:-}" ]; then
-              echo "Signing is not configured yet: $name is missing"
-              configured=false
-            fi
-          done
-          echo "configured=$configured" >> "$GITHUB_OUTPUT"
-          if [ "$configured" != "true" ]; then
-            echo "Signed update publishing is skipped until the four signing secrets are configured."
+          if [ -z "${SIGNING_BUNDLE:-}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Signing is not configured yet. Add the repository secret FAMILJEKALENDER_SIGNING_BUNDLE once."
+            exit 0
           fi
 
-      - name: Restore signing keystore
-        if: steps.signing.outputs.configured == 'true'
-        shell: bash
-        env:
-          KEYSTORE_B64: ${{ secrets.FAMILJEKALENDER_KEYSTORE_B64 }}
-        run: |
-          set -euo pipefail
+          KEYSTORE_B64="${SIGNING_BUNDLE%%:*}"
+          SIGNING_PASSWORD="${SIGNING_BUNDLE#*:}"
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$SIGNING_PASSWORD" ] || [ "$KEYSTORE_B64" = "$SIGNING_BUNDLE" ]; then
+            echo "Invalid FAMILJEKALENDER_SIGNING_BUNDLE format."
+            exit 1
+          fi
+
+          echo "::add-mask::$SIGNING_PASSWORD"
           printf '%s' "$KEYSTORE_B64" | base64 --decode > "$FAMILJEKALENDER_KEYSTORE_PATH"
           test -s "$FAMILJEKALENDER_KEYSTORE_PATH"
+          echo "FAMILJEKALENDER_KEYSTORE_PASSWORD=$SIGNING_PASSWORD" >> "$GITHUB_ENV"
+          echo "FAMILJEKALENDER_KEY_ALIAS=familjekalender" >> "$GITHUB_ENV"
+          echo "FAMILJEKALENDER_KEY_PASSWORD=$SIGNING_PASSWORD" >> "$GITHUB_ENV"
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java 17
         if: steps.signing.outputs.configured == 'true'
