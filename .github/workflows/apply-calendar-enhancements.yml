@@ -51,11 +51,29 @@ jobs:
           assert 'val targetDates = if (recurrence == RecurrenceMode.NONE)' in final
           assert 'flatMap { recurringDates(it, recurrence) }' in final
           PY
-      - name: Commit recurrence source change
+      - name: Make rotation day editor scrollable
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+          s = p.read_text()
+          marker = 'title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) },'
+          pos = s.index(marker)
+          before = s[:pos]
+          after = s[pos:]
+          old = 'Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {'
+          new = 'Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {'
+          if old in after:
+              after = after.replace(old, new, 1)
+              p.write_text(before + after)
+          elif new not in after:
+              raise SystemExit('Rotation editor column not found')
+          PY
+      - name: Commit calendar source changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
           git diff --cached --quiet && exit 0
-          git commit -m "Wire recurring events into calendar saving"
+          git commit -m "Make rotating work week editor scrollable"
           git push
