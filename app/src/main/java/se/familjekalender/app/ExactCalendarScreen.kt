@@ -66,7 +66,8 @@ internal fun ExactCalendarScreen(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     palette: SeasonPalette,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    addMenuRequest: Int = 0
 ) {
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var showAddMenu by remember { mutableStateOf(false) }
@@ -77,7 +78,9 @@ internal fun ExactCalendarScreen(
     val scope = rememberCoroutineScope()
     val mode = palette.mode
     val dragOffset = remember { Animatable(0f) }
-    val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
+    LaunchedEffect(addMenuRequest) {
+        if (addMenuRequest > 0) showAddMenu = true
+    }
 
     fun refreshActivity() {
         (context as? Activity)?.recreate()
@@ -168,30 +171,6 @@ internal fun ExactCalendarScreen(
                     modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value }
                 )
             }
-            DayPanel(
-                date = date,
-                events = events.filter { it.date == date },
-                members = members,
-                p = palette,
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                onAdd = { showAddMenu = true },
-                onManageMany = { showManageMonth = true },
-                onDelete = { event ->
-                    val session = currentFamilySession(context) ?: return@DayPanel
-                    scope.launch {
-                        runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }
-                            .onSuccess { refreshActivity() }
-                    }
-                },
-                onChangePerson = { event, memberId ->
-                    val session = currentFamilySession(context) ?: return@DayPanel
-                    val persistedMemberId = memberId?.takeUnless { it == ALL_FAMILY_MEMBER_ID }
-                    scope.launch {
-                        runCatching { updateCalendarEventMemberDirect(session, event.id, persistedMemberId) }
-                            .onSuccess { refreshActivity() }
-                    }
-                }
-            )
         }
     }
 

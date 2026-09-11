@@ -214,6 +214,7 @@ private fun SyncedApp(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showAddEvent by remember { mutableStateOf(false) }
+    var assistantAddRequest by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("") }
 
     suspend fun refresh() {
@@ -240,9 +241,17 @@ private fun SyncedApp(
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedTab == 0) {
                 Column(Modifier.fillMaxSize()) {
-                    FamilyAssistantCard(session, events, members, shopping)
+                    FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
                     Box(Modifier.weight(1f)) {
-                        ExactCalendarScreen(selectedDate, { selectedDate = it }, events, members, palette) { showAddEvent = true }
+                        ExactCalendarScreen(
+                            selectedDate,
+                            { selectedDate = it },
+                            events,
+                            members,
+                            palette,
+                            onAdd = { showAddEvent = true },
+                            addMenuRequest = assistantAddRequest
+                        )
                     }
                 }
             } else {
