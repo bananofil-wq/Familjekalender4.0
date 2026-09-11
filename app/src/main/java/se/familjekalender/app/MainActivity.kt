@@ -329,7 +329,7 @@ private fun ShoppingScreen(
         FilledIconButton(
             onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } },
             enabled = text.isNotBlank(),
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(56.dp).offset(y = 4.dp),
             shape = RoundedCornerShape(8.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
