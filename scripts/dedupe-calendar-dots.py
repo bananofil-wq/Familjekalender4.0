@@ -1,0 +1,7 @@
+from pathlib import Path
+p=Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+s=p.read_text(encoding='utf-8')
+old='''                            val allDayEvents = events.filter { it.date == day }\n                            val firstBirthday = allDayEvents.firstOrNull { isBirthdayEvent(it) }\n                            buildList {\n                                if (firstBirthday != null) add(firstBirthday)\n                                addAll(allDayEvents.filterNot { isBirthdayEvent(it) }.take(3))\n                            }.take(3)\n'''
+new='''                            val allDayEvents = events.filter { it.date == day }\n                            val firstBirthday = allDayEvents.firstOrNull { isBirthdayEvent(it) }\n                            val firstAllFamily = allDayEvents.firstOrNull { !isBirthdayEvent(it) && it.memberId == ALL_FAMILY_MEMBER_ID }\n                            val uniqueMembers = allDayEvents\n                                .filter { !isBirthdayEvent(it) && it.memberId != ALL_FAMILY_MEMBER_ID }\n                                .distinctBy { it.memberId }\n                            buildList {\n                                if (firstBirthday != null) add(firstBirthday)\n                                if (firstAllFamily != null) add(firstAllFamily)\n                                addAll(uniqueMembers)\n                            }.take(3)\n'''
+if old not in s: raise SystemExit('anchor not found')
+p.write_text(s.replace(old,new,1),encoding='utf-8')
