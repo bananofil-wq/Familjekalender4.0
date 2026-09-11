@@ -27,48 +27,69 @@ jobs:
           echo "FAMILJEKALENDER_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
           echo "FAMILJEKALENDER_VERSION_NAME=4.3.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
-      - name: Verify signing secrets
+      - name: Check signing configuration
+        id: signing
         shell: bash
         env:
           KEYSTORE_B64: ${{ secrets.FAMILJEKALENDER_KEYSTORE_B64 }}
         run: |
           set -euo pipefail
+          configured=true
           for name in KEYSTORE_B64 FAMILJEKALENDER_KEYSTORE_PASSWORD FAMILJEKALENDER_KEY_ALIAS FAMILJEKALENDER_KEY_PASSWORD; do
             if [ -z "${!name:-}" ]; then
-              echo "Missing required signing secret: $name"
-              exit 1
+              echo "Signing is not configured yet: $name is missing"
+              configured=false
             fi
           done
+          echo "configured=$configured" >> "$GITHUB_OUTPUT"
+          if [ "$configured" != "true" ]; then
+            echo "Signed update publishing is skipped until the four signing secrets are configured."
+          fi
+
+      - name: Restore signing keystore
+        if: steps.signing.outputs.configured == 'true'
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.FAMILJEKALENDER_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
           printf '%s' "$KEYSTORE_B64" | base64 --decode > "$FAMILJEKALENDER_KEYSTORE_PATH"
           test -s "$FAMILJEKALENDER_KEYSTORE_PATH"
 
       - name: Set up Java 17
+        if: steps.signing.outputs.configured == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
+        if: steps.signing.outputs.configured == 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
       - name: Verify approved seasonal images
+        if: steps.signing.outputs.configured == 'true'
         run: python3 scripts/verify-season-images.py
 
       - name: Build signed release APK
+        if: steps.signing.outputs.configured == 'true'
         run: gradle :app:assembleRelease --stacktrace
 
       - name: Verify APK signature
+        if: steps.signing.outputs.configured == 'true'
         run: |
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Prepare release file
+        if: steps.signing.outputs.configured == 'true'
         shell: bash
         run: |
           cp app/build/outputs/apk/release/app-release.apk "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk"
 
       - name: Upload signed update APK artifact
+        if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Familjekalender-update-${{ env.FAMILJEKALENDER_VERSION_NAME }}
@@ -76,6 +97,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish latest app update
+        if: steps.signing.outputs.configured == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
