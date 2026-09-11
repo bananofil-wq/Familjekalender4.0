@@ -89,7 +89,7 @@ internal fun paletteFor(mode: ThemeMode): SeasonPalette = when (resolvedTheme(mo
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { FamilyCalendarApp() }
+        setContent { ResponsiveApp { FamilyCalendarApp() } }
     }
 }
 
@@ -328,8 +328,15 @@ private fun ShoppingScreen(
         OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, modifier = Modifier.weight(1f))
         FilledIconButton(
             onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } },
-            modifier = Modifier.size(56.dp)
-        ) { Icon(Icons.Default.Add, null) }
+            enabled = text.isNotBlank(),
+            modifier = Modifier.size(56.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = Purple,
+                contentColor = Color(0xFF2C1643),
+                disabledContainerColor = Purple,
+                disabledContentColor = Color(0xFF2C1643)
+            )
+        ) { Icon(Icons.Default.Add, contentDescription = "Lägg till") }
     }
     items.forEach { item ->
         Card(

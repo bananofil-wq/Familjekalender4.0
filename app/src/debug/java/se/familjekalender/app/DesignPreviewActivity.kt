@@ -33,7 +33,7 @@ import java.time.LocalDate
 class DesignPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { PreviewScreen() }
+        setContent { ResponsiveApp { PreviewScreen() } }
     }
 }
 
