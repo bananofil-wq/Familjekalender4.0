@@ -375,7 +375,7 @@ private fun MonthPanel(
                                     ) {
                                         dayEvents.forEach { event ->
                                             when {
-                                                isBirthdayEvent(event) -> Box(Modifier.width(20.dp), contentAlignment = Alignment.Center) { Text("🌈", fontSize = 15.sp, lineHeight = 18.sp, maxLines = 1, softWrap = false) }
+                                                isBirthdayEvent(event) -> BirthdayRainbowIcon(Modifier.size(width = 20.dp, height = 16.dp))
                                                 event.memberId == ALL_FAMILY_MEMBER_ID -> Text(
                                                     "★",
                                                     color = Color(0xFFFFD75E),
