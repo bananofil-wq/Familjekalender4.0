@@ -2,6 +2,9 @@ package se.familjekalender.app
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.content.pm.Signature
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -35,6 +38,7 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 private const val LATEST_RELEASE_API =
     "https://api.github.com/repos/bananofil-wq/Familjekalender4.0/releases/latest"
@@ -116,9 +120,43 @@ private fun openUnknownSourcesSettings(context: Context) {
     }
 }
 
+@Suppress("DEPRECATION")
+private fun packageVersionCode(packageInfo: PackageInfo): Long =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) packageInfo.longVersionCode
+    else packageInfo.versionCode.toLong()
+
+@Suppress("DEPRECATION")
+private fun packageSignatures(packageInfo: PackageInfo): Array<Signature> =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val signingInfo = packageInfo.signingInfo ?: return emptyArray()
+        if (signingInfo.hasMultipleSigners()) {
+            signingInfo.apkContentsSigners
+        } else {
+            signingInfo.signingCertificateHistory
+        }
+    } else {
+        packageInfo.signatures ?: emptyArray()
+    }
+
+private fun signingDigests(packageInfo: PackageInfo): Set<String> =
+    packageSignatures(packageInfo).map { signature ->
+        MessageDigest.getInstance("SHA-256")
+            .digest(signature.toByteArray())
+            .joinToString("") { byte -> "%02x".format(byte) }
+    }.toSet()
+
+@Suppress("DEPRECATION")
 private fun validateDownloadedApk(context: Context, apkFile: File, expectedVersion: String) {
-    val archiveInfo = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+    val packageManager = context.packageManager
+    val signatureFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        PackageManager.GET_SIGNING_CERTIFICATES
+    } else {
+        PackageManager.GET_SIGNATURES
+    }
+
+    val archiveInfo = packageManager.getPackageArchiveInfo(apkFile.absolutePath, signatureFlags)
         ?: error("Filen är inte en giltig Android-app")
+    val installedInfo = packageManager.getPackageInfo(context.packageName, signatureFlags)
 
     if (archiveInfo.packageName != context.packageName) {
         apkFile.delete()
@@ -129,6 +167,18 @@ private fun validateDownloadedApk(context: Context, apkFile: File, expectedVersi
     if (downloadedVersion.isBlank() || downloadedVersion != expectedVersion) {
         apkFile.delete()
         error("Versionsnumret i uppdateringen stämmer inte")
+    }
+
+    if (packageVersionCode(archiveInfo) <= packageVersionCode(installedInfo)) {
+        apkFile.delete()
+        error("Uppdateringen har inte ett högre versionsnummer än den installerade appen")
+    }
+
+    val installedSigners = signingDigests(installedInfo)
+    val downloadedSigners = signingDigests(archiveInfo)
+    if (installedSigners.isEmpty() || downloadedSigners.isEmpty() || installedSigners.intersect(downloadedSigners).isEmpty()) {
+        apkFile.delete()
+        error("Uppdateringen är inte signerad med samma appnyckel")
     }
 }
 
