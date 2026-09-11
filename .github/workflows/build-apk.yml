@@ -86,6 +86,14 @@ jobs:
             adb exec-out screencap -p > todo-screen.png
             test -s todo-screen.png
 
+            adb shell am force-stop se.familjekalender.app
+            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen settings
+            sleep 3
+            adb shell dumpsys activity top > activity-top-settings.txt || true
+            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-settings.txt
+            adb exec-out screencap -p > settings-screen.png
+            test -s settings-screen.png
+
             adb logcat -d -v threadtime > app-logcat.txt || true
             touch app-logcat.txt
             ! grep -q "FATAL EXCEPTION.*se.familjekalender.app" app-logcat.txt
@@ -98,7 +106,9 @@ jobs:
             calendar-screen.png
             shopping-screen.png
             todo-screen.png
+            settings-screen.png
             app-logcat.txt
             activity-top-calendar.txt
             activity-top-shopping.txt
             activity-top-todo.txt
+            activity-top-settings.txt
