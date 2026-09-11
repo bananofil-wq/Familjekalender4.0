@@ -239,7 +239,12 @@ private fun SyncedApp(
     Scaffold(containerColor = Bg, bottomBar = { BottomNav(selectedTab) { selectedTab = it } }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedTab == 0) {
-                ExactCalendarScreen(selectedDate, { selectedDate = it }, events, members, palette) { showAddEvent = true }
+                Column(Modifier.fillMaxSize()) {
+                    FamilyAssistantCard(session, events, members, shopping)
+                    Box(Modifier.weight(1f)) {
+                        ExactCalendarScreen(selectedDate, { selectedDate = it }, events, members, palette) { showAddEvent = true }
+                    }
+                }
             } else {
                 Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
                     if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
