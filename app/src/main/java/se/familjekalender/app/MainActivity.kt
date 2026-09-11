@@ -339,6 +339,7 @@ private fun ShoppingScreen(
             )
         ) { Icon(Icons.Default.Add, contentDescription = "Lägg till") }
     }
+    Spacer(Modifier.height(8.dp))
     items.forEach { item ->
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBg),
