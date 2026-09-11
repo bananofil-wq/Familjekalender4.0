@@ -46,7 +46,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Render actual app screen
+      - name: Render app screens
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -61,26 +61,34 @@ jobs:
             adb shell input keyevent KEYCODE_WAKEUP || true
             adb shell wm dismiss-keyguard || true
             adb logcat -c || true
-            adb shell am force-stop se.familjekalender.app
-            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity || true
-            sleep 6
-            adb shell input keyevent KEYCODE_BACK || true
-            adb shell am force-stop com.google.android.apps.nexuslauncher || true
-            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity || true
-            sleep 3
+
+            capture_screen() {
+              SCREEN="$1"
+              OUTPUT="$2"
+              adb shell am force-stop se.familjekalender.app
+              adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen "$SCREEN"
+              sleep 3
+              adb shell dumpsys activity top > activity-top.txt || true
+              grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top.txt
+              adb exec-out screencap -p > "$OUTPUT"
+              test -s "$OUTPUT"
+            }
+
+            capture_screen calendar calendar-screen.png
+            capture_screen shopping shopping-screen.png
+            capture_screen todo todo-screen.png
+
             adb logcat -d -v threadtime > app-logcat.txt || true
             touch app-logcat.txt
-            adb shell dumpsys activity top > activity-top.txt || true
-            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top.txt
             ! grep -q "FATAL EXCEPTION.*se.familjekalender.app" app-logcat.txt
-            adb exec-out screencap -p > app-screen.png
-            test -s app-screen.png
 
-      - name: Upload rendered app screen
+      - name: Upload rendered app screens
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-app-screen
+          name: Familjekalender-app-screens
           path: |
-            app-screen.png
+            calendar-screen.png
+            shopping-screen.png
+            todo-screen.png
             app-logcat.txt
             activity-top.txt
