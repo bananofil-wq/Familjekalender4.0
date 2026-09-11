@@ -155,6 +155,7 @@ internal fun ToDoScreen(session: FamilySession) {
             },
             enabled = text.isNotBlank(),
             modifier = Modifier.size(56.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.Black.copy(alpha = .78f),
