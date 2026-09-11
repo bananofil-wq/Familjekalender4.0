@@ -57,13 +57,13 @@ private fun isNewerVersion(candidate: String, current: String): Boolean {
     return false
 }
 
-private suspend fun findAvailableUpdate(): AvailableUpdate? = withContext(Dispatchers.IO) {
+private suspend fun findAvailableUpdate(currentVersion: String): AvailableUpdate? = withContext(Dispatchers.IO) {
     val connection = (URL(LATEST_RELEASE_API).openConnection() as HttpURLConnection).apply {
         connectTimeout = 10_000
         readTimeout = 10_000
         requestMethod = "GET"
         setRequestProperty("Accept", "application/vnd.github+json")
-        setRequestProperty("User-Agent", "Familjekalender-Android/${BuildConfig.VERSION_NAME}")
+        setRequestProperty("User-Agent", "Familjekalender-Android/$currentVersion")
     }
 
     try {
@@ -76,7 +76,7 @@ private suspend fun findAvailableUpdate(): AvailableUpdate? = withContext(Dispat
         val json = connection.inputStream.bufferedReader().use { it.readText() }
         val release = JSONObject(json)
         val version = release.optString("tag_name").removePrefix("v")
-        if (version.isBlank() || !isNewerVersion(version, BuildConfig.VERSION_NAME)) {
+        if (version.isBlank() || !isNewerVersion(version, currentVersion)) {
             return@withContext null
         }
 
@@ -101,6 +101,11 @@ private suspend fun findAvailableUpdate(): AvailableUpdate? = withContext(Dispat
 internal fun AppUpdateSettingsCard() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val currentVersion = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "0.0.0"
+    }
     var checking by remember { mutableStateOf(false) }
     var availableUpdate by remember { mutableStateOf<AvailableUpdate?>(null) }
     var statusText by remember { mutableStateOf("Tryck för att kontrollera om en ny version finns.") }
@@ -112,7 +117,7 @@ internal fun AppUpdateSettingsCard() {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text("Installerad version: ${BuildConfig.VERSION_NAME}", color = Muted)
+            Text("Installerad version: $currentVersion", color = Muted)
             Spacer(Modifier.height(8.dp))
             Text(
                 statusText,
@@ -126,7 +131,7 @@ internal fun AppUpdateSettingsCard() {
                         checking = true
                         statusIsError = false
                         statusText = "Söker efter uppdatering…"
-                        runCatching { findAvailableUpdate() }
+                        runCatching { findAvailableUpdate(currentVersion) }
                             .onSuccess { update ->
                                 availableUpdate = update
                                 statusText = if (update == null) {
