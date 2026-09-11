@@ -18,7 +18,6 @@ s = s.replace(old, new, 1)
 anchor = '''    if (showManageMonth) {\n        ManageMonthEventsDialog(\n'''
 if anchor not in s:
     raise SystemExit('dialog anchor not found')
-# Insert popup block before manage month dialog
 popup = '''    dayPopupDate?.let { popupDate ->\n        DayOverviewPopup(\n            date = popupDate,\n            events = events.filter { it.date == popupDate }.sortedBy { it.time },\n            members = members,\n            onDismiss = { dayPopupDate = null },\n            onAdd = {\n                dayPopupDate = null\n                onSelect(popupDate)\n                onAdd()\n            }\n        )\n    }\n\n'''
 s = s.replace(anchor, popup + anchor, 1)
 
@@ -116,3 +115,4 @@ private fun DayOverviewPopup(
 s = s.replace(insert_before, composable + insert_before, 1)
 
 p.write_text(s, encoding='utf-8')
+# retrigger workflow
