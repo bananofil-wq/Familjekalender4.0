@@ -1,8 +1,11 @@
 package se.familjekalender.app
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -21,11 +24,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.TextStyle
+import java.util.Locale
 
 private const val ASSISTANT_SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
-private const val ASSISTANT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
+private const val ASSISTANT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
 
 data class AssistantTodo(val title: String, val checked: Boolean)
+
+private enum class AssistantPopup { TODO, SHOPPING, TODAY, TOMORROW }
 
 private suspend fun loadAssistantTodos(session: FamilySession): List<AssistantTodo> = withContext(Dispatchers.IO) {
     val path = "/rest/v1/todo_items?select=title,checked&family_id=eq.${session.id}&order=updated_at.asc"
@@ -79,6 +86,7 @@ internal fun FamilyAssistantCard(
     onAdd: () -> Unit
 ) {
     var todos by remember { mutableStateOf(emptyList<AssistantTodo>()) }
+    var popup by remember { mutableStateOf<AssistantPopup?>(null) }
 
     LaunchedEffect(session.id) {
         while (true) {
@@ -91,8 +99,8 @@ internal fun FamilyAssistantCard(
     val tomorrow = today.plusDays(1)
     val todaysEvents = events.filter { it.date == today }.sortedBy { it.time }
     val tomorrowsEvents = events.filter { it.date == tomorrow }.sortedBy { it.time }
-    val openTodos = todos.count { !it.checked }
-    val openShopping = shopping.count { !it.checked }
+    val openTodoItems = todos.filter { !it.checked }
+    val openShoppingItems = shopping.filter { !it.checked }
     val conflicts = conflictLines(todaysEvents, members)
     val greeting = when (LocalTime.now().hour) {
         in 5..10 -> "God morgon!"
@@ -137,10 +145,10 @@ internal fun FamilyAssistantCard(
 
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                AssistantStat("✓", "$openTodos kvar", "To-Do", Modifier.weight(1f))
-                AssistantStat("🛒", "$openShopping kvar", "Inköp", Modifier.weight(1f))
-                AssistantStat("●", "${todaysEvents.size}", "idag", Modifier.weight(1f))
-                AssistantStat("▣", "${tomorrowsEvents.size}", "imorgon", Modifier.weight(1f))
+                AssistantStat("✓", "${openTodoItems.size} kvar", "To-Do", Modifier.weight(1f)) { popup = AssistantPopup.TODO }
+                AssistantStat("🛒", "${openShoppingItems.size} kvar", "Inköp", Modifier.weight(1f)) { popup = AssistantPopup.SHOPPING }
+                AssistantStat("●", "${todaysEvents.size}", "idag", Modifier.weight(1f)) { popup = AssistantPopup.TODAY }
+                AssistantStat("▣", "${tomorrowsEvents.size}", "imorgon", Modifier.weight(1f)) { popup = AssistantPopup.TOMORROW }
             }
 
             if (conflicts.isNotEmpty()) {
@@ -150,12 +158,30 @@ internal fun FamilyAssistantCard(
             }
         }
     }
+
+    popup?.let { selected ->
+        AssistantDetailPopup(
+            popup = selected,
+            todos = openTodoItems,
+            shopping = openShoppingItems,
+            events = if (selected == AssistantPopup.TOMORROW) tomorrowsEvents else todaysEvents,
+            members = members,
+            date = if (selected == AssistantPopup.TOMORROW) tomorrow else today,
+            onDismiss = { popup = null }
+        )
+    }
 }
 
 @Composable
-private fun AssistantStat(icon: String, value: String, label: String, modifier: Modifier = Modifier) {
+private fun AssistantStat(
+    icon: String,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, Color.White.copy(alpha = .13f))
@@ -167,6 +193,86 @@ private fun AssistantStat(icon: String, value: String, label: String, modifier: 
             Text(icon, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
             Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(label, fontSize = 10.sp, color = Muted, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun AssistantDetailPopup(
+    popup: AssistantPopup,
+    todos: List<AssistantTodo>,
+    shopping: List<SyncShoppingItem>,
+    events: List<SyncEvent>,
+    members: List<SyncMember>,
+    date: LocalDate,
+    onDismiss: () -> Unit
+) {
+    val title = when (popup) {
+        AssistantPopup.TODO -> "To-Do"
+        AssistantPopup.SHOPPING -> "Inköp"
+        AssistantPopup.TODAY -> "Idag"
+        AssistantPopup.TOMORROW -> "Imorgon"
+    }
+    val dateText = "${date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))}"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(22.dp),
+        containerColor = Color(0xFF171A20),
+        title = {
+            Column {
+                Text(title, fontWeight = FontWeight.Bold)
+                if (popup == AssistantPopup.TODAY || popup == AssistantPopup.TOMORROW) {
+                    Text(dateText, fontSize = 12.sp, color = Muted)
+                }
+            }
+        },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                when (popup) {
+                    AssistantPopup.TODO -> {
+                        if (todos.isEmpty()) Text("Inga kvarvarande uppgifter.", color = Muted)
+                        todos.forEach { item -> DetailRow("✓", item.title) }
+                    }
+                    AssistantPopup.SHOPPING -> {
+                        if (shopping.isEmpty()) Text("Inga varor kvar att handla.", color = Muted)
+                        shopping.forEach { item -> DetailRow("🛒", item.name) }
+                    }
+                    AssistantPopup.TODAY, AssistantPopup.TOMORROW -> {
+                        if (events.isEmpty()) Text("Inga aktiviteter inlagda.", color = Muted)
+                        events.forEach { event ->
+                            val who = memberName(event.memberId, members)
+                            val time = event.time.takeIf { it.isNotBlank() } ?: "Hela dagen"
+                            DetailRow("•", "$time  ${event.title}", who)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+    )
+}
+
+@Composable
+private fun DetailRow(icon: String, text: String, secondary: String? = null) {
+    Surface(
+        color = Color(0xFF20242B),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(icon, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                if (!secondary.isNullOrBlank()) Text(secondary, fontSize = 11.sp, color = Muted)
+            }
         }
     }
 }
