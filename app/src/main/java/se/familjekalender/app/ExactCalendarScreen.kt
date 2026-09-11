@@ -473,9 +473,14 @@ private fun MonthPanel(
                         } else {
                             val allDayEvents = events.filter { it.date == day }
                             val firstBirthday = allDayEvents.firstOrNull { isBirthdayEvent(it) }
+                            val firstAllFamily = allDayEvents.firstOrNull { !isBirthdayEvent(it) && it.memberId == ALL_FAMILY_MEMBER_ID }
+                            val uniqueMembers = allDayEvents
+                                .filter { !isBirthdayEvent(it) && it.memberId != ALL_FAMILY_MEMBER_ID }
+                                .distinctBy { it.memberId }
                             buildList {
                                 if (firstBirthday != null) add(firstBirthday)
-                                addAll(allDayEvents.filterNot { isBirthdayEvent(it) }.take(3))
+                                if (firstAllFamily != null) add(firstAllFamily)
+                                addAll(uniqueMembers)
                             }.take(3)
                         }
 
