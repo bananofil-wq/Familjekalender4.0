@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# One-time integration helper for the family assistant card.
 path = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
 text = path.read_text(encoding='utf-8')
 needle = '''            if (selectedTab == 0) {\n                ExactCalendarScreen(selectedDate, { selectedDate = it }, events, members, palette) { showAddEvent = true }\n            } else {\n'''
