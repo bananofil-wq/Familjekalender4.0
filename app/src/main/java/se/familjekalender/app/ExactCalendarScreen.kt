@@ -3,6 +3,7 @@ package se.familjekalender.app
 import android.app.Activity
 import android.app.TimePickerDialog
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -23,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -53,7 +55,8 @@ private data class WorkRuleDraft(
 private data class WorkRotationWeekDraft(
     val weekdays: Set<Int>,
     val startTime: String,
-    val endTime: String
+    val endTime: String,
+    val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime }
 )
 
 @Composable
@@ -73,7 +76,7 @@ internal fun ExactCalendarScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mode = palette.mode
-    var slideDirection by remember { mutableIntStateOf(1) }
+    val dragOffset = remember { Animatable(0f) }
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
 
     fun refreshActivity() {
@@ -83,11 +86,16 @@ internal fun ExactCalendarScreen(
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         SeasonalPhoto(mode, Modifier.align(Alignment.TopCenter))
 
-        fun moveMonth(delta: Long) {
-            slideDirection = if (delta > 0) 1 else -1
-            val next = month.plusMonths(delta)
-            month = next
-            onSelect(next.atDay(1))
+        fun settleMonth(delta: Long, widthPx: Float) {
+            if (widthPx <= 0f) return
+            scope.launch {
+                val target = if (delta > 0) -widthPx else widthPx
+                dragOffset.animateTo(target, animationSpec = tween(230))
+                val next = month.plusMonths(delta)
+                month = next
+                onSelect(next.atDay(1))
+                dragOffset.snapTo(0f)
+            }
         }
 
         Column(
@@ -96,50 +104,68 @@ internal fun ExactCalendarScreen(
                 .padding(horizontal = 6.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AnimatedContent(
-                targetState = month,
-                transitionSpec = {
-                    if (slideDirection > 0) {
-                        slideInHorizontally(animationSpec = tween(220)) { it } togetherWith
-                            slideOutHorizontally(animationSpec = tween(220)) { -it }
-                    } else {
-                        slideInHorizontally(animationSpec = tween(220)) { -it } togetherWith
-                            slideOutHorizontally(animationSpec = tween(220)) { it }
-                    }
-                },
-                label = "month-slide",
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1.72f)
+                    .clipToBounds()
                     .pointerInput(month) {
-                        var dragTotal = 0f
                         detectHorizontalDragGestures(
-                            onDragStart = { dragTotal = 0f },
                             onHorizontalDrag = { change, amount ->
                                 change.consume()
-                                dragTotal += amount
+                                scope.launch {
+                                    dragOffset.snapTo((dragOffset.value + amount).coerceIn(-size.width.toFloat(), size.width.toFloat()))
+                                }
                             },
                             onDragEnd = {
-                                val threshold = size.width.toFloat().coerceAtLeast(1f) * 0.14f
-                                if (abs(dragTotal) >= threshold) {
-                                    moveMonth(if (dragTotal < 0f) 1 else -1)
+                                val widthPx = size.width.toFloat().coerceAtLeast(1f)
+                                val threshold = widthPx * 0.16f
+                                when {
+                                    dragOffset.value <= -threshold -> settleMonth(1, widthPx)
+                                    dragOffset.value >= threshold -> settleMonth(-1, widthPx)
+                                    else -> scope.launch { dragOffset.animateTo(0f, animationSpec = tween(180)) }
                                 }
-                                dragTotal = 0f
                             },
-                            onDragCancel = { dragTotal = 0f }
+                            onDragCancel = { scope.launch { dragOffset.animateTo(0f, animationSpec = tween(180)) } }
                         )
                     }
-            ) { shownMonth ->
+            ) {
+                val widthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+                val previousMonth = month.minusMonths(1)
+                val nextMonth = month.plusMonths(1)
+
                 MonthPanel(
-                    month = shownMonth,
-                    selected = if (YearMonth.from(selectedDate) == shownMonth) selectedDate else shownMonth.atDay(1),
+                    month = previousMonth,
+                    selected = previousMonth.atDay(1),
+                    onSelect = {},
+                    events = events,
+                    members = members,
+                    accent = palette.accent,
+                    onPreviousMonth = {},
+                    onNextMonth = {},
+                    modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value - widthPx }
+                )
+                MonthPanel(
+                    month = nextMonth,
+                    selected = nextMonth.atDay(1),
+                    onSelect = {},
+                    events = events,
+                    members = members,
+                    accent = palette.accent,
+                    onPreviousMonth = {},
+                    onNextMonth = {},
+                    modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value + widthPx }
+                )
+                MonthPanel(
+                    month = month,
+                    selected = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1),
                     onSelect = onSelect,
                     events = events,
                     members = members,
                     accent = palette.accent,
-                    onPreviousMonth = { moveMonth(-1) },
-                    onNextMonth = { moveMonth(1) },
-                    modifier = Modifier.fillMaxSize()
+                    onPreviousMonth = { settleMonth(-1, widthPx) },
+                    onNextMonth = { settleMonth(1, widthPx) },
+                    modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value }
                 )
             }
             DayPanel(
@@ -568,14 +594,18 @@ private fun WorkRotationDialog(
         )
     }
 
-    fun pickTime(index: Int, start: Boolean) {
-        val current = if (start) weeks[index].startTime else weeks[index].endTime
+    fun pickTime(index: Int, day: Int, start: Boolean) {
+        val week = weeks[index]
+        val currentTimes = week.dayTimes[day] ?: (week.startTime to week.endTime)
+        val current = if (start) currentTimes.first else currentTimes.second
         val parsed = runCatching { LocalTime.parse(current) }.getOrDefault(LocalTime.of(6, 0))
         TimePickerDialog(context, { _, h, m ->
             val value = "%02d:%02d".format(h, m)
             weeks = weeks.toMutableList().also { list ->
                 val old = list[index]
-                list[index] = if (start) old.copy(startTime = value) else old.copy(endTime = value)
+                val oldTimes = old.dayTimes[day] ?: (old.startTime to old.endTime)
+                val updatedTimes = if (start) value to oldTimes.second else oldTimes.first to value
+                list[index] = old.copy(dayTimes = old.dayTimes + (day to updatedTimes))
             }
         }, parsed.hour, parsed.minute, true).show()
     }
@@ -686,7 +716,14 @@ private fun WorkRotationDialog(
                             Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("Vecka ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                                 Text(
-                                    if (week.weekdays.isEmpty()) "Ledig" else "${week.startTime} – ${week.endTime}",
+                                    when {
+                                        week.weekdays.isEmpty() -> "Ledig"
+                                        week.dayTimes.filterKeys { it in week.weekdays }.values.distinct().size <= 1 -> {
+                                            val t = week.dayTimes[week.weekdays.first()] ?: (week.startTime to week.endTime)
+                                            "${t.first} – ${t.second}"
+                                        }
+                                        else -> "${week.weekdays.size} pass · olika tider"
+                                    },
                                     fontSize = 10.sp,
                                     maxLines = 1
                                 )
@@ -736,8 +773,9 @@ private fun WorkRotationDialog(
                                 val monday = startDate.plusWeeks(weekIndex.toLong())
                                 template.weekdays.sorted().forEach { day ->
                                     val date = monday.plusDays((day - 1).toLong())
-                                    val eventTitle = "Jobb · ${template.startTime}–${template.endTime}"
-                                    SupabaseSync.addEvent(activeSession, eventTitle, date, template.startTime, selectedMemberId)
+                                    val times = template.dayTimes[day] ?: (template.startTime to template.endTime)
+                                    val eventTitle = "Jobb · ${times.first}–${times.second}"
+                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, selectedMemberId)
                                 }
                             }
                         }.onSuccess { onChanged() }
@@ -764,31 +802,50 @@ private fun WorkRotationDialog(
             title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Arbetsdagar", fontWeight = FontWeight.SemiBold)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        listOf("M" to 1, "T" to 2, "O" to 3, "T" to 4, "F" to 5, "L" to 6, "S" to 7).forEach { (label, day) ->
-                            FilterChip(
-                                selected = day in week.weekdays,
-                                onClick = {
-                                    val days = if (day in week.weekdays) week.weekdays - day else week.weekdays + day
-                                    weeks = weeks.toMutableList().also { it[index] = week.copy(weekdays = days) }
-                                },
-                                label = { Text(label, fontSize = 9.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
+                    Text("Arbetsdagar och tider", fontWeight = FontWeight.SemiBold)
+                    Text("Varje dag kan ha sin egen arbetstid.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f))
+                    val dayLabels = listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön")
+                    dayLabels.forEachIndexed { dayIndex, label ->
+                        val day = dayIndex + 1
+                        val enabled = day in week.weekdays
+                        val times = week.dayTimes[day] ?: (week.startTime to week.endTime)
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF21182B),
+                            border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .28f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(
+                                        checked = enabled,
+                                        onCheckedChange = { checked ->
+                                            weeks = weeks.toMutableList().also { list ->
+                                                val old = list[index]
+                                                val newDays = if (checked) old.weekdays + day else old.weekdays - day
+                                                val newTimes = if (checked && day !in old.dayTimes) {
+                                                    old.dayTimes + (day to (old.startTime to old.endTime))
+                                                } else old.dayTimes
+                                                list[index] = old.copy(weekdays = newDays, dayTimes = newTimes)
+                                            }
+                                        }
+                                    )
+                                    Text(label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                    if (!enabled) Text("Ledig", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), fontSize = 12.sp)
+                                }
+                                if (enabled) {
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = { pickTime(index, day, true) }, modifier = Modifier.weight(1f)) {
+                                            Text("Från ${times.first}", fontSize = 12.sp)
+                                        }
+                                        OutlinedButton(onClick = { pickTime(index, day, false) }, modifier = Modifier.weight(1f)) {
+                                            Text("Till ${times.second}", fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
-                    if (week.weekdays.isEmpty()) {
-                        Text("Ledig vecka", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f))
-                    } else {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { pickTime(index, true) }, modifier = Modifier.weight(1f)) {
-                                Text("Från ${week.startTime}")
-                            }
-                            OutlinedButton(onClick = { pickTime(index, false) }, modifier = Modifier.weight(1f)) {
-                                Text("Till ${week.endTime}")
-                            }
-                        }
                     }
                 }
             },
