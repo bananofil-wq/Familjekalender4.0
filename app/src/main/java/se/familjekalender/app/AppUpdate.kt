@@ -116,6 +116,22 @@ private fun openUnknownSourcesSettings(context: Context) {
     }
 }
 
+private fun validateDownloadedApk(context: Context, apkFile: File, expectedVersion: String) {
+    val archiveInfo = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
+        ?: error("Filen är inte en giltig Android-app")
+
+    if (archiveInfo.packageName != context.packageName) {
+        apkFile.delete()
+        error("Uppdateringen tillhör fel app")
+    }
+
+    val downloadedVersion = archiveInfo.versionName.orEmpty()
+    if (downloadedVersion.isBlank() || downloadedVersion != expectedVersion) {
+        apkFile.delete()
+        error("Versionsnumret i uppdateringen stämmer inte")
+    }
+}
+
 private suspend fun downloadUpdateApk(context: Context, update: AvailableUpdate): Uri = withContext(Dispatchers.IO) {
     val updateDir = File(context.cacheDir, "updates").apply { mkdirs() }
     val apkFile = File(updateDir, "Familjekalender-${update.version}.apk")
@@ -142,6 +158,7 @@ private suspend fun downloadUpdateApk(context: Context, update: AvailableUpdate)
         if (!apkFile.exists() || apkFile.length() == 0L) {
             error("Den nedladdade uppdateringen är tom")
         }
+        validateDownloadedApk(context, apkFile, update.version)
     } finally {
         connection.disconnect()
     }
