@@ -8,3 +8,4 @@ if old not in s:
     raise SystemExit('target not found')
 s = s.replace(old, new, 1)
 p.write_text(s)
+# trigger single-birthday-rainbow workflow
