@@ -36,3 +36,5 @@ jobs:
           git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
           git commit -m "Make work rotation day editor scrollable"
           git push
+
+# trigger: 2026-09-11T19:54+02:00
