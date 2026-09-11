@@ -3,44 +3,36 @@ package se.familjekalender.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 
 class DesignPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { ResponsiveApp { PreviewScreen() } }
+        val screen = intent.getStringExtra("screen") ?: "calendar"
+        setContent { ResponsiveApp { PreviewScreen(screen) } }
     }
 }
 
 @Composable
-private fun PreviewScreen() {
+private fun PreviewScreen(screen: String) {
     val palette = paletteFor(ThemeMode.AUTUMN)
     var selectedDate by remember { mutableStateOf(LocalDate.of(2026, 10, 21)) }
+    val selectedTab = when (screen) {
+        "shopping" -> 1
+        "todo" -> 2
+        else -> 0
+    }
 
     val members = remember {
         listOf(
@@ -50,7 +42,6 @@ private fun PreviewScreen() {
             SyncMember(ALL_FAMILY_MEMBER_ID, "Hela familjen", "Familj", 0xFFFFD75E)
         )
     }
-
     val events = remember {
         listOf(
             SyncEvent("1", "Skola", LocalDate.of(2026, 10, 21), "08:00", "a", "manual"),
@@ -59,23 +50,16 @@ private fun PreviewScreen() {
             SyncEvent("4", "Middag", LocalDate.of(2026, 10, 21), "19:00", ALL_FAMILY_MEMBER_ID, "manual"),
             SyncEvent("5", "", LocalDate.of(2026, 10, 1), "", "a", "manual"),
             SyncEvent("6", "", LocalDate.of(2026, 10, 2), "", ALL_FAMILY_MEMBER_ID, "manual"),
-            SyncEvent("7", "🌈 Födelsedag", LocalDate.of(2026, 10, 8), "09:00", "a", "manual"),
-            SyncEvent("8", "", LocalDate.of(2026, 10, 10), "", ALL_FAMILY_MEMBER_ID, "manual"),
-            SyncEvent("9", "", LocalDate.of(2026, 10, 12), "", "c", "manual"),
-            SyncEvent("10", "", LocalDate.of(2026, 10, 13), "", "a", "manual"),
-            SyncEvent("11", "", LocalDate.of(2026, 10, 14), "", "b", "manual"),
-            SyncEvent("12", "", LocalDate.of(2026, 10, 15), "", ALL_FAMILY_MEMBER_ID, "manual"),
-            SyncEvent("13", "", LocalDate.of(2026, 10, 19), "", ALL_FAMILY_MEMBER_ID, "manual"),
-            SyncEvent("14", "", LocalDate.of(2026, 10, 23), "", ALL_FAMILY_MEMBER_ID, "manual"),
-            SyncEvent("15", "", LocalDate.of(2026, 10, 24), "", ALL_FAMILY_MEMBER_ID, "manual"),
-            SyncEvent("16", "", LocalDate.of(2026, 10, 28), "", "b", "manual"),
-            SyncEvent("17", "", LocalDate.of(2026, 10, 31), "", ALL_FAMILY_MEMBER_ID, "manual")
+            SyncEvent("7", "🌈 Födelsedag", LocalDate.of(2026, 10, 8), "09:00", "a", "manual")
         )
     }
 
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Color(0xFF9C4DFF),
+            primary = palette.accent,
+            secondary = palette.accent,
+            surfaceVariant = palette.soft,
+            outline = palette.accent.copy(alpha = .55f),
             background = Bg,
             surface = CardBg,
             onBackground = Color.White,
@@ -83,16 +67,20 @@ private fun PreviewScreen() {
         )
     ) {
         Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
-            Scaffold(containerColor = Bg, bottomBar = { PreviewBottomNav() }) { padding ->
+            Scaffold(containerColor = Bg, bottomBar = { PreviewBottomNav(selectedTab, palette.accent) }) { padding ->
                 Box(Modifier.padding(padding).fillMaxSize()) {
-                    ExactCalendarScreen(
-                        selectedDate = selectedDate,
-                        onSelect = { selectedDate = it },
-                        events = events,
-                        members = members,
-                        palette = palette,
-                        onAdd = {}
-                    )
+                    when (screen) {
+                        "shopping" -> PreviewShopping()
+                        "todo" -> PreviewTodo()
+                        else -> ExactCalendarScreen(
+                            selectedDate = selectedDate,
+                            onSelect = { selectedDate = it },
+                            events = events,
+                            members = members,
+                            palette = palette,
+                            onAdd = {}
+                        )
+                    }
                 }
             }
         }
@@ -100,8 +88,68 @@ private fun PreviewScreen() {
 }
 
 @Composable
-private fun PreviewBottomNav() {
-    val purple = Color(0xFF9C4DFF)
+private fun PreviewShopping() {
+    var text by remember { mutableStateOf("Mjölk") }
+    Column(Modifier.fillMaxSize().padding(18.dp)) {
+        Text("Inköpslista", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Synkas mellan era telefoner", color = Muted)
+        Spacer(Modifier.height(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, modifier = Modifier.weight(1f), singleLine = true)
+            PreviewAddButton(enabled = text.isNotBlank())
+        }
+        Spacer(Modifier.height(12.dp))
+        listOf("Bröd", "Kaffe", "Bananer").forEachIndexed { index, name ->
+            Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(index == 1, {})
+                    Text(name, color = if (index == 1) Muted else Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewTodo() {
+    var text by remember { mutableStateOf("Ring tandläkaren") }
+    Column(Modifier.fillMaxSize().padding(18.dp)) {
+        Text("To-Do", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Gemensam lista för familjen", color = Muted)
+        Spacer(Modifier.height(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(text, { text = it }, label = { Text("Ny uppgift") }, modifier = Modifier.weight(1f), singleLine = true)
+            PreviewAddButton(enabled = text.isNotBlank())
+        }
+        Spacer(Modifier.height(12.dp))
+        listOf("Boka besiktning", "Köp present", "Tvätta träningskläder").forEachIndexed { index, name ->
+            Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(index == 0, {})
+                    Text(name, color = if (index == 0) Muted else Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewAddButton(enabled: Boolean) {
+    FilledIconButton(
+        onClick = {},
+        enabled = enabled,
+        modifier = Modifier.size(56.dp),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = Color.Black.copy(alpha = .78f),
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .45f),
+            disabledContentColor = Color.Black.copy(alpha = .55f)
+        )
+    ) { Icon(Icons.Default.Add, contentDescription = "Lägg till") }
+}
+
+@Composable
+private fun PreviewBottomNav(selectedTab: Int, accent: Color) {
     NavigationBar(containerColor = Color(0xF20F0E13)) {
         val tabs = listOf(
             Icons.Default.CalendarMonth to "Kalender",
@@ -112,14 +160,14 @@ private fun PreviewBottomNav() {
         )
         tabs.forEachIndexed { index, (icon, label) ->
             NavigationBarItem(
-                selected = index == 0,
+                selected = index == selectedTab,
                 onClick = {},
                 icon = { Icon(icon, label) },
                 label = { Text(label) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = purple,
-                    selectedTextColor = purple,
-                    indicatorColor = purple.copy(alpha = .15f),
+                    selectedIconColor = accent,
+                    selectedTextColor = accent,
+                    indicatorColor = accent.copy(alpha = .15f),
                     unselectedIconColor = Color(0xFFB8B3D8),
                     unselectedTextColor = Color(0xFFB8B3D8)
                 )
