@@ -13,8 +13,6 @@ jobs:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     env:
-      FAMILJEKALENDER_VERSION_CODE: ${{ 1000 + github.run_number }}
-      FAMILJEKALENDER_VERSION_NAME: 4.3.${{ github.run_number }}
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
       FAMILJEKALENDER_KEYSTORE_PASSWORD: ${{ secrets.FAMILJEKALENDER_KEYSTORE_PASSWORD }}
       FAMILJEKALENDER_KEY_ALIAS: ${{ secrets.FAMILJEKALENDER_KEY_ALIAS }}
@@ -22,6 +20,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set update version
+        shell: bash
+        run: |
+          echo "FAMILJEKALENDER_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "FAMILJEKALENDER_VERSION_NAME=4.3.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
       - name: Verify signing secrets
         shell: bash
@@ -57,7 +61,7 @@ jobs:
 
       - name: Verify APK signature
         run: |
-          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Upload signed update APK
         uses: actions/upload-artifact@v4
