@@ -1,10 +1,13 @@
 package se.familjekalender.app
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -57,28 +60,25 @@ private fun eventLine(event: SyncEvent, members: List<SyncMember>): String {
     return "$who: ${event.title} $time"
 }
 
-private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
-    return events
-        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
-        .groupBy { Triple(it.date, it.time, it.memberId) }
-        .filterValues { it.size > 1 }
-        .values
-        .map { group ->
-            val first = group.first()
-            val who = memberName(first.memberId, members)
-            "$who har ${group.size} aktiviteter samtidigt ${first.time}."
-        }
-}
+private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> = events
+    .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
+    .groupBy { Triple(it.date, it.time, it.memberId) }
+    .filterValues { it.size > 1 }
+    .values
+    .map { group ->
+        val first = group.first()
+        "${memberName(first.memberId, members)} har ${group.size} aktiviteter samtidigt ${first.time}."
+    }
 
 @Composable
 internal fun FamilyAssistantCard(
     session: FamilySession,
     events: List<SyncEvent>,
     members: List<SyncMember>,
-    shopping: List<SyncShoppingItem>
+    shopping: List<SyncShoppingItem>,
+    onAdd: () -> Unit
 ) {
     var todos by remember { mutableStateOf(emptyList<AssistantTodo>()) }
-    var expanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(session.id) {
         while (true) {
@@ -95,61 +95,78 @@ internal fun FamilyAssistantCard(
     val openShopping = shopping.count { !it.checked }
     val conflicts = conflictLines(todaysEvents, members)
     val greeting = when (LocalTime.now().hour) {
-        in 5..10 -> "God morgon"
-        in 11..16 -> "God dag"
-        else -> "God kväll"
+        in 5..10 -> "God morgon!"
+        in 11..16 -> "God dag!"
+        else -> "God kväll!"
     }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBg),
+        shape = RoundedCornerShape(22.dp),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Text("Familjeassistent", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(4.dp))
-            Text("$greeting. Här är familjens läge just nu.", color = Color.White)
-            Spacer(Modifier.height(10.dp))
-
-            if (todaysEvents.isEmpty()) {
-                Text("Idag: inga aktiviteter inlagda.", color = Muted)
-            } else {
-                Text("Idag", fontWeight = FontWeight.Bold)
-                todaysEvents.take(if (expanded) 20 else 3).forEach {
-                    Text("• ${eventLine(it, members)}", color = Color.White)
+        Column(Modifier.padding(18.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text(greeting, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("Här är familjens läge just nu.", fontSize = 14.sp, color = Muted)
                 }
-                if (!expanded && todaysEvents.size > 3) {
-                    Text("+ ${todaysEvents.size - 3} till", color = Muted)
+                FilledIconButton(
+                    onClick = onAdd,
+                    modifier = Modifier.size(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color(0xFF8F22FF),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Lägg till", modifier = Modifier.size(30.dp))
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-            Text("$openTodos saker kvar på To-Do • $openShopping varor kvar att handla", color = Muted)
+            Spacer(Modifier.height(14.dp))
+            Text("Idag", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            if (todaysEvents.isEmpty()) {
+                Text("Inga aktiviteter inlagda.", fontSize = 14.sp, color = Muted)
+            } else {
+                todaysEvents.take(3).forEach { event ->
+                    Text("• ${eventLine(event, members)}", fontSize = 14.sp, color = Color.White)
+                }
+                if (todaysEvents.size > 3) Text("+ ${todaysEvents.size - 3} till", fontSize = 12.sp, color = Muted)
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                AssistantStat("✓", "$openTodos kvar", "To-Do", Modifier.weight(1f))
+                AssistantStat("🛒", "$openShopping kvar", "Inköp", Modifier.weight(1f))
+                AssistantStat("●", "${todaysEvents.size}", "idag", Modifier.weight(1f))
+                AssistantStat("▣", "${tomorrowsEvents.size}", "imorgon", Modifier.weight(1f))
+            }
 
             if (conflicts.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text("Konfliktvarning", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                conflicts.forEach { Text("• $it", color = MaterialTheme.colorScheme.error) }
+                Spacer(Modifier.height(10.dp))
+                Text("Konfliktvarning", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                conflicts.take(2).forEach { Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
             }
+        }
+    }
+}
 
-            if (expanded) {
-                Spacer(Modifier.height(12.dp))
-                Text("Imorgon", fontWeight = FontWeight.Bold)
-                if (tomorrowsEvents.isEmpty()) {
-                    Text("Inga aktiviteter inlagda.", color = Muted)
-                } else {
-                    tomorrowsEvents.forEach { Text("• ${eventLine(it, members)}", color = Color.White) }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "När hämtning, lämning, samlingstid och utrustning kopplas till aktiviteter visas de här i samma sammanfattning.",
-                    color = Muted,
-                    fontSize = 12.sp
-                )
-            }
-
-            TextButton(onClick = { expanded = !expanded }) {
-                Text(if (expanded) "Visa mindre" else "Visa hela familjeöversikten")
-            }
+@Composable
+private fun AssistantStat(icon: String, value: String, label: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .13f))
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 3.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(icon, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(label, fontSize = 10.sp, color = Muted, maxLines = 1)
         }
     }
 }
