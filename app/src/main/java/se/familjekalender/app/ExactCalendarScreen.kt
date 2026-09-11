@@ -335,7 +335,16 @@ private fun MonthPanel(
                         val day = if (validDay) month.atDay(number) else null
                         val selectedDay = day == selected
                         val todayDay = day == LocalDate.now()
-                        val dayEvents = if (day == null) emptyList() else events.filter { it.date == day }.take(3)
+                        val dayEvents = if (day == null) {
+                            emptyList()
+                        } else {
+                            val allDayEvents = events.filter { it.date == day }
+                            val firstBirthday = allDayEvents.firstOrNull { isBirthdayEvent(it) }
+                            buildList {
+                                if (firstBirthday != null) add(firstBirthday)
+                                addAll(allDayEvents.filterNot { isBirthdayEvent(it) }.take(3))
+                            }.take(3)
+                        }
 
                         Card(
                             colors = CardDefaults.cardColors(
