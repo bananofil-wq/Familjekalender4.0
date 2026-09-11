@@ -31,6 +31,7 @@ private fun PreviewScreen(screen: String) {
     val selectedTab = when (screen) {
         "shopping" -> 1
         "todo" -> 2
+        "settings" -> 4
         else -> 0
     }
 
@@ -72,6 +73,7 @@ private fun PreviewScreen(screen: String) {
                     when (screen) {
                         "shopping" -> PreviewShopping()
                         "todo" -> PreviewTodo()
+                        "settings" -> PreviewSettings()
                         else -> ExactCalendarScreen(
                             selectedDate = selectedDate,
                             onSelect = { selectedDate = it },
@@ -130,6 +132,16 @@ private fun PreviewTodo() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PreviewSettings() {
+    Column(Modifier.fillMaxSize().padding(18.dp)) {
+        Text("Inställningar", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Familjekalendern", color = Muted)
+        Spacer(Modifier.height(18.dp))
+        AppUpdateSettingsCard()
     }
 }
 
