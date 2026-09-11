@@ -418,6 +418,9 @@ private fun SettingsScreen(
         enabled = url.isNotBlank(),
         modifier = Modifier.fillMaxWidth()
     ) { Text("Spara och importera") }
+
+    Spacer(Modifier.height(20.dp))
+    AppUpdateSettingsCard()
 }
 
 @Composable
