@@ -138,7 +138,7 @@ internal fun ToDoScreen(session: FamilySession) {
             onValueChange = { text = it },
             label = { Text("Ny uppgift") },
             singleLine = true,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).height(56.dp)
         )
         Spacer(Modifier.width(8.dp))
         FilledIconButton(

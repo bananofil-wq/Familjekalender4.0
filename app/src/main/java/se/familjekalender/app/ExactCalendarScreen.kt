@@ -2,8 +2,11 @@ package se.familjekalender.app
 
 import android.app.Activity
 import android.app.TimePickerDialog
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -70,7 +73,7 @@ internal fun ExactCalendarScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mode = palette.mode
-    val monthDrag = remember { Animatable(0f) }
+    var slideDirection by remember { mutableIntStateOf(1) }
     val date = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1)
 
     fun refreshActivity() {
@@ -81,6 +84,7 @@ internal fun ExactCalendarScreen(
         SeasonalPhoto(mode, Modifier.align(Alignment.TopCenter))
 
         fun moveMonth(delta: Long) {
+            slideDirection = if (delta > 0) 1 else -1
             val next = month.plusMonths(delta)
             month = next
             onSelect(next.atDay(1))
@@ -92,44 +96,52 @@ internal fun ExactCalendarScreen(
                 .padding(horizontal = 6.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            MonthPanel(
-                month = month,
-                selected = date,
-                onSelect = onSelect,
-                events = events,
-                members = members,
-                accent = palette.accent,
-                onPreviousMonth = { moveMonth(-1) },
-                onNextMonth = { moveMonth(1) },
+            AnimatedContent(
+                targetState = month,
+                transitionSpec = {
+                    if (slideDirection > 0) {
+                        slideInHorizontally(animationSpec = tween(220)) { it } togetherWith
+                            slideOutHorizontally(animationSpec = tween(220)) { -it }
+                    } else {
+                        slideInHorizontally(animationSpec = tween(220)) { -it } togetherWith
+                            slideOutHorizontally(animationSpec = tween(220)) { it }
+                    }
+                },
+                label = "month-slide",
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1.72f)
-          .graphicsLayer { translationX = monthDrag.value }
-          .pointerInput(month) {
-              detectHorizontalDragGestures(
-                  onDragStart = { scope.launch { monthDrag.stop() } },
-                  onHorizontalDrag = { change, amount ->
-                      change.consume()
-                      scope.launch { monthDrag.snapTo(monthDrag.value + amount) }
-                  },
-                  onDragEnd = {
-                      scope.launch {
-                          val width = size.width.toFloat().coerceAtLeast(1f)
-                          if (abs(monthDrag.value) >= width * 0.18f) {
-                              val direction = if (monthDrag.value < 0f) -1f else 1f
-                              monthDrag.animateTo(direction * width, tween(130))
-                              moveMonth(if (direction < 0f) 1 else -1)
-                              monthDrag.snapTo(-direction * width)
-                              monthDrag.animateTo(0f, tween(190))
-                          } else {
-                              monthDrag.animateTo(0f, tween(160))
-                          }
-                      }
-                  },
-                  onDragCancel = { scope.launch { monthDrag.animateTo(0f, tween(160)) } }
-              )
-          }
-            )
+                    .pointerInput(month) {
+                        var dragTotal = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { dragTotal = 0f },
+                            onHorizontalDrag = { change, amount ->
+                                change.consume()
+                                dragTotal += amount
+                            },
+                            onDragEnd = {
+                                val threshold = size.width.toFloat().coerceAtLeast(1f) * 0.14f
+                                if (abs(dragTotal) >= threshold) {
+                                    moveMonth(if (dragTotal < 0f) 1 else -1)
+                                }
+                                dragTotal = 0f
+                            },
+                            onDragCancel = { dragTotal = 0f }
+                        )
+                    }
+            ) { shownMonth ->
+                MonthPanel(
+                    month = shownMonth,
+                    selected = if (YearMonth.from(selectedDate) == shownMonth) selectedDate else shownMonth.atDay(1),
+                    onSelect = onSelect,
+                    events = events,
+                    members = members,
+                    accent = palette.accent,
+                    onPreviousMonth = { moveMonth(-1) },
+                    onNextMonth = { moveMonth(1) },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
             DayPanel(
                 date = date,
                 events = events.filter { it.date == date },
@@ -418,7 +430,8 @@ private fun DayPanel(
                 Text(
                     "${events.size} ${if (events.size == 1) "aktivitet" else "aktiviteter"}",
                     color = Color.White.copy(alpha = .68f),
-                    fontSize = 11.sp
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(end = 12.dp)
                 )
                 if (events.any { it.source != "sportadmin" }) {
                     TextButton(onClick = onManageMany, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {

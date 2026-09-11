@@ -325,7 +325,7 @@ private fun ShoppingScreen(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, modifier = Modifier.weight(1f))
+        OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, modifier = Modifier.weight(1f).height(56.dp))
         FilledIconButton(
             onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } },
             enabled = text.isNotBlank(),
