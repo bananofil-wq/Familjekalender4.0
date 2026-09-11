@@ -1,0 +1,1 @@
+Assistant summary cards are now tappable. To-Do, Shopping, Today and Tomorrow each open a detail popup with the relevant remaining items or activities.
