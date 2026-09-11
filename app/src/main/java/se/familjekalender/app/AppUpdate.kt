@@ -1,7 +1,10 @@
 package se.familjekalender.app
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,10 +27,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -97,6 +102,66 @@ private suspend fun findAvailableUpdate(currentVersion: String): AvailableUpdate
     }
 }
 
+private fun canInstallPackages(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.O || context.packageManager.canRequestPackageInstalls()
+
+private fun openUnknownSourcesSettings(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        context.startActivity(
+            Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:${context.packageName}")
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
+
+private suspend fun downloadUpdateApk(context: Context, update: AvailableUpdate): Uri = withContext(Dispatchers.IO) {
+    val updateDir = File(context.cacheDir, "updates").apply { mkdirs() }
+    val apkFile = File(updateDir, "Familjekalender-${update.version}.apk")
+    if (apkFile.exists()) apkFile.delete()
+
+    val connection = (URL(update.downloadUrl).openConnection() as HttpURLConnection).apply {
+        connectTimeout = 15_000
+        readTimeout = 30_000
+        instanceFollowRedirects = true
+        requestMethod = "GET"
+        setRequestProperty("Accept", "application/octet-stream")
+        setRequestProperty("User-Agent", "Familjekalender-Android-Updater")
+    }
+
+    try {
+        val responseCode = connection.responseCode
+        if (responseCode !in 200..299) {
+            error("Nedladdningen misslyckades med HTTP $responseCode")
+        }
+
+        connection.inputStream.use { input ->
+            apkFile.outputStream().use { output -> input.copyTo(output) }
+        }
+        if (!apkFile.exists() || apkFile.length() == 0L) {
+            error("Den nedladdade uppdateringen är tom")
+        }
+    } finally {
+        connection.disconnect()
+    }
+
+    FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        apkFile
+    )
+}
+
+private fun launchInstaller(context: Context, apkUri: Uri) {
+    context.startActivity(
+        Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    )
+}
+
 @Composable
 internal fun AppUpdateSettingsCard() {
     val context = LocalContext.current
@@ -107,6 +172,7 @@ internal fun AppUpdateSettingsCard() {
         }.getOrNull()?.takeIf { it.isNotBlank() } ?: "0.0.0"
     }
     var checking by remember { mutableStateOf(false) }
+    var updating by remember { mutableStateOf(false) }
     var availableUpdate by remember { mutableStateOf<AvailableUpdate?>(null) }
     var statusText by remember { mutableStateOf("Tryck för att kontrollera om en ny version finns.") }
     var statusIsError by remember { mutableStateOf(false) }
@@ -148,7 +214,7 @@ internal fun AppUpdateSettingsCard() {
                         checking = false
                     }
                 },
-                enabled = !checking,
+                enabled = !checking && !updating,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (checking) "Kontrollerar…" else "Sök efter uppdatering")
@@ -158,15 +224,32 @@ internal fun AppUpdateSettingsCard() {
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl)).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        if (!canInstallPackages(context)) {
+                            statusIsError = false
+                            statusText = "Tillåt installation från Familjekalendern och gå sedan tillbaka hit."
+                            openUnknownSourcesSettings(context)
+                        } else {
+                            scope.launch {
+                                updating = true
+                                statusIsError = false
+                                statusText = "Laddar ner version ${update.version}…"
+                                runCatching { downloadUpdateApk(context, update) }
+                                    .onSuccess { apkUri ->
+                                        statusText = "Uppdateringen är nedladdad. Bekräfta installationen i Android."
+                                        launchInstaller(context, apkUri)
+                                    }
+                                    .onFailure { error ->
+                                        statusIsError = true
+                                        statusText = "Kunde inte installera uppdateringen: ${error.message ?: "okänt fel"}"
+                                    }
+                                updating = false
                             }
-                        )
+                        }
                     },
+                    enabled = !checking && !updating,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Uppdatera nu")
+                    Text(if (updating) "Laddar ner…" else "Uppdatera nu")
                 }
             }
         }
