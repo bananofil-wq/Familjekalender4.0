@@ -846,7 +846,6 @@ private fun WorkRotationDialog(
                             }
                         }
                     }
-                    }
                 }
             },
             confirmButton = { Button(onClick = { editingWeek = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White)) { Text("Klar") } },
