@@ -1,0 +1,38 @@
+name: Fix work rotation scrolling
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-work-rotation-scroll.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make rotation day list scrollable
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+          s = p.read_text()
+          marker = 'title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) },'
+          pos = s.index(marker)
+          before = s[:pos]
+          after = s[pos:]
+          old = 'Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {'
+          new = 'Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {'
+          if old not in after:
+              raise SystemExit('Rotation editor column not found')
+          after = after.replace(old, new, 1)
+          p.write_text(before + after)
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git commit -m "Make work rotation day editor scrollable"
+          git push
