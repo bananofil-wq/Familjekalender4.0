@@ -1,0 +1,32 @@
+name: Apply rotation day times and smooth swipe
+
+on:
+  push:
+    paths:
+      - 'scripts/apply_rotation_day_times_smooth_swipe.py'
+      - '.github/workflows/apply-rotation-day-times-smooth-swipe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python3 scripts/apply_rotation_day_times_smooth_swipe.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Support mixed shift times and smooth month swipe"
+            git push
+          fi
