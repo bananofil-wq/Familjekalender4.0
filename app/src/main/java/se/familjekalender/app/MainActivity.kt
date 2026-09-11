@@ -118,10 +118,10 @@ fun FamilyCalendarApp() {
     val palette = paletteFor(themeMode)
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Purple,
-            secondary = Purple,
-            surfaceVariant = SoftPurple,
-            outline = Purple.copy(alpha = .55f),
+            primary = palette.accent,
+            secondary = palette.accent,
+            surfaceVariant = palette.soft,
+            outline = palette.accent.copy(alpha = .55f),
             background = Bg,
             surface = CardBg,
             onBackground = Color.White,
@@ -331,10 +331,10 @@ private fun ShoppingScreen(
             enabled = text.isNotBlank(),
             modifier = Modifier.size(56.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = Purple,
-                contentColor = Color(0xFF2C1643),
-                disabledContainerColor = Purple,
-                disabledContentColor = Color(0xFF2C1643)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.Black.copy(alpha = .78f),
+                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .45f),
+                disabledContentColor = Color.Black.copy(alpha = .55f)
             )
         ) { Icon(Icons.Default.Add, contentDescription = "Lägg till") }
     }

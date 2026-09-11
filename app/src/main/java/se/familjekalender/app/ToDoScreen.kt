@@ -156,10 +156,10 @@ internal fun ToDoScreen(session: FamilySession) {
             enabled = text.isNotBlank(),
             modifier = Modifier.size(56.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = Purple,
-                contentColor = Color(0xFF2C1643),
-                disabledContainerColor = Purple,
-                disabledContentColor = Color(0xFF2C1643)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.Black.copy(alpha = .78f),
+                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .45f),
+                disabledContentColor = Color.Black.copy(alpha = .55f)
             )
         ) { Icon(Icons.Default.Add, contentDescription = "Lägg till") }
     }
