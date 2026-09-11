@@ -1,0 +1,1 @@
+Calendar month indicators now show at most one colored dot per family member per day, even if that person has several events. Birthday rainbow and whole-family star remain separate indicators. Includes day popup with direct delete for regular events.
