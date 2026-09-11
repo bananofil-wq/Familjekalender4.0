@@ -251,6 +251,18 @@ internal fun ExactCalendarScreen(
                 dayPopupDate = null
                 onSelect(popupDate)
                 onAdd()
+            },
+            onDelete = { event ->
+                val session = currentFamilySession(context)
+                if (session != null) {
+                    scope.launch {
+                        runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }
+                            .onSuccess {
+                                dayPopupDate = null
+                                refreshActivity()
+                            }
+                    }
+                }
             }
         )
     }
@@ -285,7 +297,8 @@ private fun DayOverviewPopup(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     onDismiss: () -> Unit,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    onDelete: (SyncEvent) -> Unit
 ) {
     val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
     val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
@@ -344,11 +357,21 @@ private fun DayOverviewPopup(
                                         Text(event.time, color = Color.White.copy(alpha = .62f), fontSize = 12.sp)
                                     }
                                 }
-                                Text(
-                                    if (allFamily) "Hela familjen" else member?.name ?: "Familjen",
-                                    color = Color.White.copy(alpha = .64f),
-                                    fontSize = 11.sp
-                                )
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        if (allFamily) "Hela familjen" else member?.name ?: "Familjen",
+                                        color = Color.White.copy(alpha = .64f),
+                                        fontSize = 11.sp
+                                    )
+                                    if (event.source != "sportadmin") {
+                                        TextButton(
+                                            onClick = { onDelete(event) },
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                                        ) {
+                                            Text("Ta bort", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
