@@ -1,0 +1,31 @@
+name: Apply UI polish
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.ui-polish-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply UI polish patch
+        run: python scripts/apply_ui_polish.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/ToDoScreen.kt app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git commit -m "Polish month swipe and input alignment"
+          git push origin main
