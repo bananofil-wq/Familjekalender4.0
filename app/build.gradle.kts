@@ -4,6 +4,19 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val ciVersionCode = System.getenv("FAMILJEKALENDER_VERSION_CODE")?.toIntOrNull()
+val ciVersionName = System.getenv("FAMILJEKALENDER_VERSION_NAME")
+val signingStoreFile = System.getenv("FAMILJEKALENDER_KEYSTORE_PATH")
+val signingStorePassword = System.getenv("FAMILJEKALENDER_KEYSTORE_PASSWORD")
+val signingKeyAlias = System.getenv("FAMILJEKALENDER_KEY_ALIAS")
+val signingKeyPassword = System.getenv("FAMILJEKALENDER_KEY_PASSWORD")
+val hasCiSigning = listOf(
+    signingStoreFile,
+    signingStorePassword,
+    signingKeyAlias,
+    signingKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "se.familjekalender.app"
     compileSdk = 36
@@ -12,8 +25,28 @@ android {
         applicationId = "se.familjekalender.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "4.3.0"
+        versionCode = ciVersionCode ?: 4
+        versionName = ciVersionName ?: "4.3.0"
+    }
+
+    signingConfigs {
+        if (hasCiSigning) {
+            create("ciRelease") {
+                storeFile = file(signingStoreFile!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            if (hasCiSigning) {
+                signingConfig = signingConfigs.getByName("ciRelease")
+            }
+        }
     }
 
     buildFeatures { compose = true }
