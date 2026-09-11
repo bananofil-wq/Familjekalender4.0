@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Trigger: square themed add buttons aligned to their 56dp text fields.
 files = [
     Path('app/src/main/java/se/familjekalender/app/ToDoScreen.kt'),
     Path('app/src/main/java/se/familjekalender/app/MainActivity.kt'),
