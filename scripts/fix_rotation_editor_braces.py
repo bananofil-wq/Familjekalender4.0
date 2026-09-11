@@ -1,25 +1,33 @@
 from pathlib import Path
 
 path = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
-text = path.read_text()
+lines = path.read_text().splitlines()
 
-anchor = 'title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) }'
-pos = text.find(anchor)
-if pos < 0:
+anchor_i = next((i for i, line in enumerate(lines) if 'Redigera vecka ${index + 1}' in line), None)
+if anchor_i is None:
     raise SystemExit('Rotation editor anchor not found')
 
-head, tail = text[:pos], text[pos:]
-bad = '''                    }\n                    }\n                }\n            },\n            confirmButton = { Button(onClick = { editingWeek = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White)) { Text("Klar") } },'''
-good = '''                    }\n                }\n            },\n            confirmButton = { Button(onClick = { editingWeek = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White)) { Text("Klar") } },'''
+confirm_i = next((i for i in range(anchor_i, len(lines)) if 'confirmButton = { Button(onClick = { editingWeek = null }' in lines[i]), None)
+if confirm_i is None:
+    raise SystemExit('Rotation editor confirm button not found')
 
-if bad in tail:
-    tail = tail.replace(bad, good)
-elif good not in tail:
-    raise SystemExit('Expected rotation editor closing block was not found')
+expected_bad = [
+    '                    }',
+    '                    }',
+    '                }',
+    '            },',
+]
+expected_good = [
+    '                    }',
+    '                }',
+    '            },',
+]
 
-text = head + tail
-path.write_text(text)
+if lines[confirm_i - 4:confirm_i] == expected_bad:
+    del lines[confirm_i - 4]
+elif lines[confirm_i - 3:confirm_i] == expected_good:
+    pass
+else:
+    raise SystemExit('Unexpected rotation editor closing structure: ' + repr(lines[confirm_i - 5:confirm_i]))
 
-check_tail = path.read_text()[pos:]
-assert 'Arbetsdagar och tider' in check_tail
-assert bad not in check_tail
+path.write_text('\n'.join(lines) + '\n')
