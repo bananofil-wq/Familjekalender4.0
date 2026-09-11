@@ -62,21 +62,29 @@ jobs:
             adb shell wm dismiss-keyguard || true
             adb logcat -c || true
 
-            capture_screen() {
-              SCREEN="$1"
-              OUTPUT="$2"
-              adb shell am force-stop se.familjekalender.app
-              adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen "$SCREEN"
-              sleep 3
-              adb shell dumpsys activity top > activity-top.txt || true
-              grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top.txt
-              adb exec-out screencap -p > "$OUTPUT"
-              test -s "$OUTPUT"
-            }
+            adb shell am force-stop se.familjekalender.app
+            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen calendar
+            sleep 3
+            adb shell dumpsys activity top > activity-top-calendar.txt || true
+            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-calendar.txt
+            adb exec-out screencap -p > calendar-screen.png
+            test -s calendar-screen.png
 
-            capture_screen calendar calendar-screen.png
-            capture_screen shopping shopping-screen.png
-            capture_screen todo todo-screen.png
+            adb shell am force-stop se.familjekalender.app
+            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen shopping
+            sleep 3
+            adb shell dumpsys activity top > activity-top-shopping.txt || true
+            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-shopping.txt
+            adb exec-out screencap -p > shopping-screen.png
+            test -s shopping-screen.png
+
+            adb shell am force-stop se.familjekalender.app
+            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen todo
+            sleep 3
+            adb shell dumpsys activity top > activity-top-todo.txt || true
+            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-todo.txt
+            adb exec-out screencap -p > todo-screen.png
+            test -s todo-screen.png
 
             adb logcat -d -v threadtime > app-logcat.txt || true
             touch app-logcat.txt
@@ -91,4 +99,6 @@ jobs:
             shopping-screen.png
             todo-screen.png
             app-logcat.txt
-            activity-top.txt
+            activity-top-calendar.txt
+            activity-top-shopping.txt
+            activity-top-todo.txt
