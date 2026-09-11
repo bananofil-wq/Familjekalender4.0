@@ -801,7 +801,7 @@ private fun WorkRotationDialog(
             textContentColor = Color.White,
             title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Arbetsdagar och tider", fontWeight = FontWeight.SemiBold)
                     Text("Varje dag kan ha sin egen arbetstid.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f))
                     val dayLabels = listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön")
