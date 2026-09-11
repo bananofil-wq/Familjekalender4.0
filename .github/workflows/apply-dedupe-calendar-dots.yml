@@ -1,0 +1,31 @@
+name: Apply dedupe calendar dots
+
+on:
+  push:
+    paths:
+      - 'scripts/dedupe-calendar-dots.py'
+      - '.github/workflows/apply-dedupe-calendar-dots.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply dot dedupe patch
+        run: python3 scripts/dedupe-calendar-dots.py
+      - name: Commit source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Show one calendar dot per person per day"
+            git push origin main
+          fi
