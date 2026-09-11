@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   signed-update:
@@ -63,9 +63,25 @@ jobs:
         run: |
           "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
-      - name: Upload signed update APK
+      - name: Prepare release file
+        shell: bash
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk"
+
+      - name: Upload signed update APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: Familjekalender-update-${{ env.FAMILJEKALENDER_VERSION_NAME }}
-          path: app/build/outputs/apk/release/app-release.apk
+          path: Familjekalender-${{ env.FAMILJEKALENDER_VERSION_NAME }}.apk
           if-no-files-found: error
+
+      - name: Publish latest app update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "v${FAMILJEKALENDER_VERSION_NAME}" \
+            "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
+            --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
+            --notes "Signerad uppdatering för Familjekalendern." \
+            --latest
