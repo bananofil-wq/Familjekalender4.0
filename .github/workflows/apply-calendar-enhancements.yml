@@ -2,58 +2,25 @@ name: Apply calendar enhancements
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           ref: main
-      - name: Wire recurring events into saving
+      - name: Make rotating work week editor scrollable
+        shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
-          s = p.read_text()
-          anchor = s.index('    if (showAddEvent) {')
-          if 'val targetDates = if (recurrence == RecurrenceMode.NONE)' not in s[anchor:]:
-              old = '''                } else {
-                    dates.sorted().forEach { date ->
-                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
-                    }
-                }
-'''
-              new = '''                } else {
-                    val targetDates = if (recurrence == RecurrenceMode.NONE) {
-                        dates.sorted()
-                    } else {
-                        dates.sorted().flatMap { recurringDates(it, recurrence) }.distinct().sorted()
-                    }
-                    targetDates.forEach { date ->
-                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
-                    }
-                }
-'''
-              scoped = s[anchor:]
-              if old not in scoped:
-                  raise SystemExit('Expected calendar save block not found')
-              s = s[:anchor] + scoped.replace(old, new, 1)
-              p.write_text(s)
-
-          final = p.read_text()
-          assert 'val targetDates = if (recurrence == RecurrenceMode.NONE)' in final
-          assert 'flatMap { recurringDates(it, recurrence) }' in final
-          PY
-      - name: Make rotation day editor scrollable
-        run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
           p = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
           s = p.read_text()
@@ -69,11 +36,15 @@ jobs:
           elif new not in after:
               raise SystemExit('Rotation editor column not found')
           PY
-      - name: Commit calendar source changes
+      - name: Commit source fix
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
-          git diff --cached --quiet && exit 0
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          if git diff --cached --quiet; then
+            echo "Already fixed"
+            exit 0
+          fi
           git commit -m "Make rotating work week editor scrollable"
           git push
