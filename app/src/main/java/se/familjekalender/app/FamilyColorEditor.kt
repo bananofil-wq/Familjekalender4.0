@@ -1,5 +1,7 @@
 package se.familjekalender.app
 
+// Source touch to publish the verified calendar-position update in the signed APK.
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
