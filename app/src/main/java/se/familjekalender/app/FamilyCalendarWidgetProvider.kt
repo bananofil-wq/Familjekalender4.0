@@ -6,9 +6,9 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,19 +50,11 @@ class FamilyCalendarWidgetProvider : AppWidgetProvider() {
 
             val today = LocalDate.now()
             val formatter = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE"))
-            val formattedDate = today.format(formatter).replaceFirstChar { it.uppercase() }
-            views.setTextViewText(R.id.widget_date, formattedDate)
+            views.setTextViewText(R.id.widget_date, today.format(formatter).replaceFirstChar { it.uppercase() })
 
             val themeName = prefs.getString("theme_mode", ThemeMode.AUTO.name) ?: ThemeMode.AUTO.name
             val theme = runCatching { ThemeMode.valueOf(themeName) }.getOrDefault(ThemeMode.AUTO)
-            val palette = paletteFor(theme, today)
-            val accent = palette.accent.value.toLong()
-            val accentArgb = Color.argb(
-                ((accent shr 24) and 0xFF).toInt(),
-                ((accent shr 16) and 0xFF).toInt(),
-                ((accent shr 8) and 0xFF).toInt(),
-                (accent and 0xFF).toInt()
-            )
+            val accentArgb = paletteFor(theme, today).accent.toArgb()
             views.setTextColor(R.id.widget_today_title, accentArgb)
             views.setTextColor(R.id.widget_tomorrow_title, accentArgb)
 
@@ -94,10 +86,14 @@ class FamilyCalendarWidgetProvider : AppWidgetProvider() {
                 runCatching {
                     val events = SupabaseSync.loadEvents(session)
                     val members = SupabaseSync.loadMembers(session).associateBy { it.id }
-                    val todayEvents = events.filter { it.date == today }.sortedBy { it.time }
-                    val tomorrowEvents = events.filter { it.date == today.plusDays(1) }.sortedBy { it.time }
-                    views.setTextViewText(R.id.widget_today, formatEvents(todayEvents, members, maxItems))
-                    views.setTextViewText(R.id.widget_tomorrow, formatEvents(tomorrowEvents, members, maxItems))
+                    views.setTextViewText(
+                        R.id.widget_today,
+                        formatEvents(events.filter { it.date == today }.sortedBy { it.time }, members, maxItems)
+                    )
+                    views.setTextViewText(
+                        R.id.widget_tomorrow,
+                        formatEvents(events.filter { it.date == today.plusDays(1) }.sortedBy { it.time }, members, maxItems)
+                    )
                     manager.updateAppWidget(appWidgetId, views)
                 }.onFailure {
                     views.setTextViewText(R.id.widget_today, "Kunde inte uppdatera aktiviteter")
