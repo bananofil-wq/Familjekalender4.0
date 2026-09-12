@@ -83,8 +83,15 @@ internal fun ExactCalendarScreen(
     val displayedPalette = paletteFor(themeMode, month.atDay(1))
     val mode = displayedPalette.mode
     val dragOffset = remember { Animatable(0f) }
+    // Only react to a NEW + request. ExactCalendarScreen is recreated when the
+    // user leaves and returns to the calendar tab; replaying an old non-zero
+    // request made the add dialog reopen every time.
+    var lastHandledAddMenuRequest by rememberSaveable { mutableIntStateOf(addMenuRequest) }
     LaunchedEffect(addMenuRequest) {
-        if (addMenuRequest > 0) showAddMenu = true
+        if (addMenuRequest > lastHandledAddMenuRequest) {
+            lastHandledAddMenuRequest = addMenuRequest
+            showAddMenu = true
+        }
     }
 
     fun refreshActivity() {
