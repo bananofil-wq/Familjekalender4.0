@@ -1,0 +1,24 @@
+name: Fix add menu reopening
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/fix-add-menu-reopen.py'
+      - '.github/workflows/fix-add-menu-reopen.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/fix-add-menu-reopen.py
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Do not reopen add dialog when returning to calendar"
+          git push
