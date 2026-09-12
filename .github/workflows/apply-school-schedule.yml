@@ -1,0 +1,28 @@
+name: Apply preschool and school schedule
+
+on:
+  push:
+    paths:
+      - '.school-schedule-trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Wire school schedule into calendar
+        run: python3 scripts/add_school_schedule.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git diff --cached --quiet && exit 0
+          git commit -m "Add preschool and school schedule to add menu"
+          git push
