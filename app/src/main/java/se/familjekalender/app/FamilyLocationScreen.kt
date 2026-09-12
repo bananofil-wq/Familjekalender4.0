@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.Geocoder
 import android.location.LocationManager
 import android.net.Uri
 import android.os.BatteryManager
@@ -38,9 +39,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.*
 
 @Composable
@@ -56,6 +60,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     var locations by remember { mutableStateOf(emptyList<SyncFamilyLocation>()) }
     var places by remember { mutableStateOf(emptyList<SyncFamilyPlace>()) }
     var placeName by remember { mutableStateOf("") }
+    var placeAddress by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var memberMenu by remember { mutableStateOf(false) }
     var pendingEnableSharing by remember { mutableStateOf(false) }
@@ -78,6 +83,14 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         (context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager)
             .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
             .takeIf { it in 0..100 }
+
+    suspend fun geocodeAddress(query: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
+        runCatching {
+            @Suppress("DEPRECATION")
+            val result = Geocoder(context, Locale("sv", "SE")).getFromLocationName(query, 1)
+            result?.firstOrNull()?.let { it.latitude to it.longitude }
+        }.getOrNull()
+    }
 
     suspend fun refresh() {
         runCatching {
@@ -466,10 +479,10 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Platser", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text("Destinationer", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             FilledTonalButton(onClick = { showAddPlace = !showAddPlace }) {
                 Icon(Icons.Default.Add, contentDescription = null)
-                Text(" Lägg till plats")
+                Text(" Lägg till destination")
             }
         }
 
@@ -486,35 +499,45 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                         label = { Text("Namn, t.ex. Hem eller Skola") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    OutlinedTextField(
+                        value = placeAddress,
+                        onValueChange = { placeAddress = it },
+                        label = { Text("Adress, ort eller destination") },
+                        placeholder = { Text("Exempel: Skolgatan 1, Lund") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Button(
                         onClick = {
-                            val loc = readLocation()
-                            if (loc == null) {
-                                status = "Aktivera plats och försök igen"
-                            } else {
-                                scope.launch {
+                            scope.launch {
+                                val coords = geocodeAddress(placeAddress.trim())
+                                if (coords == null) {
+                                    status = "Kunde inte hitta destinationen. Kontrollera adressen."
+                                } else {
                                     runCatching {
                                         FamilyLocationSync.addPlace(
                                             session,
                                             placeName.trim(),
-                                            loc.latitude,
-                                            loc.longitude
+                                            coords.first,
+                                            coords.second
                                         )
                                     }.onSuccess {
                                         placeName = ""
+                                        placeAddress = ""
                                         showAddPlace = false
+                                        status = "Destination sparad"
                                         refresh()
                                     }.onFailure {
-                                        status = it.message ?: "Kunde inte spara plats"
+                                        status = it.message ?: "Kunde inte spara destination"
                                     }
                                 }
                             }
                         },
-                        enabled = placeName.isNotBlank(),
+                        enabled = placeName.isNotBlank() && placeAddress.isNotBlank(),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.AddLocationAlt, contentDescription = null)
-                        Text(" Spara min nuvarande plats")
+                        Text(" Sök adress och spara destination")
                     }
                 }
             }
@@ -713,44 +736,12 @@ private fun FamilyMap(
     modifier: Modifier = Modifier
 ) {
     val center = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
-    val markers = locations.joinToString("\n") { loc ->
-        val member = members.firstOrNull { it.id == loc.memberId }
-        val color = member?.let {
-            String.format("#%06X", 0xFFFFFF and Color(it.colorArgb).toArgb())
-        } ?: "#8B5CF6"
-        val label = (member?.name ?: "Familj").replace("'", "\\'")
-        val selected = loc.memberId == selectedMemberId
-        val radius = if (selected) 18 else 14
-        val weight = if (selected) 6 else 4
-        "L.circleMarker([${loc.latitude},${loc.longitude}],{radius:$radius,color:'$color',weight:$weight,fillColor:'$color',fillOpacity:.95}).addTo(map).bindTooltip('$label',{permanent:true,direction:'top',offset:[0,-18],className:'nameTag'});"
-    }
     val lat = center?.latitude ?: 55.7047
     val lon = center?.longitude ?: 13.1910
-    val html = """
-        <!doctype html>
-        <html>
-        <head>
-            <meta name='viewport' content='width=device-width,initial-scale=1'>
-            <link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>
-            <style>
-                html,body,#map{height:100%;margin:0;background:#0d111c}
-                .leaflet-tile{filter:brightness(.42) saturate(.72) hue-rotate(185deg) contrast(1.08)}
-                .leaflet-control-attribution{font-size:9px;background:rgba(13,17,28,.72);color:#b9b6c3}
-                .leaflet-control-attribution a{color:#c4b5fd}
-                .nameTag{background:#17151f;color:white;border:0;border-radius:12px;padding:5px 8px;font:600 12px sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.35)}
-            </style>
-        </head>
-        <body>
-            <div id='map'></div>
-            <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
-            <script>
-                var map=L.map('map',{zoomControl:false,attributionControl:true}).setView([$lat,$lon],13);
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
-                $markers
-            </script>
-        </body>
-        </html>
-    """.trimIndent()
+    val delta = 0.035
+    val bbox = "${lon - delta},${lat - delta},${lon + delta},${lat + delta}"
+    val marker = if (center != null) "&marker=$lat,$lon" else ""
+    val mapUrl = "https://www.openstreetmap.org/export/embed.html?bbox=${Uri.encode(bbox, ",")}&layer=mapnik$marker"
 
     AndroidView(
         factory = { ctx ->
@@ -758,12 +749,13 @@ private fun FamilyMap(
                 webViewClient = WebViewClient()
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                settings.loadsImagesAutomatically = true
                 setBackgroundColor(android.graphics.Color.rgb(13, 17, 28))
-                loadDataWithBaseURL("https://familjekalender.local/", html, "text/html", "UTF-8", null)
+                loadUrl(mapUrl)
             }
         },
-        update = {
-            it.loadDataWithBaseURL("https://familjekalender.local/", html, "text/html", "UTF-8", null)
+        update = { webView ->
+            if (webView.url != mapUrl) webView.loadUrl(mapUrl)
         },
         modifier = modifier
     )
