@@ -97,7 +97,7 @@ internal fun ExactCalendarScreen(
         // short phones instead of squeezing the calendar cells to zero height.
         val calendarMinHeight = 300.dp
         val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(96.dp, 160.dp)
-        SeasonalPhoto(mode, Modifier.align(Alignment.TopCenter).height(heroHeight))
+        SeasonalPhoto(mode, Modifier.matchParentSize())
 
         fun settleMonth(delta: Long, widthPx: Float) {
             if (widthPx <= 0f) return
@@ -508,8 +508,8 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
     Image(
         painter = painterResource(imageRes),
         contentDescription = null,
-        modifier = modifier.aspectRatio(1.52f),
-        contentScale = ContentScale.Fit,
+        modifier = modifier,
+        contentScale = ContentScale.Crop,
         alignment = Alignment.TopCenter
     )
 }
