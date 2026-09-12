@@ -142,7 +142,7 @@ internal fun ExactCalendarScreen(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = (-38).dp)
+                    .offset(y = (-92).dp)
                     .weight(1f)
                     .heightIn(min = calendarMinHeight)
                     .clipToBounds()
@@ -252,6 +252,14 @@ internal fun ExactCalendarScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("🧺 Tvätt") }
+                    OutlinedButton(
+                        onClick = {
+                            showAddMenu = false
+                            showManageMonth = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Hantera / rensa kalender") }
                     Text(
                         "Arbetsmånad och förskola/skola låter dig lägga återkommande tider utan att mata in varje dag för hand.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
