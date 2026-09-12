@@ -17,14 +17,24 @@ if old in text:
 elif new not in text:
     raise SystemExit('Could not find seasonal photo scaling block to patch')
 
-# Move the month card upward by roughly one centimetre without changing the
-# calendar grid size. We only reduce the seasonal hero spacer above it.
-old = '        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(72.dp, 135.dp)'
-new = '        val heroHeight = (maxHeight - calendarMinHeight - 46.dp).coerceIn(34.dp, 97.dp)'
+# Preserve the original seasonal/background layout. Only the month card itself
+# is moved upward below; do not alter the hero spacer or stretch the artwork.
+old = '        val heroHeight = (maxHeight - calendarMinHeight - 46.dp).coerceIn(34.dp, 97.dp)'
+new = '        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(72.dp, 135.dp)'
 if old in text:
     text = text.replace(old, new, 1)
 elif new not in text:
-    raise SystemExit('Could not find calendar hero height to patch')
+    raise SystemExit('Could not find calendar hero height to restore')
+
+# Shift only the calendar/month panel by roughly one centimetre. Keep its
+# dimensions unchanged so dates/cells and the background image are untouched.
+needle = '''                modifier = Modifier\n                    .fillMaxWidth()'''
+replacement = '''                modifier = Modifier\n                    .fillMaxWidth()\n                    .offset(y = (-38).dp)'''
+if replacement not in text:
+    if needle in text:
+        text = text.replace(needle, replacement, 1)
+    else:
+        raise SystemExit('Could not find month panel modifier to offset')
 
 calendar.write_text(text, encoding='utf-8')
 
