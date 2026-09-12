@@ -92,7 +92,12 @@ internal fun ExactCalendarScreen(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
-        SeasonalPhoto(mode, Modifier.align(Alignment.TopCenter))
+        // Keep enough vertical room for the complete six-week month grid.
+        // The photo remains at its natural ratio and simply becomes smaller on
+        // short phones instead of squeezing the calendar cells to zero height.
+        val calendarMinHeight = 300.dp
+        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(96.dp, 160.dp)
+        SeasonalPhoto(mode, Modifier.align(Alignment.TopCenter).height(heroHeight))
 
         fun settleMonth(delta: Long, widthPx: Float) {
             if (widthPx <= 0f) return
@@ -113,12 +118,13 @@ internal fun ExactCalendarScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (mode != ThemeMode.CLASSIC) {
-                Spacer(Modifier.fillMaxWidth().aspectRatio(1.52f))
+                Spacer(Modifier.height(heroHeight))
             }
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1.72f)
+                    .weight(1f)
+                    .heightIn(min = calendarMinHeight)
                     .clipToBounds()
                     .pointerInput(month) {
                         detectHorizontalDragGestures(
@@ -502,7 +508,7 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
     Image(
         painter = painterResource(imageRes),
         contentDescription = null,
-        modifier = modifier.fillMaxWidth().aspectRatio(1.52f),
+        modifier = modifier.aspectRatio(1.52f),
         contentScale = ContentScale.Fit,
         alignment = Alignment.TopCenter
     )
