@@ -18,7 +18,7 @@ jobs:
         with:
           ref: main
 
-      - name: Fix calendar position and cleanup entry
+      - name: Apply calendar fixes
         shell: bash
         run: |
           python3 <<'PY'
@@ -27,14 +27,13 @@ jobs:
           cal = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
           s = cal.read_text()
 
-          # Keep background/layout untouched. Move only the month/date card farther up
-          # so the complete calendar is visible above the bottom navigation.
+          # Only move the month/date panel. Do not alter or stretch the seasonal image.
           if '.offset(y = (-38).dp)' in s:
               s = s.replace('.offset(y = (-38).dp)', '.offset(y = (-92).dp)', 1)
           elif '.offset(y = (-92).dp)' not in s:
               raise SystemExit('Calendar month panel offset not found')
 
-          # Expose the already implemented month-cleanup dialog from the add menu.
+          # Expose the month cleanup dialog in the + menu.
           anchor = '''                    Button(\n                        onClick = {\n                            showAddMenu = false\n                            onAddLaundry()\n                        },\n                        modifier = Modifier.fillMaxWidth()\n                    ) { Text("🧺 Tvätt") }'''
           replacement = anchor + '''\n                    OutlinedButton(\n                        onClick = {\n                            showAddMenu = false\n                            showManageMonth = true\n                        },\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)\n                    ) { Text("Hantera / rensa kalender") }'''
           if 'Text("Hantera / rensa kalender")' not in s:
@@ -43,7 +42,46 @@ jobs:
               else:
                   raise SystemExit('Add-menu anchor not found')
 
+          # Give the day popup access to the complete event list and a bulk-delete callback.
+          old = '''            events = events.filter { it.date == popupDate }.sortedBy { it.time },\n            members = members,'''
+          new = '''            events = events.filter { it.date == popupDate }.sortedBy { it.time },\n            allEvents = events,\n            members = members,'''
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          old = '''            onDelete = { event ->\n                val session = currentFamilySession(context)\n                if (session != null) {\n                    scope.launch {\n                        runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }\n                            .onSuccess {\n                                dayPopupDate = null\n                                refreshActivity()\n                            }\n                    }\n                }\n            }\n        )'''
+          new = '''            onDelete = { event ->\n                val session = currentFamilySession(context)\n                if (session != null) {\n                    scope.launch {\n                        runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }\n                            .onSuccess {\n                                dayPopupDate = null\n                                refreshActivity()\n                            }\n                    }\n                }\n            },\n            onDeleteMany = { eventsToDelete ->\n                val session = currentFamilySession(context)\n                if (session != null) {\n                    scope.launch {\n                        runCatching { deleteCalendarEventsDirect(session, eventsToDelete.map { it.id }) }\n                            .onSuccess {\n                                dayPopupDate = null\n                                refreshActivity()\n                            }\n                    }\n                }\n            }\n        )'''
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          old = '''private fun DayOverviewPopup(\n    date: LocalDate,\n    events: List<SyncEvent>,\n    members: List<SyncMember>,\n    onDismiss: () -> Unit,\n    onAdd: () -> Unit,\n    onEdit: (SyncEvent) -> Unit,\n    onDelete: (SyncEvent) -> Unit\n) {'''
+          new = '''private fun DayOverviewPopup(\n    date: LocalDate,\n    events: List<SyncEvent>,\n    allEvents: List<SyncEvent>,\n    members: List<SyncMember>,\n    onDismiss: () -> Unit,\n    onAdd: () -> Unit,\n    onEdit: (SyncEvent) -> Unit,\n    onDelete: (SyncEvent) -> Unit,\n    onDeleteMany: (List<SyncEvent>) -> Unit\n) {'''
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          old = '''    val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))\n\n    AlertDialog('''
+          new = '''    val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))\n    var deleteChoiceEvent by remember { mutableStateOf<SyncEvent?>(null) }\n\n    AlertDialog('''
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          old = '                                            onClick = { onDelete(event) },'
+          new = '                                            onClick = { deleteChoiceEvent = event },'
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          marker = '''        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }\n    )\n}\n\n@Composable\nprivate fun EditEventDialog'''
+          insert = '''        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }\n    )\n\n    deleteChoiceEvent?.let { event ->\n        val today = LocalDate.now()\n        val series = allEvents.filter { candidate ->\n            candidate.source != "sportadmin" &&\n                candidate.memberId == event.memberId &&\n                candidate.title == event.title &&\n                !candidate.date.isBefore(today)\n        }.sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })\n\n        AlertDialog(\n            onDismissRequest = { deleteChoiceEvent = null },\n            title = { Text("Ta bort aktivitet") },\n            text = {\n                Text(\n                    if (series.size > 1)\n                        "Ta bort bara denna förekomst eller hela den återkommande serien (${series.size} framtida aktiviteter)?"\n                    else\n                        "Ta bort denna aktivitet?"\n                )\n            },\n            confirmButton = {\n                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {\n                    if (series.size > 1) {\n                        TextButton(onClick = {\n                            onDeleteMany(series)\n                            deleteChoiceEvent = null\n                        }) { Text("Hela serien", color = MaterialTheme.colorScheme.error) }\n                    }\n                    Button(onClick = {\n                        onDelete(event)\n                        deleteChoiceEvent = null\n                    }) { Text("Bara denna") }\n                }\n            },\n            dismissButton = { TextButton(onClick = { deleteChoiceEvent = null }) { Text("Avbryt") } }\n        )\n    }\n}\n\n@Composable\nprivate fun EditEventDialog'''
+          if marker in s and 'Hela serien' not in s:
+              s = s.replace(marker, insert, 1)
+
           cal.write_text(s)
+
+          agenda = Path('app/src/main/java/se/familjekalender/app/MemberAgendaDialog.kt')
+          a = agenda.read_text()
+          old = '            title = { Text("Ta bort alla framtida aktiviteter?") },'
+          new = '            title = { Text("Ta bort alla ${deletableUpcoming.size} framtida aktiviteter för ${member.name}?") },'
+          if old in a:
+              a = a.replace(old, new, 1)
+          agenda.write_text(a)
           PY
 
       - name: Commit source fix
@@ -51,10 +89,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/MemberAgendaDialog.kt
           if git diff --cached --quiet; then
             echo "Already fixed"
             exit 0
           fi
-          git commit -m "Fix calendar visibility and add cleanup entry"
+          git commit -m "Implement calendar cleanup and recurring series deletion"
           git push
