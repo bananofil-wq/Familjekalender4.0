@@ -1,4 +1,3 @@
-# Verified: only the date/month panel is shifted upward; background and assistant remain unchanged.
 name: Apply calendar enhancements
 
 on:
@@ -19,33 +18,32 @@ jobs:
         with:
           ref: main
 
-      - name: Move only the month panel upward
+      - name: Fix calendar position and cleanup entry
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
 
-          main = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
-          s = main.read_text()
-          old = '''                            .fillMaxWidth()\n                            .offset(y = (-38).dp)\n                            .height(590.dp)'''
-          new = '''                            .fillMaxWidth()\n                            .height(590.dp)'''
-          if old in s:
-              s = s.replace(old, new, 1)
-              main.write_text(s)
-          elif '.offset(y = (-38).dp)' in s:
-              raise SystemExit('Unexpected -38dp offset remains in MainActivity')
-
           cal = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
           s = cal.read_text()
-          anchor = '''            BoxWithConstraints(\n                modifier = Modifier\n                    .fillMaxWidth()\n                    .weight(1f)'''
-          replacement = '''            BoxWithConstraints(\n                modifier = Modifier\n                    .fillMaxWidth()\n                    .offset(y = (-38).dp)\n                    .weight(1f)'''
-          if replacement in s:
-              print('Month panel already shifted upward')
-          elif anchor in s:
-              s = s.replace(anchor, replacement, 1)
-              cal.write_text(s)
-          else:
-              raise SystemExit('Month panel anchor not found')
+
+          # Keep background/layout untouched. Move only the month/date card farther up
+          # so the complete calendar is visible above the bottom navigation.
+          if '.offset(y = (-38).dp)' in s:
+              s = s.replace('.offset(y = (-38).dp)', '.offset(y = (-92).dp)', 1)
+          elif '.offset(y = (-92).dp)' not in s:
+              raise SystemExit('Calendar month panel offset not found')
+
+          # Expose the already implemented month-cleanup dialog from the add menu.
+          anchor = '''                    Button(\n                        onClick = {\n                            showAddMenu = false\n                            onAddLaundry()\n                        },\n                        modifier = Modifier.fillMaxWidth()\n                    ) { Text("🧺 Tvätt") }'''
+          replacement = anchor + '''\n                    OutlinedButton(\n                        onClick = {\n                            showAddMenu = false\n                            showManageMonth = true\n                        },\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)\n                    ) { Text("Hantera / rensa kalender") }'''
+          if 'Text("Hantera / rensa kalender")' not in s:
+              if anchor in s:
+                  s = s.replace(anchor, replacement, 1)
+              else:
+                  raise SystemExit('Add-menu anchor not found')
+
+          cal.write_text(s)
           PY
 
       - name: Commit source fix
@@ -53,10 +51,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
           if git diff --cached --quiet; then
             echo "Already fixed"
             exit 0
           fi
-          git commit -m "Move only calendar date panel upward"
+          git commit -m "Fix calendar visibility and add cleanup entry"
           git push
