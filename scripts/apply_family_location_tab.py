@@ -43,6 +43,10 @@ s = s.replace('''        Modifier
             .verticalScroll(rememberScrollState())
             .padding(18.dp),''', '''        Modifier
             .fillMaxWidth(),''')
+s = s.replace(
+    'accuracy = loc.accuracy.takeIf { it > 0 },',
+    'accuracyM = loc.accuracy.takeIf { it > 0 },'
+)
 p.write_text(s)
 
 p = Path('app/src/main/AndroidManifest.xml')
