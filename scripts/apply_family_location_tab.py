@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Keeps the family-location tab wiring reproducible.
 p = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
 s = p.read_text()
 if 'import androidx.compose.material.icons.filled.LocationOn' not in s:
