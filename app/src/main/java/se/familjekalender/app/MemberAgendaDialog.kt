@@ -29,15 +29,18 @@ internal fun MemberAgendaDialog(
     events: List<SyncEvent>,
     onDismiss: () -> Unit,
     onEdit: (SyncEvent, String, LocalDate, String) -> Unit,
-    onDelete: (SyncEvent) -> Unit
+    onDelete: (SyncEvent) -> Unit,
+    onDeleteAll: (List<SyncEvent>) -> Unit
 ) {
     val upcoming = remember(events, member.id) {
         events.filter { it.memberId == member.id && !it.date.isBefore(LocalDate.now()) }
             .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
     }
+    val deletableUpcoming = remember(upcoming) { upcoming.filter { it.source != "sportadmin" } }
     val formatter = remember { DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale("sv", "SE")) }
     var editing by remember { mutableStateOf<SyncEvent?>(null) }
     var deleting by remember { mutableStateOf<SyncEvent?>(null) }
+    var confirmDeleteAll by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -68,7 +71,7 @@ internal fun MemberAgendaDialog(
                 upcoming.forEach { event ->
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF222027))) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                            Text(event.title.removePrefix("🌈").trim(), fontWeight = FontWeight.SemiBold)
+                            Text(event.title.removePrefix("🌈").removePrefix("🧺").trim(), fontWeight = FontWeight.SemiBold)
                             Text("${event.date.format(formatter)} · ${event.time}", color = Muted, fontSize = 12.sp)
                             if (event.source == "sportadmin") {
                                 Text("SportAdmin · hanteras via importen", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
@@ -81,6 +84,19 @@ internal fun MemberAgendaDialog(
                                 }
                             }
                         }
+                    }
+                }
+                if (deletableUpcoming.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { confirmDeleteAll = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Ta bort alla framtida (${deletableUpcoming.size})")
+                    }
+                    if (upcoming.size != deletableUpcoming.size) {
+                        Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)
                     }
                 }
             }
@@ -103,7 +119,7 @@ internal fun MemberAgendaDialog(
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Ta bort aktivitet?") },
-            text = { Text(event.title.removePrefix("🌈").trim()) },
+            text = { Text(event.title.removePrefix("🌈").removePrefix("🧺").trim()) },
             confirmButton = {
                 Button(onClick = {
                     onDelete(event)
@@ -111,6 +127,27 @@ internal fun MemberAgendaDialog(
                 }) { Text("Ta bort") }
             },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("Avbryt") } }
+        )
+    }
+
+    if (confirmDeleteAll) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteAll = false },
+            title = { Text("Ta bort alla framtida aktiviteter?") },
+            text = {
+                Text("${deletableUpcoming.size} framtida ${if (deletableUpcoming.size == 1) "aktivitet" else "aktiviteter"} för ${member.name} tas bort. Tidigare aktiviteter sparas.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteAll(deletableUpcoming)
+                        confirmDeleteAll = false
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Ta bort alla") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteAll = false }) { Text("Avbryt") } }
         )
     }
 }
@@ -123,7 +160,8 @@ private fun MemberAgendaEditDialog(
 ) {
     val context = LocalContext.current
     val birthday = event.title.startsWith("🌈")
-    var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").trim()) }
+    val laundry = event.title.startsWith("🧺")
+    var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").removePrefix("🧺").trim()) }
     var date by remember(event.id) { mutableStateOf(event.date) }
     var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
 
@@ -151,7 +189,14 @@ private fun MemberAgendaEditDialog(
         confirmButton = {
             Button(
                 enabled = title.isNotBlank(),
-                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time) }
+                onClick = {
+                    val prefix = when {
+                        birthday -> "🌈 "
+                        laundry -> "🧺 "
+                        else -> ""
+                    }
+                    onSave(prefix + title.trim(), date, time)
+                }
             ) { Text("Spara") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
