@@ -17,7 +17,37 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Make rotating work week editor scrollable
+      - name: Move calendar viewport upward
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
+          s = p.read_text()
+          anchor = 'FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }'
+          pos = s.index(anchor)
+          before = s[:pos]
+          after = s[pos:]
+          old = '''                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(590.dp)
+                    ) {'''
+          new = '''                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .offset(y = (-38).dp)
+                            .height(590.dp)
+                    ) {'''
+          if new in after:
+              print('Calendar already shifted upward')
+          elif old in after:
+              after = after.replace(old, new, 1)
+              p.write_text(before + after)
+          else:
+              raise SystemExit('Calendar viewport block not found')
+          PY
+      - name: Keep rotating work week editor scrollable
         shell: bash
         run: |
           python3 <<'PY'
@@ -41,10 +71,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
           if git diff --cached --quiet; then
             echo "Already fixed"
             exit 0
           fi
-          git commit -m "Make rotating work week editor scrollable"
+          git commit -m "Move calendar viewport upward"
           git push
