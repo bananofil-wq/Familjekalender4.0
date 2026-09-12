@@ -111,6 +111,8 @@ internal fun FamilyAssistantCard(
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBg),
         shape = RoundedCornerShape(22.dp),
+        border = null,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Column(Modifier.padding(18.dp)) {

@@ -74,14 +74,14 @@ private fun PreviewScreen(screen: String) {
                         "shopping" -> PreviewShopping()
                         "todo" -> PreviewTodo()
                         "settings" -> PreviewSettings()
-                        else -> ExactCalendarScreen(
+                        else -> CalendarHomeLayout(assistant = {}, calendar = { ExactCalendarScreen(
                             selectedDate = selectedDate,
                             onSelect = { selectedDate = it },
                             events = events,
                             members = members,
                             palette = palette,
                             onAdd = {}
-                        )
+                        ) })
                     }
                 }
             }

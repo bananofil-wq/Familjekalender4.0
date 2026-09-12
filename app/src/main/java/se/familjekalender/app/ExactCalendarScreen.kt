@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +60,23 @@ private data class WorkRotationWeekDraft(
     val endTime: String,
     val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime }
 )
+
+/** Reserve six full week rows even when the assistant grows or the phone is short. */
+@Composable
+internal fun CalendarHomeLayout(
+    assistant: @Composable () -> Unit,
+    calendar: @Composable () -> Unit
+) {
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+    Column(
+        Modifier.fillMaxSize().background(Color.Black).verticalScroll(rememberScrollState())
+    ) {
+        assistant()
+        Box(Modifier.fillMaxWidth().height(480.dp * fontScale)) {
+            calendar()
+        }
+    }
+}
 
 @Composable
 internal fun ExactCalendarScreen(
@@ -92,12 +110,7 @@ internal fun ExactCalendarScreen(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
-        // Keep enough vertical room for the complete six-week month grid.
-        // The photo remains at its natural ratio and simply becomes smaller on
-        // short phones instead of squeezing the calendar cells to zero height.
-        val calendarMinHeight = 300.dp
-        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(96.dp, 160.dp)
-        SeasonalPhoto(mode, Modifier.align(Alignment.TopCenter).height(heroHeight))
+        SeasonalPhoto(mode, Modifier.matchParentSize())
 
         fun settleMonth(delta: Long, widthPx: Float) {
             if (widthPx <= 0f) return
@@ -117,14 +130,10 @@ internal fun ExactCalendarScreen(
                 .padding(horizontal = 6.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (mode != ThemeMode.CLASSIC) {
-                Spacer(Modifier.height(heroHeight))
-            }
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .heightIn(min = calendarMinHeight)
                     .clipToBounds()
                     .pointerInput(month) {
                         detectHorizontalDragGestures(
@@ -508,9 +517,9 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
     Image(
         painter = painterResource(imageRes),
         contentDescription = null,
-        modifier = modifier.aspectRatio(1.52f),
+        modifier = modifier,
         contentScale = ContentScale.Fit,
-        alignment = Alignment.TopCenter
+        alignment = Alignment.Center
     )
 }
 
@@ -530,7 +539,7 @@ private fun MonthPanel(
     val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
     val weekFields = WeekFields.of(Locale("sv", "SE"))
 
-    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xBF131820))) {
+    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0x55131820))) {
         Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
