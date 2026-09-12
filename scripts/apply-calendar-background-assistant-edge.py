@@ -47,3 +47,5 @@ if old in text:
 elif new not in text:
     raise SystemExit('Could not find assistant card block to patch')
 assistant.write_text(text, encoding='utf-8')
+
+# Build trigger: source fix verified in ExactCalendarScreen.kt.
