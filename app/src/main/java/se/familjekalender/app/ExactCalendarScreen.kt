@@ -95,8 +95,10 @@ internal fun ExactCalendarScreen(
         // Keep enough vertical room for the complete six-week month grid.
         // The photo remains at its natural ratio and simply becomes smaller on
         // short phones instead of squeezing the calendar cells to zero height.
-        val calendarMinHeight = 300.dp
-        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(96.dp, 160.dp)
+        val calendarMinHeight = 390.dp
+        // Keep some of the seasonal artwork visible above the calendar, but never let
+        // that hero area steal the height needed by the six week rows.
+        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(72.dp, 135.dp)
         SeasonalPhoto(mode, Modifier.matchParentSize())
 
         fun settleMonth(delta: Long, widthPx: Float) {

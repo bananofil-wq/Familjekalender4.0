@@ -240,9 +240,21 @@ private fun SyncedApp(
     Scaffold(containerColor = Bg, bottomBar = { BottomNav(selectedTab) { selectedTab = it } }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedTab == 0) {
-                Column(Modifier.fillMaxSize()) {
+                // The assistant card can be quite tall on busy days. Let the calendar tab
+                // scroll instead of forcing the month grid into whatever height remains.
+                // ExactCalendarScreen gets a stable viewport so all six week rows keep
+                // their intended proportions on different phone aspect ratios.
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
                     FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
-                    Box(Modifier.weight(1f)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(590.dp)
+                    ) {
                         ExactCalendarScreen(
                             selectedDate,
                             { selectedDate = it },
