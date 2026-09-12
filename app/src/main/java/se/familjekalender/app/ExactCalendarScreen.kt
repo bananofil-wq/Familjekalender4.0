@@ -67,7 +67,7 @@ internal fun ExactCalendarScreen(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     palette: SeasonPalette,
-    themeMode: ThemeMode,
+    themeMode: ThemeMode = palette.mode,
     onAdd: () -> Unit,
     addMenuRequest: Int = 0
 ) {
