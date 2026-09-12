@@ -1,3 +1,4 @@
+# Calendar viewport patch is verified in source; this commit triggers a signed update build.
 name: Apply calendar enhancements
 
 on:
