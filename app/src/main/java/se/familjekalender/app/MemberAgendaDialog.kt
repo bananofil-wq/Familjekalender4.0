@@ -40,7 +40,13 @@ internal fun MemberAgendaDialog(
     val formatter = remember { DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale("sv", "SE")) }
     var editing by remember { mutableStateOf<SyncEvent?>(null) }
     var deleting by remember { mutableStateOf<SyncEvent?>(null) }
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf(setOf<String>()) }
+    var confirmDeleteSelected by remember { mutableStateOf(false) }
     var confirmDeleteAll by remember { mutableStateOf(false) }
+    val selectedEvents = remember(deletableUpcoming, selectedIds) {
+        deletableUpcoming.filter { it.id in selectedIds }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -65,17 +71,38 @@ internal fun MemberAgendaDialog(
                 Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (deletableUpcoming.size > 1) {
+                    TextButton(onClick = {
+                        selectionMode = !selectionMode
+                        if (!selectionMode) selectedIds = emptySet()
+                    }) {
+                        Text(if (selectionMode) "Avbryt val" else "Välj flera")
+                    }
+                }
                 if (upcoming.isEmpty()) {
                     Text("Inget är planerat framöver för ${member.name}.", color = Muted)
                 }
                 upcoming.forEach { event ->
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF222027))) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                            Text(event.title.removePrefix("🌈").removePrefix("🧺").trim(), fontWeight = FontWeight.SemiBold)
-                            Text("${event.date.format(formatter)} · ${event.time}", color = Muted, fontSize = 12.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (selectionMode && event.source != "sportadmin") {
+                                    Checkbox(
+                                        checked = event.id in selectedIds,
+                                        onCheckedChange = { checked ->
+                                            selectedIds = if (checked) selectedIds + event.id else selectedIds - event.id
+                                        }
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(event.title.removePrefix("🌈").removePrefix("🧺").trim(), fontWeight = FontWeight.SemiBold)
+                                    Text("${event.date.format(formatter)} · ${event.time}", color = Muted, fontSize = 12.sp)
+                                }
+                            }
                             if (event.source == "sportadmin") {
                                 Text("SportAdmin · hanteras via importen", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
-                            } else {
+                            } else if (!selectionMode) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     TextButton(onClick = { editing = event }) { Text("Redigera") }
                                     TextButton(onClick = { deleting = event }) {
@@ -85,6 +112,13 @@ internal fun MemberAgendaDialog(
                             }
                         }
                     }
+                }
+                if (selectionMode && selectedEvents.isNotEmpty()) {
+                    Button(
+                        onClick = { confirmDeleteSelected = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Ta bort valda (${selectedEvents.size})") }
                 }
                 if (deletableUpcoming.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
@@ -127,6 +161,27 @@ internal fun MemberAgendaDialog(
                 }) { Text("Ta bort") }
             },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("Avbryt") } }
+        )
+    }
+
+    if (confirmDeleteSelected) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteSelected = false },
+            title = { Text("Ta bort ${selectedEvents.size} valda aktiviteter?") },
+            text = { Text("De valda framtida aktiviteterna för ${member.name} tas bort. Tidigare aktiviteter sparas.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteAll(selectedEvents)
+                        selectedIds = emptySet()
+                        selectionMode = false
+                        confirmDeleteSelected = false
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Ta bort valda") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteSelected = false }) { Text("Avbryt") } }
         )
     }
 
