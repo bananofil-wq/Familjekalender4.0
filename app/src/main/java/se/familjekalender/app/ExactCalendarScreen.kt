@@ -75,6 +75,7 @@ internal fun ExactCalendarScreen(
     var showAddMenu by remember { mutableStateOf(false) }
     var showWorkMonth by remember { mutableStateOf(false) }
     var showWorkRotation by remember { mutableStateOf(false) }
+    var showSchoolSchedule by remember { mutableStateOf(false) }
     var showManageMonth by remember { mutableStateOf(false) }
     var dayPopupDate by remember { mutableStateOf<LocalDate?>(null) }
     var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
@@ -227,8 +228,15 @@ internal fun ExactCalendarScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Lägg till arbetsvecka") }
+                    Button(
+                        onClick = {
+                            showAddMenu = false
+                            showSchoolSchedule = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Förskola / skola") }
                     Text(
-                        "Arbetsmånad låter dig ange olika tider för olika veckodagar och fyller hela månaden åt dig.",
+                        "Arbetsmånad och förskola/skola låter dig lägga återkommande tider utan att mata in varje dag för hand.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
                         fontSize = 12.sp
                     )
@@ -258,6 +266,18 @@ internal fun ExactCalendarScreen(
             onDismiss = { showWorkRotation = false },
             onChanged = {
                 showWorkRotation = false
+                refreshActivity()
+            }
+        )
+    }
+
+    if (showSchoolSchedule) {
+        SchoolScheduleDialog(
+            members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+            selectedDate = selectedDate,
+            onDismiss = { showSchoolSchedule = false },
+            onChanged = {
+                showSchoolSchedule = false
                 refreshActivity()
             }
         )
