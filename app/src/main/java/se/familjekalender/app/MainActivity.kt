@@ -240,9 +240,9 @@ private fun SyncedApp(
     Scaffold(containerColor = Bg, bottomBar = { BottomNav(selectedTab) { selectedTab = it } }) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedTab == 0) {
-                Column(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().background(Color.Black).verticalScroll(rememberScrollState())) {
                     FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
-                    Box(Modifier.weight(1f)) {
+                    Box(Modifier.fillMaxWidth().height(480.dp)) {
                         ExactCalendarScreen(
                             selectedDate,
                             { selectedDate = it },
