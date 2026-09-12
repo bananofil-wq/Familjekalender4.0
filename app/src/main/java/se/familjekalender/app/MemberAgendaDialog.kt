@@ -113,29 +113,28 @@ internal fun MemberAgendaDialog(
                         }
                     }
                 }
-                if (selectionMode && selectedEvents.isNotEmpty()) {
-                    Button(
-                        onClick = { confirmDeleteSelected = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) { Text("Ta bort valda (${selectedEvents.size})") }
-                }
-                if (deletableUpcoming.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { confirmDeleteAll = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Ta bort alla framtida (${deletableUpcoming.size})")
-                    }
-                    if (upcoming.size != deletableUpcoming.size) {
-                        Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)
-                    }
+                if (upcoming.size != deletableUpcoming.size) {
+                    Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+        confirmButton = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (selectionMode && selectedEvents.isNotEmpty()) {
+                    TextButton(onClick = { confirmDeleteSelected = true }) {
+                        Text("Ta bort valda (${selectedEvents.size})", color = MaterialTheme.colorScheme.error)
+                    }
+                } else if (!selectionMode && deletableUpcoming.isNotEmpty()) {
+                    TextButton(onClick = { confirmDeleteAll = true }) {
+                        Text("Ta bort alla (${deletableUpcoming.size})", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("Stäng") }
+            }
+        }
     )
 
     editing?.let { event ->
