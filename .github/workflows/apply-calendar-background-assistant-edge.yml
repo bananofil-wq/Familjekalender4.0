@@ -1,0 +1,25 @@
+name: Apply calendar background and assistant edge fix
+
+on:
+  push:
+    paths:
+      - 'scripts/apply-calendar-background-assistant-edge.py'
+      - '.github/workflows/apply-calendar-background-assistant-edge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply visual fixes
+        run: python scripts/apply-calendar-background-assistant-edge.py
+      - name: Commit visual fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/FamilyAssistantScreen.kt
+          git diff --cached --quiet || git commit -m "Restore calendar background and remove assistant outer edge"
+          git push
