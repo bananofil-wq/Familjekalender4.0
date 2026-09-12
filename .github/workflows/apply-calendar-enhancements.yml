@@ -1,4 +1,3 @@
-# Calendar viewport patch is verified in source; this commit triggers a signed update build.
 name: Apply calendar enhancements
 
 on:
@@ -18,46 +17,36 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Move calendar viewport upward
+
+      - name: Move only the month panel upward
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
-          p = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
-          s = p.read_text()
-          anchor = 'FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }'
-          pos = s.index(anchor)
-          before = s[:pos]
-          after = s[pos:]
-          old = '.height(590.dp)'
-          new = '.offset(y = (-38).dp)\n                            .height(590.dp)'
-          if '.offset(y = (-38).dp)' in after:
-              print('Calendar already shifted upward')
-          elif old in after:
-              after = after.replace(old, new, 1)
-              p.write_text(before + after)
+
+          main = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
+          s = main.read_text()
+          old = '''                            .fillMaxWidth()\n                            .offset(y = (-38).dp)\n                            .height(590.dp)'''
+          new = '''                            .fillMaxWidth()\n                            .height(590.dp)'''
+          if old in s:
+              s = s.replace(old, new, 1)
+              main.write_text(s)
+          elif '.offset(y = (-38).dp)' in s:
+              raise SystemExit('Unexpected -38dp offset remains in MainActivity')
+
+          cal = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
+          s = cal.read_text()
+          anchor = '''            BoxWithConstraints(\n                modifier = Modifier\n                    .fillMaxWidth()\n                    .weight(1f)'''
+          replacement = '''            BoxWithConstraints(\n                modifier = Modifier\n                    .fillMaxWidth()\n                    .offset(y = (-38).dp)\n                    .weight(1f)'''
+          if replacement in s:
+              print('Month panel already shifted upward')
+          elif anchor in s:
+              s = s.replace(anchor, replacement, 1)
+              cal.write_text(s)
           else:
-              raise SystemExit('Calendar height marker not found')
+              raise SystemExit('Month panel anchor not found')
           PY
-      - name: Keep rotating work week editor scrollable
-        shell: bash
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-          p = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
-          s = p.read_text()
-          marker = 'title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) },'
-          pos = s.index(marker)
-          before = s[:pos]
-          after = s[pos:]
-          old = 'Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {'
-          new = 'Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {'
-          if old in after:
-              after = after.replace(old, new, 1)
-              p.write_text(before + after)
-          elif new not in after:
-              raise SystemExit('Rotation editor column not found')
-          PY
+
       - name: Commit source fix
         shell: bash
         run: |
@@ -68,5 +57,5 @@ jobs:
             echo "Already fixed"
             exit 0
           fi
-          git commit -m "Move calendar viewport upward"
+          git commit -m "Move only calendar date panel upward"
           git push
