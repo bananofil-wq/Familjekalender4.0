@@ -312,6 +312,7 @@ internal fun ExactCalendarScreen(
         DayOverviewPopup(
             date = popupDate,
             events = events.filter { it.date == popupDate }.sortedBy { it.time },
+            allEvents = events,
             members = members,
             onDismiss = { dayPopupDate = null },
             onAdd = {
@@ -328,6 +329,18 @@ internal fun ExactCalendarScreen(
                 if (session != null) {
                     scope.launch {
                         runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }
+                            .onSuccess {
+                                dayPopupDate = null
+                                refreshActivity()
+                            }
+                    }
+                }
+            },
+            onDeleteMany = { eventsToDelete ->
+                val session = currentFamilySession(context)
+                if (session != null) {
+                    scope.launch {
+                        runCatching { deleteCalendarEventsDirect(session, eventsToDelete.map { it.id }) }
                             .onSuccess {
                                 dayPopupDate = null
                                 refreshActivity()
@@ -387,14 +400,17 @@ internal fun ExactCalendarScreen(
 private fun DayOverviewPopup(
     date: LocalDate,
     events: List<SyncEvent>,
+    allEvents: List<SyncEvent>,
     members: List<SyncMember>,
     onDismiss: () -> Unit,
     onAdd: () -> Unit,
     onEdit: (SyncEvent) -> Unit,
-    onDelete: (SyncEvent) -> Unit
+    onDelete: (SyncEvent) -> Unit,
+    onDeleteMany: (List<SyncEvent>) -> Unit
 ) {
     val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
     val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
+    var deleteChoiceEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -466,7 +482,7 @@ private fun DayOverviewPopup(
                                             Text("Redigera", fontSize = 10.sp)
                                         }
                                         TextButton(
-                                            onClick = { onDelete(event) },
+                                            onClick = { deleteChoiceEvent = event },
                                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                                         ) {
                                             Text("Ta bort", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
@@ -488,6 +504,44 @@ private fun DayOverviewPopup(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
     )
+
+    deleteChoiceEvent?.let { event ->
+        val today = LocalDate.now()
+        val series = allEvents.filter { candidate ->
+            candidate.source != "sportadmin" &&
+                candidate.memberId == event.memberId &&
+                candidate.title == event.title &&
+                !candidate.date.isBefore(today)
+        }.sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+
+        AlertDialog(
+            onDismissRequest = { deleteChoiceEvent = null },
+            title = { Text("Ta bort aktivitet") },
+            text = {
+                Text(
+                    if (series.size > 1)
+                        "Ta bort bara denna förekomst eller hela den återkommande serien (${series.size} framtida aktiviteter)?"
+                    else
+                        "Ta bort denna aktivitet?"
+                )
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (series.size > 1) {
+                        TextButton(onClick = {
+                            onDeleteMany(series)
+                            deleteChoiceEvent = null
+                        }) { Text("Hela serien", color = MaterialTheme.colorScheme.error) }
+                    }
+                    Button(onClick = {
+                        onDelete(event)
+                        deleteChoiceEvent = null
+                    }) { Text("Bara denna") }
+                }
+            },
+            dismissButton = { TextButton(onClick = { deleteChoiceEvent = null }) { Text("Avbryt") } }
+        )
+    }
 }
 
 @Composable

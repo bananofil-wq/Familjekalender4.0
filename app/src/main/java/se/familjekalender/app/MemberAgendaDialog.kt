@@ -133,7 +133,7 @@ internal fun MemberAgendaDialog(
     if (confirmDeleteAll) {
         AlertDialog(
             onDismissRequest = { confirmDeleteAll = false },
-            title = { Text("Ta bort alla framtida aktiviteter?") },
+            title = { Text("Ta bort alla ${deletableUpcoming.size} framtida aktiviteter för ${member.name}?") },
             text = {
                 Text("${deletableUpcoming.size} framtida ${if (deletableUpcoming.size == 1) "aktivitet" else "aktiviteter"} för ${member.name} tas bort. Tidigare aktiviteter sparas.")
             },
