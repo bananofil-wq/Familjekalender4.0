@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Settings
@@ -324,6 +325,7 @@ private fun SyncedApp(
                                 refresh()
                             }
                         }
+                        5 -> FamilyLocationScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID })
                     }
                 }
             }
@@ -483,7 +485,8 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Icons.Default.ShoppingCart to "Inköp",
             Icons.Default.CheckCircle to "To-Do",
             Icons.Default.People to "Familj",
-            Icons.Default.Settings to "Inställningar"
+            Icons.Default.Settings to "Inställningar",
+            Icons.Default.LocationOn to "Plats"
         ).forEachIndexed { i, (icon, label) ->
             NavigationBarItem(
                 selected == i,
