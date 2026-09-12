@@ -280,6 +280,7 @@ private fun SyncedApp(
                         2 -> ToDoScreen(session)
                         3 -> EditableFamilyScreen(
                             members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                            events,
                             { name, role ->
                                 scope.launch {
                                     val realMemberCount = members.count { it.id != ALL_FAMILY_MEMBER_ID }
@@ -290,6 +291,18 @@ private fun SyncedApp(
                             { member, color ->
                                 scope.launch {
                                     SupabaseSync.updateMemberColor(session, member.id, color)
+                                    refresh()
+                                }
+                            },
+                            { event, title, date, time ->
+                                scope.launch {
+                                    SupabaseSync.updateEvent(session, event.id, title, date, time, event.memberId)
+                                    refresh()
+                                }
+                            },
+                            { event ->
+                                scope.launch {
+                                    deleteCalendarEventsDirect(session, listOf(event.id))
                                     refresh()
                                 }
                             }

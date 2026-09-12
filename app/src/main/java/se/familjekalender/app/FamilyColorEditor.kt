@@ -28,21 +28,25 @@ private val EditableMemberColors = listOf(
 @Composable
 internal fun EditableFamilyScreen(
     members: List<SyncMember>,
+    events: List<SyncEvent>,
     onAdd: (String, String) -> Unit,
-    onColorChange: (SyncMember, Long) -> Unit
+    onColorChange: (SyncMember, Long) -> Unit,
+    onEventEdit: (SyncEvent, String, java.time.LocalDate, String) -> Unit,
+    onEventDelete: (SyncEvent) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
     var editingMember by remember { mutableStateOf<SyncMember?>(null) }
+    var agendaMember by remember { mutableStateOf<SyncMember?>(null) }
 
     Text("Familjen", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-    Text("Tryck på en person för att byta färg", color = Muted, fontSize = 12.sp)
+    Text("Tryck på en person för att se planeringen framöver", color = Muted, fontSize = 12.sp)
     Spacer(Modifier.height(8.dp))
 
     members.forEach { member ->
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBg),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { editingMember = member }
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { agendaMember = member }
         ) {
             Row(
                 Modifier.fillMaxWidth().padding(12.dp),
@@ -57,7 +61,7 @@ internal fun EditableFamilyScreen(
                     Text(member.name)
                     if (member.role.isNotBlank()) Text(member.role, color = Muted, fontSize = 11.sp)
                 }
-                Text("Byt färg", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+                TextButton(onClick = { editingMember = member }) { Text("Färg", fontSize = 11.sp) }
             }
         }
     }
@@ -75,6 +79,16 @@ internal fun EditableFamilyScreen(
         },
         modifier = Modifier.fillMaxWidth()
     ) { Text("Lägg till person") }
+
+    agendaMember?.let { member ->
+        MemberAgendaDialog(
+            member = member,
+            events = events,
+            onDismiss = { agendaMember = null },
+            onEdit = onEventEdit,
+            onDelete = onEventDelete
+        )
+    }
 
     editingMember?.let { member ->
         AlertDialog(
