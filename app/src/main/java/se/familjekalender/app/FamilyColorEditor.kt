@@ -33,7 +33,7 @@ internal fun EditableFamilyScreen(
     onColorChange: (SyncMember, Long) -> Unit,
     onEventEdit: (SyncEvent, String, java.time.LocalDate, String) -> Unit,
     onEventDelete: (SyncEvent) -> Unit,
-    onEventsDelete: (List<SyncEvent>) -> Unit
+    onEventsDelete: (List<SyncEvent>) -> Unit = { eventsToDelete -> eventsToDelete.forEach(onEventDelete) }
 ) {
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
