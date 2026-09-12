@@ -1,3 +1,4 @@
+# Source patches below are already applied; this commit triggers a signed build containing them.
 name: Apply calendar enhancements
 
 on:
