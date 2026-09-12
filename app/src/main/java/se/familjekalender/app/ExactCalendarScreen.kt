@@ -60,6 +60,14 @@ private data class WorkRotationWeekDraft(
     val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime }
 )
 
+private fun isLaundryEvent(event: SyncEvent): Boolean {
+    val title = event.title.trim()
+    return title.startsWith("🧺") || title.equals("Tvätt", ignoreCase = true)
+}
+
+private fun displayEventTitle(event: SyncEvent): String =
+    event.title.removePrefix("🌈").removePrefix("🧺").trim()
+
 @Composable
 internal fun ExactCalendarScreen(
     selectedDate: LocalDate,
@@ -69,6 +77,7 @@ internal fun ExactCalendarScreen(
     palette: SeasonPalette,
     themeMode: ThemeMode = palette.mode,
     onAdd: () -> Unit,
+    onAddLaundry: () -> Unit,
     addMenuRequest: Int = 0
 ) {
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
@@ -235,6 +244,13 @@ internal fun ExactCalendarScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Förskola / skola") }
+                    Button(
+                        onClick = {
+                            showAddMenu = false
+                            onAddLaundry()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("🧺 Tvätt") }
                     Text(
                         "Arbetsmånad och förskola/skola låter dig lägga återkommande tider utan att mata in varje dag för hand.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
@@ -397,6 +413,7 @@ private fun DayOverviewPopup(
                         val member = members.find { it.id == event.memberId }
                         val allFamily = event.memberId == ALL_FAMILY_MEMBER_ID
                         val birthday = isBirthdayEvent(event)
+                        val laundry = isLaundryEvent(event)
                         val dotColor = if (allFamily) Color(0xFFFFD75E) else member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
 
                         Surface(
@@ -410,13 +427,14 @@ private fun DayOverviewPopup(
                             ) {
                                 when {
                                     birthday -> BirthdayRainbowIcon(Modifier.size(width = 26.dp, height = 20.dp))
+                                    laundry -> Text("🧺", fontSize = 20.sp, lineHeight = 22.sp)
                                     allFamily -> Text("★", color = Color(0xFFFFD75E), fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                     else -> Box(Modifier.size(13.dp).clip(CircleShape).background(dotColor))
                                 }
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        event.title.removePrefix("🌈").trim(),
+                                        displayEventTitle(event),
                                         color = Color.White,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 14.sp
@@ -606,12 +624,14 @@ private fun MonthPanel(
                         } else {
                             val allDayEvents = events.filter { it.date == day }
                             val firstBirthday = allDayEvents.firstOrNull { isBirthdayEvent(it) }
-                            val firstAllFamily = allDayEvents.firstOrNull { !isBirthdayEvent(it) && it.memberId == ALL_FAMILY_MEMBER_ID }
+                            val firstLaundry = allDayEvents.firstOrNull { isLaundryEvent(it) }
+                            val firstAllFamily = allDayEvents.firstOrNull { !isBirthdayEvent(it) && !isLaundryEvent(it) && it.memberId == ALL_FAMILY_MEMBER_ID }
                             val uniqueMembers = allDayEvents
-                                .filter { !isBirthdayEvent(it) && it.memberId != ALL_FAMILY_MEMBER_ID }
+                                .filter { !isBirthdayEvent(it) && !isLaundryEvent(it) && it.memberId != ALL_FAMILY_MEMBER_ID }
                                 .distinctBy { it.memberId }
                             buildList {
                                 if (firstBirthday != null) add(firstBirthday)
+                                if (firstLaundry != null) add(firstLaundry)
                                 if (firstAllFamily != null) add(firstAllFamily)
                                 addAll(uniqueMembers)
                             }.take(3)
@@ -656,6 +676,7 @@ private fun MonthPanel(
                                         dayEvents.forEach { event ->
                                             when {
                                                 isBirthdayEvent(event) -> BirthdayRainbowIcon(Modifier.size(width = 20.dp, height = 16.dp))
+                                                isLaundryEvent(event) -> Text("🧺", fontSize = 14.sp, lineHeight = 16.sp)
                                                 event.memberId == ALL_FAMILY_MEMBER_ID -> Text(
                                                     "★",
                                                     color = Color(0xFFFFD75E),
@@ -734,6 +755,7 @@ private fun DayPanel(
                     val member = members.find { it.id == event.memberId }
                     val allFamily = event.memberId == ALL_FAMILY_MEMBER_ID
                     val birthday = isBirthdayEvent(event)
+                    val laundry = isLaundryEvent(event)
                     val dotColor = if (allFamily) Color(0xFFFFD75E) else member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
                     Surface(
                         color = Color(0xD9191D24),
@@ -746,6 +768,8 @@ private fun DayPanel(
                         ) {
                             if (birthday) {
                                 Text("🌈", fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.width(32.dp))
+                            } else if (laundry) {
+                                Text("🧺", fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.width(32.dp))
                             } else if (allFamily) {
                                 Text("★", color = Color(0xFFFFD75E), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(32.dp))
                             } else {
@@ -754,7 +778,7 @@ private fun DayPanel(
                             }
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    event.title.removePrefix("🌈").trim(),
+                                    displayEventTitle(event),
                                     color = Color.White,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 13.sp,
@@ -779,7 +803,7 @@ private fun DayPanel(
         val currentMember = members.find { it.id == event.memberId }
         AlertDialog(
             onDismissRequest = { selectedEvent = null },
-            title = { Text(event.title.removePrefix("🌈").trim()) },
+            title = { Text(displayEventTitle(event)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Tid: ${event.time.ifBlank { "Ingen tid" }}")

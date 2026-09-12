@@ -214,6 +214,7 @@ private fun SyncedApp(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showAddEvent by remember { mutableStateOf(false) }
+    var addEventInitialTitle by remember { mutableStateOf("") }
     var assistantAddRequest by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("") }
 
@@ -262,7 +263,14 @@ private fun SyncedApp(
                             members,
                             palette,
                             themeMode,
-                            onAdd = { showAddEvent = true },
+                            onAdd = {
+                                addEventInitialTitle = ""
+                                showAddEvent = true
+                            },
+                            onAddLaundry = {
+                                addEventInitialTitle = "🧺 Tvätt"
+                                showAddEvent = true
+                            },
                             addMenuRequest = assistantAddRequest
                         )
                     }
@@ -325,7 +333,7 @@ private fun SyncedApp(
     AutomaticUpdateNotice()
 
     if (showAddEvent) {
-        AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday, recurrence ->
+        AddEventDialog(members, selectedDate, addEventInitialTitle, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday, recurrence ->
             scope.launch {
                 if (birthday) {
                     val today = LocalDate.now()
@@ -496,12 +504,13 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
 private fun AddEventDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
+    initialTitle: String = "",
     onDismiss: () -> Unit,
     onAdd: (String, String, String, String?, List<LocalDate>, Boolean, RecurrenceMode) -> Unit
 ) {
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
-    var title by remember { mutableStateOf("") }
+    var title by remember(initialTitle) { mutableStateOf(initialTitle) }
     var startTime by remember { mutableStateOf("18:00") }
     var endTime by remember { mutableStateOf("19:00") }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
