@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +60,23 @@ private data class WorkRotationWeekDraft(
     val endTime: String,
     val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime }
 )
+
+/** Reserve six full week rows even when the assistant grows or the phone is short. */
+@Composable
+internal fun CalendarHomeLayout(
+    assistant: @Composable () -> Unit,
+    calendar: @Composable () -> Unit
+) {
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+    Column(
+        Modifier.fillMaxSize().background(Color.Black).verticalScroll(rememberScrollState())
+    ) {
+        assistant()
+        Box(Modifier.fillMaxWidth().height(480.dp * fontScale)) {
+            calendar()
+        }
+    }
+}
 
 @Composable
 internal fun ExactCalendarScreen(
