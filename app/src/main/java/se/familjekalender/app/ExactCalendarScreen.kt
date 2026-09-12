@@ -142,6 +142,7 @@ internal fun ExactCalendarScreen(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .offset(y = (-38).dp)
                     .weight(1f)
                     .heightIn(min = calendarMinHeight)
                     .clipToBounds()

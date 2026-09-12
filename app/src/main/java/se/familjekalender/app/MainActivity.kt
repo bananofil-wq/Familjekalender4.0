@@ -254,7 +254,6 @@ private fun SyncedApp(
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .offset(y = (-38).dp)
                             .height(590.dp)
                     ) {
                         ExactCalendarScreen(
