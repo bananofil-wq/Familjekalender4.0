@@ -58,6 +58,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     var placeName by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var memberMenu by remember { mutableStateOf(false) }
+    var pendingEnableSharing by remember { mutableStateOf(false) }
     var showAddPlace by remember { mutableStateOf(false) }
     var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
 
@@ -113,6 +114,31 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             prefs.edit().putBoolean("sharing_enabled", false).apply()
             status = "Platsbehörighet krävs"
         } else if (sharing) {
+            status = "Platsdelning aktiverad"
+            scope.launch { publishNow() }
+        }
+    }
+
+    fun startSharing() {
+        val memberId = selectedMemberId
+        if (memberId == null) {
+            pendingEnableSharing = true
+            memberMenu = true
+            status = "Välj vem den här telefonen tillhör"
+            return
+        }
+        sharing = true
+        prefs.edit().putBoolean("sharing_enabled", true).apply()
+        status = "Platsdelning aktiveras…"
+        if (!hasLocationPermission()) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            status = "Platsdelning aktiverad"
             scope.launch { publishNow() }
         }
     }
@@ -324,19 +350,13 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     Switch(
                         checked = sharing,
                         onCheckedChange = { enabled ->
-                            if (enabled && !hasLocationPermission()) {
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
-                                    )
-                                )
-                            }
-                            sharing = enabled
-                            prefs.edit().putBoolean("sharing_enabled", enabled).apply()
                             if (enabled) {
-                                scope.launch { publishNow() }
+                                startSharing()
                             } else {
+                                pendingEnableSharing = false
+                                sharing = false
+                                prefs.edit().putBoolean("sharing_enabled", false).apply()
+                                status = "Platsdelning pausad"
                                 selectedMemberId?.let { id ->
                                     scope.launch {
                                         runCatching { FamilyLocationSync.stopSharing(session, id) }
@@ -345,7 +365,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                                 }
                             }
                         },
-                        enabled = selectedMemberId != null
+                        enabled = familyMembers.isNotEmpty()
                     )
                 }
 
@@ -361,10 +381,27 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                             DropdownMenuItem(
                                 text = { Text(member.name) },
                                 onClick = {
+                                    val shouldEnable = pendingEnableSharing
                                     selectedMemberId = member.id
                                     selectedMapMember = member.id
                                     prefs.edit().putString("device_member_id", member.id).apply()
                                     memberMenu = false
+                                    pendingEnableSharing = false
+                                    if (shouldEnable) {
+                                        sharing = true
+                                        prefs.edit().putBoolean("sharing_enabled", true).apply()
+                                        if (!hasLocationPermission()) {
+                                            permissionLauncher.launch(
+                                                arrayOf(
+                                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                                )
+                                            )
+                                        } else {
+                                            status = "Platsdelning aktiverad"
+                                            scope.launch { publishNow() }
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -376,7 +413,11 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     "Dela min plats",
                     if (sharing) "Syns för familjens medlemmar" else "Avstängd"
                 ) {
-                    if (sharing) scope.launch { publishNow() }
+                    if (sharing) {
+                        scope.launch { publishNow() }
+                    } else {
+                        startSharing()
+                    }
                 }
 
                 SettingRow(
@@ -522,6 +563,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
 
                 OutlinedButton(
                     onClick = {
+                        pendingEnableSharing = false
                         sharing = false
                         prefs.edit().putBoolean("sharing_enabled", false).apply()
                         selectedMemberId?.let { id ->
@@ -693,7 +735,8 @@ private fun FamilyMap(
             <style>
                 html,body,#map{height:100%;margin:0;background:#0d111c}
                 .leaflet-tile{filter:brightness(.42) saturate(.72) hue-rotate(185deg) contrast(1.08)}
-                .leaflet-control-attribution{display:none}
+                .leaflet-control-attribution{font-size:9px;background:rgba(13,17,28,.72);color:#b9b6c3}
+                .leaflet-control-attribution a{color:#c4b5fd}
                 .nameTag{background:#17151f;color:white;border:0;border-radius:12px;padding:5px 8px;font:600 12px sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.35)}
             </style>
         </head>
@@ -701,8 +744,8 @@ private fun FamilyMap(
             <div id='map'></div>
             <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
             <script>
-                var map=L.map('map',{zoomControl:false,attributionControl:false}).setView([$lat,$lon],13);
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+                var map=L.map('map',{zoomControl:false,attributionControl:true}).setView([$lat,$lon],13);
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
                 $markers
             </script>
         </body>
