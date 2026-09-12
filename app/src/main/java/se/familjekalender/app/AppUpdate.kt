@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -227,6 +230,64 @@ private fun launchInstaller(context: Context, apkUri: Uri) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     )
+}
+
+@Composable
+internal fun AutomaticUpdateNotice() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val currentVersion = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "0.0.0"
+    }
+    var availableUpdate by remember { mutableStateOf<AvailableUpdate?>(null) }
+    var updating by remember { mutableStateOf(false) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(currentVersion) {
+        runCatching { findAvailableUpdate(currentVersion) }
+            .onSuccess { availableUpdate = it }
+    }
+
+    availableUpdate?.let { update ->
+        AlertDialog(
+            onDismissRequest = { availableUpdate = null },
+            title = { Text("Ny uppdatering finns") },
+            text = {
+                Column {
+                    Text("Familjekalender ${update.version} är tillgänglig.")
+                    errorText?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = !updating,
+                    onClick = {
+                        if (!canInstallPackages(context)) {
+                            openUnknownSourcesSettings(context)
+                            errorText = "Tillåt installation från Familjekalendern och öppna sedan appen igen."
+                        } else {
+                            scope.launch {
+                                updating = true
+                                errorText = null
+                                runCatching { downloadUpdateApk(context, update) }
+                                    .onSuccess { launchInstaller(context, it) }
+                                    .onFailure { errorText = "Kunde inte hämta uppdateringen: ${it.message ?: "okänt fel"}" }
+                                updating = false
+                            }
+                        }
+                    }
+                ) { Text(if (updating) "Laddar ner…" else "Uppdatera nu") }
+            },
+            dismissButton = {
+                TextButton(onClick = { availableUpdate = null }) { Text("Senare") }
+            }
+        )
+    }
 }
 
 @Composable

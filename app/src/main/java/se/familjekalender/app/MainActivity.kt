@@ -309,6 +309,8 @@ private fun SyncedApp(
         }
     }
 
+    AutomaticUpdateNotice()
+
     if (showAddEvent) {
         AddEventDialog(members, selectedDate, { showAddEvent = false }) { title, startTime, endTime, memberId, dates, birthday, recurrence ->
             scope.launch {
