@@ -18,7 +18,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -97,7 +96,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             memberId = id,
             latitude = loc.latitude,
             longitude = loc.longitude,
-            accuracy = loc.accuracy.takeIf { it > 0 },
+            accuracyM = loc.accuracy.takeIf { it > 0 },
             batteryPercent = batteryPercent()
         )
         refresh()
