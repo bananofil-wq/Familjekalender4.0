@@ -27,10 +27,12 @@ jobs:
           cal = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
           s = cal.read_text()
 
-          # Only move the month/date panel. Do not alter or stretch the seasonal image.
-          if '.offset(y = (-38).dp)' in s:
-              s = s.replace('.offset(y = (-38).dp)', '.offset(y = (-92).dp)', 1)
-          elif '.offset(y = (-92).dp)' not in s:
+          # Move only the month/date panel higher. Keep its size and the seasonal image unchanged.
+          if '.offset(y = (-92).dp)' in s:
+              s = s.replace('.offset(y = (-92).dp)', '.offset(y = (-130).dp)', 1)
+          elif '.offset(y = (-38).dp)' in s:
+              s = s.replace('.offset(y = (-38).dp)', '.offset(y = (-130).dp)', 1)
+          elif '.offset(y = (-130).dp)' not in s:
               raise SystemExit('Calendar month panel offset not found')
 
           # Expose the month cleanup dialog in the + menu.
@@ -77,10 +79,28 @@ jobs:
 
           agenda = Path('app/src/main/java/se/familjekalender/app/MemberAgendaDialog.kt')
           a = agenda.read_text()
+
+          old_selected = '''                if (selectionMode && selectedEvents.isNotEmpty()) {\n                    Button(\n                        onClick = { confirmDeleteSelected = true },\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)\n                    ) { Text("Ta bort valda (${selectedEvents.size})") }\n                }\n'''
+          if old_selected in a:
+              a = a.replace(old_selected, '', 1)
+
+          old_all = '''                if (deletableUpcoming.isNotEmpty()) {\n                    Spacer(Modifier.height(8.dp))\n                    OutlinedButton(\n                        onClick = { confirmDeleteAll = true },\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)\n                    ) {\n                        Text("Ta bort alla framtida (${deletableUpcoming.size})")\n                    }\n                    if (upcoming.size != deletableUpcoming.size) {\n                        Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)\n                    }\n                }\n'''
+          replacement_all = '''                if (upcoming.size != deletableUpcoming.size) {\n                    Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)\n                }\n'''
+          if old_all in a:
+              a = a.replace(old_all, replacement_all, 1)
+
+          old_footer = '''        confirmButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }\n'''
+          new_footer = '''        confirmButton = {\n            Row(\n                horizontalArrangement = Arrangement.spacedBy(8.dp),\n                verticalAlignment = Alignment.CenterVertically\n            ) {\n                if (selectionMode && selectedEvents.isNotEmpty()) {\n                    TextButton(onClick = { confirmDeleteSelected = true }) {\n                        Text("Ta bort valda (${selectedEvents.size})", color = MaterialTheme.colorScheme.error)\n                    }\n                } else if (!selectionMode && deletableUpcoming.isNotEmpty()) {\n                    TextButton(onClick = { confirmDeleteAll = true }) {\n                        Text("Ta bort alla (${deletableUpcoming.size})", color = MaterialTheme.colorScheme.error)\n                    }\n                }\n                TextButton(onClick = onDismiss) { Text("Stäng") }\n            }\n        }\n'''
+          if old_footer in a:
+              a = a.replace(old_footer, new_footer, 1)
+          elif 'Ta bort valda (${selectedEvents.size})' not in a:
+              raise SystemExit('Member agenda footer anchor not found')
+
           old = '            title = { Text("Ta bort alla framtida aktiviteter?") },'
           new = '            title = { Text("Ta bort alla ${deletableUpcoming.size} framtida aktiviteter för ${member.name}?") },'
           if old in a:
               a = a.replace(old, new, 1)
+
           agenda.write_text(a)
           PY
 
@@ -94,5 +114,5 @@ jobs:
             echo "Already fixed"
             exit 0
           fi
-          git commit -m "Implement calendar cleanup and recurring series deletion"
+          git commit -m "Move calendar higher and improve bulk delete controls"
           git push
