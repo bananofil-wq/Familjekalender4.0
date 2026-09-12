@@ -1,0 +1,28 @@
+name: Apply member agenda
+
+on:
+  push:
+    paths:
+      - '.trigger-member-agenda'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply member agenda patch
+        run: python3 scripts/apply-member-agenda.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/FamilyColorEditor.kt app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git diff --cached --quiet && exit 0
+          git commit -m "Add per-person upcoming agenda"
+          git push
