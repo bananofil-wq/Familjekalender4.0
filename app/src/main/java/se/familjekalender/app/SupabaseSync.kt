@@ -162,6 +162,30 @@ object SupabaseSync {
         request("POST", "/rest/v1/calendar_events", body, session.code, preferRepresentation = false)
     }
 
+    suspend fun updateEvent(
+        session: FamilySession,
+        eventId: String,
+        title: String,
+        date: LocalDate,
+        time: String,
+        memberId: String?
+    ) = withContext(Dispatchers.IO) {
+        val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
+        val startsAt = ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
+        val body = JSONObject()
+            .put("title", title)
+            .put("starts_at", startsAt)
+            .put("updated_at", OffsetDateTime.now().toString())
+        if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
+        request(
+            "PATCH",
+            "/rest/v1/calendar_events?id=eq.$eventId&family_id=eq.${session.id}",
+            body,
+            session.code,
+            preferRepresentation = false
+        )
+    }
+
     suspend fun importSportAdmin(session: FamilySession, webcalUrl: String, memberId: String?): Int = withContext(Dispatchers.IO) {
         val text = fetchText(webcalUrl.trim())
         val unfolded = text.replace("\r\n ", "").replace("\n ", "")
