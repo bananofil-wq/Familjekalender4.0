@@ -28,24 +28,15 @@ jobs:
           pos = s.index(anchor)
           before = s[:pos]
           after = s[pos:]
-          old = '''                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(590.dp)
-                    ) {'''
-          new = '''                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .offset(y = (-38).dp)
-                            .height(590.dp)
-                    ) {'''
-          if new in after:
+          old = '.height(590.dp)'
+          new = '.offset(y = (-38).dp)\n                            .height(590.dp)'
+          if '.offset(y = (-38).dp)' in after:
               print('Calendar already shifted upward')
           elif old in after:
               after = after.replace(old, new, 1)
               p.write_text(before + after)
           else:
-              raise SystemExit('Calendar viewport block not found')
+              raise SystemExit('Calendar height marker not found')
           PY
       - name: Keep rotating work week editor scrollable
         shell: bash
