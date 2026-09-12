@@ -1,6 +1,7 @@
 package se.familjekalender.app
 
 import android.app.Activity
+import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -66,6 +67,7 @@ internal fun ExactCalendarScreen(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     palette: SeasonPalette,
+    themeMode: ThemeMode,
     onAdd: () -> Unit,
     addMenuRequest: Int = 0
 ) {
@@ -75,9 +77,11 @@ internal fun ExactCalendarScreen(
     var showWorkRotation by remember { mutableStateOf(false) }
     var showManageMonth by remember { mutableStateOf(false) }
     var dayPopupDate by remember { mutableStateOf<LocalDate?>(null) }
+    var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val mode = palette.mode
+    val displayedPalette = paletteFor(themeMode, month.atDay(1))
+    val mode = displayedPalette.mode
     val dragOffset = remember { Animatable(0f) }
     LaunchedEffect(addMenuRequest) {
         if (addMenuRequest > 0) showAddMenu = true
@@ -108,6 +112,9 @@ internal fun ExactCalendarScreen(
                 .padding(horizontal = 6.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (mode != ThemeMode.CLASSIC) {
+                Spacer(Modifier.fillMaxWidth().aspectRatio(1.52f))
+            }
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -144,7 +151,7 @@ internal fun ExactCalendarScreen(
                     onSelect = {},
                     events = events,
                     members = members,
-                    accent = palette.accent,
+                    accent = displayedPalette.accent,
                     onPreviousMonth = {},
                     onNextMonth = {},
                     modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value - widthPx }
@@ -155,7 +162,7 @@ internal fun ExactCalendarScreen(
                     onSelect = {},
                     events = events,
                     members = members,
-                    accent = palette.accent,
+                    accent = displayedPalette.accent,
                     onPreviousMonth = {},
                     onNextMonth = {},
                     modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value + widthPx }
@@ -169,7 +176,7 @@ internal fun ExactCalendarScreen(
                     },
                     events = events,
                     members = members,
-                    accent = palette.accent,
+                    accent = displayedPalette.accent,
                     onPreviousMonth = { settleMonth(-1, widthPx) },
                     onNextMonth = { settleMonth(1, widthPx) },
                     modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value }
@@ -252,6 +259,10 @@ internal fun ExactCalendarScreen(
                 onSelect(popupDate)
                 onAdd()
             },
+            onEdit = { event ->
+                dayPopupDate = null
+                editEvent = event
+            },
             onDelete = { event ->
                 val session = currentFamilySession(context)
                 if (session != null) {
@@ -259,6 +270,27 @@ internal fun ExactCalendarScreen(
                         runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }
                             .onSuccess {
                                 dayPopupDate = null
+                                refreshActivity()
+                            }
+                    }
+                }
+            }
+        )
+    }
+
+    editEvent?.let { event ->
+        EditEventDialog(
+            event = event,
+            members = members,
+            onDismiss = { editEvent = null },
+            onSave = { title, date, time, memberId ->
+                val session = currentFamilySession(context)
+                if (session != null) {
+                    scope.launch {
+                        runCatching { SupabaseSync.updateEvent(session, event.id, title, date, time, memberId) }
+                            .onSuccess {
+                                editEvent = null
+                                onSelect(date)
                                 refreshActivity()
                             }
                     }
@@ -298,6 +330,7 @@ private fun DayOverviewPopup(
     members: List<SyncMember>,
     onDismiss: () -> Unit,
     onAdd: () -> Unit,
+    onEdit: (SyncEvent) -> Unit,
     onDelete: (SyncEvent) -> Unit
 ) {
     val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
@@ -365,6 +398,12 @@ private fun DayOverviewPopup(
                                     )
                                     if (event.source != "sportadmin") {
                                         TextButton(
+                                            onClick = { onEdit(event) },
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                                        ) {
+                                            Text("Redigera", fontSize = 10.sp)
+                                        }
+                                        TextButton(
                                             onClick = { onDelete(event) },
                                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                                         ) {
@@ -386,6 +425,65 @@ private fun DayOverviewPopup(
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+    )
+}
+
+@Composable
+private fun EditEventDialog(
+    event: SyncEvent,
+    members: List<SyncMember>,
+    onDismiss: () -> Unit,
+    onSave: (String, LocalDate, String, String?) -> Unit
+) {
+    val context = LocalContext.current
+    val birthday = isBirthdayEvent(event)
+    var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").trim()) }
+    var date by remember(event.id) { mutableStateOf(event.date) }
+    var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
+    var memberId by remember(event.id) { mutableStateOf(event.memberId ?: ALL_FAMILY_MEMBER_ID) }
+
+    fun chooseDate() {
+        DatePickerDialog(context, { _, year, month, day ->
+            date = LocalDate.of(year, month + 1, day)
+        }, date.year, date.monthValue - 1, date.dayOfMonth).show()
+    }
+
+    fun chooseTime() {
+        val parsed = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
+        TimePickerDialog(context, { _, hour, minute ->
+            time = "%02d:%02d".format(hour, minute)
+        }, parsed.hour, parsed.minute, true).show()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Redigera aktivitet") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(title, { title = it }, label = { Text(if (birthday) "Namn" else "Aktivitet") }, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(onClick = ::chooseDate, modifier = Modifier.fillMaxWidth()) {
+                    Text("Datum: ${date.dayOfMonth}/${date.monthValue} ${date.year}")
+                }
+                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) { Text("Tid: $time") }
+                Text("Gäller", fontWeight = FontWeight.Bold)
+                members.forEach { member ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { memberId = member.id },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
+                        Text(if (member.id == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = title.isNotBlank(),
+                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, memberId) }
+            ) { Text("Spara") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
     )
 }
 

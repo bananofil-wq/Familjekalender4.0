@@ -77,7 +77,7 @@ private fun resolvedTheme(mode: ThemeMode, date: LocalDate = LocalDate.now()) =
         else -> ThemeMode.WINTER
     }
 
-internal fun paletteFor(mode: ThemeMode): SeasonPalette = when (resolvedTheme(mode)) {
+internal fun paletteFor(mode: ThemeMode, date: LocalDate = LocalDate.now()): SeasonPalette = when (resolvedTheme(mode, date)) {
     ThemeMode.SPRING -> SeasonPalette(ThemeMode.SPRING, Color(0xFFF3A5C8), Color(0xFF352430), Color(0xFF233B39), Color(0xFF5A4055), Color(0xFF173029), Color(0xFFFFC3DD))
     ThemeMode.SUMMER -> SeasonPalette(ThemeMode.SUMMER, Color(0xFFFFC96B), Color(0xFF3A3022), Color(0xFF173C59), Color(0xFF8A6241), Color(0xFF12314A), Color(0xFFFFD983))
     ThemeMode.AUTUMN -> SeasonPalette(ThemeMode.AUTUMN, Color(0xFFFFA45B), Color(0xFF3A281F), Color(0xFF301A23), Color(0xFF8B482D), Color(0xFF251419), Color(0xFFD66B3D))
@@ -249,6 +249,7 @@ private fun SyncedApp(
                             events,
                             members,
                             palette,
+                            themeMode,
                             onAdd = { showAddEvent = true },
                             addMenuRequest = assistantAddRequest
                         )
