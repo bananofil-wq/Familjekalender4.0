@@ -165,7 +165,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Dela min plats", fontWeight = FontWeight.SemiBold)
-                        Text(if (sharing) "Aktiv när appen körs" else "Avstängd", color = Muted, fontSize = 12.sp)
+                        Text(if (sharing) "Aktiv när appen är öppen" else "Avstängd", color = Muted, fontSize = 12.sp)
                     }
                     Switch(
                         checked = sharing,
@@ -293,7 +293,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         }
 
         if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
-        Text("Platsdelning kan pausas när som helst. Den här första versionen uppdaterar plats när appen körs.", color = Muted, fontSize = 11.sp)
+        Text("Platsdelning kan pausas när som helst. Den här första versionen uppdaterar plats när appen är öppen.", color = Muted, fontSize = 11.sp)
         Spacer(Modifier.height(12.dp))
     }
 }
