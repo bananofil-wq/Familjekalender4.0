@@ -13,6 +13,8 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
+private data class CopyWeekResult(val copied: Int, val skipped: Int)
+
 private fun mondayOf(date: LocalDate): LocalDate {
     var value = date
     while (value.dayOfWeek != DayOfWeek.MONDAY) value = value.minusDays(1)
@@ -24,20 +26,43 @@ private fun manualEventsInWeek(events: List<SyncEvent>, weekStart: LocalDate): L
     return events.filter { it.source == "manual" && !it.date.isBefore(weekStart) && !it.date.isAfter(weekEnd) }
 }
 
+private fun sameCopiedEvent(existing: SyncEvent, source: SyncEvent, targetDate: LocalDate): Boolean {
+    val existingMember = existing.memberId ?: ALL_FAMILY_MEMBER_ID
+    val sourceMember = source.memberId ?: ALL_FAMILY_MEMBER_ID
+    return existing.date == targetDate &&
+        existing.title == source.title &&
+        existing.time == source.time &&
+        existing.endTime == source.endTime &&
+        existingMember == sourceMember
+}
+
 private suspend fun copyWeek(
     session: FamilySession,
     sourceEvents: List<SyncEvent>,
+    existingEvents: List<SyncEvent>,
     sourceStart: LocalDate,
     targetStart: LocalDate
-): Int {
+): CopyWeekResult {
     var copied = 0
+    var skipped = 0
     sourceEvents.forEach { event ->
         val offset = ChronoUnit.DAYS.between(sourceStart, event.date)
         val targetDate = targetStart.plusDays(offset)
-        SupabaseSync.addEvent(session, event.title, targetDate, event.time, event.endTime, event.memberId)
-        copied++
+        if (existingEvents.any { sameCopiedEvent(it, event, targetDate) }) {
+            skipped++
+        } else {
+            SupabaseSync.addEvent(session, event.title, targetDate, event.time, event.endTime, event.memberId)
+            copied++
+        }
     }
-    return copied
+    return CopyWeekResult(copied, skipped)
+}
+
+private fun copyStatus(result: CopyWeekResult, direction: String): String = when {
+    result.copied > 0 && result.skipped > 0 -> "${result.copied} kopierade $direction · ${result.skipped} fanns redan"
+    result.copied > 0 -> "${result.copied} aktiviteter kopierade $direction"
+    result.skipped > 0 -> "Inget dubblerades · ${result.skipped} aktiviteter fanns redan"
+    else -> "Inga aktiviteter att kopiera"
 }
 
 @Composable
@@ -58,15 +83,19 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Återkommande vardag", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-            Text("Kopiera en fungerande vecka i stället för att skriva in samma vardag igen.", color = Muted, fontSize = 12.sp)
+            Text(
+                "Kopiera en fungerande vecka utan att skapa dubbletter av aktiviteter som redan finns.",
+                color = Muted,
+                fontSize = 12.sp
+            )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = {
                         scope.launch {
                             busy = true
                             status = ""
-                            runCatching { copyWeek(session, lastWeekEvents, lastWeek, thisWeek) }
-                                .onSuccess { status = "$it aktiviteter kopierade från förra veckan"; onChanged() }
+                            runCatching { copyWeek(session, lastWeekEvents, events, lastWeek, thisWeek) }
+                                .onSuccess { status = copyStatus(it, "från förra veckan"); onChanged() }
                                 .onFailure { status = it.message ?: "Kunde inte kopiera veckan" }
                             busy = false
                         }
@@ -80,8 +109,8 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                         scope.launch {
                             busy = true
                             status = ""
-                            runCatching { copyWeek(session, thisWeekEvents, thisWeek, nextWeek) }
-                                .onSuccess { status = "$it aktiviteter kopierade till nästa vecka"; onChanged() }
+                            runCatching { copyWeek(session, thisWeekEvents, events, thisWeek, nextWeek) }
+                                .onSuccess { status = copyStatus(it, "till nästa vecka"); onChanged() }
                                 .onFailure { status = it.message ?: "Kunde inte kopiera veckan" }
                             busy = false
                         }
