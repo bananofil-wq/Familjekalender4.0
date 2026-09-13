@@ -60,6 +60,12 @@ private data class WorkRotationWeekDraft(
     val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime }
 )
 
+private enum class SeriesEditScope {
+    THIS,
+    THIS_AND_FUTURE,
+    WHOLE_SERIES
+}
+
 private fun isLaundryEvent(event: SyncEvent): Boolean {
     val title = event.title.trim()
     return title.startsWith("🧺") || title.equals("Tvätt", ignoreCase = true)
@@ -360,20 +366,41 @@ internal fun ExactCalendarScreen(
     }
 
     editEvent?.let { event ->
+        val matchingSeries = events
+            .filter { candidate ->
+                candidate.source != "sportadmin" &&
+                    candidate.source == event.source &&
+                    candidate.memberId == event.memberId &&
+                    candidate.title == event.title &&
+                    candidate.time == event.time &&
+                    candidate.endTime == event.endTime
+            }
+            .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
         EditEventDialog(
             event = event,
             members = members,
+            hasSeries = matchingSeries.size > 1,
             onDismiss = { editEvent = null },
-            onSave = { title, date, time, endTime, memberId ->
+            onSave = { title, date, time, endTime, memberId, editScope ->
                 val session = currentFamilySession(context)
                 if (session != null) {
                     scope.launch {
-                        runCatching { SupabaseSync.updateEvent(session, event.id, title, date, time, endTime, memberId) }
-                            .onSuccess {
-                                editEvent = null
-                                onSelect(date)
-                                refreshActivity()
+                        val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
+                        val targets = when (editScope) {
+                            SeriesEditScope.THIS -> listOf(event)
+                            SeriesEditScope.THIS_AND_FUTURE -> matchingSeries.filter { !it.date.isBefore(event.date) }
+                            SeriesEditScope.WHOLE_SERIES -> matchingSeries
+                        }
+                        runCatching {
+                            targets.forEach { target ->
+                                val targetDate = if (editScope == SeriesEditScope.THIS) date else target.date.plusDays(dayShift)
+                                SupabaseSync.updateEvent(session, target.id, title, targetDate, time, endTime, memberId)
                             }
+                        }.onSuccess {
+                            editEvent = null
+                            onSelect(date)
+                            refreshActivity()
+                        }
                     }
                 }
             }
@@ -556,8 +583,9 @@ private fun DayOverviewPopup(
 private fun EditEventDialog(
     event: SyncEvent,
     members: List<SyncMember>,
+    hasSeries: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, LocalDate, String, String?, String?) -> Unit
+    onSave: (String, LocalDate, String, String?, String?, SeriesEditScope) -> Unit
 ) {
     val context = LocalContext.current
     val birthday = isBirthdayEvent(event)
@@ -566,6 +594,7 @@ private fun EditEventDialog(
     var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
     var endTime by remember(event.id) { mutableStateOf(event.endTime ?: "") }
     var memberId by remember(event.id) { mutableStateOf(event.memberId ?: ALL_FAMILY_MEMBER_ID) }
+    var editScope by remember(event.id) { mutableStateOf(SeriesEditScope.THIS) }
 
     fun chooseDate() {
         DatePickerDialog(context, { _, year, month, day ->
@@ -614,12 +643,37 @@ private fun EditEventDialog(
                         Text(if (member.id == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member.name)
                     }
                 }
+                if (hasSeries) {
+                    HorizontalDivider()
+                    Text("Ändra återkommande aktivitet", fontWeight = FontWeight.Bold)
+                    listOf(
+                        SeriesEditScope.THIS to "Bara denna",
+                        SeriesEditScope.THIS_AND_FUTURE to "Denna och framåt",
+                        SeriesEditScope.WHOLE_SERIES to "Hela serien"
+                    ).forEach { (scopeOption, label) ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { editScope = scopeOption },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = editScope == scopeOption,
+                                onClick = { editScope = scopeOption }
+                            )
+                            Text(label)
+                        }
+                    }
+                    Text(
+                        "Datumändringar flyttar motsvarande förekomster lika många dagar. Övriga ändringar används på vald del av serien.",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
+                        fontSize = 11.sp
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 enabled = title.isNotBlank(),
-                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, endTime.ifBlank { null }, memberId) }
+                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, endTime.ifBlank { null }, memberId, editScope) }
             ) { Text("Spara") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
