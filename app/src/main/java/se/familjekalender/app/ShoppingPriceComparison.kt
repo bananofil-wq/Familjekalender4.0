@@ -48,7 +48,9 @@ data class ShoppingPriceComparison(
     val note: String
 ) {
     val pricedItems: List<ShoppingPriceResult> get() = items.filter { it.cheapest != null }
-    val splitBasketTotal: Double? get() = pricedItems.takeIf { it.isNotEmpty() }?.sumOf { it.cheapest!!.price }
+    val splitBasketTotal: Double? get() =
+        items.takeIf { it.isNotEmpty() && it.all { item -> item.cheapest != null } }
+            ?.sumOf { it.cheapest!!.price }
 
     fun storeSummaries(): List<StoreBasketSummary> {
         val stores = items.flatMap { it.matches }.map { it.store }.distinct()
