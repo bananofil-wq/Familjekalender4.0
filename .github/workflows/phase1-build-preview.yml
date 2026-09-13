@@ -48,9 +48,20 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell input keyevent KEYCODE_WAKEUP || true
+            adb shell wm dismiss-keyguard || true
+            adb shell input keyevent 82 || true
             adb shell am force-stop se.familjekalender.app
+            adb logcat -c
             adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen calendar
-            sleep 3
+            for i in $(seq 1 20); do
+              RESUMED=$(adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' || true)
+              echo "$RESUMED"
+              echo "$RESUMED" | grep -q 'se.familjekalender.app/.DesignPreviewActivity' && break
+              sleep 1
+            done
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q 'se.familjekalender.app/.DesignPreviewActivity'
+            sleep 2
             adb exec-out screencap -p > phase1-calendar.png
             test -s phase1-calendar.png
             adb logcat -d -v threadtime > phase1-logcat.txt || true
