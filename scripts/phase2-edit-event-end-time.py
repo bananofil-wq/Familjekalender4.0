@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Triggered after workflow creation so GitHub applies this patch on the feature branch.
 screen = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
 text = screen.read_text(encoding='utf-8')
 
