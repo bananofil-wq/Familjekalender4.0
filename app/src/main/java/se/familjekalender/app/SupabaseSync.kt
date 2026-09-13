@@ -27,7 +27,9 @@ data class SyncEvent(
     val date: LocalDate,
     val time: String,
     val memberId: String?,
-    val source: String
+    val source: String,
+    val endDate: LocalDate? = null,
+    val endTime: String? = null
 )
 
 object SupabaseSync {
@@ -122,7 +124,7 @@ object SupabaseSync {
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> = withContext(Dispatchers.IO) {
         val result = request(
             "GET",
-            "/rest/v1/calendar_events?select=id,title,starts_at,member_id,source&family_id=eq.${session.id}&order=starts_at.asc",
+            "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source&family_id=eq.${session.id}&order=starts_at.asc",
             familyCode = session.code
         )
         val array = JSONArray(result)
@@ -130,6 +132,9 @@ object SupabaseSync {
             repeat(array.length()) {
                 val row = array.getJSONObject(it)
                 val zoned = OffsetDateTime.parse(row.getString("starts_at")).atZoneSameInstant(STOCKHOLM)
+                val endZoned = if (row.isNull("ends_at")) null else runCatching {
+                    OffsetDateTime.parse(row.getString("ends_at")).atZoneSameInstant(STOCKHOLM)
+                }.getOrNull()
                 add(
                     SyncEvent(
                         id = row.getString("id"),
@@ -137,7 +142,9 @@ object SupabaseSync {
                         date = zoned.toLocalDate(),
                         time = "%02d:%02d".format(zoned.hour, zoned.minute),
                         memberId = if (row.isNull("member_id")) ALL_FAMILY_MEMBER_ID else row.getString("member_id"),
-                        source = row.optString("source", "manual")
+                        source = row.optString("source", "manual"),
+                        endDate = endZoned?.toLocalDate(),
+                        endTime = endZoned?.let { "%02d:%02d".format(it.hour, it.minute) }
                     )
                 )
             }
@@ -158,6 +165,31 @@ object SupabaseSync {
             .put("title", title)
             .put("starts_at", startsAt)
             .put("source", "manual")
+        if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
+        request("POST", "/rest/v1/calendar_events", body, session.code, preferRepresentation = false)
+    }
+
+    suspend fun addEvent(
+        session: FamilySession,
+        title: String,
+        date: LocalDate,
+        startTime: String,
+        endTime: String?,
+        memberId: String?
+    ) = withContext(Dispatchers.IO) {
+        val parsedStart = runCatching { LocalTime.parse(startTime) }.getOrElse { LocalTime.of(18, 0) }
+        val starts = ZonedDateTime.of(date, parsedStart, STOCKHOLM)
+        val body = JSONObject()
+            .put("family_id", session.id)
+            .put("title", title)
+            .put("starts_at", starts.toOffsetDateTime().toString())
+            .put("source", "manual")
+        val parsedEnd = endTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+        if (parsedEnd != null) {
+            var ends = ZonedDateTime.of(date, parsedEnd, STOCKHOLM)
+            if (!ends.isAfter(starts)) ends = ends.plusDays(1)
+            body.put("ends_at", ends.toOffsetDateTime().toString())
+        }
         if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
         request("POST", "/rest/v1/calendar_events", body, session.code, preferRepresentation = false)
     }
@@ -196,13 +228,16 @@ object SupabaseSync {
             val uid = valueFor(lines, "UID") ?: continue
             val title = valueFor(lines, "SUMMARY")?.ifBlank { "SportAdmin" } ?: "SportAdmin"
             val rawStart = lines.firstOrNull { it.startsWith("DTSTART") }?.substringAfter(':') ?: continue
-            val start = parseIcsStart(rawStart) ?: continue
+            val start = parseIcsDateTime(rawStart) ?: continue
+            val rawEnd = lines.firstOrNull { it.startsWith("DTEND") }?.substringAfter(':')
+            val end = rawEnd?.let(::parseIcsDateTime)
             val body = JSONObject()
                 .put("family_id", session.id)
                 .put("title", unescapeIcs(title))
                 .put("starts_at", start.toOffsetDateTime().toString())
                 .put("source", "sportadmin")
                 .put("external_id", uid)
+            if (end != null && end.isAfter(start)) body.put("ends_at", end.toOffsetDateTime().toString())
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
             val location = valueFor(lines, "LOCATION")
             if (!location.isNullOrBlank()) body.put("location", unescapeIcs(location))
@@ -224,7 +259,7 @@ object SupabaseSync {
         .replace("\\;", ";")
         .replace("\\\\", "\\")
 
-    private fun parseIcsStart(raw: String): ZonedDateTime? = runCatching {
+    private fun parseIcsDateTime(raw: String): ZonedDateTime? = runCatching {
         when {
             raw.endsWith("Z") && raw.length >= 16 -> ZonedDateTime.parse(
                 raw,
