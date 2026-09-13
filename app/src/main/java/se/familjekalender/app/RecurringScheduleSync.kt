@@ -148,6 +148,7 @@ object RecurringScheduleSync {
     }
 
     suspend fun addGlobalPause(session: FamilySession, startsOn: LocalDate, endsOn: LocalDate) = withContext(Dispatchers.IO) {
+        require(!endsOn.isBefore(startsOn)) { "Slutdatum måste vara samma dag eller efter startdatum" }
         val body = JSONObject()
             .put("family_id", session.id)
             .put("starts_on", startsOn.toString())
@@ -157,6 +158,14 @@ object RecurringScheduleSync {
             .put("member_id", JSONObject.NULL)
             .put("title_prefix", JSONObject.NULL)
         request("POST", "/rest/v1/family_schedule_pauses", session.code, body)
+    }
+
+    suspend fun deletePause(session: FamilySession, pauseId: String) = withContext(Dispatchers.IO) {
+        request(
+            "DELETE",
+            "/rest/v1/family_schedule_pauses?id=eq.${encode(pauseId)}&family_id=eq.${session.id}",
+            session.code
+        )
     }
 
     private fun encode(value: String): String = java.net.URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
