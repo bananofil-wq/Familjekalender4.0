@@ -27,6 +27,7 @@ data class SchedulePause(
     val startsOn: LocalDate,
     val endsOn: LocalDate,
     val scope: String,
+    val seriesId: String?,
     val memberId: String?,
     val titlePrefix: String?
 )
@@ -140,7 +141,7 @@ object RecurringScheduleSync {
     suspend fun loadPauses(session: FamilySession): List<SchedulePause> = withContext(Dispatchers.IO) {
         val result = request(
             "GET",
-            "/rest/v1/family_schedule_pauses?select=id,starts_on,ends_on,scope,member_id,title_prefix&family_id=eq.${session.id}&order=starts_on.asc",
+            "/rest/v1/family_schedule_pauses?select=id,starts_on,ends_on,scope,series_id,member_id,title_prefix&family_id=eq.${session.id}&order=starts_on.asc",
             session.code
         )
         val array = JSONArray(result)
@@ -153,12 +154,33 @@ object RecurringScheduleSync {
                         startsOn = LocalDate.parse(row.getString("starts_on")),
                         endsOn = LocalDate.parse(row.getString("ends_on")),
                         scope = row.getString("scope"),
+                        seriesId = if (row.isNull("series_id")) null else row.getString("series_id"),
                         memberId = if (row.isNull("member_id")) null else row.getString("member_id"),
                         titlePrefix = if (row.isNull("title_prefix")) null else row.getString("title_prefix")
                     )
                 )
             }
         }
+    }
+
+
+    private fun pauseMatchesEvent(pause: SchedulePause, event: SyncEvent): Boolean {
+        if (event.seriesId.isNullOrBlank()) return false
+        if (event.date.isBefore(pause.startsOn) || event.date.isAfter(pause.endsOn)) return false
+        if (pause.scope == "all_schedules") return true
+        if (pause.scope == "series" && !pause.seriesId.isNullOrBlank()) return pause.seriesId == event.seriesId
+        val memberMatches = pause.memberId == null || pause.memberId == event.memberId
+        val titleMatches = pause.titlePrefix.isNullOrBlank() || event.title.startsWith(pause.titlePrefix, ignoreCase = true)
+        return memberMatches && titleMatches
+    }
+
+    suspend fun filterPausedScheduleEvents(
+        session: FamilySession,
+        events: List<SyncEvent>
+    ): List<SyncEvent> {
+        val pauses = loadPauses(session)
+        if (pauses.isEmpty()) return events
+        return events.filterNot { event -> pauses.any { pause -> pauseMatchesEvent(pause, event) } }
     }
 
     suspend fun addGlobalPause(session: FamilySession, startsOn: LocalDate, endsOn: LocalDate) = withContext(Dispatchers.IO) {

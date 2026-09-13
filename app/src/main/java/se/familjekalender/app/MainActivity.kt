@@ -230,7 +230,8 @@ private fun SyncedApp(
         runCatching {
             members = SupabaseSync.loadMembers(session)
             shopping = SupabaseSync.loadShopping(session)
-            events = SupabaseSync.loadEvents(session)
+            val loadedEvents = SupabaseSync.loadEvents(session)
+            events = RecurringScheduleSync.filterPausedScheduleEvents(session, loadedEvents)
         }.onSuccess {
             if (message.startsWith("Synkfel:")) message = ""
         }.onFailure {
