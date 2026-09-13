@@ -1,0 +1,34 @@
+name: Apply shopping price comparison
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ feature/family-assistant-phase2 ]
+    paths:
+      - 'scripts/add-shopping-price-comparison-ui.py'
+      - '.github/workflows/apply-shopping-price-comparison.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/family-assistant-phase2
+      - name: Apply shopping UI patch
+        run: python3 scripts/add-shopping-price-comparison-ui.py
+      - name: Commit source change
+        run: |
+          if git diff --quiet; then
+            echo 'No source changes needed'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+            git commit -m 'Add verified shopping price comparison UI'
+            git push origin HEAD:feature/family-assistant-phase2
+          fi
