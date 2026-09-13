@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Applies the shopping comparison UI to the Android source on the roadmap branch.
 path = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
 text = path.read_text(encoding='utf-8')
 
