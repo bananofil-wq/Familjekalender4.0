@@ -227,6 +227,8 @@ internal fun FamilyAssistantCard(
     val openShoppingItems = shopping.filter { !it.checked }
     val conflicts = conflictLines(todaysEvents, members)
     val planning = (familyPlanningLines(todaysEvents, members) + coordinationLines(todaysEvents, members)).distinct()
+    val tomorrowConflicts = conflictLines(tomorrowsEvents, members)
+    val tomorrowPlanning = (familyPlanningLines(tomorrowsEvents, members) + coordinationLines(tomorrowsEvents, members)).distinct()
     val greeting = when (LocalTime.now().hour) {
         in 5..10 -> "God morgon!"
         in 11..16 -> "God dag!"
@@ -286,6 +288,16 @@ internal fun FamilyAssistantCard(
                 Spacer(Modifier.height(8.dp))
                 Text("Behöver planeras", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 planning.take(3).forEach { Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f)) }
+            }
+            if (tomorrowConflicts.isNotEmpty() || tomorrowPlanning.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text("Inför imorgon", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                tomorrowConflicts.take(1).forEach {
+                    Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                }
+                tomorrowPlanning.take(2).forEach {
+                    Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f))
+                }
             }
         }
     }
