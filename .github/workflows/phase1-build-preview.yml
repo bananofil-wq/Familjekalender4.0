@@ -1,0 +1,64 @@
+name: Phase 1 build and preview
+
+on:
+  push:
+    branches:
+      - feature/family-planning-phase1
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify approved seasonal images
+        run: python3 scripts/verify-season-images.py
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Familjekalender-phase1-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Render calendar preview
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am force-stop se.familjekalender.app
+            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen calendar
+            sleep 3
+            adb exec-out screencap -p > phase1-calendar.png
+            test -s phase1-calendar.png
+            adb logcat -d -v threadtime > phase1-logcat.txt || true
+            ! grep -q "FATAL EXCEPTION.*se.familjekalender.app" phase1-logcat.txt
+      - name: Upload preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: Familjekalender-phase1-preview
+          path: |
+            phase1-calendar.png
+            phase1-logcat.txt
