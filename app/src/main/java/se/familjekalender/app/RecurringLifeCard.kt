@@ -75,6 +75,13 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
     val thisWeekEvents = remember(events, thisWeek) { manualEventsInWeek(events, thisWeek) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
+    var templateNames by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(session.id, events.size) {
+        templateNames = runCatching {
+            RecurringScheduleSync.loadTemplates(session).map { it.name }.distinct()
+        }.getOrDefault(emptyList())
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
@@ -84,7 +91,7 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Återkommande vardag", fontWeight = FontWeight.Bold, fontSize = 17.sp)
             Text(
-                "Kopiera en fungerande vecka utan att skapa dubbletter av aktiviteter som redan finns.",
+                "Kopiera en fungerande vecka utan dubbletter eller spara den som återanvändbar mall.",
                 color = Muted,
                 fontSize = 12.sp
             )
@@ -119,6 +126,47 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                     modifier = Modifier.weight(1f)
                 ) { Text("Denna → nästa") }
             }
+
+            HorizontalDivider()
+            Text("Veckomall", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            status = ""
+                            runCatching {
+                                RecurringScheduleSync.replaceTemplateFromWeek(session, "Min veckomall", events, thisWeek)
+                            }.onSuccess { count ->
+                                status = "Veckomallen sparad med $count typer av aktiviteter"
+                                templateNames = RecurringScheduleSync.loadTemplates(session).map { it.name }.distinct()
+                            }.onFailure { status = it.message ?: "Kunde inte spara veckomallen" }
+                            busy = false
+                        }
+                    },
+                    enabled = !busy && thisWeekEvents.isNotEmpty(),
+                    modifier = Modifier.weight(1f)
+                ) { Text("Spara denna vecka") }
+
+                Button(
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            status = ""
+                            runCatching {
+                                RecurringScheduleSync.applyTemplateToWeek(session, "Min veckomall", nextWeek)
+                            }.onSuccess { count ->
+                                status = "$count aktiviteter skapade från veckomallen"
+                                onChanged()
+                            }.onFailure { status = it.message ?: "Kunde inte använda veckomallen" }
+                            busy = false
+                        }
+                    },
+                    enabled = !busy && templateNames.contains("Min veckomall"),
+                    modifier = Modifier.weight(1f)
+                ) { Text("Mall → nästa") }
+            }
+
             if (status.isNotBlank()) {
                 Text(
                     status,
