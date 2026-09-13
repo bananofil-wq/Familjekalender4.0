@@ -143,8 +143,14 @@ fun FamilyCalendarApp() {
                 SyncedApp(
                     session!!,
                     prefs.getString("sport_url", "") ?: "",
+                    prefs.getString("sport_member_id", null),
                     themeMode,
-                    { prefs.edit().putString("sport_url", it).apply() },
+                    { url, memberId ->
+                        prefs.edit()
+                            .putString("sport_url", url)
+                            .putString("sport_member_id", memberId)
+                            .apply()
+                    },
                     {
                         themeMode = it
                         prefs.edit().putString("theme_mode", it.name).apply()
@@ -203,8 +209,9 @@ private fun FamilySetupScreen(onReady: (FamilySession) -> Unit) {
 private fun SyncedApp(
     session: FamilySession,
     sportUrl: String,
+    sportMemberId: String?,
     themeMode: ThemeMode,
-    onSportUrlSaved: (String) -> Unit,
+    onSportSettingsSaved: (String, String?) -> Unit,
     onThemeModeSaved: (ThemeMode) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -231,10 +238,17 @@ private fun SyncedApp(
         }
     }
 
-    LaunchedEffect(session.id) {
+    LaunchedEffect(session.id, sportUrl, sportMemberId) {
+        suspend fun syncExternalCalendars() {
+            if (sportUrl.isNotBlank()) {
+                runCatching { SupabaseSync.importSportAdmin(session, sportUrl, sportMemberId) }
+            }
+        }
+        syncExternalCalendars()
         refresh()
         while (true) {
             delay(30L * 60L * 1000L)
+            syncExternalCalendars()
             refresh()
         }
     }
@@ -316,7 +330,7 @@ private fun SyncedApp(
                                 }
                             }
                         )
-                        4 -> SettingsScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID }, sportUrl, themeMode, onThemeModeSaved, onSportUrlSaved) { url, memberId ->
+                        4 -> SettingsScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID }, sportUrl, sportMemberId, themeMode, onThemeModeSaved, onSportSettingsSaved) { url, memberId ->
                             scope.launch {
                                 message = "Importerar SportAdmin…"
                                 runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
@@ -431,14 +445,17 @@ private fun SettingsScreen(
     session: FamilySession,
     members: List<SyncMember>,
     initialSportUrl: String,
+    initialSportMemberId: String?,
     themeMode: ThemeMode,
     onThemeChanged: (ThemeMode) -> Unit,
-    onSaveUrl: (String) -> Unit,
+    onSaveSportSettings: (String, String?) -> Unit,
     onImport: (String, String?) -> Unit
 ) {
     val context = LocalContext.current
     var url by remember(initialSportUrl) { mutableStateOf(initialSportUrl) }
-    var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
+    var memberId by remember(initialSportMemberId, members) {
+        mutableStateOf(initialSportMemberId?.takeIf { id -> members.any { it.id == id } } ?: members.firstOrNull()?.id)
+    }
     Text("Inställningar", fontSize = 28.sp, fontWeight = FontWeight.Bold)
     Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
@@ -465,12 +482,28 @@ private fun SettingsScreen(
     }
     Spacer(Modifier.height(12.dp))
     Text("SportAdmin", fontWeight = FontWeight.Bold)
+    Text("Koppla lagets kalender till rätt familjemedlem. Den uppdateras automatiskt var 30:e minut.", color = Muted, fontSize = 12.sp)
     OutlinedTextField(url, { url = it }, label = { Text("Kalenderlänk") }, modifier = Modifier.fillMaxWidth())
+    if (members.isNotEmpty()) {
+        Spacer(Modifier.height(8.dp))
+        Text("Gäller", color = Muted, fontSize = 12.sp)
+        members.forEach { member ->
+            Row(
+                Modifier.fillMaxWidth().clickable { memberId = member.id }.padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
+                Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                Spacer(Modifier.width(8.dp))
+                Text(member.name)
+            }
+        }
+    }
     Button(
-        onClick = { onSaveUrl(url); onImport(url, memberId) },
-        enabled = url.isNotBlank(),
+        onClick = { onSaveSportSettings(url.trim(), memberId); onImport(url.trim(), memberId) },
+        enabled = url.isNotBlank() && memberId != null,
         modifier = Modifier.fillMaxWidth()
-    ) { Text("Spara och importera") }
+    ) { Text("Spara och synka nu") }
 
     Spacer(Modifier.height(20.dp))
     AppUpdateSettingsCard()
