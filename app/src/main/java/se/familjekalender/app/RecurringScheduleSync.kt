@@ -31,6 +31,8 @@ data class SchedulePause(
     val titlePrefix: String?
 )
 
+data class TemplateApplyResult(val created: Int, val skipped: Int)
+
 object RecurringScheduleSync {
     suspend fun loadTemplates(session: FamilySession): List<ScheduleTemplate> = withContext(Dispatchers.IO) {
         val result = request(
@@ -92,18 +94,33 @@ object RecurringScheduleSync {
     suspend fun applyTemplateToWeek(
         session: FamilySession,
         templateName: String,
-        targetWeekStart: LocalDate
-    ): Int {
+        targetWeekStart: LocalDate,
+        existingEvents: List<SyncEvent>
+    ): TemplateApplyResult {
         val templates = loadTemplates(session).filter { it.name == templateName }
         var created = 0
+        var skipped = 0
         templates.forEach { template ->
             template.weekdays.forEach { weekday ->
                 val date = targetWeekStart.plusDays((weekday - 1).toLong())
-                SupabaseSync.addEvent(session, template.title, date, template.startTime, template.endTime, template.memberId)
-                created++
+                val targetMember = template.memberId ?: ALL_FAMILY_MEMBER_ID
+                val duplicate = existingEvents.any { event ->
+                    val existingMember = event.memberId ?: ALL_FAMILY_MEMBER_ID
+                    event.date == date &&
+                        event.title == template.title &&
+                        event.time == template.startTime &&
+                        event.endTime == template.endTime &&
+                        existingMember == targetMember
+                }
+                if (duplicate) {
+                    skipped++
+                } else {
+                    SupabaseSync.addEvent(session, template.title, date, template.startTime, template.endTime, template.memberId)
+                    created++
+                }
             }
         }
-        return created
+        return TemplateApplyResult(created, skipped)
     }
 
     suspend fun loadPauses(session: FamilySession): List<SchedulePause> = withContext(Dispatchers.IO) {
