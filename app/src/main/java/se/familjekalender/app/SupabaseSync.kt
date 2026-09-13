@@ -200,14 +200,20 @@ object SupabaseSync {
         title: String,
         date: LocalDate,
         time: String,
+        endTime: String?,
         memberId: String?
     ) = withContext(Dispatchers.IO) {
         val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
-        val startsAt = ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
+        val startsAt = ZonedDateTime.of(date, parsedTime, STOCKHOLM)
+        val parsedEnd = endTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+        val endsAt = parsedEnd?.let { value ->
+            ZonedDateTime.of(if (value.isAfter(parsedTime)) date else date.plusDays(1), value, STOCKHOLM)
+        }
         val body = JSONObject()
             .put("title", title)
-            .put("starts_at", startsAt)
+            .put("starts_at", startsAt.toOffsetDateTime().toString())
             .put("updated_at", OffsetDateTime.now().toString())
+        if (endsAt == null) body.put("ends_at", JSONObject.NULL) else body.put("ends_at", endsAt.toOffsetDateTime().toString())
         if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
         request(
             "PATCH",

@@ -364,11 +364,11 @@ internal fun ExactCalendarScreen(
             event = event,
             members = members,
             onDismiss = { editEvent = null },
-            onSave = { title, date, time, memberId ->
+            onSave = { title, date, time, endTime, memberId ->
                 val session = currentFamilySession(context)
                 if (session != null) {
                     scope.launch {
-                        runCatching { SupabaseSync.updateEvent(session, event.id, title, date, time, memberId) }
+                        runCatching { SupabaseSync.updateEvent(session, event.id, title, date, time, endTime, memberId) }
                             .onSuccess {
                                 editEvent = null
                                 onSelect(date)
@@ -557,13 +557,14 @@ private fun EditEventDialog(
     event: SyncEvent,
     members: List<SyncMember>,
     onDismiss: () -> Unit,
-    onSave: (String, LocalDate, String, String?) -> Unit
+    onSave: (String, LocalDate, String, String?, String?) -> Unit
 ) {
     val context = LocalContext.current
     val birthday = isBirthdayEvent(event)
     var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").trim()) }
     var date by remember(event.id) { mutableStateOf(event.date) }
     var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
+    var endTime by remember(event.id) { mutableStateOf(event.endTime ?: "") }
     var memberId by remember(event.id) { mutableStateOf(event.memberId ?: ALL_FAMILY_MEMBER_ID) }
 
     fun chooseDate() {
@@ -579,6 +580,14 @@ private fun EditEventDialog(
         }, parsed.hour, parsed.minute, true).show()
     }
 
+    fun chooseEndTime() {
+        val fallback = runCatching { LocalTime.parse(time).plusHours(1) }.getOrElse { LocalTime.of(19, 0) }
+        val parsed = runCatching { LocalTime.parse(endTime) }.getOrDefault(fallback)
+        TimePickerDialog(context, { _, hour, minute ->
+            endTime = "%02d:%02d".format(hour, minute)
+        }, parsed.hour, parsed.minute, true).show()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Redigera aktivitet") },
@@ -588,7 +597,13 @@ private fun EditEventDialog(
                 OutlinedButton(onClick = ::chooseDate, modifier = Modifier.fillMaxWidth()) {
                     Text("Datum: ${date.dayOfMonth}/${date.monthValue} ${date.year}")
                 }
-                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) { Text("Tid: $time") }
+                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) { Text("Starttid: $time") }
+                OutlinedButton(onClick = ::chooseEndTime, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (endTime.isBlank()) "Sluttid: inte angiven" else "Sluttid: $endTime")
+                }
+                if (endTime.isNotBlank()) {
+                    TextButton(onClick = { endTime = "" }) { Text("Ta bort sluttid") }
+                }
                 Text("Gäller", fontWeight = FontWeight.Bold)
                 members.forEach { member ->
                     Row(
@@ -604,7 +619,7 @@ private fun EditEventDialog(
         confirmButton = {
             Button(
                 enabled = title.isNotBlank(),
-                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, memberId) }
+                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, endTime.ifBlank { null }, memberId) }
             ) { Text("Spara") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
