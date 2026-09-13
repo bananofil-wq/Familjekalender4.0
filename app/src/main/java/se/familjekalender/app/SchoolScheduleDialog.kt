@@ -38,10 +38,17 @@ internal fun SchoolScheduleDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val session = currentFamilySession(context)
+    val eligibleMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
     val scheduleTypes = listOf("Förskola", "Skola", "Fritids", "Dagis")
     var type by remember { mutableStateOf("Förskola") }
     var rotationWeeks by remember { mutableIntStateOf(1) }
-    var selectedMemberId by remember { mutableStateOf(members.firstOrNull()?.id.orEmpty()) }
+    var selectedMemberId by remember {
+        mutableStateOf(
+            eligibleMembers.firstOrNull { member ->
+                member.role.contains("barn", ignoreCase = true) || member.role.contains("child", ignoreCase = true)
+            }?.id ?: eligibleMembers.firstOrNull()?.id.orEmpty()
+        )
+    }
     var startDate by remember {
         mutableStateOf(selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong()).plusWeeks(1))
     }
@@ -74,6 +81,15 @@ internal fun SchoolScheduleDialog(
         }, parsed.hour, parsed.minute, true).show()
     }
 
+    val invalidTimeRange = weeks.take(rotationWeeks).any { week ->
+        week.weekdays.any { day ->
+            val times = week.dayTimes[day] ?: ("07:30" to "16:00")
+            val start = runCatching { LocalTime.parse(times.first) }.getOrNull()
+            val end = runCatching { LocalTime.parse(times.second) }.getOrNull()
+            start == null || end == null || !end.isAfter(start)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
         modifier = Modifier.fillMaxWidth(0.94f),
@@ -99,7 +115,7 @@ internal fun SchoolScheduleDialog(
                 }
 
                 Text("Barn", fontSize = 12.sp, color = Color.White.copy(alpha = .7f))
-                members.forEach { member ->
+                eligibleMembers.forEach { member ->
                     Row(
                         Modifier.fillMaxWidth().clickable { selectedMemberId = member.id },
                         verticalAlignment = Alignment.CenterVertically
@@ -168,12 +184,15 @@ internal fun SchoolScheduleDialog(
                     fontSize = 11.sp,
                     color = Color.White.copy(alpha = .65f)
                 )
+                if (invalidTimeRange) {
+                    Text("Sluttiden måste vara senare än starttiden för varje vald dag.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
             }
         },
         confirmButton = {
             Button(
-                enabled = !saving && session != null && selectedMemberId.isNotBlank() && weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
+                enabled = !saving && session != null && selectedMemberId.isNotBlank() && !invalidTimeRange && weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
                 onClick = {
                     val activeSession = session ?: return@Button
                     saving = true
