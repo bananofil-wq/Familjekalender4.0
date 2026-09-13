@@ -65,6 +65,13 @@ private fun copyStatus(result: CopyWeekResult, direction: String): String = when
     else -> "Inga aktiviteter att kopiera"
 }
 
+private fun templateStatus(result: TemplateApplyResult): String = when {
+    result.created > 0 && result.skipped > 0 -> "${result.created} skapade från veckomallen · ${result.skipped} fanns redan"
+    result.created > 0 -> "${result.created} aktiviteter skapade från veckomallen"
+    result.skipped > 0 -> "Inget dubblerades · ${result.skipped} mallaktiviteter fanns redan"
+    else -> "Veckomallen innehåller inga aktiviteter"
+}
+
 @Composable
 fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged: () -> Unit) {
     val scope = rememberCoroutineScope()
@@ -154,9 +161,9 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                             busy = true
                             status = ""
                             runCatching {
-                                RecurringScheduleSync.applyTemplateToWeek(session, "Min veckomall", nextWeek)
-                            }.onSuccess { count ->
-                                status = "$count aktiviteter skapade från veckomallen"
+                                RecurringScheduleSync.applyTemplateToWeek(session, "Min veckomall", nextWeek, events)
+                            }.onSuccess { result ->
+                                status = templateStatus(result)
                                 onChanged()
                             }.onFailure { status = it.message ?: "Kunde inte använda veckomallen" }
                             busy = false
