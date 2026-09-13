@@ -30,17 +30,17 @@ internal suspend fun saveWorkMonthDirect(
 
     if (rows.isEmpty()) return 0
 
-    val grouped = rows.groupBy { it.startTime to it.endTime }
-    val rules = grouped.map { (times, events) ->
-        val weekdays = events.map { it.date.dayOfWeek.value }.toSet()
-        WorkRule(weekdays = weekdays, startTime = times.first, endTime = times.second)
+    val seriesId = java.util.UUID.randomUUID().toString()
+    rows.forEach { row ->
+        SupabaseSync.addEvent(
+            session,
+            row.title,
+            row.date,
+            row.startTime,
+            row.endTime,
+            row.memberId,
+            seriesId
+        )
     }
-
-    return saveWorkMonth(
-        session = session,
-        month = month,
-        title = title,
-        memberId = memberId,
-        rules = rules
-    )
+    return rows.size
 }

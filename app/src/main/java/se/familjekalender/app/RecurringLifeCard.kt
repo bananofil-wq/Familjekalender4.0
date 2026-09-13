@@ -42,11 +42,29 @@ private suspend fun copyWeek(
 ): CopyWeekResult {
     var copied = 0
     var skipped = 0
+    val legacySeriesIds = mutableMapOf<String, String>()
     sourceEvents.forEach { event ->
         val offset = ChronoUnit.DAYS.between(sourceStart, event.date)
         val targetDate = targetStart.plusDays(offset)
         if (existingEvents.any { sameCopiedEvent(it, event, targetDate) }) skipped++ else {
-            SupabaseSync.addEvent(session, event.title, targetDate, event.time, event.endTime, event.memberId)
+            val seriesId = event.seriesId ?: run {
+                val key = listOf(
+                    event.title,
+                    event.time,
+                    event.endTime ?: "",
+                    event.memberId ?: ALL_FAMILY_MEMBER_ID
+                ).joinToString("|")
+                legacySeriesIds.getOrPut(key) { java.util.UUID.randomUUID().toString() }
+            }
+            SupabaseSync.addEvent(
+                session,
+                event.title,
+                targetDate,
+                event.time,
+                event.endTime,
+                event.memberId,
+                seriesId
+            )
             copied++
         }
     }

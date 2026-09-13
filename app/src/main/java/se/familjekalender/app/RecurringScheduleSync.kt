@@ -130,7 +130,18 @@ object RecurringScheduleSync {
                 if (duplicate) {
                     skipped++
                 } else {
-                    SupabaseSync.addEvent(session, template.title, date, template.startTime, template.endTime, template.memberId)
+                    val seriesId = java.util.UUID.nameUUIDFromBytes(
+                        "${session.id}|template|${template.id}".toByteArray(StandardCharsets.UTF_8)
+                    ).toString()
+                    SupabaseSync.addEvent(
+                        session,
+                        template.title,
+                        date,
+                        template.startTime,
+                        template.endTime,
+                        template.memberId,
+                        seriesId
+                    )
                     created++
                 }
             }
