@@ -141,17 +141,19 @@ private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): L
 private fun coordinationLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
     val timed = events
         .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
-        .mapNotNull { event -> minutesOfDay(event.time)?.let { event to it } }
-        .sortedBy { it.second }
+        .mapNotNull { event -> assistantTimeRange(event)?.let { event to it } }
+        .sortedBy { it.second.start }
     val warnings = mutableListOf<String>()
-    for (index in 0 until timed.lastIndex) {
-        val (first, firstStart) = timed[index]
-        for (nextIndex in index + 1..timed.lastIndex) {
-            val (second, secondStart) = timed[nextIndex]
-            val gap = secondStart - firstStart
-            if (gap > 45) break
+    for (index in timed.indices) {
+        val (first, firstRange) = timed[index]
+        for (nextIndex in timed.indices) {
+            if (index == nextIndex) continue
+            val (second, secondRange) = timed[nextIndex]
             if (first.memberId == second.memberId) continue
-            warnings += "${memberName(first.memberId, members)} och ${memberName(second.memberId, members)} har aktiviteter med bara $gap minuters mellanrum."
+            val gap = secondRange.start - firstRange.end
+            if (gap in 0..45) {
+                warnings += "Kort byte i familjens schema: ${memberName(first.memberId, members)}s ${shortEventTitle(first)} slutar ${clockText(firstRange.end)} och ${memberName(second.memberId, members)}s ${shortEventTitle(second)} börjar ${clockText(secondRange.start)}, bara $gap min emellan."
+            }
         }
     }
     return warnings.distinct()
@@ -159,16 +161,24 @@ private fun coordinationLines(events: List<SyncEvent>, members: List<SyncMember>
 
 private data class AdultAvailability(val member: SyncMember, val freeMinutesBeforeNext: Int?)
 
+private fun overlapsWindow(range: AssistantTimeRange, start: Int, end: Int): Boolean =
+    range.start < end && range.end > start
+
 private fun suggestedAdultAt(events: List<SyncEvent>, adults: List<SyncMember>, minute: Int): AdultAvailability? {
+    val pickupWindowStart = minute - 15
+    val pickupWindowEnd = minute + 30
     return adults.mapNotNull { adult ->
         val ranges = events
             .filter { it.memberId == adult.id }
             .mapNotNull(::assistantTimeRange)
             .sortedBy { it.start }
-        if (ranges.any { minute >= it.start && minute < it.end }) return@mapNotNull null
-        val nextStart = ranges.firstOrNull { it.start >= minute }?.start
+        if (ranges.any { overlapsWindow(it, pickupWindowStart, pickupWindowEnd) }) return@mapNotNull null
+        val nextStart = ranges.firstOrNull { it.start >= pickupWindowEnd }?.start
         AdultAvailability(adult, nextStart?.minus(minute))
-    }.maxWithOrNull(compareBy<AdultAvailability> { it.freeMinutesBeforeNext ?: Int.MAX_VALUE }.thenBy { it.member.name })
+    }.sortedWith(
+        compareByDescending<AdultAvailability> { it.freeMinutesBeforeNext ?: Int.MAX_VALUE }
+            .thenBy { it.member.name.lowercase(Locale("sv", "SE")) }
+    ).firstOrNull()
 }
 
 private fun actionPlanningLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
@@ -194,7 +204,7 @@ private fun actionPlanningLines(events: List<SyncEvent>, members: List<SyncMembe
                     margin >= 120 -> " och har minst ${margin / 60} timmar till nästa tidsatta åtagande."
                     else -> " och har cirka $margin minuter till nästa tidsatta åtagande."
                 }
-                actions += "Förslag: ${suggestion.member.name} kan hämta ${child.name} runt ${clockText(pickup)}$suffix"
+                actions += "Enligt kalendern har ${suggestion.member.name} bäst lucka runt ${clockText(pickup)} för ${child.name}s hämtning$suffix"
             }
         }
     }
@@ -219,12 +229,14 @@ private fun familyPlanningLines(events: List<SyncEvent>, members: List<SyncMembe
             val careRange = assistantTimeRange(care) ?: continue
             val pickupMinute = careRange.end
 
+            val pickupWindowStart = pickupMinute - 15
+            val pickupWindowEnd = pickupMinute + 30
             val availableAdults = adults.filter { adult ->
                 val adultRanges = eventsByMember[adult.id].orEmpty().mapNotNull(::assistantTimeRange)
-                adultRanges.none { range -> pickupMinute >= range.start && pickupMinute < range.end }
+                adultRanges.none { range -> overlapsWindow(range, pickupWindowStart, pickupWindowEnd) }
             }
             if (availableAdults.isEmpty()) {
-                warnings += "Hämtning för ${child.name} runt ${clockText(pickupMinute)} behöver planeras: ingen vuxen verkar ledig enligt kalendern."
+                warnings += "Hämtning för ${child.name} runt ${clockText(pickupMinute)} behöver planeras: ingen vuxen har en fri kalenderlucka från 15 min före till 30 min efter hämtningen."
             }
 
             val nextActivity = childEvents
