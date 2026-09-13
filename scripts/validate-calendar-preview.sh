@@ -6,6 +6,15 @@ PACKAGE="se.familjekalender.app"
 ACTIVITY=".DesignPreviewActivity"
 
 adb install -r "$APK"
+
+# The production app legitimately asks for notification/location permissions.
+# In the headless preview emulator those Android system dialogs would cover the
+# activity and turn the visual regression screenshot into a false failure.
+# Pre-grant only inside CI so the preview validates our UI, not PermissionController.
+adb shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS || true
+adb shell pm grant "$PACKAGE" android.permission.ACCESS_COARSE_LOCATION || true
+adb shell pm grant "$PACKAGE" android.permission.ACCESS_FINE_LOCATION || true
+
 adb shell input keyevent KEYCODE_WAKEUP || true
 adb shell wm dismiss-keyguard || true
 adb shell input keyevent 82 || true
