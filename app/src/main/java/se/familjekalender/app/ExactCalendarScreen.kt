@@ -546,13 +546,23 @@ private fun DayOverviewPopup(
     )
 
     deleteChoiceEvent?.let { event ->
-        val today = LocalDate.now()
         val series = allEvents.filter { candidate ->
             candidate.source != "sportadmin" &&
-                candidate.memberId == event.memberId &&
-                candidate.title == event.title &&
-                !candidate.date.isBefore(today)
+                if (event.seriesId != null) {
+                    candidate.seriesId == event.seriesId
+                } else {
+                    candidate.seriesId == null &&
+                        candidate.source == event.source &&
+                        candidate.memberId == event.memberId &&
+                        candidate.title == event.title &&
+                        candidate.time == event.time &&
+                        candidate.endTime == event.endTime
+                }
         }.sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+        val futureSeries = series.filter { candidate ->
+            candidate.date.isAfter(event.date) ||
+                (candidate.date == event.date && candidate.time >= event.time)
+        }
 
         AlertDialog(
             onDismissRequest = { deleteChoiceEvent = null },
@@ -560,18 +570,22 @@ private fun DayOverviewPopup(
             text = {
                 Text(
                     if (series.size > 1)
-                        "Ta bort bara denna förekomst eller hela den återkommande serien (${series.size} framtida aktiviteter)?"
+                        "Välj om bara denna förekomst, denna och framåt eller hela serien ska tas bort."
                     else
                         "Ta bort denna aktivitet?"
                 )
             },
             confirmButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(horizontalAlignment = Alignment.End) {
                     if (series.size > 1) {
                         TextButton(onClick = {
                             onDeleteMany(series)
                             deleteChoiceEvent = null
                         }) { Text("Hela serien", color = MaterialTheme.colorScheme.error) }
+                        TextButton(onClick = {
+                            onDeleteMany(futureSeries)
+                            deleteChoiceEvent = null
+                        }) { Text("Denna och framåt", color = MaterialTheme.colorScheme.error) }
                     }
                     Button(onClick = {
                         onDelete(event)
