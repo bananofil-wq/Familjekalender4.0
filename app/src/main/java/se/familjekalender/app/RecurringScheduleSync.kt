@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 
 private const val RECURRING_SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
-private const val RECURRING_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjE0NzQ4MzY0N30.35FNP7mzVKPbWGQApkjkBWidnwARHhROxqrQcJWCiRg"
+private const val RECURRING_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
 
 data class ScheduleTemplate(
     val id: String,
