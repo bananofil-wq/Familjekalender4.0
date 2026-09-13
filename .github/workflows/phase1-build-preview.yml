@@ -54,16 +54,95 @@ jobs:
             adb shell am force-stop se.familjekalender.app
             adb logcat -c
             adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen calendar
-            for i in $(seq 1 20); do
+
+            # The emulator can relaunch the activity once after the initial display/configuration
+            # settles. Wait until DesignPreviewActivity remains resumed for several consecutive
+            # checks so we do not capture a transient black frame.
+            stable=0
+            for i in $(seq 1 30); do
               RESUMED=$(adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' || true)
               echo "$RESUMED"
-              echo "$RESUMED" | grep -q 'se.familjekalender.app/.DesignPreviewActivity' && break
+              if echo "$RESUMED" | grep -q 'se.familjekalender.app/.DesignPreviewActivity'; then
+                stable=$((stable + 1))
+              else
+                stable=0
+              fi
+              [ "$stable" -ge 5 ] && break
               sleep 1
             done
-            adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' | grep -q 'se.familjekalender.app/.DesignPreviewActivity'
-            sleep 2
+            [ "$stable" -ge 5 ]
+            sleep 4
+
             adb exec-out screencap -p > phase1-calendar.png
             test -s phase1-calendar.png
+
+            # A successful process launch is not enough. Reject a nearly-black screenshot,
+            # otherwise CI could happily approve an invisible UI like a tiny bureaucratic deity.
+            python3 - <<'PY'
+            import struct, zlib
+            from pathlib import Path
+
+            data = Path('phase1-calendar.png').read_bytes()
+            if data[:8] != b'\x89PNG\r\n\x1a\n':
+                raise SystemExit('Preview is not a PNG')
+
+            pos = 8
+            width = height = color_type = bit_depth = None
+            chunks = []
+            while pos < len(data):
+                length = struct.unpack('>I', data[pos:pos+4])[0]
+                kind = data[pos+4:pos+8]
+                payload = data[pos+8:pos+8+length]
+                pos += 12 + length
+                if kind == b'IHDR':
+                    width, height, bit_depth, color_type, *_ = struct.unpack('>IIBBBBB', payload)
+                elif kind == b'IDAT':
+                    chunks.append(payload)
+                elif kind == b'IEND':
+                    break
+
+            if bit_depth != 8 or color_type not in (2, 6):
+                raise SystemExit(f'Unsupported PNG format: depth={bit_depth}, type={color_type}')
+            bpp = 3 if color_type == 2 else 4
+            raw = zlib.decompress(b''.join(chunks))
+            stride = width * bpp
+            prev = bytearray(stride)
+            bright = total = 0
+            offset = 0
+
+            for _ in range(height):
+                filt = raw[offset]
+                offset += 1
+                row = bytearray(raw[offset:offset+stride])
+                offset += stride
+                for x in range(stride):
+                    a = row[x-bpp] if x >= bpp else 0
+                    b = prev[x]
+                    c = prev[x-bpp] if x >= bpp else 0
+                    if filt == 1:
+                        row[x] = (row[x] + a) & 255
+                    elif filt == 2:
+                        row[x] = (row[x] + b) & 255
+                    elif filt == 3:
+                        row[x] = (row[x] + ((a + b) >> 1)) & 255
+                    elif filt == 4:
+                        p = a + b - c
+                        pa, pb, pc = abs(p-a), abs(p-b), abs(p-c)
+                        pr = a if pa <= pb and pa <= pc else (b if pb <= pc else c)
+                        row[x] = (row[x] + pr) & 255
+                for x in range(0, stride, bpp):
+                    r, g, b = row[x], row[x+1], row[x+2]
+                    total += 1
+                    if max(r, g, b) > 28:
+                        bright += 1
+                prev = row
+
+            ratio = bright / max(total, 1)
+            print(f'Non-dark pixel ratio: {ratio:.3f}')
+            if ratio < 0.08:
+                raise SystemExit('Preview is still effectively black')
+            PY
+
             adb logcat -d -v threadtime > phase1-logcat.txt || true
             ! grep -q "FATAL EXCEPTION.*se.familjekalender.app" phase1-logcat.txt
       - name: Upload preview
