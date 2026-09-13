@@ -210,6 +210,7 @@ internal fun SchoolScheduleDialog(
                                         "$type · ${times.first}–${times.second}",
                                         date,
                                         times.first,
+                                        times.second,
                                         selectedMemberId
                                     )
                                 }
