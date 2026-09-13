@@ -265,6 +265,7 @@ private fun SyncedApp(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
+                    FamilyTodayCard(events = events, members = members)
                     FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
                     Box(
                         Modifier
