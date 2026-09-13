@@ -31,7 +31,7 @@ data class SchedulePause(
     val titlePrefix: String?
 )
 
-data class TemplateApplyResult(val created: Int, val skipped: Int)
+data class TemplateApplyResult(val created: Int, val skipped: Int, val paused: Int)
 
 object RecurringScheduleSync {
     suspend fun loadTemplates(session: FamilySession): List<ScheduleTemplate> = withContext(Dispatchers.IO) {
@@ -91,6 +91,14 @@ object RecurringScheduleSync {
         grouped.size
     }
 
+    private fun pauseMatches(pause: SchedulePause, date: LocalDate, template: ScheduleTemplate): Boolean {
+        if (date.isBefore(pause.startsOn) || date.isAfter(pause.endsOn)) return false
+        if (pause.scope == "all_schedules") return true
+        val memberMatches = pause.memberId == null || pause.memberId == template.memberId
+        val titleMatches = pause.titlePrefix.isNullOrBlank() || template.title.startsWith(pause.titlePrefix, ignoreCase = true)
+        return memberMatches && titleMatches
+    }
+
     suspend fun applyTemplateToWeek(
         session: FamilySession,
         templateName: String,
@@ -98,11 +106,17 @@ object RecurringScheduleSync {
         existingEvents: List<SyncEvent>
     ): TemplateApplyResult {
         val templates = loadTemplates(session).filter { it.name == templateName }
+        val pauses = loadPauses(session)
         var created = 0
         var skipped = 0
+        var paused = 0
         templates.forEach { template ->
             template.weekdays.forEach { weekday ->
                 val date = targetWeekStart.plusDays((weekday - 1).toLong())
+                if (pauses.any { pauseMatches(it, date, template) }) {
+                    paused++
+                    return@forEach
+                }
                 val targetMember = template.memberId ?: ALL_FAMILY_MEMBER_ID
                 val duplicate = existingEvents.any { event ->
                     val existingMember = event.memberId ?: ALL_FAMILY_MEMBER_ID
@@ -120,7 +134,7 @@ object RecurringScheduleSync {
                 }
             }
         }
-        return TemplateApplyResult(created, skipped)
+        return TemplateApplyResult(created, skipped, paused)
     }
 
     suspend fun loadPauses(session: FamilySession): List<SchedulePause> = withContext(Dispatchers.IO) {
