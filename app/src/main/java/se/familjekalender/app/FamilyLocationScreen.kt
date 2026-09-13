@@ -59,6 +59,8 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
 
     var selectedMemberId by remember { mutableStateOf(prefs.getString("device_member_id", null)) }
     var selectedMapMember by remember { mutableStateOf<String?>(null) }
+    var mapView by remember { mutableStateOf<MapView?>(null) }
+    var useTopoMap by remember { mutableStateOf(false) }
     var sharing by remember { mutableStateOf(prefs.getBoolean("sharing_enabled", false)) }
     var locations by remember { mutableStateOf(emptyList<SyncFamilyLocation>()) }
     var places by remember { mutableStateOf(emptyList<SyncFamilyPlace>()) }
@@ -252,6 +254,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     locations = locations,
                     members = familyMembers,
                     selectedMemberId = selectedMapMember,
+                    onMapReady = { mapView = it },
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -263,8 +266,25 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                 ) {
                     MapCircleButton(Icons.Default.MyLocation) {
                         selectedMapMember = selectedMemberId
+                        val own = locations.firstOrNull { it.memberId == selectedMemberId }
+                            ?: locations.firstOrNull { it.memberId == selectedMapMember }
+                            ?: locations.firstOrNull()
+                        own?.let {
+                            mapView?.controller?.setZoom(17.0)
+                            mapView?.controller?.animateTo(GeoPoint(it.latitude, it.longitude))
+                        }
                     }
-                    MapCircleButton(Icons.Default.Layers) { }
+                    MapCircleButton(Icons.Default.Layers) {
+                        useTopoMap = !useTopoMap
+                        mapView?.setTileSource(if (useTopoMap) TileSourceFactory.USGS_TOPO else TileSourceFactory.MAPNIK)
+                        mapView?.invalidate()
+                    }
+                    MapCircleButton(Icons.Default.Add) {
+                        mapView?.controller?.zoomIn()
+                    }
+                    MapCircleButton(Icons.Default.Remove) {
+                        mapView?.controller?.zoomOut()
+                    }
                 }
 
                 val chosen = locations.firstOrNull { it.memberId == selectedMapMember }
@@ -736,6 +756,7 @@ private fun FamilyMap(
     locations: List<SyncFamilyLocation>,
     members: List<SyncMember>,
     selectedMemberId: String?,
+    onMapReady: (MapView) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val center = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
@@ -747,12 +768,15 @@ private fun FamilyMap(
             Configuration.getInstance().userAgentValue = ctx.packageName
             MapView(ctx).apply {
                 setTileSource(TileSourceFactory.MAPNIK)
+                setUseDataConnection(true)
                 setMultiTouchControls(true)
+                setBuiltInZoomControls(false)
+                isTilesScaledToDpi = true
                 minZoomLevel = 3.0
                 maxZoomLevel = 20.0
-                controller.setZoom(14.0)
+                controller.setZoom(17.0)
                 controller.setCenter(GeoPoint(lat, lon))
-            }
+            }.also(onMapReady)
         },
         update = { map ->
             map.overlays.clear()
