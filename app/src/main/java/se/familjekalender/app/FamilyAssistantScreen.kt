@@ -67,15 +67,65 @@ private fun eventLine(event: SyncEvent, members: List<SyncMember>): String {
     return "$who: ${event.title} $time"
 }
 
-private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> = events
-    .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
-    .groupBy { Triple(it.date, it.time, it.memberId) }
-    .filterValues { it.size > 1 }
-    .values
-    .map { group ->
-        val first = group.first()
-        "${memberName(first.memberId, members)} har ${group.size} aktiviteter samtidigt ${first.time}."
+private data class AssistantTimeRange(val start: Int, val end: Int)
+
+private fun minutesOfDay(value: String): Int? = runCatching {
+    val parsed = LocalTime.parse(value)
+    parsed.hour * 60 + parsed.minute
+}.getOrNull()
+
+private fun assistantTimeRange(event: SyncEvent): AssistantTimeRange? {
+    val start = minutesOfDay(event.time) ?: return null
+    val range = Regex("(\\d{2}:\\d{2})[–-](\\d{2}:\\d{2})").find(event.title)
+    val explicitEnd = range?.groupValues?.getOrNull(2)?.let(::minutesOfDay)
+    val end = when {
+        explicitEnd == null -> start + 60
+        explicitEnd > start -> explicitEnd
+        else -> explicitEnd + 24 * 60
     }
+    return AssistantTimeRange(start, end)
+}
+
+private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
+    val warnings = mutableListOf<String>()
+    events
+        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
+        .groupBy { it.memberId }
+        .forEach { (memberId, memberEvents) ->
+            val timed = memberEvents.mapNotNull { event -> assistantTimeRange(event)?.let { event to it } }
+                .sortedBy { it.second.start }
+            for (index in 0 until timed.lastIndex) {
+                val (firstEvent, firstRange) = timed[index]
+                for (nextIndex in index + 1..timed.lastIndex) {
+                    val (secondEvent, secondRange) = timed[nextIndex]
+                    if (secondRange.start >= firstRange.end) break
+                    val firstTitle = firstEvent.title.substringBefore(" · ").trim()
+                    val secondTitle = secondEvent.title.substringBefore(" · ").trim()
+                    warnings += "${memberName(memberId, members)} har överlappning: $firstTitle och $secondTitle."
+                }
+            }
+        }
+    return warnings.distinct()
+}
+
+private fun coordinationLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
+    val timed = events
+        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
+        .mapNotNull { event -> minutesOfDay(event.time)?.let { event to it } }
+        .sortedBy { it.second }
+    val warnings = mutableListOf<String>()
+    for (index in 0 until timed.lastIndex) {
+        val (first, firstStart) = timed[index]
+        for (nextIndex in index + 1..timed.lastIndex) {
+            val (second, secondStart) = timed[nextIndex]
+            val gap = secondStart - firstStart
+            if (gap > 45) break
+            if (first.memberId == second.memberId) continue
+            warnings += "${memberName(first.memberId, members)} och ${memberName(second.memberId, members)} har aktiviteter med bara $gap minuters mellanrum."
+        }
+    }
+    return warnings.distinct()
+}
 
 @Composable
 internal fun FamilyAssistantCard(
@@ -102,6 +152,7 @@ internal fun FamilyAssistantCard(
     val openTodoItems = todos.filter { !it.checked }
     val openShoppingItems = shopping.filter { !it.checked }
     val conflicts = conflictLines(todaysEvents, members)
+    val coordination = coordinationLines(todaysEvents, members)
     val greeting = when (LocalTime.now().hour) {
         in 5..10 -> "God morgon!"
         in 11..16 -> "God dag!"
@@ -156,6 +207,11 @@ internal fun FamilyAssistantCard(
                 Spacer(Modifier.height(10.dp))
                 Text("Konfliktvarning", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                 conflicts.take(2).forEach { Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+            }
+            if (coordination.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("Behöver planeras", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                coordination.take(2).forEach { Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f)) }
             }
         }
     }
