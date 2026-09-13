@@ -109,13 +109,23 @@ internal fun ExactCalendarScreen(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
-        // Keep enough vertical room for the complete six-week month grid.
-        // The photo remains at its natural ratio and simply becomes smaller on
-        // short phones instead of squeezing the calendar cells to zero height.
+        // The month grid always owns a predictable amount of vertical space.
+        // Do not combine weight(), negative offsets and min-height here: that made
+        // six equal week rows collapse differently on different screen heights.
         val calendarMinHeight = 390.dp
-        // Keep some of the seasonal artwork visible above the calendar, but never let
-        // that hero area steal the height needed by the six week rows.
-        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(72.dp, 135.dp)
+        val outerVerticalPadding = 20.dp
+        val sectionSpacing = 8.dp
+        val seasonalHeroMax = 135.dp
+        val seasonalHeroMin = 72.dp
+        val hasSeasonalHero = mode != ThemeMode.CLASSIC
+        val availableForHero = maxHeight - calendarMinHeight - outerVerticalPadding - sectionSpacing
+        val heroHeight = if (hasSeasonalHero) {
+            availableForHero.coerceIn(0.dp, seasonalHeroMax).let {
+                if (it in 1.dp..<seasonalHeroMin) 0.dp else it
+            }
+        } else 0.dp
+        val calendarHeight = (maxHeight - outerVerticalPadding - heroHeight -
+            if (heroHeight > 0.dp) sectionSpacing else 0.dp).coerceAtLeast(calendarMinHeight)
         SeasonalPhoto(mode, Modifier.matchParentSize())
 
         fun settleMonth(delta: Long, widthPx: Float) {
@@ -136,15 +146,13 @@ internal fun ExactCalendarScreen(
                 .padding(horizontal = 6.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (mode != ThemeMode.CLASSIC) {
+            if (heroHeight > 0.dp) {
                 Spacer(Modifier.height(heroHeight))
             }
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = (-130).dp)
-                    .weight(1f)
-                    .heightIn(min = calendarMinHeight)
+                    .height(calendarHeight)
                     .clipToBounds()
                     .pointerInput(month) {
                         detectHorizontalDragGestures(
