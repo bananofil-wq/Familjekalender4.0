@@ -318,17 +318,8 @@ internal fun FamilyAssistantCard(
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
-            Text("Idag", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            if (todaysEvents.isEmpty()) {
-                Text("Inga aktiviteter inlagda.", fontSize = 14.sp, color = Muted)
-            } else {
-                todaysEvents.take(3).forEach { event ->
-                    Text("• ${eventLine(event, members)}", fontSize = 14.sp, color = Color.White)
-                }
-                if (todaysEvents.size > 3) Text("+ ${todaysEvents.size - 3} till", fontSize = 12.sp, color = Muted)
-            }
-
+            // FamilyTodayCard above already gives the full at-a-glance day overview.
+            // Keep this card focused on planning, todo/shopping counts and conflicts.
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 AssistantStat("✓", "${openTodoItems.size} kvar", "To-Do", Modifier.weight(1f)) { popup = AssistantPopup.TODO }

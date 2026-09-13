@@ -1,0 +1,43 @@
+name: Best family experience final validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ feature/best-family-experience ]
+    paths:
+      - '.github/workflows/best-family-experience-final.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-final:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/best-family-experience
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Verify approved seasonal images
+        run: python3 scripts/verify-season-images.py
+      - name: Verify recurring-series implementation
+        run: |
+          grep -q 'series_id' app/src/main/java/se/familjekalender/app/SupabaseSync.kt
+          grep -q 'THIS_AND_FUTURE' app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt
+          grep -q 'filterPausedScheduleEvents' app/src/main/java/se/familjekalender/app/RecurringScheduleSync.kt
+          grep -q 'legacySeriesIds' app/src/main/java/se/familjekalender/app/RecurringLifeCard.kt
+      - name: Verify widget remains removed
+        run: |
+          if find app/src -type f \( -iname '*widget*.kt' -o -iname '*widget*.xml' \) | grep -q .; then
+            echo 'Unexpected widget implementation found'
+            find app/src -type f \( -iname '*widget*.kt' -o -iname '*widget*.xml' \)
+            exit 1
+          fi
+      - name: Compile final debug APK
+        run: gradle :app:assembleDebug --stacktrace
