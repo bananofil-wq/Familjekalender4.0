@@ -32,3 +32,4 @@ jobs:
           git add app/src/main/java/se/familjekalender/app/MainActivity.kt
           git commit -m "Preserve event end time in family editor"
           git push origin HEAD:feature/family-planning-phase1
+# Trigger after workflow registration
