@@ -72,10 +72,16 @@ private fun templateStatus(result: TemplateApplyResult): String = when {
     else -> "Veckomallen innehåller inga aktiviteter"
 }
 
+private fun pauseLabel(pause: SchedulePause): String = when {
+    pause.startsOn == pause.endsOn -> pause.startsOn.toString()
+    else -> "${pause.startsOn} – ${pause.endsOn}"
+}
+
 @Composable
 fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged: () -> Unit) {
     val scope = rememberCoroutineScope()
-    val thisWeek = mondayOf(LocalDate.now())
+    val today = LocalDate.now()
+    val thisWeek = mondayOf(today)
     val lastWeek = thisWeek.minusWeeks(1)
     val nextWeek = thisWeek.plusWeeks(1)
     val lastWeekEvents = remember(events, thisWeek) { manualEventsInWeek(events, lastWeek) }
@@ -83,11 +89,23 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var templateNames by remember { mutableStateOf<List<String>>(emptyList()) }
+    var pauses by remember { mutableStateOf<List<SchedulePause>>(emptyList()) }
+    var pauseFrom by remember { mutableStateOf(nextWeek.toString()) }
+    var pauseTo by remember { mutableStateOf(nextWeek.plusDays(6).toString()) }
 
-    LaunchedEffect(session.id, events.size) {
+    suspend fun reloadRecurringData() {
         templateNames = runCatching {
             RecurringScheduleSync.loadTemplates(session).map { it.name }.distinct()
         }.getOrDefault(emptyList())
+        pauses = runCatching {
+            RecurringScheduleSync.loadPauses(session)
+                .filter { !it.endsOn.isBefore(today) }
+                .sortedBy { it.startsOn }
+        }.getOrDefault(emptyList())
+    }
+
+    LaunchedEffect(session.id, events.size) {
+        reloadRecurringData()
     }
 
     Card(
@@ -98,10 +116,11 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Återkommande vardag", fontWeight = FontWeight.Bold, fontSize = 17.sp)
             Text(
-                "Kopiera en fungerande vecka utan dubbletter eller spara den som återanvändbar mall.",
+                "Kopiera en fungerande vecka, spara en veckomall och pausa återkommande vardag under lov eller semester.",
                 color = Muted,
                 fontSize = 12.sp
             )
+
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = {
@@ -146,7 +165,7 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                                 RecurringScheduleSync.replaceTemplateFromWeek(session, "Min veckomall", events, thisWeek)
                             }.onSuccess { count ->
                                 status = "Veckomallen sparad med $count typer av aktiviteter"
-                                templateNames = RecurringScheduleSync.loadTemplates(session).map { it.name }.distinct()
+                                reloadRecurringData()
                             }.onFailure { status = it.message ?: "Kunde inte spara veckomallen" }
                             busy = false
                         }
@@ -174,10 +193,102 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                 ) { Text("Mall → nästa") }
             }
 
+            HorizontalDivider()
+            Text("Lov / semester", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(
+                "Lägg en paus för återkommande scheman. Vanliga engångshändelser ligger kvar.",
+                color = Muted,
+                fontSize = 12.sp
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = pauseFrom,
+                    onValueChange = { pauseFrom = it },
+                    label = { Text("Från") },
+                    placeholder = { Text("ÅÅÅÅ-MM-DD") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = pauseTo,
+                    onValueChange = { pauseTo = it },
+                    label = { Text("Till") },
+                    placeholder = { Text("ÅÅÅÅ-MM-DD") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        pauseFrom = nextWeek.toString()
+                        pauseTo = nextWeek.plusDays(6).toString()
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f)
+                ) { Text("Nästa vecka") }
+                Button(
+                    onClick = {
+                        val start = runCatching { LocalDate.parse(pauseFrom.trim()) }.getOrNull()
+                        val end = runCatching { LocalDate.parse(pauseTo.trim()) }.getOrNull()
+                        if (start == null || end == null) {
+                            status = "Ange datum som ÅÅÅÅ-MM-DD"
+                        } else if (end.isBefore(start)) {
+                            status = "Slutdatum kan inte vara före startdatum"
+                        } else {
+                            scope.launch {
+                                busy = true
+                                status = ""
+                                runCatching { RecurringScheduleSync.addGlobalPause(session, start, end) }
+                                    .onSuccess {
+                                        status = "Schemapaus sparad: $start – $end"
+                                        reloadRecurringData()
+                                    }
+                                    .onFailure { status = it.message ?: "Kunde inte spara schemapausen" }
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f)
+                ) { Text("Pausa scheman") }
+            }
+
+            if (pauses.isNotEmpty()) {
+                Text("Aktiva och kommande pauser", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                pauses.forEach { pause ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(pauseLabel(pause), fontSize = 13.sp)
+                            Text(
+                                if (!pause.startsOn.isAfter(today) && !pause.endsOn.isBefore(today)) "Aktiv nu" else "Kommande",
+                                color = Muted,
+                                fontSize = 11.sp
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    busy = true
+                                    runCatching { RecurringScheduleSync.deletePause(session, pause.id) }
+                                        .onSuccess {
+                                            status = "Schemapaus borttagen"
+                                            reloadRecurringData()
+                                        }
+                                        .onFailure { status = it.message ?: "Kunde inte ta bort schemapausen" }
+                                    busy = false
+                                }
+                            },
+                            enabled = !busy
+                        ) { Text("Ta bort") }
+                    }
+                }
+            }
+
             if (status.isNotBlank()) {
                 Text(
                     status,
-                    color = if (status.contains("Kunde")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    color = if (status.contains("Kunde") || status.contains("kan inte") || status.contains("Ange")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp
                 )
             }
