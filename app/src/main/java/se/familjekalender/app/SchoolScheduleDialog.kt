@@ -199,6 +199,7 @@ internal fun SchoolScheduleDialog(
                     error = null
                     scope.launch {
                         runCatching {
+                            val seriesId = java.util.UUID.randomUUID().toString()
                             repeat(52) { weekIndex ->
                                 val template = weeks[weekIndex % rotationWeeks]
                                 val monday = startDate.plusWeeks(weekIndex.toLong())
@@ -211,7 +212,8 @@ internal fun SchoolScheduleDialog(
                                         date,
                                         times.first,
                                         times.second,
-                                        selectedMemberId
+                                        selectedMemberId,
+                                        seriesId
                                     )
                                 }
                             }

@@ -1182,6 +1182,7 @@ private fun WorkRotationDialog(
                     error = null
                     scope.launch {
                         runCatching {
+                            val seriesId = java.util.UUID.randomUUID().toString()
                             repeat(52) { weekIndex ->
                                 val template = weeks[weekIndex % rotationWeeks]
                                 val monday = startDate.plusWeeks(weekIndex.toLong())
@@ -1189,7 +1190,7 @@ private fun WorkRotationDialog(
                                     val date = monday.plusDays((day - 1).toLong())
                                     val times = template.dayTimes[day] ?: (template.startTime to template.endTime)
                                     val eventTitle = "Jobb · ${times.first}–${times.second}"
-                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, times.second, selectedMemberId)
+                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, times.second, selectedMemberId, seriesId)
                                 }
                             }
                         }.onSuccess { onChanged() }
