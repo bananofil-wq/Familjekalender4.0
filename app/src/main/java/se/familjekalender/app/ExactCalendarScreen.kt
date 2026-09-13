@@ -1115,7 +1115,7 @@ private fun WorkRotationDialog(
                                     val date = monday.plusDays((day - 1).toLong())
                                     val times = template.dayTimes[day] ?: (template.startTime to template.endTime)
                                     val eventTitle = "Jobb · ${times.first}–${times.second}"
-                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, selectedMemberId)
+                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, times.second, selectedMemberId)
                                 }
                             }
                         }.onSuccess { onChanged() }
