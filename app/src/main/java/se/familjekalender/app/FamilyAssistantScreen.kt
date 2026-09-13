@@ -157,6 +157,50 @@ private fun coordinationLines(events: List<SyncEvent>, members: List<SyncMember>
     return warnings.distinct()
 }
 
+private data class AdultAvailability(val member: SyncMember, val freeMinutesBeforeNext: Int?)
+
+private fun suggestedAdultAt(events: List<SyncEvent>, adults: List<SyncMember>, minute: Int): AdultAvailability? {
+    return adults.mapNotNull { adult ->
+        val ranges = events
+            .filter { it.memberId == adult.id }
+            .mapNotNull(::assistantTimeRange)
+            .sortedBy { it.start }
+        if (ranges.any { minute >= it.start && minute < it.end }) return@mapNotNull null
+        val nextStart = ranges.firstOrNull { it.start >= minute }?.start
+        AdultAvailability(adult, nextStart?.minus(minute))
+    }.maxWithOrNull(compareBy<AdultAvailability> { it.freeMinutesBeforeNext ?: Int.MAX_VALUE }.thenBy { it.member.name })
+}
+
+private fun actionPlanningLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
+    val realMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
+    val children = realMembers.filter(::isChildMember)
+    val adults = realMembers.filterNot(::isChildMember)
+    if (children.isEmpty() || adults.isEmpty()) return emptyList()
+
+    val eventsByMember = events
+        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
+        .groupBy { it.memberId }
+    val actions = mutableListOf<String>()
+
+    children.forEach { child ->
+        val childEvents = eventsByMember[child.id].orEmpty()
+        childEvents.filter(::isCareOrSchoolEvent).forEach { care ->
+            val pickup = assistantTimeRange(care)?.end ?: return@forEach
+            val suggestion = suggestedAdultAt(events, adults, pickup)
+            if (suggestion != null) {
+                val margin = suggestion.freeMinutesBeforeNext
+                val suffix = when {
+                    margin == null -> " och har inget senare tidsatt åtagande."
+                    margin >= 120 -> " och har minst ${margin / 60} timmar till nästa tidsatta åtagande."
+                    else -> " och har cirka $margin minuter till nästa tidsatta åtagande."
+                }
+                actions += "Förslag: ${suggestion.member.name} kan hämta ${child.name} runt ${clockText(pickup)}$suffix"
+            }
+        }
+    }
+    return actions.distinct()
+}
+
 private fun familyPlanningLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
     val realMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
     val children = realMembers.filter(::isChildMember)
@@ -227,8 +271,10 @@ internal fun FamilyAssistantCard(
     val openShoppingItems = shopping.filter { !it.checked }
     val conflicts = conflictLines(todaysEvents, members)
     val planning = (familyPlanningLines(todaysEvents, members) + coordinationLines(todaysEvents, members)).distinct()
+    val actions = actionPlanningLines(todaysEvents, members)
     val tomorrowConflicts = conflictLines(tomorrowsEvents, members)
     val tomorrowPlanning = (familyPlanningLines(tomorrowsEvents, members) + coordinationLines(tomorrowsEvents, members)).distinct()
+    val tomorrowActions = actionPlanningLines(tomorrowsEvents, members)
     val greeting = when (LocalTime.now().hour) {
         in 5..10 -> "God morgon!"
         in 11..16 -> "God dag!"
@@ -289,13 +335,21 @@ internal fun FamilyAssistantCard(
                 Text("Behöver planeras", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 planning.take(3).forEach { Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f)) }
             }
-            if (tomorrowConflicts.isNotEmpty() || tomorrowPlanning.isNotEmpty()) {
+            if (actions.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("Förslag", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                actions.take(2).forEach { Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f)) }
+            }
+            if (tomorrowConflicts.isNotEmpty() || tomorrowPlanning.isNotEmpty() || tomorrowActions.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
                 Text("Inför imorgon", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 tomorrowConflicts.take(1).forEach {
                     Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                 }
                 tomorrowPlanning.take(2).forEach {
+                    Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f))
+                }
+                tomorrowActions.take(1).forEach {
                     Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f))
                 }
             }
