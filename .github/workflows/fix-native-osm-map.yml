@@ -1,0 +1,29 @@
+name: Fix native OSM map
+
+on:
+  push:
+    paths:
+      - 'scripts/fix_native_osm_map.py'
+      - '.github/workflows/fix-native-osm-map.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply native map patch
+        run: python scripts/fix_native_osm_map.py
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/FamilyLocationScreen.kt app/build.gradle.kts
+          git diff --cached --quiet && exit 0
+          git commit -m "Replace broken WebView map with native OpenStreetMap"
+          git push
