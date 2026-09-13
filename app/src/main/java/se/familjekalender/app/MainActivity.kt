@@ -319,7 +319,7 @@ private fun SyncedApp(
                             },
                             { event, title, date, time ->
                                 scope.launch {
-                                    SupabaseSync.updateEvent(session, event.id, title, date, time, event.memberId)
+                                    SupabaseSync.updateEvent(session, event.id, title, date, time, event.endTime, event.memberId)
                                     refresh()
                                 }
                             },
