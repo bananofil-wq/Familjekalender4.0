@@ -369,11 +369,16 @@ internal fun ExactCalendarScreen(
         val matchingSeries = events
             .filter { candidate ->
                 candidate.source != "sportadmin" &&
-                    candidate.source == event.source &&
-                    candidate.memberId == event.memberId &&
-                    candidate.title == event.title &&
-                    candidate.time == event.time &&
-                    candidate.endTime == event.endTime
+                    if (event.seriesId != null) {
+                        candidate.seriesId == event.seriesId
+                    } else {
+                        candidate.seriesId == null &&
+                            candidate.source == event.source &&
+                            candidate.memberId == event.memberId &&
+                            candidate.title == event.title &&
+                            candidate.time == event.time &&
+                            candidate.endTime == event.endTime
+                    }
             }
             .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
         EditEventDialog(

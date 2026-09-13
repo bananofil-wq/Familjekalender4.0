@@ -29,7 +29,8 @@ data class SyncEvent(
     val memberId: String?,
     val source: String,
     val endDate: LocalDate? = null,
-    val endTime: String? = null
+    val endTime: String? = null,
+    val seriesId: String? = null
 )
 
 object SupabaseSync {
@@ -124,7 +125,7 @@ object SupabaseSync {
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> = withContext(Dispatchers.IO) {
         val result = request(
             "GET",
-            "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source&family_id=eq.${session.id}&order=starts_at.asc",
+            "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source,series_id&family_id=eq.${session.id}&order=starts_at.asc",
             familyCode = session.code
         )
         val array = JSONArray(result)
@@ -144,7 +145,8 @@ object SupabaseSync {
                         memberId = if (row.isNull("member_id")) ALL_FAMILY_MEMBER_ID else row.getString("member_id"),
                         source = row.optString("source", "manual"),
                         endDate = endZoned?.toLocalDate(),
-                        endTime = endZoned?.let { "%02d:%02d".format(it.hour, it.minute) }
+                        endTime = endZoned?.let { "%02d:%02d".format(it.hour, it.minute) },
+                        seriesId = if (row.isNull("series_id")) null else row.getString("series_id")
                     )
                 )
             }
@@ -175,7 +177,8 @@ object SupabaseSync {
         date: LocalDate,
         startTime: String,
         endTime: String?,
-        memberId: String?
+        memberId: String?,
+        seriesId: String? = null
     ) = withContext(Dispatchers.IO) {
         val parsedStart = runCatching { LocalTime.parse(startTime) }.getOrElse { LocalTime.of(18, 0) }
         val starts = ZonedDateTime.of(date, parsedStart, STOCKHOLM)
@@ -191,6 +194,7 @@ object SupabaseSync {
             body.put("ends_at", ends.toOffsetDateTime().toString())
         }
         if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
+        if (seriesId != null) body.put("series_id", seriesId)
         request("POST", "/rest/v1/calendar_events", body, session.code, preferRepresentation = false)
     }
 

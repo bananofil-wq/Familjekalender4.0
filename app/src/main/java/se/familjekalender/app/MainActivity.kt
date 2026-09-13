@@ -368,8 +368,9 @@ private fun SyncedApp(
                     } else {
                         dates.sorted().flatMap { recurringDates(it, recurrence) }.distinct().sorted()
                     }
+                    val seriesId = if (recurrence == RecurrenceMode.NONE) null else java.util.UUID.randomUUID().toString()
                     targetDates.forEach { date ->
-                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId)
+                        SupabaseSync.addEvent(session, title, date, startTime, endTime, memberId, seriesId)
                     }
                 }
                 refresh()
