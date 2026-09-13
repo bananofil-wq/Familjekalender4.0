@@ -1,0 +1,34 @@
+name: Fix MainActivity updateEvent end time
+
+on:
+  push:
+    branches:
+      - feature/family-planning-phase1
+    paths:
+      - scripts/fix_mainactivity_update_event_endtime.py
+      - .github/workflows/fix-mainactivity-update-event-endtime.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/family-planning-phase1
+      - name: Apply compatibility fix
+        run: python3 scripts/fix_mainactivity_update_event_endtime.py
+      - name: Commit source fix
+        run: |
+          if git diff --quiet; then
+            echo "No source change needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git commit -m "Preserve event end time in family editor"
+          git push origin HEAD:feature/family-planning-phase1
