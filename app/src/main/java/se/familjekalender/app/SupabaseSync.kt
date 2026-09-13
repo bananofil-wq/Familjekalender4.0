@@ -228,6 +228,21 @@ object SupabaseSync {
         )
     }
 
+    suspend fun updateEventSeriesId(
+        session: FamilySession,
+        eventId: String,
+        seriesId: String?
+    ) = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("series_id", seriesId ?: JSONObject.NULL)
+        request(
+            "PATCH",
+            "/rest/v1/calendar_events?id=eq.$eventId&family_id=eq.${session.id}",
+            body,
+            session.code,
+            preferRepresentation = false
+        )
+    }
+
     suspend fun importSportAdmin(session: FamilySession, webcalUrl: String, memberId: String?): Int = withContext(Dispatchers.IO) {
         val text = fetchText(webcalUrl.trim())
         val unfolded = text.replace("\r\n ", "").replace("\n ", "")

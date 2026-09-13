@@ -397,9 +397,20 @@ internal fun ExactCalendarScreen(
                             SeriesEditScope.WHOLE_SERIES -> matchingSeries
                         }
                         runCatching {
+                            val splitSeriesId = when {
+                                event.seriesId == null -> null
+                                editScope == SeriesEditScope.THIS_AND_FUTURE -> java.util.UUID.randomUUID().toString()
+                                else -> event.seriesId
+                            }
                             targets.forEach { target ->
                                 val targetDate = if (editScope == SeriesEditScope.THIS) date else target.date.plusDays(dayShift)
                                 SupabaseSync.updateEvent(session, target.id, title, targetDate, time, endTime, memberId)
+                                when {
+                                    event.seriesId == null -> Unit
+                                    editScope == SeriesEditScope.THIS -> SupabaseSync.updateEventSeriesId(session, target.id, null)
+                                    editScope == SeriesEditScope.THIS_AND_FUTURE -> SupabaseSync.updateEventSeriesId(session, target.id, splitSeriesId)
+                                    editScope == SeriesEditScope.WHOLE_SERIES -> Unit
+                                }
                             }
                         }.onSuccess {
                             editEvent = null
