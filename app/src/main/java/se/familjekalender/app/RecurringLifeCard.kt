@@ -29,11 +29,8 @@ private fun manualEventsInWeek(events: List<SyncEvent>, weekStart: LocalDate): L
 private fun sameCopiedEvent(existing: SyncEvent, source: SyncEvent, targetDate: LocalDate): Boolean {
     val existingMember = existing.memberId ?: ALL_FAMILY_MEMBER_ID
     val sourceMember = source.memberId ?: ALL_FAMILY_MEMBER_ID
-    return existing.date == targetDate &&
-        existing.title == source.title &&
-        existing.time == source.time &&
-        existing.endTime == source.endTime &&
-        existingMember == sourceMember
+    return existing.date == targetDate && existing.title == source.title && existing.time == source.time &&
+        existing.endTime == source.endTime && existingMember == sourceMember
 }
 
 private suspend fun copyWeek(
@@ -48,9 +45,7 @@ private suspend fun copyWeek(
     sourceEvents.forEach { event ->
         val offset = ChronoUnit.DAYS.between(sourceStart, event.date)
         val targetDate = targetStart.plusDays(offset)
-        if (existingEvents.any { sameCopiedEvent(it, event, targetDate) }) {
-            skipped++
-        } else {
+        if (existingEvents.any { sameCopiedEvent(it, event, targetDate) }) skipped++ else {
             SupabaseSync.addEvent(session, event.title, targetDate, event.time, event.endTime, event.memberId)
             copied++
         }
@@ -65,16 +60,18 @@ private fun copyStatus(result: CopyWeekResult, direction: String): String = when
     else -> "Inga aktiviteter att kopiera"
 }
 
-private fun templateStatus(result: TemplateApplyResult): String = when {
-    result.created > 0 && result.skipped > 0 -> "${result.created} skapade från veckomallen · ${result.skipped} fanns redan"
-    result.created > 0 -> "${result.created} aktiviteter skapade från veckomallen"
-    result.skipped > 0 -> "Inget dubblerades · ${result.skipped} mallaktiviteter fanns redan"
-    else -> "Veckomallen innehåller inga aktiviteter"
+private fun templateStatus(result: TemplateApplyResult): String {
+    val parts = mutableListOf<String>()
+    if (result.created > 0) parts += "${result.created} skapade"
+    if (result.skipped > 0) parts += "${result.skipped} fanns redan"
+    if (result.paused > 0) parts += "${result.paused} hoppades över p.g.a. lov/semester"
+    return if (parts.isEmpty()) "Veckomallen innehåller inga aktiviteter" else parts.joinToString(" · ")
 }
 
-private fun pauseLabel(pause: SchedulePause): String = when {
-    pause.startsOn == pause.endsOn -> pause.startsOn.toString()
-    else -> "${pause.startsOn} – ${pause.endsOn}"
+private fun pauseLabel(pause: SchedulePause): String = if (pause.startsOn == pause.endsOn) {
+    pause.startsOn.toString()
+} else {
+    "${pause.startsOn} – ${pause.endsOn}"
 }
 
 @Composable
@@ -94,19 +91,14 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
     var pauseTo by remember { mutableStateOf(nextWeek.plusDays(6).toString()) }
 
     suspend fun reloadRecurringData() {
-        templateNames = runCatching {
-            RecurringScheduleSync.loadTemplates(session).map { it.name }.distinct()
-        }.getOrDefault(emptyList())
+        templateNames = runCatching { RecurringScheduleSync.loadTemplates(session).map { it.name }.distinct() }
+            .getOrDefault(emptyList())
         pauses = runCatching {
-            RecurringScheduleSync.loadPauses(session)
-                .filter { !it.endsOn.isBefore(today) }
-                .sortedBy { it.startsOn }
+            RecurringScheduleSync.loadPauses(session).filter { !it.endsOn.isBefore(today) }.sortedBy { it.startsOn }
         }.getOrDefault(emptyList())
     }
 
-    LaunchedEffect(session.id, events.size) {
-        reloadRecurringData()
-    }
+    LaunchedEffect(session.id, events.size) { reloadRecurringData() }
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
@@ -136,7 +128,6 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                     enabled = !busy && lastWeekEvents.isNotEmpty(),
                     modifier = Modifier.weight(1f)
                 ) { Text("Förra → denna") }
-
                 Button(
                     onClick = {
                         scope.launch {
@@ -161,30 +152,26 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                         scope.launch {
                             busy = true
                             status = ""
-                            runCatching {
-                                RecurringScheduleSync.replaceTemplateFromWeek(session, "Min veckomall", events, thisWeek)
-                            }.onSuccess { count ->
-                                status = "Veckomallen sparad med $count typer av aktiviteter"
-                                reloadRecurringData()
-                            }.onFailure { status = it.message ?: "Kunde inte spara veckomallen" }
+                            runCatching { RecurringScheduleSync.replaceTemplateFromWeek(session, "Min veckomall", events, thisWeek) }
+                                .onSuccess { count ->
+                                    status = "Veckomallen sparad med $count typer av aktiviteter"
+                                    reloadRecurringData()
+                                }
+                                .onFailure { status = it.message ?: "Kunde inte spara veckomallen" }
                             busy = false
                         }
                     },
                     enabled = !busy && thisWeekEvents.isNotEmpty(),
                     modifier = Modifier.weight(1f)
                 ) { Text("Spara denna vecka") }
-
                 Button(
                     onClick = {
                         scope.launch {
                             busy = true
                             status = ""
-                            runCatching {
-                                RecurringScheduleSync.applyTemplateToWeek(session, "Min veckomall", nextWeek, events)
-                            }.onSuccess { result ->
-                                status = templateStatus(result)
-                                onChanged()
-                            }.onFailure { status = it.message ?: "Kunde inte använda veckomallen" }
+                            runCatching { RecurringScheduleSync.applyTemplateToWeek(session, "Min veckomall", nextWeek, events) }
+                                .onSuccess { result -> status = templateStatus(result); onChanged() }
+                                .onFailure { status = it.message ?: "Kunde inte använda veckomallen" }
                             busy = false
                         }
                     },
@@ -202,28 +189,17 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = pauseFrom,
-                    onValueChange = { pauseFrom = it },
-                    label = { Text("Från") },
-                    placeholder = { Text("ÅÅÅÅ-MM-DD") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    pauseFrom, { pauseFrom = it }, label = { Text("Från") }, placeholder = { Text("ÅÅÅÅ-MM-DD") },
+                    singleLine = true, modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
-                    value = pauseTo,
-                    onValueChange = { pauseTo = it },
-                    label = { Text("Till") },
-                    placeholder = { Text("ÅÅÅÅ-MM-DD") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    pauseTo, { pauseTo = it }, label = { Text("Till") }, placeholder = { Text("ÅÅÅÅ-MM-DD") },
+                    singleLine = true, modifier = Modifier.weight(1f)
                 )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
-                    onClick = {
-                        pauseFrom = nextWeek.toString()
-                        pauseTo = nextWeek.plusDays(6).toString()
-                    },
+                    onClick = { pauseFrom = nextWeek.toString(); pauseTo = nextWeek.plusDays(6).toString() },
                     enabled = !busy,
                     modifier = Modifier.weight(1f)
                 ) { Text("Nästa vecka") }
@@ -231,19 +207,14 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                     onClick = {
                         val start = runCatching { LocalDate.parse(pauseFrom.trim()) }.getOrNull()
                         val end = runCatching { LocalDate.parse(pauseTo.trim()) }.getOrNull()
-                        if (start == null || end == null) {
-                            status = "Ange datum som ÅÅÅÅ-MM-DD"
-                        } else if (end.isBefore(start)) {
-                            status = "Slutdatum kan inte vara före startdatum"
-                        } else {
-                            scope.launch {
+                        when {
+                            start == null || end == null -> status = "Ange datum som ÅÅÅÅ-MM-DD"
+                            end.isBefore(start) -> status = "Slutdatum kan inte vara före startdatum"
+                            else -> scope.launch {
                                 busy = true
                                 status = ""
                                 runCatching { RecurringScheduleSync.addGlobalPause(session, start, end) }
-                                    .onSuccess {
-                                        status = "Schemapaus sparad: $start – $end"
-                                        reloadRecurringData()
-                                    }
+                                    .onSuccess { status = "Schemapaus sparad: $start – $end"; reloadRecurringData() }
                                     .onFailure { status = it.message ?: "Kunde inte spara schemapausen" }
                                 busy = false
                             }
@@ -271,10 +242,7 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
                                 scope.launch {
                                     busy = true
                                     runCatching { RecurringScheduleSync.deletePause(session, pause.id) }
-                                        .onSuccess {
-                                            status = "Schemapaus borttagen"
-                                            reloadRecurringData()
-                                        }
+                                        .onSuccess { status = "Schemapaus borttagen"; reloadRecurringData() }
                                         .onFailure { status = it.message ?: "Kunde inte ta bort schemapausen" }
                                     busy = false
                                 }
