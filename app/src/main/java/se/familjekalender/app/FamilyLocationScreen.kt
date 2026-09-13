@@ -11,8 +11,6 @@ import android.location.Geocoder
 import android.location.LocationManager
 import android.net.Uri
 import android.os.BatteryManager
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -38,6 +36,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -738,24 +741,38 @@ private fun FamilyMap(
     val center = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
     val lat = center?.latitude ?: 55.7047
     val lon = center?.longitude ?: 13.1910
-    val delta = 0.035
-    val bbox = "${lon - delta},${lat - delta},${lon + delta},${lat + delta}"
-    val marker = if (center != null) "&marker=$lat,$lon" else ""
-    val mapUrl = "https://www.openstreetmap.org/export/embed.html?bbox=${Uri.encode(bbox, ",")}&layer=mapnik$marker"
 
     AndroidView(
         factory = { ctx ->
-            WebView(ctx).apply {
-                webViewClient = WebViewClient()
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.loadsImagesAutomatically = true
-                setBackgroundColor(android.graphics.Color.rgb(13, 17, 28))
-                loadUrl(mapUrl)
+            Configuration.getInstance().userAgentValue = ctx.packageName
+            MapView(ctx).apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                minZoomLevel = 3.0
+                maxZoomLevel = 20.0
+                controller.setZoom(14.0)
+                controller.setCenter(GeoPoint(lat, lon))
             }
         },
-        update = { webView ->
-            if (webView.url != mapUrl) webView.loadUrl(mapUrl)
+        update = { map ->
+            map.overlays.clear()
+            locations.forEach { loc ->
+                val member = members.firstOrNull { it.id == loc.memberId }
+                Marker(map).apply {
+                    position = GeoPoint(loc.latitude, loc.longitude)
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    title = member?.name ?: "Familjemedlem"
+                    snippet = "Senast uppdaterad: ${formatUpdated(loc.updatedAt).removePrefix("Uppdaterad ")}"
+                    map.overlays.add(this)
+                }
+            }
+            val current = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
+            if (current != null) {
+                map.controller.setCenter(GeoPoint(current.latitude, current.longitude))
+            } else {
+                map.controller.setCenter(GeoPoint(lat, lon))
+            }
+            map.invalidate()
         },
         modifier = modifier
     )

@@ -67,6 +67,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("com.onesignal:OneSignal:[5.6.1, 5.9.99]")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
