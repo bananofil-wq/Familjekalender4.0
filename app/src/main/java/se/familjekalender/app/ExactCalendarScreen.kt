@@ -1292,7 +1292,7 @@ private fun WorkMonthDialog(
                             for (day in 1..month.lengthOfMonth()) {
                                 val date = month.atDay(day)
                                 rules.filter { date.dayOfWeek.value in it.weekdays }.forEach { rule ->
-                                    rows += WorkMonthEventInput(title.trim().ifBlank { "Jobb" }, date, rule.startTime, selectedMemberId)
+                                    rows += WorkMonthEventInput(title.trim().ifBlank { "Jobb" }, date, rule.startTime, rule.endTime, selectedMemberId)
                                 }
                             }
                             saveWorkMonthDirect(activeSession, month, title.trim().ifBlank { "Jobb" }, selectedMemberId, rows, replaceExisting)
