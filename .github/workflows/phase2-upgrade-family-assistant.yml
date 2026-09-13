@@ -1,0 +1,29 @@
+name: Phase 2 upgrade family assistant
+
+on:
+  push:
+    branches:
+      - feature/family-planning-phase1
+    paths:
+      - 'scripts/phase2_upgrade_family_assistant.py'
+      - '.github/workflows/phase2-upgrade-family-assistant.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/family-planning-phase1
+      - name: Upgrade planning intelligence
+        run: python scripts/phase2_upgrade_family_assistant.py
+      - name: Commit assistant upgrade
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/FamilyAssistantScreen.kt
+          git diff --cached --quiet || git commit -m "Improve family assistant planning warnings"
+          git push

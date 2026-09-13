@@ -80,7 +80,8 @@ private fun PreviewScreen(screen: String) {
                             events = events,
                             members = members,
                             palette = palette,
-                            onAdd = {}
+                            onAdd = {},
+                            onAddLaundry = {}
                         )
                     }
                 }

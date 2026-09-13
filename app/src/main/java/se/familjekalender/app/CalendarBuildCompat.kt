@@ -9,6 +9,7 @@ internal data class WorkMonthEventInput(
     val title: String,
     val date: LocalDate,
     val startTime: String,
+    val endTime: String,
     val memberId: String?
 )
 
@@ -29,16 +30,10 @@ internal suspend fun saveWorkMonthDirect(
 
     if (rows.isEmpty()) return 0
 
-    val grouped = rows.groupBy { it.startTime }
-    val rules = grouped.map { (start, events) ->
+    val grouped = rows.groupBy { it.startTime to it.endTime }
+    val rules = grouped.map { (times, events) ->
         val weekdays = events.map { it.date.dayOfWeek.value }.toSet()
-        val end = runCatching {
-            LocalTime.parse(start, DateTimeFormatter.ofPattern("HH:mm"))
-                .plusHours(8)
-                .plusMinutes(18)
-                .format(DateTimeFormatter.ofPattern("HH:mm"))
-        }.getOrDefault(start)
-        WorkRule(weekdays = weekdays, startTime = start, endTime = end)
+        WorkRule(weekdays = weekdays, startTime = times.first, endTime = times.second)
     }
 
     return saveWorkMonth(

@@ -67,15 +67,139 @@ private fun eventLine(event: SyncEvent, members: List<SyncMember>): String {
     return "$who: ${event.title} $time"
 }
 
-private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> = events
-    .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
-    .groupBy { Triple(it.date, it.time, it.memberId) }
-    .filterValues { it.size > 1 }
-    .values
-    .map { group ->
-        val first = group.first()
-        "${memberName(first.memberId, members)} har ${group.size} aktiviteter samtidigt ${first.time}."
+private data class AssistantTimeRange(val start: Int, val end: Int)
+
+private fun minutesOfDay(value: String): Int? = runCatching {
+    val parsed = LocalTime.parse(value)
+    parsed.hour * 60 + parsed.minute
+}.getOrNull()
+
+private fun assistantTimeRange(event: SyncEvent): AssistantTimeRange? {
+    val start = minutesOfDay(event.time) ?: return null
+
+    val storedEnd = event.endTime?.let(::minutesOfDay)?.let { endMinutes ->
+        val dayOffset = when {
+            event.endDate == null -> if (endMinutes > start) 0 else 1
+            event.endDate.isAfter(event.date) -> 1
+            else -> 0
+        }
+        endMinutes + dayOffset * 24 * 60
     }
+    if (storedEnd != null && storedEnd > start) {
+        return AssistantTimeRange(start, storedEnd)
+    }
+
+    // Older rows and generated school schedules may not have ends_at yet.
+    // Keep title parsing as a compatibility fallback, then finally assume one hour.
+    val range = Regex("(\\d{2}:\\d{2})[–-](\\d{2}:\\d{2})").find(event.title)
+    val titleEnd = range?.groupValues?.getOrNull(2)?.let(::minutesOfDay)
+    val fallbackEnd = when {
+        titleEnd == null -> start + 60
+        titleEnd > start -> titleEnd
+        else -> titleEnd + 24 * 60
+    }
+    return AssistantTimeRange(start, fallbackEnd)
+}
+
+private fun isChildMember(member: SyncMember): Boolean {
+    val role = member.role.lowercase(Locale("sv", "SE"))
+    return role.contains("barn") || role.contains("child") || role.contains("son") || role.contains("dotter")
+}
+
+private fun isCareOrSchoolEvent(event: SyncEvent): Boolean {
+    val title = event.title.lowercase(Locale("sv", "SE"))
+    return listOf("förskola", "skola", "fritids", "dagis").any(title::contains)
+}
+
+private fun shortEventTitle(event: SyncEvent): String = event.title.substringBefore(" · ").trim()
+
+private fun clockText(minutes: Int): String {
+    val normalized = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60)
+    return "%02d:%02d".format(normalized / 60, normalized % 60)
+}
+
+private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
+    val warnings = mutableListOf<String>()
+    events
+        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
+        .groupBy { it.memberId }
+        .forEach { (memberId, memberEvents) ->
+            val timed = memberEvents.mapNotNull { event -> assistantTimeRange(event)?.let { event to it } }
+                .sortedBy { it.second.start }
+            for (index in 0 until timed.lastIndex) {
+                val (firstEvent, firstRange) = timed[index]
+                for (nextIndex in index + 1..timed.lastIndex) {
+                    val (secondEvent, secondRange) = timed[nextIndex]
+                    if (secondRange.start >= firstRange.end) break
+                    warnings += "${memberName(memberId, members)} har överlappning: ${shortEventTitle(firstEvent)} och ${shortEventTitle(secondEvent)}."
+                }
+            }
+        }
+    return warnings.distinct()
+}
+
+private fun coordinationLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
+    val timed = events
+        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
+        .mapNotNull { event -> minutesOfDay(event.time)?.let { event to it } }
+        .sortedBy { it.second }
+    val warnings = mutableListOf<String>()
+    for (index in 0 until timed.lastIndex) {
+        val (first, firstStart) = timed[index]
+        for (nextIndex in index + 1..timed.lastIndex) {
+            val (second, secondStart) = timed[nextIndex]
+            val gap = secondStart - firstStart
+            if (gap > 45) break
+            if (first.memberId == second.memberId) continue
+            warnings += "${memberName(first.memberId, members)} och ${memberName(second.memberId, members)} har aktiviteter med bara $gap minuters mellanrum."
+        }
+    }
+    return warnings.distinct()
+}
+
+private fun familyPlanningLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
+    val realMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
+    val children = realMembers.filter(::isChildMember)
+    val adults = realMembers.filterNot(::isChildMember)
+    if (children.isEmpty() || adults.isEmpty()) return emptyList()
+
+    val eventsByMember = events
+        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
+        .groupBy { it.memberId }
+    val warnings = mutableListOf<String>()
+
+    for (child in children) {
+        val childEvents = eventsByMember[child.id].orEmpty()
+        val careEvents = childEvents.filter(::isCareOrSchoolEvent)
+        for (care in careEvents) {
+            val careRange = assistantTimeRange(care) ?: continue
+            val pickupMinute = careRange.end
+
+            val availableAdults = adults.filter { adult ->
+                val adultRanges = eventsByMember[adult.id].orEmpty().mapNotNull(::assistantTimeRange)
+                adultRanges.none { range -> pickupMinute >= range.start && pickupMinute < range.end }
+            }
+            if (availableAdults.isEmpty()) {
+                warnings += "Hämtning för ${child.name} runt ${clockText(pickupMinute)} behöver planeras: ingen vuxen verkar ledig enligt kalendern."
+            }
+
+            val nextActivity = childEvents
+                .asSequence()
+                .filter { it.id != care.id && !isCareOrSchoolEvent(it) }
+                .mapNotNull { event -> minutesOfDay(event.time)?.let { event to it } }
+                .filter { (_, start) -> start >= pickupMinute }
+                .minByOrNull { it.second }
+            if (nextActivity != null) {
+                val (activity, activityStart) = nextActivity
+                val gap = activityStart - pickupMinute
+                if (gap in 0..60) {
+                    warnings += "${child.name} har ${shortEventTitle(activity)} ${clockText(activityStart)}, bara $gap min efter ${shortEventTitle(care)} slutar. Planera hämtning och transport."
+                }
+            }
+        }
+    }
+    return warnings.distinct()
+}
 
 @Composable
 internal fun FamilyAssistantCard(
@@ -102,6 +226,9 @@ internal fun FamilyAssistantCard(
     val openTodoItems = todos.filter { !it.checked }
     val openShoppingItems = shopping.filter { !it.checked }
     val conflicts = conflictLines(todaysEvents, members)
+    val planning = (familyPlanningLines(todaysEvents, members) + coordinationLines(todaysEvents, members)).distinct()
+    val tomorrowConflicts = conflictLines(tomorrowsEvents, members)
+    val tomorrowPlanning = (familyPlanningLines(tomorrowsEvents, members) + coordinationLines(tomorrowsEvents, members)).distinct()
     val greeting = when (LocalTime.now().hour) {
         in 5..10 -> "God morgon!"
         in 11..16 -> "God dag!"
@@ -156,6 +283,21 @@ internal fun FamilyAssistantCard(
                 Spacer(Modifier.height(10.dp))
                 Text("Konfliktvarning", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                 conflicts.take(2).forEach { Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
+            }
+            if (planning.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("Behöver planeras", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                planning.take(3).forEach { Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f)) }
+            }
+            if (tomorrowConflicts.isNotEmpty() || tomorrowPlanning.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text("Inför imorgon", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                tomorrowConflicts.take(1).forEach {
+                    Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                }
+                tomorrowPlanning.take(2).forEach {
+                    Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .84f))
+                }
             }
         }
     }

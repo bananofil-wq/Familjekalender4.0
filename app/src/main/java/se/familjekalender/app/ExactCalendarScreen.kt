@@ -109,13 +109,23 @@ internal fun ExactCalendarScreen(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
-        // Keep enough vertical room for the complete six-week month grid.
-        // The photo remains at its natural ratio and simply becomes smaller on
-        // short phones instead of squeezing the calendar cells to zero height.
+        // The month grid always owns a predictable amount of vertical space.
+        // Do not combine weight(), negative offsets and min-height here: that made
+        // six equal week rows collapse differently on different screen heights.
         val calendarMinHeight = 390.dp
-        // Keep some of the seasonal artwork visible above the calendar, but never let
-        // that hero area steal the height needed by the six week rows.
-        val heroHeight = (maxHeight - calendarMinHeight - 8.dp).coerceIn(72.dp, 135.dp)
+        val outerVerticalPadding = 20.dp
+        val sectionSpacing = 8.dp
+        val seasonalHeroMax = 135.dp
+        val seasonalHeroMin = 72.dp
+        val hasSeasonalHero = mode != ThemeMode.CLASSIC
+        val availableForHero = maxHeight - calendarMinHeight - outerVerticalPadding - sectionSpacing
+        val heroHeight = if (hasSeasonalHero) {
+            availableForHero.coerceIn(0.dp, seasonalHeroMax).let {
+                if (it in 1.dp..<seasonalHeroMin) 0.dp else it
+            }
+        } else 0.dp
+        val calendarHeight = (maxHeight - outerVerticalPadding - heroHeight -
+            if (heroHeight > 0.dp) sectionSpacing else 0.dp).coerceAtLeast(calendarMinHeight)
         SeasonalPhoto(mode, Modifier.matchParentSize())
 
         fun settleMonth(delta: Long, widthPx: Float) {
@@ -136,15 +146,13 @@ internal fun ExactCalendarScreen(
                 .padding(horizontal = 6.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (mode != ThemeMode.CLASSIC) {
+            if (heroHeight > 0.dp) {
                 Spacer(Modifier.height(heroHeight))
             }
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = (-130).dp)
-                    .weight(1f)
-                    .heightIn(min = calendarMinHeight)
+                    .height(calendarHeight)
                     .clipToBounds()
                     .pointerInput(month) {
                         detectHorizontalDragGestures(
@@ -356,11 +364,11 @@ internal fun ExactCalendarScreen(
             event = event,
             members = members,
             onDismiss = { editEvent = null },
-            onSave = { title, date, time, memberId ->
+            onSave = { title, date, time, endTime, memberId ->
                 val session = currentFamilySession(context)
                 if (session != null) {
                     scope.launch {
-                        runCatching { SupabaseSync.updateEvent(session, event.id, title, date, time, memberId) }
+                        runCatching { SupabaseSync.updateEvent(session, event.id, title, date, time, endTime, memberId) }
                             .onSuccess {
                                 editEvent = null
                                 onSelect(date)
@@ -549,13 +557,14 @@ private fun EditEventDialog(
     event: SyncEvent,
     members: List<SyncMember>,
     onDismiss: () -> Unit,
-    onSave: (String, LocalDate, String, String?) -> Unit
+    onSave: (String, LocalDate, String, String?, String?) -> Unit
 ) {
     val context = LocalContext.current
     val birthday = isBirthdayEvent(event)
     var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").trim()) }
     var date by remember(event.id) { mutableStateOf(event.date) }
     var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
+    var endTime by remember(event.id) { mutableStateOf(event.endTime ?: "") }
     var memberId by remember(event.id) { mutableStateOf(event.memberId ?: ALL_FAMILY_MEMBER_ID) }
 
     fun chooseDate() {
@@ -571,6 +580,14 @@ private fun EditEventDialog(
         }, parsed.hour, parsed.minute, true).show()
     }
 
+    fun chooseEndTime() {
+        val fallback = runCatching { LocalTime.parse(time).plusHours(1) }.getOrElse { LocalTime.of(19, 0) }
+        val parsed = runCatching { LocalTime.parse(endTime) }.getOrDefault(fallback)
+        TimePickerDialog(context, { _, hour, minute ->
+            endTime = "%02d:%02d".format(hour, minute)
+        }, parsed.hour, parsed.minute, true).show()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Redigera aktivitet") },
@@ -580,7 +597,13 @@ private fun EditEventDialog(
                 OutlinedButton(onClick = ::chooseDate, modifier = Modifier.fillMaxWidth()) {
                     Text("Datum: ${date.dayOfMonth}/${date.monthValue} ${date.year}")
                 }
-                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) { Text("Tid: $time") }
+                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) { Text("Starttid: $time") }
+                OutlinedButton(onClick = ::chooseEndTime, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (endTime.isBlank()) "Sluttid: inte angiven" else "Sluttid: $endTime")
+                }
+                if (endTime.isNotBlank()) {
+                    TextButton(onClick = { endTime = "" }) { Text("Ta bort sluttid") }
+                }
                 Text("Gäller", fontWeight = FontWeight.Bold)
                 members.forEach { member ->
                     Row(
@@ -596,7 +619,7 @@ private fun EditEventDialog(
         confirmButton = {
             Button(
                 enabled = title.isNotBlank(),
-                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, memberId) }
+                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, endTime.ifBlank { null }, memberId) }
             ) { Text("Spara") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
@@ -1107,7 +1130,7 @@ private fun WorkRotationDialog(
                                     val date = monday.plusDays((day - 1).toLong())
                                     val times = template.dayTimes[day] ?: (template.startTime to template.endTime)
                                     val eventTitle = "Jobb · ${times.first}–${times.second}"
-                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, selectedMemberId)
+                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, times.second, selectedMemberId)
                                 }
                             }
                         }.onSuccess { onChanged() }
@@ -1284,7 +1307,7 @@ private fun WorkMonthDialog(
                             for (day in 1..month.lengthOfMonth()) {
                                 val date = month.atDay(day)
                                 rules.filter { date.dayOfWeek.value in it.weekdays }.forEach { rule ->
-                                    rows += WorkMonthEventInput(title.trim().ifBlank { "Jobb" }, date, rule.startTime, selectedMemberId)
+                                    rows += WorkMonthEventInput(title.trim().ifBlank { "Jobb" }, date, rule.startTime, rule.endTime, selectedMemberId)
                                 }
                             }
                             saveWorkMonthDirect(activeSession, month, title.trim().ifBlank { "Jobb" }, selectedMemberId, rows, replaceExisting)
