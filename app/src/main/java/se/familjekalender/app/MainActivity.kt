@@ -295,6 +295,7 @@ private fun SyncedApp(
                     if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                     when (selectedTab) {
                         1 -> ShoppingScreen(
+                            session,
                             shopping,
                             { name -> scope.launch { SupabaseSync.addShopping(session, name); refresh() } },
                             { item -> scope.launch { SupabaseSync.toggleShopping(session, item); refresh() } },
@@ -378,12 +379,19 @@ private fun SyncedApp(
 
 @Composable
 private fun ShoppingScreen(
+    session: FamilySession,
     items: List<SyncShoppingItem>,
     onAdd: (String) -> Unit,
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
+    var comparison by remember { mutableStateOf<ShoppingPriceComparison?>(null) }
+    var comparing by remember { mutableStateOf(false) }
+    var comparisonError by remember { mutableStateOf("") }
+    val openItems = items.filterNot { it.checked }
+
     Text("Inköpslista", fontSize = 28.sp, fontWeight = FontWeight.Bold)
     Text("Synkas mellan era telefoner", color = Muted)
     Spacer(Modifier.height(18.dp))
@@ -393,7 +401,7 @@ private fun ShoppingScreen(
     ) {
         OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, modifier = Modifier.weight(1f).height(56.dp))
         FilledIconButton(
-            onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = "" } },
+            onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = ""; comparison = null } },
             enabled = text.isNotBlank(),
             modifier = Modifier.size(56.dp).offset(y = 4.dp),
             shape = RoundedCornerShape(8.dp),
@@ -406,6 +414,65 @@ private fun ShoppingScreen(
         ) { Icon(Icons.Default.Add, contentDescription = "Lägg till") }
     }
     Spacer(Modifier.height(8.dp))
+
+    if (openItems.isNotEmpty()) {
+        Button(
+            onClick = {
+                scope.launch {
+                    comparing = true
+                    comparisonError = ""
+                    runCatching { ShoppingPriceService.compare(openItems.map { it.name }) }
+                        .onSuccess { comparison = it }
+                        .onFailure { comparisonError = it.message ?: "Kunde inte jämföra priser" }
+                    comparing = false
+                }
+            },
+            enabled = !comparing,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (comparing) "Jämför priser…" else "Jämför priser")
+        }
+        Text(
+            "Visar bara verifierade priser från ansluten prisdata. Inga uppskattade priser.",
+            color = Muted,
+            fontSize = 12.sp
+        )
+        if (comparisonError.isNotBlank()) {
+            Text(comparisonError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+        }
+    }
+
+    comparison?.let { result ->
+        Spacer(Modifier.height(10.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Prisjämförelse", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                result.items.forEach { pricedItem ->
+                    val cheapest = pricedItem.cheapest
+                    if (cheapest == null) {
+                        Text("${pricedItem.query}: inget verifierat pris hittades", color = Muted, fontSize = 13.sp)
+                    } else {
+                        Text("${pricedItem.query}: ${cheapest.store} ${"%.2f".format(Locale("sv", "SE"), cheapest.price)} kr", fontWeight = FontWeight.SemiBold)
+                        val detail = listOfNotNull(cheapest.brand, cheapest.packageText).joinToString(" · ")
+                        if (detail.isNotBlank()) Text(detail, color = Muted, fontSize = 12.sp)
+                        pricedItem.matches.drop(1).take(3).forEach { match ->
+                            Text("  ${match.store}: ${"%.2f".format(Locale("sv", "SE"), match.price)} kr", color = Muted, fontSize = 12.sp)
+                        }
+                    }
+                }
+                if (result.pendingStores.isNotEmpty()) {
+                    Text(
+                        "Saknar ännu stabil prisdatakälla: ${result.pendingStores.joinToString()}",
+                        color = Muted,
+                        fontSize = 11.sp
+                    )
+                }
+                Text(result.attributionText, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+            }
+        }
+    }
+
+    Spacer(Modifier.height(6.dp))
     items.forEach { item ->
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBg),
