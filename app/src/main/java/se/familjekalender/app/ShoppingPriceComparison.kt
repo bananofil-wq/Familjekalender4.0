@@ -30,6 +30,15 @@ data class ShoppingPriceResult(
     val cheapest: ShoppingPriceMatch? get() = matches.minByOrNull { it.price }
 }
 
+data class StoreBasketSummary(
+    val store: String,
+    val total: Double,
+    val matchedItems: Int,
+    val totalItems: Int
+) {
+    val complete: Boolean get() = totalItems > 0 && matchedItems == totalItems
+}
+
 data class ShoppingPriceComparison(
     val items: List<ShoppingPriceResult>,
     val fetchedAt: String,
@@ -37,7 +46,30 @@ data class ShoppingPriceComparison(
     val attributionUrl: String,
     val pendingStores: List<String>,
     val note: String
-)
+) {
+    val pricedItems: List<ShoppingPriceResult> get() = items.filter { it.cheapest != null }
+    val splitBasketTotal: Double? get() = pricedItems.takeIf { it.isNotEmpty() }?.sumOf { it.cheapest!!.price }
+
+    fun storeSummaries(): List<StoreBasketSummary> {
+        val stores = items.flatMap { it.matches }.map { it.store }.distinct()
+        return stores.map { store ->
+            val selected = items.mapNotNull { item -> item.matches.filter { it.store == store }.minByOrNull { it.price } }
+            StoreBasketSummary(
+                store = store,
+                total = selected.sumOf { it.price },
+                matchedItems = selected.size,
+                totalItems = items.size
+            )
+        }.sortedWith(compareByDescending<StoreBasketSummary> { it.complete }.thenBy { it.total })
+    }
+
+    val bestCompleteStore: StoreBasketSummary? get() = storeSummaries().filter { it.complete }.minByOrNull { it.total }
+    val splitSavingsAgainstBestCompleteStore: Double? get() {
+        val split = splitBasketTotal ?: return null
+        val single = bestCompleteStore?.total ?: return null
+        return (single - split).takeIf { it > 0.005 }
+    }
+}
 
 object ShoppingPriceService {
     private const val ENDPOINT = "https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/compare-prices"
