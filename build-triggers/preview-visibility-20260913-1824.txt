@@ -1,0 +1,1 @@
+Trigger full build and preview validation with non-dark screenshot check.
