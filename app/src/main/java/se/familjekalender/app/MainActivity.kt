@@ -268,6 +268,7 @@ private fun SyncedApp(
                         .verticalScroll(rememberScrollState())
                 ) {
                     FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
+                    WeekOverviewCard(events, members)
                     RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
                     Box(
                         Modifier
