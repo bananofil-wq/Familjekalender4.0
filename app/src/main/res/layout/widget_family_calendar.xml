@@ -53,10 +53,25 @@
     </LinearLayout>
 
     <TextView
+        android:id="@+id/widget_summary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:paddingLeft="8dp"
+        android:paddingTop="5dp"
+        android:paddingRight="8dp"
+        android:paddingBottom="5dp"
+        android:background="@drawable/widget_refresh_bg"
+        android:textColor="#E6FFFFFF"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="7dp"
         android:background="#22FFFFFF"
         android:text="" />
 
@@ -74,6 +89,7 @@
 
     <TextView
         android:id="@+id/widget_event_4"
-        style="@style/WidgetEventText" />
+        style="@style/WidgetEventText"
+        android:visibility="gone" />
 
 </LinearLayout>
