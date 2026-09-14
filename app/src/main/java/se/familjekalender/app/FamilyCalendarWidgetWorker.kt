@@ -52,6 +52,9 @@ class FamilyCalendarWidgetWorker(
                 val todaysEvents = allEvents
                     .filter { it.date == today }
                     .sortedBy { it.time }
+                val tomorrowsEvents = allEvents
+                    .filter { it.date == today.plusDays(1) }
+                    .sortedBy { it.time }
                 val members = runCatching { SupabaseSync.loadMembers(session) }
                     .getOrDefault(emptyList())
                     .associateBy { it.id }
@@ -61,11 +64,13 @@ class FamilyCalendarWidgetWorker(
                     .getOrDefault(0)
                 val conflicts = countConflicts(todaysEvents)
 
-                val upcoming = todaysEvents
+                val upcomingToday = todaysEvents
                     .filter { event ->
                         runCatching { LocalTime.parse(event.time) }.getOrNull()?.let { !it.isBefore(now.minusMinutes(15)) } ?: true
                     }
-                    .take(3)
+                    .take(4)
+                val tomorrowSlots = (4 - upcomingToday.size).coerceAtLeast(0)
+                val upcomingTomorrow = tomorrowsEvents.take(tomorrowSlots)
 
                 val status = when {
                     conflicts > 0 -> "⚠ $conflicts ${if (conflicts == 1) "krock" else "krockar"} idag"
@@ -81,25 +86,32 @@ class FamilyCalendarWidgetWorker(
                 val rowIds = intArrayOf(
                     R.id.widget_event_1,
                     R.id.widget_event_2,
-                    R.id.widget_event_3
+                    R.id.widget_event_3,
+                    R.id.widget_event_4
                 )
 
-                if (upcoming.isEmpty()) {
+                val widgetItems = buildList {
+                    upcomingToday.forEach { add(false to it) }
+                    upcomingTomorrow.forEach { add(true to it) }
+                }
+
+                if (widgetItems.isEmpty()) {
                     views.setViewVisibility(R.id.widget_event_1, View.VISIBLE)
                     views.setTextViewText(
                         R.id.widget_event_1,
-                        if (todaysEvents.isEmpty()) "Dagen är fri från kalenderposter" else "Inget mer tidsatt idag"
+                        if (todaysEvents.isEmpty() && tomorrowsEvents.isEmpty()) "Lugnt idag och imorgon" else "Inget mer tidsatt idag"
                     )
                 } else {
-                    upcoming.forEachIndexed { index, event ->
+                    widgetItems.forEachIndexed { index, (isTomorrow, event) ->
                         val who = when (event.memberId) {
                             null, ALL_FAMILY_MEMBER_ID -> "Alla"
                             else -> members[event.memberId]?.name.orEmpty()
                         }
                         val title = event.title.removePrefix("🌈").trim()
                         val suffix = if (who.isBlank()) "" else " • $who"
+                        val prefix = if (isTomorrow) "Imorgon ${event.time}" else event.time
                         views.setViewVisibility(rowIds[index], View.VISIBLE)
-                        views.setTextViewText(rowIds[index], "${event.time}  $title$suffix")
+                        views.setTextViewText(rowIds[index], "$prefix  $title$suffix")
                     }
                 }
 
