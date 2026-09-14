@@ -4,20 +4,20 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.Location
 import android.location.Geocoder
+import android.location.Location
 import android.location.LocationManager
-import android.net.Uri
 import android.os.BatteryManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,41 +35,43 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.*
 
+private const val LOCATION_PREFS = "family_calendar_location"
+private const val LOCATION_CHANNEL = "family_location_alerts"
+
 @Composable
 fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val prefs = remember { context.getSharedPreferences("family_calendar_location", Context.MODE_PRIVATE) }
+    val prefs = remember { context.getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE) }
     val familyMembers = remember(members) { members.filter { it.id != ALL_FAMILY_MEMBER_ID } }
 
     var selectedMemberId by remember { mutableStateOf(prefs.getString("device_member_id", null)) }
     var selectedMapMember by remember { mutableStateOf<String?>(null) }
-    var mapView by remember { mutableStateOf<MapView?>(null) }
-    var useTopoMap by remember { mutableStateOf(false) }
     var sharing by remember { mutableStateOf(prefs.getBoolean("sharing_enabled", false)) }
+    var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
     var locations by remember { mutableStateOf(emptyList<SyncFamilyLocation>()) }
     var places by remember { mutableStateOf(emptyList<SyncFamilyPlace>()) }
-    var placeName by remember { mutableStateOf("") }
-    var placeAddress by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     var memberMenu by remember { mutableStateOf(false) }
     var pendingEnableSharing by remember { mutableStateOf(false) }
     var showAddPlace by remember { mutableStateOf(false) }
-    var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
+    var showHistory by remember { mutableStateOf(false) }
+    var showSecurity by remember { mutableStateOf(false) }
+    var editingPlace by remember { mutableStateOf<SyncFamilyPlace?>(null) }
 
     fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -80,7 +81,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         if (!hasLocationPermission()) return null
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-            .mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
+            .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
             .maxByOrNull { it.time }
     }
 
@@ -89,86 +90,150 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
             .takeIf { it in 0..100 }
 
-    suspend fun geocodeAddress(query: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
-        runCatching {
-            @Suppress("DEPRECATION")
-            val result = Geocoder(context, Locale("sv", "SE")).getFromLocationName(query, 1)
-            result?.firstOrNull()?.let { it.latitude to it.longitude }
-        }.getOrNull()
-    }
-
     suspend fun refresh() {
         runCatching {
             locations = FamilyLocationSync.loadLocations(session)
             places = FamilyLocationSync.loadPlaces(session)
-            if (selectedMapMember == null) selectedMapMember = locations.firstOrNull()?.memberId
-        }.onFailure { status = it.message ?: "Kunde inte uppdatera platsdata" }
+            if (selectedMapMember == null) {
+                selectedMapMember = selectedMemberId ?: locations.firstOrNull()?.memberId
+            }
+        }.onFailure {
+            status = it.message ?: "Kunde inte uppdatera platsdata"
+        }
     }
 
     suspend fun publishNow() {
-        val id = selectedMemberId ?: return
-        val loc = readLocation() ?: run {
+        val memberId = selectedMemberId ?: run {
+            status = "Välj vem den här telefonen tillhör"
+            return
+        }
+        val location = readLocation() ?: run {
             status = "Ingen plats tillgänglig ännu"
             return
         }
-        FamilyLocationSync.publishLocation(
-            session = session,
-            memberId = id,
-            latitude = loc.latitude,
-            longitude = loc.longitude,
-            accuracyM = loc.accuracy.takeIf { it > 0 },
-            batteryPercent = batteryPercent()
-        )
-        refresh()
+        runCatching {
+            FamilyLocationSync.publishLocation(
+                session = session,
+                memberId = memberId,
+                latitude = location.latitude,
+                longitude = location.longitude,
+                accuracyM = location.accuracy.takeIf { it > 0 },
+                batteryPercent = if (batteryVisible) batteryPercent() else null
+            )
+        }.onSuccess {
+            status = "Platsen uppdaterades"
+            refresh()
+        }.onFailure {
+            status = it.message ?: "Kunde inte dela plats"
+        }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        status = if (granted) "Platsnotiser aktiverade" else "Notisbehörighet nekades"
+    }
+
+    fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            status = "Platsnotiser är aktiverade"
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         val granted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (!granted) {
+        if (granted) {
+            sharing = true
+            prefs.edit().putBoolean("sharing_enabled", true).apply()
+            status = "Platsdelning aktiverad"
+            scope.launch { publishNow() }
+        } else {
             sharing = false
             prefs.edit().putBoolean("sharing_enabled", false).apply()
             status = "Platsbehörighet krävs"
-        } else if (sharing) {
-            status = "Platsdelning aktiverad"
-            scope.launch { publishNow() }
         }
     }
 
     fun startSharing() {
-        val memberId = selectedMemberId
-        if (memberId == null) {
+        if (selectedMemberId == null) {
             pendingEnableSharing = true
             memberMenu = true
             status = "Välj vem den här telefonen tillhör"
             return
         }
+        if (!hasLocationPermission()) {
+            locationPermissionLauncher.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
+            return
+        }
         sharing = true
         prefs.edit().putBoolean("sharing_enabled", true).apply()
-        status = "Platsdelning aktiveras…"
-        if (!hasLocationPermission()) {
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        } else {
-            status = "Platsdelning aktiverad"
-            scope.launch { publishNow() }
+        status = "Platsdelning aktiverad"
+        scope.launch { publishNow() }
+    }
+
+    fun stopSharing() {
+        pendingEnableSharing = false
+        sharing = false
+        prefs.edit().putBoolean("sharing_enabled", false).apply()
+        status = "Platsdelning pausad"
+        selectedMemberId?.let { id ->
+            scope.launch {
+                runCatching { FamilyLocationSync.stopSharing(session, id) }
+                refresh()
+            }
         }
+    }
+
+    suspend fun setArrivalAlerts(enabled: Boolean) {
+        if (places.isEmpty()) {
+            showAddPlace = true
+            status = "Lägg till en destination först"
+            return
+        }
+        runCatching {
+            places.forEach { place ->
+                FamilyLocationSync.updatePlaceAlerts(session, place, enabled, place.departureAlerts)
+            }
+        }.onSuccess {
+            status = if (enabled) "Ankomstnotiser aktiverade" else "Ankomstnotiser avstängda"
+            refresh()
+        }.onFailure { status = it.message ?: "Kunde inte ändra ankomstnotiser" }
+    }
+
+    suspend fun setDepartureAlerts(enabled: Boolean) {
+        if (places.isEmpty()) {
+            showAddPlace = true
+            status = "Lägg till en destination först"
+            return
+        }
+        runCatching {
+            places.forEach { place ->
+                FamilyLocationSync.updatePlaceAlerts(session, place, place.arrivalAlerts, enabled)
+            }
+        }.onSuccess {
+            status = if (enabled) "Avresenotiser aktiverade" else "Avresenotiser avstängda"
+            refresh()
+        }.onFailure { status = it.message ?: "Kunde inte ändra avresenotiser" }
     }
 
     LaunchedEffect(session.id, sharing, selectedMemberId) {
         refresh()
         while (true) {
             if (sharing && selectedMemberId != null && hasLocationPermission()) {
-                runCatching { publishNow() }
+                publishNow()
+            } else {
+                refresh()
             }
-            runCatching { refresh() }
-            checkPlaceTransitions(context, session.id, locations, places, familyMembers)
+            checkLocationTransitions(context, session.id, locations, places, familyMembers)
             delay(30_000)
         }
     }
@@ -177,202 +242,33 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(
-            text = "Familjekalender",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+        LocationMemberStrip(
+            members = familyMembers,
+            selectedMemberId = selectedMapMember,
+            onSelect = { selectedMapMember = it }
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            familyMembers.forEach { member ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .width(58.dp)
-                        .clickable { selectedMapMember = member.id }
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(50.dp)
-                            .clip(CircleShape)
-                            .background(Color(member.colorArgb)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF262330)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                member.name.take(1).uppercase(),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 19.sp
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text(member.name, fontSize = 10.sp, maxLines = 1)
-                }
-            }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(58.dp)) {
-                Surface(
-                    modifier = Modifier.size(50.dp),
-                    shape = CircleShape,
-                    color = Color(0xFF24212F),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF5E5871))
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Add, contentDescription = "Lägg till", tint = Muted)
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text("Lägg till", fontSize = 10.sp, color = Muted)
-            }
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBg)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(500.dp)
-            ) {
-                FamilyMap(
-                    locations = locations,
-                    members = familyMembers,
-                    selectedMemberId = selectedMapMember,
-                    onMapReady = { mapView = it },
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    MapCircleButton(Icons.Default.MyLocation) {
-                        selectedMapMember = selectedMemberId
-                        val own = locations.firstOrNull { it.memberId == selectedMemberId }
-                            ?: locations.firstOrNull { it.memberId == selectedMapMember }
-                            ?: locations.firstOrNull()
-                        own?.let {
-                            mapView?.controller?.setZoom(17.0)
-                            mapView?.controller?.animateTo(GeoPoint(it.latitude, it.longitude))
-                        }
-                    }
-                    MapCircleButton(Icons.Default.Layers) {
-                        useTopoMap = !useTopoMap
-                        mapView?.setTileSource(if (useTopoMap) TileSourceFactory.USGS_TOPO else TileSourceFactory.MAPNIK)
-                        mapView?.invalidate()
-                    }
-                    MapCircleButton(Icons.Default.Add) {
-                        mapView?.controller?.zoomIn()
-                    }
-                    MapCircleButton(Icons.Default.Remove) {
-                        mapView?.controller?.zoomOut()
-                    }
-                }
-
-                val chosen = locations.firstOrNull { it.memberId == selectedMapMember }
-                    ?: locations.firstOrNull()
-
-                chosen?.let { item ->
-                    val member = familyMembers.firstOrNull { it.id == item.memberId }
-                    Card(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(12.dp)
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xF217151F))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(member?.let { Color(it.colorArgb) } ?: MaterialTheme.colorScheme.primary),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF292633)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        member?.name?.take(1)?.uppercase() ?: "?",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            Spacer(Modifier.width(12.dp))
-
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    member?.name ?: "Familjemedlem",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp
-                                )
-                                Text(
-                                    "Senast sedd · ${formatUpdated(item.updatedAt).removePrefix("Uppdaterad ")}",
-                                    color = Muted,
-                                    fontSize = 12.sp
-                                )
-                                if (batteryVisible && item.batteryPercent != null) {
-                                    Text(
-                                        "▰ ${item.batteryPercent}%",
-                                        color = Color(0xFF7EE2A8),
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse("geo:${item.latitude},${item.longitude}?q=${item.latitude},${item.longitude}(${Uri.encode(member?.name ?: "Familj")})")
-                                        )
-                                    )
-                                }
-                            ) {
-                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Muted)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        LocationMapCard(
+            locations = locations,
+            members = familyMembers,
+            selectedMemberId = selectedMapMember,
+            batteryVisible = batteryVisible
+        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FeaturePill(Icons.Default.LocationOn, "Dela plats", Modifier.weight(1f))
-            FeaturePill(Icons.Default.Notifications, "Få notiser", Modifier.weight(1f))
-            FeaturePill(Icons.Default.Security, "Tryggt & säkert", Modifier.weight(1f))
+            LocationQuickAction(Icons.Default.LocationOn, "Dela plats", Modifier.weight(1f)) {
+                if (sharing) scope.launch { publishNow() } else startSharing()
+            }
+            LocationQuickAction(Icons.Default.Notifications, "Få notiser", Modifier.weight(1f)) {
+                ensureNotificationPermission()
+                if (places.isEmpty()) showAddPlace = true
+            }
+            LocationQuickAction(Icons.Default.Security, "Tryggt & säkert", Modifier.weight(1f)) {
+                showSecurity = true
+            }
         }
 
         Card(
@@ -380,33 +276,18 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = CardBg)
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Platsdelning", fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text("Platsdelning", fontSize = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Switch(
                         checked = sharing,
-                        onCheckedChange = { enabled ->
-                            if (enabled) {
-                                startSharing()
-                            } else {
-                                pendingEnableSharing = false
-                                sharing = false
-                                prefs.edit().putBoolean("sharing_enabled", false).apply()
-                                status = "Platsdelning pausad"
-                                selectedMemberId?.let { id ->
-                                    scope.launch {
-                                        runCatching { FamilyLocationSync.stopSharing(session, id) }
-                                        refresh()
-                                    }
-                                }
-                            }
-                        },
+                        onCheckedChange = { enabled -> if (enabled) startSharing() else stopSharing() },
                         enabled = familyMembers.isNotEmpty()
                     )
                 }
 
                 Box {
-                    SettingRow(
+                    LocationSettingRow(
                         icon = Icons.Default.PersonPinCircle,
                         title = "Den här telefonen",
                         subtitle = familyMembers.firstOrNull { it.id == selectedMemberId }?.name ?: "Välj familjemedlem"
@@ -423,277 +304,367 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                                     prefs.edit().putString("device_member_id", member.id).apply()
                                     memberMenu = false
                                     pendingEnableSharing = false
-                                    if (shouldEnable) {
-                                        sharing = true
-                                        prefs.edit().putBoolean("sharing_enabled", true).apply()
-                                        if (!hasLocationPermission()) {
-                                            permissionLauncher.launch(
-                                                arrayOf(
-                                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                                )
-                                            )
-                                        } else {
-                                            status = "Platsdelning aktiverad"
-                                            scope.launch { publishNow() }
-                                        }
-                                    }
+                                    status = "Den här telefonen är kopplad till ${member.name}"
+                                    if (shouldEnable) startSharing()
                                 }
                             )
                         }
                     }
                 }
 
-                SettingRow(
+                LocationSettingRow(
                     Icons.Default.LocationOn,
                     "Dela min plats",
                     if (sharing) "Syns för familjens medlemmar" else "Avstängd"
                 ) {
-                    if (sharing) {
-                        scope.launch { publishNow() }
-                    } else {
-                        startSharing()
-                    }
+                    if (sharing) scope.launch { publishNow() } else startSharing()
                 }
 
-                SettingRow(
+                val arrivalEnabled = places.isNotEmpty() && places.any { it.arrivalAlerts }
+                LocationSettingRow(
                     Icons.Default.Notifications,
                     "Få ankomstnotiser",
-                    "När någon kommer fram"
-                ) { }
+                    when {
+                        places.isEmpty() -> "Lägg till en destination först"
+                        arrivalEnabled -> "Aktiverat"
+                        else -> "Avstängt"
+                    }
+                ) {
+                    ensureNotificationPermission()
+                    scope.launch { setArrivalAlerts(!arrivalEnabled) }
+                }
 
-                SettingRow(
+                val departureEnabled = places.isNotEmpty() && places.any { it.departureAlerts }
+                LocationSettingRow(
                     Icons.Default.NotificationsActive,
                     "Få avresenotiser",
-                    "När någon lämnar en plats"
-                ) { }
+                    when {
+                        places.isEmpty() -> "Lägg till en destination först"
+                        departureEnabled -> "Aktiverat"
+                        else -> "Avstängt"
+                    }
+                ) {
+                    ensureNotificationPermission()
+                    scope.launch { setDepartureAlerts(!departureEnabled) }
+                }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(shape = CircleShape, color = Color(0xFF292634)) {
-                        Icon(
-                            Icons.Default.BatteryFull,
-                            contentDescription = null,
-                            modifier = Modifier.padding(9.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    LocationIcon(Icons.Default.BatteryFull)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Batterinivå", fontWeight = FontWeight.SemiBold)
-                        Text("Visa batterinivå (valfritt)", color = Muted, fontSize = 12.sp)
+                        Text("Batterinivå", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Visa batterinivå (valfritt)", color = Muted, fontSize = 13.sp)
                     }
                     Switch(
                         checked = batteryVisible,
                         onCheckedChange = {
                             batteryVisible = it
                             prefs.edit().putBoolean("battery_visible", it).apply()
+                            status = if (it) "Batterinivå visas" else "Batterinivå dold"
+                            if (sharing) scope.launch { publishNow() }
                         }
                     )
                 }
 
-                SettingRow(Icons.Default.History, "Historik", "Se senaste platser") { }
+                LocationSettingRow(Icons.Default.History, "Historik", "Se senaste platser") {
+                    showHistory = true
+                }
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Destinationer", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            FilledTonalButton(onClick = { showAddPlace = !showAddPlace }) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("Destinationer", fontSize = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Button(onClick = { showAddPlace = true }, shape = RoundedCornerShape(20.dp)) {
                 Icon(Icons.Default.Add, contentDescription = null)
-                Text(" Lägg till destination")
+                Spacer(Modifier.width(6.dp))
+                Text("Lägg till destination")
             }
         }
 
-        if (showAddPlace) {
+        if (places.isEmpty()) {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBg)
+                modifier = Modifier.fillMaxWidth().clickable { showAddPlace = true },
+                colors = CardDefaults.cardColors(containerColor = CardBg),
+                shape = RoundedCornerShape(18.dp)
             ) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = placeName,
-                        onValueChange = { placeName = it },
-                        label = { Text("Namn, t.ex. Hem eller Skola") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = placeAddress,
-                        onValueChange = { placeAddress = it },
-                        label = { Text("Adress, ort eller destination") },
-                        placeholder = { Text("Exempel: Skolgatan 1, Lund") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val coords = geocodeAddress(placeAddress.trim())
-                                if (coords == null) {
-                                    status = "Kunde inte hitta destinationen. Kontrollera adressen."
-                                } else {
-                                    runCatching {
-                                        FamilyLocationSync.addPlace(
-                                            session,
-                                            placeName.trim(),
-                                            coords.first,
-                                            coords.second
-                                        )
-                                    }.onSuccess {
-                                        placeName = ""
-                                        placeAddress = ""
-                                        showAddPlace = false
-                                        status = "Destination sparad"
-                                        refresh()
-                                    }.onFailure {
-                                        status = it.message ?: "Kunde inte spara destination"
-                                    }
-                                }
-                            }
-                        },
-                        enabled = placeName.isNotBlank() && placeAddress.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.AddLocationAlt, contentDescription = null)
-                        Text(" Sök adress och spara destination")
-                    }
+                Column(Modifier.padding(18.dp)) {
+                    Text("Inga destinationer ännu", fontWeight = FontWeight.Bold)
+                    Text("Lägg till till exempel Hemma, Skola eller Jobb för ankomst- och avresenotiser.", color = Muted, fontSize = 13.sp)
                 }
             }
-        }
-
-        places.forEachIndexed { index, place ->
-            PlaceRow(
-                place = place,
-                index = index,
-                onArrival = { value ->
-                    scope.launch {
-                        FamilyLocationSync.updatePlaceAlerts(session, place, value, place.departureAlerts)
-                        refresh()
-                    }
-                },
-                onDeparture = { value ->
-                    scope.launch {
-                        FamilyLocationSync.updatePlaceAlerts(session, place, place.arrivalAlerts, value)
-                        refresh()
-                    }
-                },
-                onDelete = {
-                    scope.launch {
-                        FamilyLocationSync.deletePlace(session, place.id)
-                        refresh()
-                    }
-                }
-            )
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBg)
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Säkerhet & integritet", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                }
-                SecurityLine("Du bestämmer vem som ser din plats")
-                SecurityLine("Dela bara med familjen")
-                SecurityLine("Platsdata delas skyddat")
-                SecurityLine("Går att pausa när som helst")
-
-                OutlinedButton(
-                    onClick = {
-                        pendingEnableSharing = false
-                        sharing = false
-                        prefs.edit().putBoolean("sharing_enabled", false).apply()
-                        selectedMemberId?.let { id ->
-                            scope.launch {
-                                FamilyLocationSync.stopSharing(session, id)
-                                refresh()
-                            }
+        } else {
+            places.forEach { place ->
+                DestinationCard(
+                    place = place,
+                    onToggleArrival = { enabled ->
+                        ensureNotificationPermission()
+                        scope.launch {
+                            runCatching { FamilyLocationSync.updatePlaceAlerts(session, place, enabled, place.departureAlerts) }
+                            refresh()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Icon(Icons.Default.Pause, contentDescription = null)
-                    Text(" Pausa platsdelning")
-                }
+                    onToggleDeparture = { enabled ->
+                        ensureNotificationPermission()
+                        scope.launch {
+                            runCatching { FamilyLocationSync.updatePlaceAlerts(session, place, place.arrivalAlerts, enabled) }
+                            refresh()
+                        }
+                    },
+                    onDelete = {
+                        editingPlace = place
+                    }
+                )
             }
         }
 
         if (status.isNotBlank()) {
             Text(status, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
         }
-        Spacer(Modifier.height(10.dp))
+    }
+
+    if (showAddPlace) {
+        AddDestinationDialog(
+            onDismiss = { showAddPlace = false },
+            onSave = { name, address, radius ->
+                scope.launch {
+                    val coords = geocodeAddress(context, address)
+                    if (coords == null) {
+                        status = "Kunde inte hitta adressen"
+                    } else {
+                        runCatching {
+                            FamilyLocationSync.addPlace(session, name, coords.first, coords.second, radius)
+                        }.onSuccess {
+                            status = "$name tillagd"
+                            showAddPlace = false
+                            ensureNotificationPermission()
+                            refresh()
+                        }.onFailure { status = it.message ?: "Kunde inte lägga till destination" }
+                    }
+                }
+            }
+        )
+    }
+
+    editingPlace?.let { place ->
+        AlertDialog(
+            onDismissRequest = { editingPlace = null },
+            title = { Text("Ta bort ${place.name}?") },
+            text = { Text("Destinationen och dess ankomst-/avresenotiser tas bort.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        runCatching { FamilyLocationSync.deletePlace(session, place.id) }
+                        editingPlace = null
+                        refresh()
+                    }
+                }) { Text("Ta bort") }
+            },
+            dismissButton = { TextButton(onClick = { editingPlace = null }) { Text("Avbryt") } }
+        )
+    }
+
+    if (showHistory) {
+        AlertDialog(
+            onDismissRequest = { showHistory = false },
+            title = { Text("Senaste platser") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (locations.isEmpty()) {
+                        Text("Ingen platsdata finns ännu.", color = Muted)
+                    } else {
+                        locations.take(10).forEach { item ->
+                            val member = familyMembers.firstOrNull { it.id == item.memberId }
+                            Column {
+                                Text(member?.name ?: "Familjemedlem", fontWeight = FontWeight.Bold)
+                                Text(formatUpdated(item.updatedAt), color = Muted, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Stäng") } }
+        )
+    }
+
+    if (showSecurity) {
+        AlertDialog(
+            onDismissRequest = { showSecurity = false },
+            title = { Text("Tryggt & säkert") },
+            text = {
+                Text("Du kan pausa platsdelningen när som helst. Ankomst- och avresenotiser styrs separat per destination, och batterivisning kan stängas av.")
+            },
+            confirmButton = { TextButton(onClick = { showSecurity = false }) { Text("Stäng") } }
+        )
     }
 }
 
 @Composable
-private fun MapCircleButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Surface(shape = CircleShape, color = Color(0xE617151F)) {
-        IconButton(onClick = onClick) {
-            Icon(icon, contentDescription = null, tint = Color.White)
+private fun LocationMemberStrip(
+    members: List<SyncMember>,
+    selectedMemberId: String?,
+    onSelect: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        members.forEach { member ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.width(60.dp).clickable { onSelect(member.id) }
+            ) {
+                Box(
+                    modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(member.colorArgb)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier.size(if (selectedMemberId == member.id) 40.dp else 42.dp).clip(CircleShape).background(Color(0xFF262330)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(member.name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(member.name, fontSize = 10.sp, maxLines = 1)
+            }
         }
     }
 }
 
 @Composable
-private fun FeaturePill(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    text: String,
-    modifier: Modifier = Modifier
+private fun LocationMapCard(
+    locations: List<SyncFamilyLocation>,
+    members: List<SyncMember>,
+    selectedMemberId: String?,
+    batteryVisible: Boolean
 ) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(4.dp))
-        Text(text, fontSize = 11.sp, color = Muted)
+    var mapView by remember { mutableStateOf<MapView?>(null) }
+    val selected = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBg)
+    ) {
+        Box(Modifier.fillMaxWidth().height(300.dp)) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    Configuration.getInstance().userAgentValue = context.packageName
+                    MapView(context).apply {
+                        setTileSource(TileSourceFactory.MAPNIK)
+                        setMultiTouchControls(true)
+                        controller.setZoom(13.0)
+                        mapView = this
+                    }
+                },
+                update = { map ->
+                    map.overlays.clear()
+                    locations.forEach { item ->
+                        val member = members.firstOrNull { it.id == item.memberId }
+                        map.overlays.add(
+                            Marker(map).apply {
+                                position = GeoPoint(item.latitude, item.longitude)
+                                title = member?.name ?: "Familjemedlem"
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                            }
+                        )
+                    }
+                    selected?.let {
+                        map.controller.animateTo(GeoPoint(it.latitude, it.longitude))
+                    }
+                    map.invalidate()
+                }
+            )
+
+            selected?.let { item ->
+                val member = members.firstOrNull { it.id == item.memberId }
+                Card(
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp).fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xEE17151F)),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(46.dp).clip(CircleShape).background(member?.let { Color(it.colorArgb) } ?: MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(member?.name?.take(1)?.uppercase() ?: "?", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(member?.name ?: "Familjemedlem", fontWeight = FontWeight.Bold)
+                            Text(formatUpdated(item.updatedAt), color = Muted, fontSize = 12.sp)
+                            if (batteryVisible && item.batteryPercent != null) {
+                                Text("Batteri ${item.batteryPercent}%", color = Color(0xFF7EE2A8), fontSize = 12.sp)
+                            }
+                        }
+                        IconButton(onClick = {
+                            mapView?.controller?.setZoom(17.0)
+                            mapView?.controller?.animateTo(GeoPoint(item.latitude, item.longitude))
+                        }) {
+                            Icon(Icons.Default.MyLocation, contentDescription = "Centrera", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun SettingRow(
+private fun LocationQuickAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, contentDescription = text, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(5.dp))
+        Text(text, color = Muted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun LocationIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Surface(shape = CircleShape, color = Color(0xFF292634)) {
+        Icon(icon, contentDescription = null, modifier = Modifier.padding(9.dp), tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun LocationSettingRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(shape = CircleShape, color = Color(0xFF292634)) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.padding(9.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
+        LocationIcon(icon)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = Muted, fontSize = 12.sp)
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(subtitle, color = Muted, fontSize = 13.sp)
         }
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Muted)
     }
 }
 
 @Composable
-private fun PlaceRow(
+private fun DestinationCard(
     place: SyncFamilyPlace,
-    index: Int,
-    onArrival: (Boolean) -> Unit,
-    onDeparture: (Boolean) -> Unit,
+    onToggleArrival: (Boolean) -> Unit,
+    onToggleDeparture: (Boolean) -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -701,122 +672,102 @@ private fun PlaceRow(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg)
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = CircleShape, color = Color(0xFF292634)) {
-                    Icon(
-                        when (index % 4) {
-                            0 -> Icons.Default.Home
-                            1 -> Icons.Default.School
-                            2 -> Icons.Default.SportsHockey
-                            else -> Icons.Default.Favorite
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.padding(10.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                LocationIcon(Icons.Default.Place)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(place.name, fontWeight = FontWeight.Bold)
+                    Text(place.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("Radie ${place.radiusM} m", color = Muted, fontSize = 12.sp)
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.MoreHoriz, contentDescription = null, tint = Muted)
+                    Icon(Icons.Default.DeleteOutline, contentDescription = "Ta bort", tint = Muted)
                 }
             }
-
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                Text(" Ankomst", modifier = Modifier.weight(1f), color = Muted, fontSize = 12.sp)
-                Switch(checked = place.arrivalAlerts, onCheckedChange = onArrival)
-                Spacer(Modifier.width(10.dp))
-                Text("Avresa", color = Muted, fontSize = 12.sp)
-                Switch(checked = place.departureAlerts, onCheckedChange = onDeparture)
+                Text("Ankomstnotis", modifier = Modifier.weight(1f), fontSize = 13.sp)
+                Switch(checked = place.arrivalAlerts, onCheckedChange = onToggleArrival)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Avresenotis", modifier = Modifier.weight(1f), fontSize = 13.sp)
+                Switch(checked = place.departureAlerts, onCheckedChange = onToggleDeparture)
             }
         }
     }
 }
 
 @Composable
-private fun SecurityLine(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(shape = CircleShape, color = Color(0xFF58D07C), modifier = Modifier.size(22.dp)) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
-            }
-        }
-        Spacer(Modifier.width(9.dp))
-        Text(text, color = Muted, fontSize = 13.sp)
-    }
-}
-
-@Composable
-private fun FamilyMap(
-    locations: List<SyncFamilyLocation>,
-    members: List<SyncMember>,
-    selectedMemberId: String?,
-    onMapReady: (MapView) -> Unit,
-    modifier: Modifier = Modifier
+private fun AddDestinationDialog(
+    onDismiss: () -> Unit,
+    onSave: (String, String, Int) -> Unit
 ) {
-    val center = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
-    val lat = center?.latitude ?: 55.7047
-    val lon = center?.longitude ?: 13.1910
+    var name by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var radiusText by remember { mutableStateOf("150") }
 
-    AndroidView(
-        factory = { ctx ->
-            Configuration.getInstance().userAgentValue = ctx.packageName
-            MapView(ctx).apply {
-                setTileSource(TileSourceFactory.MAPNIK)
-                setUseDataConnection(true)
-                setMultiTouchControls(true)
-                setBuiltInZoomControls(false)
-                isTilesScaledToDpi = true
-                minZoomLevel = 3.0
-                maxZoomLevel = 20.0
-                controller.setZoom(17.0)
-                controller.setCenter(GeoPoint(lat, lon))
-            }.also(onMapReady)
-        },
-        update = { map ->
-            map.overlays.clear()
-            locations.forEach { loc ->
-                val member = members.firstOrNull { it.id == loc.memberId }
-                Marker(map).apply {
-                    position = GeoPoint(loc.latitude, loc.longitude)
-                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    title = member?.name ?: "Familjemedlem"
-                    snippet = "Senast uppdaterad: ${formatUpdated(loc.updatedAt).removePrefix("Uppdaterad ")}"
-                    map.overlays.add(this)
-                }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Lägg till destination") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Namn, t.ex. Hemma") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Adress") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = radiusText,
+                    onValueChange = { radiusText = it.filter(Char::isDigit).take(4) },
+                    label = { Text("Radie i meter") },
+                    singleLine = true
+                )
+                Text("Ankomst- och avresenotiser aktiveras för nya destinationer och kan ändras efteråt.", color = Muted, fontSize = 12.sp)
             }
-            val current = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
-            if (current != null) {
-                map.controller.setCenter(GeoPoint(current.latitude, current.longitude))
-            } else {
-                map.controller.setCenter(GeoPoint(lat, lon))
-            }
-            map.invalidate()
         },
-        modifier = modifier
+        confirmButton = {
+            Button(
+                onClick = { onSave(name.trim(), address.trim(), radiusText.toIntOrNull()?.coerceIn(50, 2000) ?: 150) },
+                enabled = name.isNotBlank() && address.isNotBlank()
+            ) { Text("Lägg till") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
     )
 }
 
-private fun formatUpdated(value: String): String = runCatching {
-    "Uppdaterad ${OffsetDateTime.parse(value).format(DateTimeFormatter.ofPattern("HH:mm"))}"
-}.getOrDefault("Senast uppdaterad")
-
-private fun distanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-    val r = 6371000.0
-    val p1 = Math.toRadians(lat1)
-    val p2 = Math.toRadians(lat2)
-    val dp = Math.toRadians(lat2 - lat1)
-    val dl = Math.toRadians(lon2 - lon1)
-    val a = sin(dp / 2).pow(2) + cos(p1) * cos(p2) * sin(dl / 2).pow(2)
-    return r * 2 * atan2(sqrt(a), sqrt(1 - a))
+private suspend fun geocodeAddress(context: Context, query: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
+    runCatching {
+        @Suppress("DEPRECATION")
+        Geocoder(context, Locale("sv", "SE")).getFromLocationName(query, 1)?.firstOrNull()?.let {
+            it.latitude to it.longitude
+        }
+    }.getOrNull()
 }
 
-private fun checkPlaceTransitions(
+private fun formatUpdated(raw: String): String {
+    return runCatching {
+        val dt = OffsetDateTime.parse(raw)
+        "Senast sedd · ${dt.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+    }.getOrDefault("Senast sedd")
+}
+
+private fun distanceMeters(aLat: Double, aLon: Double, bLat: Double, bLon: Double): Double {
+    val earth = 6_371_000.0
+    val dLat = Math.toRadians(bLat - aLat)
+    val dLon = Math.toRadians(bLon - aLon)
+    val lat1 = Math.toRadians(aLat)
+    val lat2 = Math.toRadians(bLat)
+    val h = sin(dLat / 2).pow(2) + cos(lat1) * cos(lat2) * sin(dLon / 2).pow(2)
+    return 2 * earth * asin(sqrt(h))
+}
+
+private fun checkLocationTransitions(
     context: Context,
     familyId: String,
     locations: List<SyncFamilyLocation>,
@@ -824,47 +775,44 @@ private fun checkPlaceTransitions(
     members: List<SyncMember>
 ) {
     if (locations.isEmpty() || places.isEmpty()) return
-    val prefs = context.getSharedPreferences("family_location_geofence", Context.MODE_PRIVATE)
-    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    if (android.os.Build.VERSION.SDK_INT >= 26) {
-        manager.createNotificationChannel(
-            NotificationChannel("family_location", "Familjeplats", NotificationManager.IMPORTANCE_DEFAULT)
-        )
-    }
+    val prefs = context.getSharedPreferences("location_geofence_state_$familyId", Context.MODE_PRIVATE)
 
-    for (location in locations) {
-        for (place in places) {
+    locations.forEach { location ->
+        places.forEach { place ->
             val inside = distanceMeters(location.latitude, location.longitude, place.latitude, place.longitude) <= place.radiusM
-            val key = "${familyId}_${location.memberId}_${place.id}"
-            if (!prefs.contains(key)) {
-                prefs.edit().putBoolean(key, inside).apply()
-                continue
-            }
-            val before = prefs.getBoolean(key, inside)
-            if (inside != before) {
-                prefs.edit().putBoolean(key, inside).apply()
-                val shouldNotify = (inside && place.arrivalAlerts) || (!inside && place.departureAlerts)
-                if (shouldNotify &&
-                    (android.os.Build.VERSION.SDK_INT < 33 ||
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-                ) {
-                    val name = members.firstOrNull { it.id == location.memberId }?.name ?: "En familjemedlem"
-                    val text = if (inside) {
-                        "$name har kommit fram till ${place.name}"
-                    } else {
-                        "$name har lämnat ${place.name}"
-                    }
-                    manager.notify(
-                        key.hashCode(),
-                        NotificationCompat.Builder(context, "family_location")
-                            .setSmallIcon(android.R.drawable.ic_dialog_map)
-                            .setContentTitle("Familjekalendern")
-                            .setContentText(text)
-                            .setAutoCancel(true)
-                            .build()
-                    )
+            val key = "${location.memberId}_${place.id}"
+            val hadState = prefs.contains(key)
+            val previousInside = prefs.getBoolean(key, inside)
+
+            if (hadState && previousInside != inside) {
+                val memberName = members.firstOrNull { it.id == location.memberId }?.name ?: "En familjemedlem"
+                if (inside && place.arrivalAlerts) {
+                    showLocationNotification(context, "$memberName har kommit fram", "$memberName har kommit till ${place.name}", key.hashCode())
+                } else if (!inside && place.departureAlerts) {
+                    showLocationNotification(context, "$memberName har lämnat", "$memberName har lämnat ${place.name}", key.hashCode())
                 }
             }
+            prefs.edit().putBoolean(key, inside).apply()
         }
     }
+}
+
+private fun showLocationNotification(context: Context, title: String, text: String, id: Int) {
+    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        manager.createNotificationChannel(
+            NotificationChannel(LOCATION_CHANNEL, "Platsnotiser", NotificationManager.IMPORTANCE_DEFAULT)
+        )
+    }
+    if (Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    ) return
+
+    val notification = NotificationCompat.Builder(context, LOCATION_CHANNEL)
+        .setSmallIcon(R.drawable.ic_launcher_calendar)
+        .setContentTitle(title)
+        .setContentText(text)
+        .setAutoCancel(true)
+        .build()
+    manager.notify(id, notification)
 }
