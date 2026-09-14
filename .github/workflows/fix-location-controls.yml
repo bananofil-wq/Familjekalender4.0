@@ -1,5 +1,6 @@
 name: Fix location controls
 
+# trigger revision 2
 on:
   push:
     branches: [ main ]
