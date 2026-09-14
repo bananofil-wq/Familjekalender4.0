@@ -98,6 +98,7 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
     val scope = rememberCoroutineScope()
     val today = LocalDate.now()
     var expanded by remember { mutableStateOf(false) }
+    var showRunningSchedule by remember { mutableStateOf(false) }
     var showSchoolSchedule by remember { mutableStateOf(false) }
     var schoolMembers by remember { mutableStateOf<List<SyncMember>>(emptyList()) }
 
@@ -113,6 +114,14 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Button(
+            onClick = { showRunningSchedule = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text("🏃 Löpning")
+        }
+
+        Button(
             onClick = { showSchoolSchedule = true },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -127,6 +136,20 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
         ) {
             Text("Återkommande vardag · veckomall · lov/semester")
         }
+    }
+
+    if (showRunningSchedule) {
+        RunningScheduleDialog(
+            session = session,
+            members = schoolMembers,
+            events = events,
+            selectedDate = today,
+            onDismiss = { showRunningSchedule = false },
+            onChanged = {
+                showRunningSchedule = false
+                onChanged()
+            }
+        )
     }
 
     if (showSchoolSchedule) {
