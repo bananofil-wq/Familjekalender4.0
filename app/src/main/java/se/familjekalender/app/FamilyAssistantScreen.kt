@@ -271,6 +271,7 @@ internal fun FamilyAssistantCard(
     var todos by remember { mutableStateOf(emptyList<AssistantTodo>()) }
     var popup by remember { mutableStateOf<AssistantPopup?>(null) }
     var selectedMember by remember { mutableStateOf<SyncMember?>(null) }
+    var todayPlanExpanded by remember { mutableStateOf(true) }
 
     LaunchedEffect(session.id) {
         while (true) {
@@ -333,9 +334,20 @@ internal fun FamilyAssistantCard(
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Dagens plan", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
-                Text("${todaysEvents.size} aktiviteter", fontSize = 11.sp, color = Muted)
+                TextButton(
+                    onClick = { todayPlanExpanded = !todayPlanExpanded },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text(
+                        "${todaysEvents.size} aktiviteter  ${if (todayPlanExpanded) "▲" else "▼"}",
+                        fontSize = 11.sp,
+                        color = Muted
+                    )
+                }
             }
-            Spacer(Modifier.height(8.dp))
+            if (todayPlanExpanded) {
+                Spacer(Modifier.height(8.dp))
             if (todaysEvents.isEmpty()) {
                 Surface(
                     color = Color.White.copy(alpha = .04f),
@@ -367,6 +379,7 @@ internal fun FamilyAssistantCard(
                         Text("Visa alla ${todaysEvents.size}")
                     }
                 }
+            }
             }
 
             val realMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
@@ -488,6 +501,7 @@ internal fun WeekOverviewCard(
         WeekDaySummary(date = date, events = dayEvents, warnings = warnings)
     }
     var selectedWeekDay by remember { mutableStateOf<WeekDaySummary?>(null) }
+    var weekExpanded by remember { mutableStateOf(true) }
 
     val totalEvents = days.sumOf { it.events.size }
     val totalWarnings = days.sumOf { it.warnings.size }
@@ -519,10 +533,20 @@ internal fun WeekOverviewCard(
                     intenseDays >= 3 -> Color(0xFFFFB86B)
                     else -> Color(0xFF6DD6A7)
                 }
-                Text(weekState, fontSize = 10.sp, color = stateColor, fontWeight = FontWeight.Bold)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(weekState, fontSize = 10.sp, color = stateColor, fontWeight = FontWeight.Bold)
+                    TextButton(
+                        onClick = { weekExpanded = !weekExpanded },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(if (weekExpanded) "Minimera ▲" else "Visa ▼", fontSize = 10.sp, color = Muted)
+                    }
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
+            if (weekExpanded) {
+                Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Surface(
                     color = Color.White.copy(alpha = .04f),
@@ -661,6 +685,7 @@ internal fun WeekOverviewCard(
                     color = Muted
                 )
             }
+            }
         }
     }
 
@@ -773,6 +798,7 @@ internal fun FamilyAutopilotCard(
     val weekEnd = today.plusDays(6)
     val locale = Locale("sv", "SE")
     val suggestions = mutableListOf<Pair<String, String>>()
+    var autopilotExpanded by remember { mutableStateOf(true) }
 
     val tomorrowEvents = events.filter { it.date == tomorrow }.sortedBy { it.time }
     val tomorrowIssues = (
@@ -830,10 +856,20 @@ internal fun FamilyAutopilotCard(
                     Text("Familjeautopilot", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Text("Förslag baserade på familjens egen kalender.", fontSize = 12.sp, color = Muted)
                 }
-                Text("AUTO", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("AUTO", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    TextButton(
+                        onClick = { autopilotExpanded = !autopilotExpanded },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(if (autopilotExpanded) "Minimera ▲" else "Visa ▼", fontSize = 10.sp, color = Muted)
+                    }
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
+            if (autopilotExpanded) {
+                Spacer(Modifier.height(12.dp))
             if (suggestions.isEmpty()) {
                 Surface(
                     color = Color(0xFF6DD6A7).copy(alpha = .08f),
@@ -862,6 +898,7 @@ internal fun FamilyAutopilotCard(
                         }
                     }
                 }
+            }
             }
         }
     }
