@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/widget_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="#B3FFFFFF"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_refresh"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:background="@drawable/widget_refresh_bg"
+            android:text="↻"
+            android:textColor="#FFFFFFFF"
+            android:textSize="20sp"
+            android:contentDescription="Uppdatera" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="8dp"
+        android:background="#22FFFFFF" />
+
+    <TextView
+        android:id="@+id/widget_event_1"
+        style="@style/WidgetEventText" />
+
+    <TextView
+        android:id="@+id/widget_event_2"
+        style="@style/WidgetEventText" />
+
+    <TextView
+        android:id="@+id/widget_event_3"
+        style="@style/WidgetEventText" />
+
+    <TextView
+        android:id="@+id/widget_event_4"
+        style="@style/WidgetEventText" />
+
+</LinearLayout>
