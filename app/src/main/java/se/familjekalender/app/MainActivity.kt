@@ -269,6 +269,7 @@ private fun SyncedApp(
                 ) {
                     FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
                     WeekOverviewCard(events, members)
+                    FamilyAutopilotCard(events, members)
                     RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
                     Box(
                         Modifier
