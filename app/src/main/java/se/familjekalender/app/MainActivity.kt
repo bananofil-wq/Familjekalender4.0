@@ -307,37 +307,49 @@ private fun SyncedApp(
                             { scope.launch { SupabaseSync.clearChecked(session); refresh() } }
                         )
                         2 -> ToDoScreen(session)
-                        3 -> EditableFamilyScreen(
-                            members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                            events,
-                            { name, role ->
-                                scope.launch {
-                                    val realMemberCount = members.count { it.id != ALL_FAMILY_MEMBER_ID }
-                                    SupabaseSync.addMember(session, name, role, MemberColors[realMemberCount % MemberColors.size])
-                                    refresh()
-                                }
-                            },
-                            { member, color ->
-                                scope.launch {
-                                    SupabaseSync.updateMemberColor(session, member.id, color)
-                                    refresh()
-                                }
-                            },
-                            { event, title, date, time ->
-                                scope.launch {
-                                    SupabaseSync.updateEvent(session, event.id, title, date, time, event.endTime, event.memberId)
+                        3 -> {
+                            RunningProgressCard(
+                                session = session,
+                                members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                                events = events,
+                                onChanged = {
                                     refresh()
                                     FamilyCalendarWidget.enqueueRefresh(context)
                                 }
-                            },
-                            { event ->
-                                scope.launch {
-                                    deleteCalendarEventsDirect(session, listOf(event.id))
-                                    refresh()
-                                    FamilyCalendarWidget.enqueueRefresh(context)
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            EditableFamilyScreen(
+                                members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                                events,
+                                { name, role ->
+                                    scope.launch {
+                                        val realMemberCount = members.count { it.id != ALL_FAMILY_MEMBER_ID }
+                                        SupabaseSync.addMember(session, name, role, MemberColors[realMemberCount % MemberColors.size])
+                                        refresh()
+                                    }
+                                },
+                                { member, color ->
+                                    scope.launch {
+                                        SupabaseSync.updateMemberColor(session, member.id, color)
+                                        refresh()
+                                    }
+                                },
+                                { event, title, date, time ->
+                                    scope.launch {
+                                        SupabaseSync.updateEvent(session, event.id, title, date, time, event.endTime, event.memberId)
+                                        refresh()
+                                        FamilyCalendarWidget.enqueueRefresh(context)
+                                    }
+                                },
+                                { event ->
+                                    scope.launch {
+                                        deleteCalendarEventsDirect(session, listOf(event.id))
+                                        refresh()
+                                        FamilyCalendarWidget.enqueueRefresh(context)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                         4 -> SettingsScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID }, sportUrl, sportMemberId, themeMode, onThemeModeSaved, onSportSettingsSaved) { url, memberId ->
                             scope.launch {
                                 message = "Importerar SportAdmin…"
