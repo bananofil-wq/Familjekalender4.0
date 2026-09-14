@@ -94,6 +94,21 @@ private fun pauseLabel(pause: SchedulePause): String = if (pause.startsOn == pau
 
 @Composable
 fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    if (!expanded) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text("Återkommande vardag · veckomall · lov/semester")
+        }
+        return
+    }
+
     val scope = rememberCoroutineScope()
     val today = LocalDate.now()
     val thisWeek = mondayOf(today)
@@ -124,7 +139,10 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
         shape = RoundedCornerShape(18.dp)
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Återkommande vardag", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Återkommande vardag", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                TextButton(onClick = { expanded = false }) { Text("Stäng") }
+            }
             Text(
                 "Kopiera en fungerande vecka, spara en veckomall och pausa återkommande vardag under lov eller semester.",
                 color = Muted,
