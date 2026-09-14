@@ -1,0 +1,34 @@
+name: Apply world-class week overview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/apply_worldclass_week_overview.py
+      - .github/workflows/apply-worldclass-week-overview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply week overview
+        run: python3 scripts/apply_worldclass_week_overview.py
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo 'Week overview already applied'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add app/src/main/java/se/familjekalender/app/FamilyAssistantScreen.kt app/src/main/java/se/familjekalender/app/MainActivity.kt
+            git commit -m 'Add world-class week overview'
+            git push origin main
+          fi
