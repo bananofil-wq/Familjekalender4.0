@@ -1,2 +1,3 @@
 Trigger signed update build after source commit 9353110b2925334f85804535b22aff6abe6da4a4.
 Includes clickable week activity details with actionable planning suggestions.
+Republish after release race so the clickable build is the actual latest update.
