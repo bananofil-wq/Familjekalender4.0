@@ -1,5 +1,6 @@
 package se.familjekalender.app
 
+// Foreground location tracking keeps family positions fresh when the UI is not open.
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
