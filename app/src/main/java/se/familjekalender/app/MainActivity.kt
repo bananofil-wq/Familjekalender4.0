@@ -388,138 +388,105 @@ private fun ShoppingScreen(
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit
 ) {
-    val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
-    var comparison by remember { mutableStateOf<ShoppingPriceComparison?>(null) }
-    var comparing by remember { mutableStateOf(false) }
-    var comparisonError by remember { mutableStateOf("") }
     var showClearConfirmation by remember { mutableStateOf(false) }
     val openItems = items.filterNot { it.checked }
+    val checkedItems = items.filter { it.checked }
+    val total = items.size
+    val done = checkedItems.size
 
-    Text("Inköpslista", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-    Text("Synkas mellan era telefoner", color = Muted)
-    Spacer(Modifier.height(18.dp))
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        OutlinedTextField(text, { text = it }, label = { Text("Lägg till vara") }, modifier = Modifier.weight(1f).height(56.dp))
-        FilledIconButton(
-            onClick = { if (text.isNotBlank()) { onAdd(text.trim()); text = ""; comparison = null } },
-            enabled = text.isNotBlank(),
-            modifier = Modifier.size(56.dp).offset(y = 4.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.Black.copy(alpha = .78f),
-                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .45f),
-                disabledContentColor = Color.Black.copy(alpha = .55f)
-            )
-        ) { Icon(Icons.Default.Add, contentDescription = "Lägg till") }
-    }
-    Spacer(Modifier.height(8.dp))
-
-    if (openItems.isNotEmpty()) {
-        Button(
-            onClick = {
-                scope.launch {
-                    comparing = true
-                    comparisonError = ""
-                    runCatching { ShoppingPriceService.compare(openItems.map { it.name }) }
-                        .onSuccess { comparison = it }
-                        .onFailure { comparisonError = it.message ?: "Kunde inte jämföra priser" }
-                    comparing = false
-                }
-            },
-            enabled = !comparing,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (comparing) "Jämför priser…" else "Jämför priser")
-        }
-        Text(
-            "Visar bara verifierade priser från ansluten prisdata. Inga uppskattade priser.",
-            color = Muted,
-            fontSize = 12.sp
-        )
-        if (comparisonError.isNotBlank()) {
-            Text(comparisonError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+    fun categoryFor(name: String): String {
+        val value = name.lowercase(Locale("sv", "SE"))
+        return when {
+            listOf("äpp", "banan", "päron", "apels", "citron", "gurk", "tomat", "sallad", "lök", "potatis", "morot", "paprika", "avokado", "frukt", "grönsak").any { it in value } -> "Frukt & grönt"
+            listOf("mjölk", "fil", "yoghurt", "ost", "smör", "grädde", "ägg", "kvarg").any { it in value } -> "Mejeri & ägg"
+            listOf("kött", "kyckling", "färs", "korv", "bacon", "fisk", "lax", "skinka").any { it in value } -> "Kött & fisk"
+            listOf("fryst", "glass", "pizza", "pommes").any { it in value } -> "Frys"
+            listOf("schampo", "tvål", "tand", "deo", "blöj", "toalett", "hygien").any { it in value } -> "Hygien"
+            listOf("disk", "tvätt", "soppås", "hushåll", "folie", "bakplåt", "rengör").any { it in value } -> "Hushåll"
+            listOf("bröd", "kaffe", "te", "pasta", "ris", "mjöl", "socker", "fling", "konserv", "sås", "krydd").any { it in value } -> "Skafferi"
+            else -> "Övrigt"
         }
     }
 
-    comparison?.let { result ->
-        Spacer(Modifier.height(10.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Prisjämförelse", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                result.splitBasketTotal?.let { total ->
-                    Text("Billigast om ni delar upp köpet: ${"%.2f".format(Locale("sv", "SE"), total)} kr", fontWeight = FontWeight.SemiBold)
+    val categoryOrder = listOf("Frukt & grönt", "Mejeri & ägg", "Kött & fisk", "Skafferi", "Frys", "Hygien", "Hushåll", "Övrigt")
+    val grouped = openItems.groupBy { categoryFor(it.name) }
+
+    Text("Inköp", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+    Text("Familjens gemensamma inköpslista", color = Muted)
+    Spacer(Modifier.height(16.dp))
+    Card(colors = CardDefaults.cardColors(containerColor = SoftPurple), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(if (total == 0) "Listan är tom" else "$done av $total klara", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(if (openItems.isEmpty() && total > 0) "Allt är fixat" else "${openItems.size} kvar att handla", color = Muted, fontSize = 13.sp)
                 }
-                result.bestCompleteStore?.let { basket ->
-                    Text("Billigaste kompletta butik: ${basket.store} · ${"%.2f".format(Locale("sv", "SE"), basket.total)} kr", fontSize = 13.sp)
-                }
-                result.splitSavingsAgainstBestCompleteStore?.let { saving ->
-                    Text("Möjlig besparing genom att dela upp: ${"%.2f".format(Locale("sv", "SE"), saving)} kr", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
-                }
-                result.storeSummaries().filterNot { it.complete }.take(4).forEach { basket ->
-                    Text("${basket.store}: ${basket.matchedItems}/${basket.totalItems} varor hittade", color = Muted, fontSize = 11.sp)
-                }
-                result.items.forEach { pricedItem ->
-                    val cheapest = pricedItem.cheapest
-                    if (cheapest == null) {
-                        Text("${pricedItem.query}: inget verifierat pris hittades", color = Muted, fontSize = 13.sp)
-                    } else {
-                        Text("${pricedItem.query}: ${cheapest.store} ${"%.2f".format(Locale("sv", "SE"), cheapest.price)} kr", fontWeight = FontWeight.SemiBold)
-                        val detail = listOfNotNull(cheapest.brand, cheapest.packageText).joinToString(" · ")
-                        if (detail.isNotBlank()) Text(detail, color = Muted, fontSize = 12.sp)
-                        pricedItem.matches.drop(1).take(3).forEach { match ->
-                            Text("  ${match.store}: ${"%.2f".format(Locale("sv", "SE"), match.price)} kr", color = Muted, fontSize = 12.sp)
-                        }
+                if (total > 0) Text("${done * 100 / total}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            if (total > 0) {
+                Spacer(Modifier.height(10.dp))
+                LinearProgressIndicator(progress = { done.toFloat() / total.toFloat() }, modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)))
+            }
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text("Lägg till vara") }, placeholder = { Text("t.ex. mjölk, bananer, kaffe") }, singleLine = true, modifier = Modifier.weight(1f))
+        FilledIconButton(onClick = {
+            text.split(',', ';', '\n').map { it.trim() }.filter { it.isNotBlank() }.forEach(onAdd)
+            text = ""
+        }, enabled = text.isNotBlank(), modifier = Modifier.size(56.dp), shape = RoundedCornerShape(14.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+            Icon(Icons.Default.Add, contentDescription = "Lägg till", tint = Color.Black)
+        }
+    }
+    Text("Tips: skriv flera varor separerade med kommatecken", color = Muted, fontSize = 11.sp)
+    Spacer(Modifier.height(14.dp))
+
+    if (openItems.isEmpty() && checkedItems.isEmpty()) {
+        Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Dags att fylla listan", fontWeight = FontWeight.SemiBold)
+                Text("Lägg till det ni behöver ovan", color = Muted, fontSize = 13.sp)
+            }
+        }
+    }
+
+    categoryOrder.forEach { category ->
+        val categoryItems = grouped[category].orEmpty()
+        if (categoryItems.isNotEmpty()) {
+            Text(category, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 3.dp))
+            categoryItems.forEach { item ->
+                Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = false, onCheckedChange = { onToggle(item) })
+                        Text(item.name, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
                     }
                 }
-                if (result.pendingStores.isNotEmpty()) {
-                    Text(
-                        "Saknar ännu stabil prisdatakälla: ${result.pendingStores.joinToString()}",
-                        color = Muted,
-                        fontSize = 11.sp
-                    )
-                }
-                Text(result.attributionText, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
             }
         }
     }
 
-    Spacer(Modifier.height(6.dp))
-    items.forEach { item ->
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBg),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-        ) {
-            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(item.checked, { onToggle(item) })
-                Text(item.name, color = if (item.checked) Muted else Color.White)
+    if (checkedItems.isNotEmpty()) {
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Klara (${checkedItems.size})", color = Muted, fontWeight = FontWeight.SemiBold)
+            TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
+        }
+        checkedItems.forEach { item ->
+            Card(colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .62f)), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = true, onCheckedChange = { onToggle(item) })
+                    Text(item.name, color = Muted, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                }
             }
         }
     }
-    if (items.any { it.checked }) {
-        TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
-    }
+
     if (showClearConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirmation = false },
-            title = { Text("Ta bort varor?") },
-            text = { Text("Är du säker på att du vill ta bort de avbockade varorna?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showClearConfirmation = false
-                        onClear()
-                    }
-                ) { Text("Ta bort") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirmation = false }) { Text("Avbryt") }
-            }
-        )
+        AlertDialog(onDismissRequest = { showClearConfirmation = false }, title = { Text("Rensa avbockade?") }, text = { Text("${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan.") }, confirmButton = { TextButton(onClick = { showClearConfirmation = false; onClear() }) { Text("Ta bort") } }, dismissButton = { TextButton(onClick = { showClearConfirmation = false }) { Text("Avbryt") } })
     }
 }
 
