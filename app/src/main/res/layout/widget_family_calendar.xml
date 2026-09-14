@@ -52,12 +52,13 @@
             android:contentDescription="Uppdatera" />
     </LinearLayout>
 
-    <View
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="10dp"
         android:layout_marginBottom="8dp"
-        android:background="#22FFFFFF" />
+        android:background="#22FFFFFF"
+        android:text="" />
 
     <TextView
         android:id="@+id/widget_event_1"
