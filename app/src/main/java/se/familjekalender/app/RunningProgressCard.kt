@@ -111,6 +111,12 @@ fun RunningProgressCard(
     val today = LocalDate.now()
     val recent7Runs = runs.filter { !it.event.date.isBefore(today.minusDays(6)) && !it.event.date.isAfter(today) }
     val recent7Km = recent7Runs.sumOf { it.distanceKm }
+    val monthRuns = runs.filter { it.event.date.year == today.year && it.event.date.month == today.month }
+    val monthKm = monthRuns.sumOf { it.distanceKm }
+    val activeWeeks = runs
+        .map { java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear().let(it.event.date::get) to it.event.date.year }
+        .distinct()
+        .size
     val previousForTrend = runs.dropLast(1).takeLast(3)
     val paceTrendSeconds = if (latest != null && previousForTrend.isNotEmpty()) {
         previousForTrend.map { it.paceSecondsPerKm }.average().toInt() - latest.paceSecondsPerKm
@@ -193,6 +199,19 @@ fun RunningProgressCard(
                     RunStat(
                         "Utveckling",
                         paceTrendText,
+                        Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RunStat(
+                        "Den här månaden",
+                        "${monthRuns.size} pass · ${"%.1f".format(Locale.US, monthKm)} km",
+                        Modifier.weight(1f)
+                    )
+                    RunStat(
+                        "Aktiva veckor",
+                        if (activeWeeks > 0) "$activeWeeks totalt" else "–",
                         Modifier.weight(1f)
                     )
                 }
