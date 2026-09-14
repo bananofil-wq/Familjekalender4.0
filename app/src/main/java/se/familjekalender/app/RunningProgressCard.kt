@@ -26,7 +26,8 @@ private data class RunEntry(
     val event: SyncEvent,
     val distanceKm: Double,
     val durationMinutes: Int,
-    val paceSecondsPerKm: Int
+    val paceSecondsPerKm: Int,
+    val plannedDistanceKm: Double? = null
 )
 
 private data class PlannedRun(
@@ -56,7 +57,11 @@ private fun parseRun(event: SyncEvent): RunEntry? {
     }
     if (distance <= 0.0 || minutes <= 0) return null
     val pace = ((minutes * 60.0) / distance).toInt()
-    return RunEntry(event, distance, minutes, pace)
+    val plannedDistance = if (event.title.startsWith("🏃 Löpning · ")) {
+        Regex("Plan ([0-9]+(?:[.,][0-9]+)?) km").find(event.title)
+            ?.groupValues?.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
+    } else null
+    return RunEntry(event, distance, minutes, pace, plannedDistance)
 }
 
 private fun parsePlannedRun(event: SyncEvent): PlannedRun? {
@@ -319,6 +324,19 @@ fun RunningProgressCard(
                             Column(Modifier.weight(1f)) {
                                 Text(run.event.date.toString(), fontSize = 13.sp)
                                 Text("${"%.1f".format(Locale.US, run.distanceKm)} km · ${run.durationMinutes} min", color = Muted, fontSize = 12.sp)
+                                run.plannedDistanceKm?.let { planned ->
+                                    val diff = run.distanceKm - planned
+                                    val diffText = when {
+                                        diff > 0.049 -> "+${"%.1f".format(Locale.US, diff)} km"
+                                        diff < -0.049 -> "${"%.1f".format(Locale.US, diff)} km"
+                                        else -> "enligt plan"
+                                    }
+                                    Text(
+                                        "Plan ${"%.1f".format(Locale.US, planned)} km · $diffText",
+                                        color = Muted,
+                                        fontSize = 11.sp
+                                    )
+                                }
                             }
                             Text(paceText(run.paceSecondsPerKm), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                         }
@@ -379,7 +397,7 @@ fun RunningProgressCard(
                     SupabaseSync.updateEvent(
                         session = session,
                         eventId = plan.event.id,
-                        title = "🏃 Löpning · ${"%.2f".format(Locale.US, distance)} km · $minutes min",
+                        title = "🏃 Löpning · ${"%.2f".format(Locale.US, distance)} km · $minutes min · Plan ${"%.1f".format(Locale.US, plan.distanceKm)} km",
                         date = plan.event.date,
                         time = plan.event.time,
                         endTime = null,
@@ -495,8 +513,20 @@ private fun CompletePlannedRunDialog(
                     singleLine = true
                 )
                 if (valid) {
-                    val pace = (((minutes ?: 0) * 60.0) / (distance ?: 1.0)).toInt()
+                    val actualDistance = distance ?: 0.0
+                    val pace = (((minutes ?: 0) * 60.0) / (actualDistance.takeIf { it > 0.0 } ?: 1.0)).toInt()
+                    val diff = actualDistance - plan.distanceKm
+                    val comparison = when {
+                        diff > 0.049 -> "+${"%.1f".format(Locale.US, diff)} km över plan"
+                        diff < -0.049 -> "${"%.1f".format(Locale.US, -diff)} km under plan"
+                        else -> "Distansen enligt plan"
+                    }
                     Text("Tempo: ${paceText(pace)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Plan ${"%.1f".format(Locale.US, plan.distanceKm)} km → faktiskt ${"%.1f".format(Locale.US, actualDistance)} km · $comparison",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp
+                    )
                 }
                 Text("Det planerade passet ersätts med resultatet, så kalendern får ingen dubblett.", color = Muted, fontSize = 11.sp)
             }
