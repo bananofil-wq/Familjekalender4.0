@@ -1,0 +1,34 @@
+name: Apply widget event refresh
+
+on:
+  push:
+    paths:
+      - 'scripts/apply_widget_event_refresh.py'
+      - '.github/workflows/apply-widget-event-refresh.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Apply widget refresh patch
+        run: python scripts/apply_widget_event_refresh.py
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git commit -m "Refresh widget after calendar event changes"
+          git push origin main
