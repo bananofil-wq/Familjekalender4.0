@@ -180,7 +180,7 @@ internal fun SchoolScheduleDialog(
                 }
 
                 Text(
-                    if (rotationWeeks == 1) "Schemat upprepas varje vecka." else "Schemat upprepas automatiskt var $rotationWeeks:e vecka.",
+                    if (rotationWeeks == 1) "Schemat upprepas varje vecka, måndag till fredag." else "Schemat upprepas automatiskt var $rotationWeeks:e vecka, måndag till fredag.",
                     fontSize = 11.sp,
                     color = Color.White.copy(alpha = .65f)
                 )
@@ -234,7 +234,7 @@ internal fun SchoolScheduleDialog(
             title = { Text(if (rotationWeeks == 1) "Redigera veckoschema" else "Redigera vecka ${index + 1}") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val labels = listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön")
+                    val labels = listOf("Mån", "Tis", "Ons", "Tor", "Fre")
                     labels.forEachIndexed { dayIndex, label ->
                         val day = dayIndex + 1
                         val enabled = day in week.weekdays
@@ -270,7 +270,7 @@ internal fun SchoolScheduleDialog(
                     }
                 }
             },
-            confirmButton = { Button(onClick = { editingWeek = null }) { Text("Klar") } },
+            confirmButton = { Button(onClick = { editingWeek = null }) { Text("Godkänd") } },
             dismissButton = {}
         )
     }
