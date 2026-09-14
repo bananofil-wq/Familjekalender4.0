@@ -15,10 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Apply patch
+      - name: Apply running patch only
         run: python scripts/apply_running_plan_vs_actual_v4.py
       - name: Commit source change
         run: |
@@ -27,4 +29,4 @@ jobs:
           git add app/src/main/java/se/familjekalender/app/RunningProgressCard.kt
           git diff --cached --quiet && exit 0
           git commit -m "Show planned versus actual running results"
-          git push
+          git push origin main
