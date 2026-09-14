@@ -105,6 +105,7 @@ fun RunningProgressCard(
     }
     val totalKm = runs.sumOf { it.distanceKm }
     val bestPace = runs.minOfOrNull { it.paceSecondsPerKm }
+    val longestDistance = runs.maxOfOrNull { it.distanceKm }
     val latest = runs.lastOrNull()
     val nextPlan = plannedRuns.firstOrNull()
     val today = LocalDate.now()
@@ -121,6 +122,13 @@ fun RunningProgressCard(
             else -> "→ Stabilt tempo"
         }
     } ?: "Behöver fler pass"
+    val latestPbText = when {
+        latest == null -> "Inga pass ännu"
+        bestPace != null && latest.paceSecondsPerKm == bestPace && longestDistance != null && latest.distanceKm == longestDistance -> "🏆 Tempo + distans"
+        bestPace != null && latest.paceSecondsPerKm == bestPace -> "🏆 Bästa tempo"
+        longestDistance != null && latest.distanceKm == longestDistance -> "🏆 Längsta pass"
+        else -> "Fortsätt bygga formen"
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBg),
@@ -185,6 +193,19 @@ fun RunningProgressCard(
                     RunStat(
                         "Utveckling",
                         paceTrendText,
+                        Modifier.weight(1f)
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RunStat(
+                        "Längsta pass",
+                        longestDistance?.let { "${"%.1f".format(Locale.US, it)} km" } ?: "–",
+                        Modifier.weight(1f)
+                    )
+                    RunStat(
+                        "Personbästa",
+                        latestPbText,
                         Modifier.weight(1f)
                     )
                 }
