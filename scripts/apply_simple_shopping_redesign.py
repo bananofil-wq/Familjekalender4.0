@@ -40,53 +40,30 @@ private fun ShoppingScreen(
     Text("Inköp", fontSize = 30.sp, fontWeight = FontWeight.Bold)
     Text("Familjens gemensamma inköpslista", color = Muted)
     Spacer(Modifier.height(16.dp))
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = SoftPurple),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Card(colors = CardDefaults.cardColors(containerColor = SoftPurple), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text(if (total == 0) "Listan är tom" else "$done av $total klara", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Text(if (openItems.isEmpty() && total > 0) "Allt är fixat" else "${openItems.size} kvar att handla", color = Muted, fontSize = 13.sp)
                 }
-                if (total > 0) Text("${(done * 100 / total)}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                if (total > 0) Text("${done * 100 / total}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             if (total > 0) {
                 Spacer(Modifier.height(10.dp))
-                LinearProgressIndicator(
-                    progress = { done.toFloat() / total.toFloat() },
-                    modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp))
-                )
+                LinearProgressIndicator(progress = { done.toFloat() / total.toFloat() }, modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)))
             }
         }
     }
-
     Spacer(Modifier.height(14.dp))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            label = { Text("Lägg till vara") },
-            placeholder = { Text("t.ex. mjölk, bananer, kaffe") },
-            singleLine = true,
-            modifier = Modifier.weight(1f)
-        )
-        FilledIconButton(
-            onClick = {
-                text.split(',', ';', '\n')
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-                    .forEach(onAdd)
-                text = ""
-            },
-            enabled = text.isNotBlank(),
-            modifier = Modifier.size(56.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) { Icon(Icons.Default.Add, contentDescription = "Lägg till", tint = Color.Black) }
+        OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text("Lägg till vara") }, placeholder = { Text("t.ex. mjölk, bananer, kaffe") }, singleLine = true, modifier = Modifier.weight(1f))
+        FilledIconButton(onClick = {
+            text.split(',', ';', '\n').map { it.trim() }.filter { it.isNotBlank() }.forEach(onAdd)
+            text = ""
+        }, enabled = text.isNotBlank(), modifier = Modifier.size(56.dp), shape = RoundedCornerShape(14.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+            Icon(Icons.Default.Add, contentDescription = "Lägg till", tint = Color.Black)
+        }
     }
     Text("Tips: skriv flera varor separerade med kommatecken", color = Muted, fontSize = 11.sp)
     Spacer(Modifier.height(14.dp))
@@ -134,18 +111,11 @@ private fun ShoppingScreen(
     }
 
     if (showClearConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirmation = false },
-            title = { Text("Rensa avbockade?") },
-            text = { Text("${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan.") },
-            confirmButton = {
-                TextButton(onClick = { showClearConfirmation = false; onClear() }) { Text("Ta bort") }
-            },
-            dismissButton = { TextButton(onClick = { showClearConfirmation = false }) { Text("Avbryt") } }
-        )
+        AlertDialog(onDismissRequest = { showClearConfirmation = false }, title = { Text("Rensa avbockade?") }, text = { Text("${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan.") }, confirmButton = { TextButton(onClick = { showClearConfirmation = false; onClear() }) { Text("Ta bort") } }, dismissButton = { TextButton(onClick = { showClearConfirmation = false }) { Text("Avbryt") } })
     }
 }
 '''
 
 path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
 print('Applied simple shopping redesign and removed price comparison UI')
+# workflow trigger
