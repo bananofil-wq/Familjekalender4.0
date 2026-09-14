@@ -35,3 +35,5 @@ jobs:
           git add app/src/main/java/se/familjekalender/app/FamilyAssistantScreen.kt
           git commit -m "Upgrade week overview to v2"
           git push origin main
+
+# Trigger marker: week-v2-ready
