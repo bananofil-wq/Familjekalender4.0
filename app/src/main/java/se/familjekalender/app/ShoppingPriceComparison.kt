@@ -75,6 +75,10 @@ data class ShoppingPriceComparison(
 
 object ShoppingPriceService {
     private const val ENDPOINT = "https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/compare-prices"
+    private val excludedStores = setOf("jula", "rusta")
+
+    private fun isExcludedStore(store: String): Boolean =
+        store.trim().lowercase() in excludedStores
 
     suspend fun compare(names: List<String>): ShoppingPriceComparison = withContext(Dispatchers.IO) {
         val clean = names.map(String::trim).filter(String::isNotBlank).distinct().take(20)
@@ -103,21 +107,24 @@ object ShoppingPriceService {
                 val matches = buildList {
                     repeat(matchesArray.length()) { matchIndex ->
                         val row = matchesArray.getJSONObject(matchIndex)
-                        add(
-                            ShoppingPriceMatch(
-                                store = row.optString("chainLabel", row.optString("chain")),
-                                productName = row.optString("name"),
-                                brand = row.optString("brand").takeIf { it.isNotBlank() && it != "null" },
-                                packageText = row.optString("package").takeIf { it.isNotBlank() && it != "null" },
-                                price = row.optDouble("effectivePrice"),
-                                regularPrice = row.optDouble("regularPrice").takeIf { !it.isNaN() },
-                                memberPrice = row.optDouble("memberPrice").takeIf { !it.isNaN() },
-                                comparisonPrice = row.optDouble("comparisonPrice").takeIf { !it.isNaN() },
-                                comparisonUnit = row.optString("comparisonUnit").takeIf { it.isNotBlank() && it != "null" },
-                                confirmedAt = row.optString("confirmedAt").takeIf { it.isNotBlank() && it != "null" },
-                                sourceUrl = row.optString("sourceUrl").takeIf { it.isNotBlank() && it != "null" }
+                        val store = row.optString("chainLabel", row.optString("chain"))
+                        if (!isExcludedStore(store)) {
+                            add(
+                                ShoppingPriceMatch(
+                                    store = store,
+                                    productName = row.optString("name"),
+                                    brand = row.optString("brand").takeIf { it.isNotBlank() && it != "null" },
+                                    packageText = row.optString("package").takeIf { it.isNotBlank() && it != "null" },
+                                    price = row.optDouble("effectivePrice"),
+                                    regularPrice = row.optDouble("regularPrice").takeIf { !it.isNaN() },
+                                    memberPrice = row.optDouble("memberPrice").takeIf { !it.isNaN() },
+                                    comparisonPrice = row.optDouble("comparisonPrice").takeIf { !it.isNaN() },
+                                    comparisonUnit = row.optString("comparisonUnit").takeIf { it.isNotBlank() && it != "null" },
+                                    confirmedAt = row.optString("confirmedAt").takeIf { it.isNotBlank() && it != "null" },
+                                    sourceUrl = row.optString("sourceUrl").takeIf { it.isNotBlank() && it != "null" }
+                                )
                             )
-                        )
+                        }
                     }
                 }
                 add(
@@ -133,7 +140,8 @@ object ShoppingPriceService {
         val pending = buildList {
             repeat(coverage.length()) { index ->
                 val row = coverage.getJSONObject(index)
-                if (row.optString("status") != "live") add(row.optString("store"))
+                val store = row.optString("store")
+                if (row.optString("status") != "live" && !isExcludedStore(store)) add(store)
             }
         }
         val attribution = root.optJSONObject("attribution") ?: JSONObject()
