@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -94,23 +95,54 @@ private fun pauseLabel(pause: SchedulePause): String = if (pause.startsOn == pau
 
 @Composable
 fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val today = LocalDate.now()
     var expanded by remember { mutableStateOf(false) }
+    var showSchoolSchedule by remember { mutableStateOf(false) }
+    var schoolMembers by remember { mutableStateOf<List<SyncMember>>(emptyList()) }
 
-    if (!expanded) {
+    LaunchedEffect(session.id) {
+        schoolMembers = runCatching { SupabaseSync.loadMembers(session).filter { it.id != ALL_FAMILY_MEMBER_ID } }
+            .getOrDefault(emptyList())
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Button(
+            onClick = { showSchoolSchedule = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Text("Förskola / skola")
+        }
+
         OutlinedButton(
             onClick = { expanded = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
         ) {
             Text("Återkommande vardag · veckomall · lov/semester")
         }
-        return
     }
 
-    val scope = rememberCoroutineScope()
-    val today = LocalDate.now()
+    if (showSchoolSchedule) {
+        SchoolScheduleDialog(
+            members = schoolMembers,
+            selectedDate = today,
+            onDismiss = { showSchoolSchedule = false },
+            onChanged = {
+                showSchoolSchedule = false
+                onChanged()
+            }
+        )
+    }
+
+    if (!expanded) return
+
     val thisWeek = mondayOf(today)
     val lastWeek = thisWeek.minusWeeks(1)
     val nextWeek = thisWeek.plusWeeks(1)
@@ -133,168 +165,170 @@ fun RecurringLifeCard(session: FamilySession, events: List<SyncEvent>, onChanged
 
     LaunchedEffect(session.id, events.size) { reloadRecurringData() }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg),
-        shape = RoundedCornerShape(18.dp)
-    ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Återkommande vardag", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                TextButton(onClick = { expanded = false }) { Text("Stäng") }
-            }
-            Text(
-                "Kopiera en fungerande vecka, spara en veckomall och pausa återkommande vardag under lov eller semester.",
-                color = Muted,
-                fontSize = 12.sp
-            )
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            status = ""
-                            runCatching { copyWeek(session, lastWeekEvents, events, lastWeek, thisWeek) }
-                                .onSuccess { status = copyStatus(it, "från förra veckan"); onChanged() }
-                                .onFailure { status = it.message ?: "Kunde inte kopiera veckan" }
-                            busy = false
-                        }
-                    },
-                    enabled = !busy && lastWeekEvents.isNotEmpty(),
-                    modifier = Modifier.weight(1f)
-                ) { Text("Förra → denna") }
-                Button(
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            status = ""
-                            runCatching { copyWeek(session, thisWeekEvents, events, thisWeek, nextWeek) }
-                                .onSuccess { status = copyStatus(it, "till nästa vecka"); onChanged() }
-                                .onFailure { status = it.message ?: "Kunde inte kopiera veckan" }
-                            busy = false
-                        }
-                    },
-                    enabled = !busy && thisWeekEvents.isNotEmpty(),
-                    modifier = Modifier.weight(1f)
-                ) { Text("Denna → nästa") }
-            }
-
-            HorizontalDivider()
-            Text("Veckomall", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            status = ""
-                            runCatching { RecurringScheduleSync.replaceTemplateFromWeek(session, "Min veckomall", events, thisWeek) }
-                                .onSuccess { count ->
-                                    status = "Veckomallen sparad med $count typer av aktiviteter"
-                                    reloadRecurringData()
-                                }
-                                .onFailure { status = it.message ?: "Kunde inte spara veckomallen" }
-                            busy = false
-                        }
-                    },
-                    enabled = !busy && thisWeekEvents.isNotEmpty(),
-                    modifier = Modifier.weight(1f)
-                ) { Text("Spara denna vecka") }
-                Button(
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            status = ""
-                            runCatching { RecurringScheduleSync.applyTemplateToWeek(session, "Min veckomall", nextWeek, events) }
-                                .onSuccess { result -> status = templateStatus(result); onChanged() }
-                                .onFailure { status = it.message ?: "Kunde inte använda veckomallen" }
-                            busy = false
-                        }
-                    },
-                    enabled = !busy && templateNames.contains("Min veckomall"),
-                    modifier = Modifier.weight(1f)
-                ) { Text("Mall → nästa") }
-            }
-
-            HorizontalDivider()
-            Text("Lov / semester", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(
-                "Lägg en paus för återkommande scheman. Vanliga engångshändelser ligger kvar.",
-                color = Muted,
-                fontSize = 12.sp
-            )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    pauseFrom, { pauseFrom = it }, label = { Text("Från") }, placeholder = { Text("ÅÅÅÅ-MM-DD") },
-                    singleLine = true, modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    pauseTo, { pauseTo = it }, label = { Text("Till") }, placeholder = { Text("ÅÅÅÅ-MM-DD") },
-                    singleLine = true, modifier = Modifier.weight(1f)
-                )
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { pauseFrom = nextWeek.toString(); pauseTo = nextWeek.plusDays(6).toString() },
-                    enabled = !busy,
-                    modifier = Modifier.weight(1f)
-                ) { Text("Nästa vecka") }
-                Button(
-                    onClick = {
-                        val start = runCatching { LocalDate.parse(pauseFrom.trim()) }.getOrNull()
-                        val end = runCatching { LocalDate.parse(pauseTo.trim()) }.getOrNull()
-                        when {
-                            start == null || end == null -> status = "Ange datum som ÅÅÅÅ-MM-DD"
-                            end.isBefore(start) -> status = "Slutdatum kan inte vara före startdatum"
-                            else -> scope.launch {
-                                busy = true
-                                status = ""
-                                runCatching { RecurringScheduleSync.addGlobalPause(session, start, end) }
-                                    .onSuccess { status = "Schemapaus sparad: $start – $end"; reloadRecurringData() }
-                                    .onFailure { status = it.message ?: "Kunde inte spara schemapausen" }
-                                busy = false
-                            }
-                        }
-                    },
-                    enabled = !busy,
-                    modifier = Modifier.weight(1f)
-                ) { Text("Pausa scheman") }
-            }
-
-            if (pauses.isNotEmpty()) {
-                Text("Aktiva och kommande pauser", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                pauses.forEach { pause ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text(pauseLabel(pause), fontSize = 13.sp)
-                            Text(
-                                if (!pause.startsOn.isAfter(today) && !pause.endsOn.isBefore(today)) "Aktiv nu" else "Kommande",
-                                color = Muted,
-                                fontSize = 11.sp
-                            )
-                        }
-                        TextButton(
-                            onClick = {
-                                scope.launch {
-                                    busy = true
-                                    runCatching { RecurringScheduleSync.deletePause(session, pause.id) }
-                                        .onSuccess { status = "Schemapaus borttagen"; reloadRecurringData() }
-                                        .onFailure { status = it.message ?: "Kunde inte ta bort schemapausen" }
-                                    busy = false
-                                }
-                            },
-                            enabled = !busy
-                        ) { Text("Ta bort") }
-                    }
+    Dialog(onDismissRequest = { expanded = false }) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardBg),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Återkommande vardag", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    TextButton(onClick = { expanded = false }) { Text("Stäng") }
                 }
-            }
-
-            if (status.isNotBlank()) {
                 Text(
-                    status,
-                    color = if (status.contains("Kunde") || status.contains("kan inte") || status.contains("Ange")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    "Kopiera en fungerande vecka, spara en veckomall och pausa återkommande vardag under lov eller semester.",
+                    color = Muted,
                     fontSize = 12.sp
                 )
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                busy = true
+                                status = ""
+                                runCatching { copyWeek(session, lastWeekEvents, events, lastWeek, thisWeek) }
+                                    .onSuccess { status = copyStatus(it, "från förra veckan"); onChanged() }
+                                    .onFailure { status = it.message ?: "Kunde inte kopiera veckan" }
+                                busy = false
+                            }
+                        },
+                        enabled = !busy && lastWeekEvents.isNotEmpty(),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Förra → denna") }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                busy = true
+                                status = ""
+                                runCatching { copyWeek(session, thisWeekEvents, events, thisWeek, nextWeek) }
+                                    .onSuccess { status = copyStatus(it, "till nästa vecka"); onChanged() }
+                                    .onFailure { status = it.message ?: "Kunde inte kopiera veckan" }
+                                busy = false
+                            }
+                        },
+                        enabled = !busy && thisWeekEvents.isNotEmpty(),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Denna → nästa") }
+                }
+
+                HorizontalDivider()
+                Text("Veckomall", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                busy = true
+                                status = ""
+                                runCatching { RecurringScheduleSync.replaceTemplateFromWeek(session, "Min veckomall", events, thisWeek) }
+                                    .onSuccess { count ->
+                                        status = "Veckomallen sparad med $count typer av aktiviteter"
+                                        reloadRecurringData()
+                                    }
+                                    .onFailure { status = it.message ?: "Kunde inte spara veckomallen" }
+                                busy = false
+                            }
+                        },
+                        enabled = !busy && thisWeekEvents.isNotEmpty(),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Spara denna vecka") }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                busy = true
+                                status = ""
+                                runCatching { RecurringScheduleSync.applyTemplateToWeek(session, "Min veckomall", nextWeek, events) }
+                                    .onSuccess { result -> status = templateStatus(result); onChanged() }
+                                    .onFailure { status = it.message ?: "Kunde inte använda veckomallen" }
+                                busy = false
+                            }
+                        },
+                        enabled = !busy && templateNames.contains("Min veckomall"),
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Mall → nästa") }
+                }
+
+                HorizontalDivider()
+                Text("Lov / semester", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(
+                    "Lägg en paus för återkommande scheman. Vanliga engångshändelser ligger kvar.",
+                    color = Muted,
+                    fontSize = 12.sp
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        pauseFrom, { pauseFrom = it }, label = { Text("Från") }, placeholder = { Text("ÅÅÅÅ-MM-DD") },
+                        singleLine = true, modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        pauseTo, { pauseTo = it }, label = { Text("Till") }, placeholder = { Text("ÅÅÅÅ-MM-DD") },
+                        singleLine = true, modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { pauseFrom = nextWeek.toString(); pauseTo = nextWeek.plusDays(6).toString() },
+                        enabled = !busy,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Nästa vecka") }
+                    Button(
+                        onClick = {
+                            val start = runCatching { LocalDate.parse(pauseFrom.trim()) }.getOrNull()
+                            val end = runCatching { LocalDate.parse(pauseTo.trim()) }.getOrNull()
+                            when {
+                                start == null || end == null -> status = "Ange datum som ÅÅÅÅ-MM-DD"
+                                end.isBefore(start) -> status = "Slutdatum kan inte vara före startdatum"
+                                else -> scope.launch {
+                                    busy = true
+                                    status = ""
+                                    runCatching { RecurringScheduleSync.addGlobalPause(session, start, end) }
+                                        .onSuccess { status = "Schemapaus sparad: $start – $end"; reloadRecurringData() }
+                                        .onFailure { status = it.message ?: "Kunde inte spara schemapausen" }
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled = !busy,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Pausa scheman") }
+                }
+
+                if (pauses.isNotEmpty()) {
+                    Text("Aktiva och kommande pauser", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    pauses.forEach { pause ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text(pauseLabel(pause), fontSize = 13.sp)
+                                Text(
+                                    if (!pause.startsOn.isAfter(today) && !pause.endsOn.isBefore(today)) "Aktiv nu" else "Kommande",
+                                    color = Muted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        runCatching { RecurringScheduleSync.deletePause(session, pause.id) }
+                                            .onSuccess { status = "Schemapaus borttagen"; reloadRecurringData() }
+                                            .onFailure { status = it.message ?: "Kunde inte ta bort schemapausen" }
+                                        busy = false
+                                    }
+                                },
+                                enabled = !busy
+                            ) { Text("Ta bort") }
+                        }
+                    }
+                }
+
+                if (status.isNotBlank()) {
+                    Text(
+                        status,
+                        color = if (status.contains("Kunde") || status.contains("kan inte") || status.contains("Ange")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
