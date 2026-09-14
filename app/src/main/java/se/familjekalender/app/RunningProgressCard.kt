@@ -113,6 +113,13 @@ fun RunningProgressCard(
     val recent7Km = recent7Runs.sumOf { it.distanceKm }
     val monthRuns = runs.filter { it.event.date.year == today.year && it.event.date.month == today.month }
     val monthKm = monthRuns.sumOf { it.distanceKm }
+    val goalPrefs = remember { context.getSharedPreferences("running_month_goals", 0) }
+    val goalKey = "${selectedMemberId ?: "none"}_${today.year}_${today.monthValue}"
+    var monthlyGoalText by remember(goalKey) {
+        mutableStateOf(goalPrefs.getFloat(goalKey, 0f).takeIf { it > 0f }?.let { "%.0f".format(Locale.US, it) } ?: "")
+    }
+    val monthlyGoalKm = monthlyGoalText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 }
+    val monthlyGoalProgress = monthlyGoalKm?.let { (monthKm / it).coerceIn(0.0, 1.0).toFloat() } ?: 0f
     val activeWeeks = runs
         .map { java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear().let(it.event.date::get) to it.event.date.year }
         .distinct()
@@ -215,6 +222,40 @@ fun RunningProgressCard(
                         Modifier.weight(1f)
                     )
                 }
+                Spacer(Modifier.height(10.dp))
+                Text("Månadsmål", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = monthlyGoalText,
+                        onValueChange = { value -> monthlyGoalText = value.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
+                        label = { Text("Mål km") },
+                        singleLine = true,
+                        modifier = Modifier.weight(0.42f)
+                    )
+                    Button(
+                        onClick = {
+                            val goal = monthlyGoalText.replace(',', '.').toFloatOrNull()
+                            if (goal != null && goal > 0f) goalPrefs.edit().putFloat(goalKey, goal).apply()
+                            else goalPrefs.edit().remove(goalKey).apply()
+                        },
+                        modifier = Modifier.weight(0.58f)
+                    ) { Text("Spara mål") }
+                }
+                if (monthlyGoalKm != null) {
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { monthlyGoalProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "${"%.1f".format(Locale.US, monthKm)} av ${"%.1f".format(Locale.US, monthlyGoalKm)} km · ${(monthlyGoalProgress * 100).toInt()}%",
+                        color = Muted,
+                        fontSize = 12.sp
+                    )
+                }
+
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RunStat(
