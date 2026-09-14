@@ -1,0 +1,229 @@
+name: Fix location controls
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/fix-location-controls.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch FamilyLocationScreen
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('app/src/main/java/se/familjekalender/app/FamilyLocationScreen.kt')
+          s = p.read_text()
+
+          old = '''    var showAddPlace by remember { mutableStateOf(false) }
+    var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
+'''
+          new = '''    var showAddPlace by remember { mutableStateOf(false) }
+    var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
+    var showHistory by remember { mutableStateOf(false) }
+    var showSecurityInfo by remember { mutableStateOf(false) }
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = '''    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+'''
+          new = '''    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        status = if (granted) "Platsnotiser aktiverade" else "Notisbehörighet nekades"
+    }
+
+    fun ensureNotificationPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            status = "Platsnotiser är aktiverade"
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = '''            FeaturePill(Icons.Default.LocationOn, "Dela plats", Modifier.weight(1f))
+            FeaturePill(Icons.Default.Notifications, "Få notiser", Modifier.weight(1f))
+            FeaturePill(Icons.Default.Security, "Tryggt & säkert", Modifier.weight(1f))
+'''
+          new = '''            FeaturePill(Icons.Default.LocationOn, "Dela plats", Modifier.weight(1f)) {
+                if (sharing) scope.launch { publishNow() } else startSharing()
+            }
+            FeaturePill(Icons.Default.Notifications, "Få notiser", Modifier.weight(1f)) {
+                ensureNotificationPermission()
+                if (places.isEmpty()) {
+                    showAddPlace = true
+                    status = "Lägg till en destination för ankomst- och avresenotiser"
+                }
+            }
+            FeaturePill(Icons.Default.Security, "Tryggt & säkert", Modifier.weight(1f)) {
+                showSecurityInfo = true
+            }
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = '''                SettingRow(
+                    Icons.Default.Notifications,
+                    "Få ankomstnotiser",
+                    "När någon kommer fram"
+                ) { }
+
+                SettingRow(
+                    Icons.Default.NotificationsActive,
+                    "Få avresenotiser",
+                    "När någon lämnar en plats"
+                ) { }
+'''
+          new = '''                SettingRow(
+                    Icons.Default.Notifications,
+                    "Få ankomstnotiser",
+                    if (places.isEmpty()) "Lägg till en destination först" else if (places.any { it.arrivalAlerts }) "Aktiverat" else "Avstängt"
+                ) {
+                    ensureNotificationPermission()
+                    if (places.isEmpty()) {
+                        showAddPlace = true
+                        status = "Lägg till en destination för ankomstnotiser"
+                    } else {
+                        val enable = places.none { it.arrivalAlerts }
+                        scope.launch {
+                            runCatching {
+                                places.forEach { place ->
+                                    FamilyLocationSync.updatePlaceAlerts(session, place, enable, place.departureAlerts)
+                                }
+                            }.onSuccess {
+                                status = if (enable) "Ankomstnotiser aktiverade" else "Ankomstnotiser avstängda"
+                                refresh()
+                            }.onFailure { status = it.message ?: "Kunde inte ändra ankomstnotiser" }
+                        }
+                    }
+                }
+
+                SettingRow(
+                    Icons.Default.NotificationsActive,
+                    "Få avresenotiser",
+                    if (places.isEmpty()) "Lägg till en destination först" else if (places.any { it.departureAlerts }) "Aktiverat" else "Avstängt"
+                ) {
+                    ensureNotificationPermission()
+                    if (places.isEmpty()) {
+                        showAddPlace = true
+                        status = "Lägg till en destination för avresenotiser"
+                    } else {
+                        val enable = places.none { it.departureAlerts }
+                        scope.launch {
+                            runCatching {
+                                places.forEach { place ->
+                                    FamilyLocationSync.updatePlaceAlerts(session, place, place.arrivalAlerts, enable)
+                                }
+                            }.onSuccess {
+                                status = if (enable) "Avresenotiser aktiverade" else "Avresenotiser avstängda"
+                                refresh()
+                            }.onFailure { status = it.message ?: "Kunde inte ändra avresenotiser" }
+                        }
+                    }
+                }
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = '''                SettingRow(Icons.Default.History, "Historik", "Se senaste platser") { }
+'''
+          new = '''                SettingRow(Icons.Default.History, "Historik", "Se senaste platser") {
+                    showHistory = true
+                }
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = '''    }
+}
+
+@Composable
+private fun MapCircleButton'''
+          new = '''    }
+
+    if (showHistory) {
+        AlertDialog(
+            onDismissRequest = { showHistory = false },
+            title = { Text("Senaste platser") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (locations.isEmpty()) {
+                        Text("Ingen platsdata finns ännu.", color = Muted)
+                    } else {
+                        locations.take(8).forEach { item ->
+                            val member = familyMembers.firstOrNull { it.id == item.memberId }
+                            Text("${member?.name ?: "Familjemedlem"} · ${formatUpdated(item.updatedAt)}")
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Stäng") } }
+        )
+    }
+
+    if (showSecurityInfo) {
+        AlertDialog(
+            onDismissRequest = { showSecurityInfo = false },
+            title = { Text("Tryggt & säkert") },
+            text = {
+                Text("Platsdelning kan pausas när som helst. Endast familjens platsdata visas i familjevyn, och destinationsnotiser kan slås av separat för ankomst och avresa.")
+            },
+            confirmButton = { TextButton(onClick = { showSecurityInfo = false }) { Text("Stäng") } }
+        )
+    }
+}
+
+@Composable
+private fun MapCircleButton'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = '''private fun FeaturePill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+'''
+          new = '''private fun FeaturePill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier.clickable(onClick = onClick).padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/se/familjekalender/app/FamilyLocationScreen.kt
+          git commit -m "Make location sharing controls functional"
+          git push
