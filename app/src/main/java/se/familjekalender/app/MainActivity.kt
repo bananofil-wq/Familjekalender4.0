@@ -393,6 +393,7 @@ private fun ShoppingScreen(
     var comparison by remember { mutableStateOf<ShoppingPriceComparison?>(null) }
     var comparing by remember { mutableStateOf(false) }
     var comparisonError by remember { mutableStateOf("") }
+    var showClearConfirmation by remember { mutableStateOf(false) }
     val openItems = items.filterNot { it.checked }
 
     Text("Inköpslista", fontSize = 28.sp, fontWeight = FontWeight.Bold)
@@ -491,7 +492,7 @@ private fun ShoppingScreen(
     items.forEach { item ->
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBg),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onToggle(item) }
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
         ) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(item.checked, { onToggle(item) })
@@ -499,7 +500,27 @@ private fun ShoppingScreen(
             }
         }
     }
-    if (items.any { it.checked }) TextButton(onClick = onClear) { Text("Rensa avbockade") }
+    if (items.any { it.checked }) {
+        TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
+    }
+    if (showClearConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            title = { Text("Ta bort varor?") },
+            text = { Text("Är du säker på att du vill ta bort de avbockade varorna?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearConfirmation = false
+                        onClear()
+                    }
+                ) { Text("Ta bort") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmation = false }) { Text("Avbryt") }
+            }
+        )
+    }
 }
 
 private fun shareFamilyInvite(context: Context, session: FamilySession) {
