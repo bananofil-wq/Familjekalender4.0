@@ -215,6 +215,7 @@ private fun SyncedApp(
     onThemeModeSaved: (ThemeMode) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val palette = paletteFor(themeMode)
     var members by remember { mutableStateOf(emptyList<SyncMember>()) }
     var shopping by remember { mutableStateOf(emptyList<SyncShoppingItem>()) }
@@ -324,12 +325,14 @@ private fun SyncedApp(
                                 scope.launch {
                                     SupabaseSync.updateEvent(session, event.id, title, date, time, event.endTime, event.memberId)
                                     refresh()
+                                    FamilyCalendarWidget.enqueueRefresh(context)
                                 }
                             },
                             { event ->
                                 scope.launch {
                                     deleteCalendarEventsDirect(session, listOf(event.id))
                                     refresh()
+                                    FamilyCalendarWidget.enqueueRefresh(context)
                                 }
                             }
                         )
@@ -374,6 +377,7 @@ private fun SyncedApp(
                     }
                 }
                 refresh()
+                FamilyCalendarWidget.enqueueRefresh(context)
                 showAddEvent = false
             }
         }
