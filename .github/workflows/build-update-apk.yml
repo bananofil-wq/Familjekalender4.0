@@ -1,4 +1,4 @@
-# Trigger build after verified calendar-position source fix
+# Trigger signed build after running plan-versus-actual source landed
 name: Build Signed Update APK
 
 on:
@@ -56,14 +56,12 @@ jobs:
             echo "Signing is not configured yet. Add the repository secret FAMILJEKALENDER_SIGNING_BUNDLE once."
             exit 0
           fi
-
           KEYSTORE_B64="${SIGNING_BUNDLE%%:*}"
           SIGNING_PASSWORD="${SIGNING_BUNDLE#*:}"
           if [ -z "$KEYSTORE_B64" ] || [ -z "$SIGNING_PASSWORD" ] || [ "$KEYSTORE_B64" = "$SIGNING_BUNDLE" ]; then
             echo "Invalid FAMILJEKALENDER_SIGNING_BUNDLE format."
             exit 1
           fi
-
           echo "::add-mask::$SIGNING_PASSWORD"
           printf '%s' "$KEYSTORE_B64" | base64 --decode > "$FAMILJEKALENDER_KEYSTORE_PATH"
           test -s "$FAMILJEKALENDER_KEYSTORE_PATH"
