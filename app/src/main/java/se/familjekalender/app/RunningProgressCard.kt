@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,6 +81,7 @@ fun RunningProgressCard(
     onChanged: suspend () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
     var showPlan by remember { mutableStateOf(false) }
@@ -225,6 +227,7 @@ fun RunningProgressCard(
                         memberId = selectedMemberId
                     )
                     onChanged()
+                    FamilyCalendarWidget.enqueueRefresh(context)
                     showAdd = false
                 }
             }
@@ -245,6 +248,7 @@ fun RunningProgressCard(
                         memberId = selectedMemberId
                     )
                     onChanged()
+                    FamilyCalendarWidget.enqueueRefresh(context)
                     showPlan = false
                 }
             }
