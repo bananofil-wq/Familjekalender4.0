@@ -271,7 +271,7 @@ internal fun FamilyAssistantCard(
     var todos by remember { mutableStateOf(emptyList<AssistantTodo>()) }
     var popup by remember { mutableStateOf<AssistantPopup?>(null) }
     var selectedMember by remember { mutableStateOf<SyncMember?>(null) }
-    var todayPlanExpanded by remember { mutableStateOf(true) }
+    var todayPlanExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(session.id) {
         while (true) {
@@ -501,7 +501,7 @@ internal fun WeekOverviewCard(
         WeekDaySummary(date = date, events = dayEvents, warnings = warnings)
     }
     var selectedWeekDay by remember { mutableStateOf<WeekDaySummary?>(null) }
-    var weekExpanded by remember { mutableStateOf(true) }
+    var weekExpanded by remember { mutableStateOf(false) }
 
     val totalEvents = days.sumOf { it.events.size }
     val totalWarnings = days.sumOf { it.warnings.size }
@@ -798,7 +798,7 @@ internal fun FamilyAutopilotCard(
     val weekEnd = today.plusDays(6)
     val locale = Locale("sv", "SE")
     val suggestions = mutableListOf<Pair<String, String>>()
-    var autopilotExpanded by remember { mutableStateOf(true) }
+    var autopilotExpanded by remember { mutableStateOf(false) }
 
     val tomorrowEvents = events.filter { it.date == tomorrow }.sortedBy { it.time }
     val tomorrowIssues = (

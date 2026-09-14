@@ -92,6 +92,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent { ResponsiveApp { FamilyCalendarApp() } }
     }
+
+    override fun onStart() {
+        super.onStart()
+        val locationPrefs = getSharedPreferences("family_calendar_location", MODE_PRIVATE)
+        if (locationPrefs.getBoolean("sharing_enabled", false) &&
+            !locationPrefs.getString("device_member_id", null).isNullOrBlank()
+        ) {
+            FamilyLocationService.start(this)
+        }
+    }
 }
 
 @Composable

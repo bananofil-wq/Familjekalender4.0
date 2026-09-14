@@ -83,6 +83,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
             .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
             .maxByOrNull { it.time }
+            ?.takeIf { last -> System.currentTimeMillis() - last.time <= 2 * 60_000L }
     }
 
     fun batteryPercent(): Int? =
@@ -153,6 +154,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             sharing = true
             prefs.edit().putBoolean("sharing_enabled", true).apply()
             status = "Platsdelning aktiverad"
+            FamilyLocationService.start(context)
             scope.launch { publishNow() }
         } else {
             sharing = false
@@ -177,6 +179,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         sharing = true
         prefs.edit().putBoolean("sharing_enabled", true).apply()
         status = "Platsdelning aktiverad"
+        FamilyLocationService.start(context)
         scope.launch { publishNow() }
     }
 
@@ -185,6 +188,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         sharing = false
         prefs.edit().putBoolean("sharing_enabled", false).apply()
         status = "Platsdelning pausad"
+        FamilyLocationService.stop(context)
         selectedMemberId?.let { id ->
             scope.launch {
                 runCatching { FamilyLocationSync.stopSharing(session, id) }
@@ -226,15 +230,13 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     }
 
     LaunchedEffect(session.id, sharing, selectedMemberId) {
-        refresh()
+        if (sharing && selectedMemberId != null && hasLocationPermission()) {
+            FamilyLocationService.start(context)
+        }
         while (true) {
-            if (sharing && selectedMemberId != null && hasLocationPermission()) {
-                publishNow()
-            } else {
-                refresh()
-            }
+            refresh()
             checkLocationTransitions(context, session.id, locations, places, familyMembers)
-            delay(30_000)
+            delay(15_000)
         }
     }
 
@@ -305,7 +307,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                                     memberMenu = false
                                     pendingEnableSharing = false
                                     status = "Den här telefonen är kopplad till ${member.name}"
-                                    if (shouldEnable) startSharing()
+                                    if (shouldEnable) startSharing() else if (sharing) FamilyLocationService.start(context)
                                 }
                             )
                         }
@@ -315,7 +317,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                 LocationSettingRow(
                     Icons.Default.LocationOn,
                     "Dela min plats",
-                    if (sharing) "Syns för familjens medlemmar" else "Avstängd"
+                    if (sharing) "Aktiv även när appen ligger i bakgrunden" else "Avstängd"
                 ) {
                     if (sharing) scope.launch { publishNow() } else startSharing()
                 }
@@ -767,7 +769,7 @@ private fun distanceMeters(aLat: Double, aLon: Double, bLat: Double, bLon: Doubl
     return 2 * earth * asin(sqrt(h))
 }
 
-private fun checkLocationTransitions(
+internal fun checkLocationTransitions(
     context: Context,
     familyId: String,
     locations: List<SyncFamilyLocation>,
