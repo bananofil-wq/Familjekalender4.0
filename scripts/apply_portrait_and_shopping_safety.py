@@ -117,3 +117,4 @@ if join_activity in manifest:
 manifest_path.write_text(manifest, encoding='utf-8')
 
 print('Applied portrait lock and safer shopping interactions')
+# Triggered after workflow installation.
