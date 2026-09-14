@@ -35,11 +35,24 @@ private data class PlannedRun(
 )
 
 private fun parseRun(event: SyncEvent): RunEntry? {
-    if (!event.title.startsWith("🏃 RUN|")) return null
-    val parts = event.title.removePrefix("🏃 RUN|").split('|')
-    if (parts.size < 2) return null
-    val distance = parts[0].toDoubleOrNull() ?: return null
-    val minutes = parts[1].toIntOrNull() ?: return null
+    val distance: Double
+    val minutes: Int
+    when {
+        event.title.startsWith("🏃 RUN|") -> {
+            val parts = event.title.removePrefix("🏃 RUN|").split('|')
+            if (parts.size < 2) return null
+            distance = parts[0].toDoubleOrNull() ?: return null
+            minutes = parts[1].toIntOrNull() ?: return null
+        }
+        event.title.startsWith("🏃 Löpning · ") -> {
+            val body = event.title.removePrefix("🏃 Löpning · ")
+            val parts = body.split(" · ")
+            if (parts.size < 2) return null
+            distance = parts[0].removeSuffix(" km").replace(',', '.').toDoubleOrNull() ?: return null
+            minutes = parts[1].removeSuffix(" min").trim().toIntOrNull() ?: return null
+        }
+        else -> return null
+    }
     if (distance <= 0.0 || minutes <= 0) return null
     val pace = ((minutes * 60.0) / distance).toInt()
     return RunEntry(event, distance, minutes, pace)
@@ -205,7 +218,7 @@ fun RunningProgressCard(
                 scope.launch {
                     SupabaseSync.addEvent(
                         session = session,
-                        title = "🏃 RUN|${"%.2f".format(Locale.US, distance)}|$minutes",
+                        title = "🏃 Löpning · ${"%.2f".format(Locale.US, distance)} km · $minutes min",
                         date = date,
                         startTime = "18:00",
                         endTime = null,
