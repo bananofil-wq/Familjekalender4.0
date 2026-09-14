@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'scripts/apply_simple_shopping_redesign.py'
+      - '.github/workflows/apply-simple-shopping-redesign.yml'
 
 permissions:
   contents: write
