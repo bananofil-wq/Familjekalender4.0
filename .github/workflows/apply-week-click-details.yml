@@ -30,3 +30,5 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Make week activities open actionable details"
           git push origin main
+
+# Reapplied after recurrence workflow was corrected so this interaction cannot be overwritten again.
