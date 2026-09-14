@@ -18,6 +18,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply shopping redesign
+        run: python3 scripts/apply_simple_shopping_redesign.py
+
+      - name: Persist shopping redesign
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Shopping redesign already applied"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+            git commit -m "Redesign shopping list and remove price comparison"
+            git push origin HEAD:main
+          fi
 
       - name: Set update version
         shell: bash
