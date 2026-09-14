@@ -31,9 +31,21 @@ class FamilyLocationService : Service() {
         private const val NOTIFICATION_ID = 73041
         private const val LOCATION_PREFS = "family_calendar_location"
         private const val FAMILY_PREFS = "family_calendar"
-        private const val MIN_PUBLISH_INTERVAL_MS = 120_000L
+
+        private const val MOVING_NETWORK_INTERVAL_MS = 45_000L
+        private const val MOVING_GPS_INTERVAL_MS = 60_000L
+        private const val STILL_NETWORK_INTERVAL_MS = 90_000L
+        private const val STILL_GPS_INTERVAL_MS = 5 * 60_000L
+        private const val NEAR_PLACE_INTERVAL_MS = 30_000L
+
+        private const val MOVING_HEARTBEAT_MS = 60_000L
+        private const val STILL_HEARTBEAT_MS = 5 * 60_000L
+        private const val NEAR_PLACE_HEARTBEAT_MS = 30_000L
+
         private const val MIN_PUBLISH_DISTANCE_M = 20f
         private const val MAX_ACCEPTED_ACCURACY_M = 250f
+        private const val MOVEMENT_RECENT_MS = 3 * 60_000L
+        private const val NEAR_PLACE_MIN_DISTANCE_M = 500f
 
         fun start(context: Context) {
             val intent = Intent(context, FamilyLocationService::class.java)
@@ -51,12 +63,19 @@ class FamilyLocationService : Service() {
         }
     }
 
+    private enum class TrackingMode { MOVING, STILL, NEAR_PLACE }
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationManager: LocationManager
-    private var trackingStarted = false
+
     @Volatile private var publishing = false
     @Volatile private var lastPublishedAt = 0L
     @Volatile private var lastPublishedLocation: Location? = null
+    @Volatile private var cachedPlaces: List<SyncFamilyPlace> = emptyList()
+
+    private var trackingMode: TrackingMode? = null
+    private var lastObservedLocation: Location? = null
+    private var lastMeaningfulMovementAt = System.currentTimeMillis()
 
     private val listener = object : LocationListener {
         override fun onLocationChanged(location: Location) = handleLocation(location)
@@ -78,7 +97,9 @@ class FamilyLocationService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startTracking()
+
+        configureTracking(TrackingMode.MOVING, force = trackingMode == null)
+        refreshPlaces()
         publishRecentCachedLocation()
         return START_STICKY
     }
@@ -101,19 +122,41 @@ class FamilyLocationService : Service() {
             !prefs.getString("device_member_id", null).isNullOrBlank()
     }
 
-    private fun startTracking() {
-        if (trackingStarted || !hasLocationPermission()) return
-        trackingStarted = true
-        val providers = listOf(
-            Triple(LocationManager.NETWORK_PROVIDER, 30_000L, 20f),
-            Triple(LocationManager.GPS_PROVIDER, 45_000L, 20f)
-        )
-        providers.forEach { (provider, minTime, minDistance) ->
+    private fun configureTracking(mode: TrackingMode, force: Boolean = false) {
+        if (!hasLocationPermission()) return
+        if (!force && trackingMode == mode) return
+
+        runCatching { locationManager.removeUpdates(listener) }
+        trackingMode = mode
+
+        val requests = when (mode) {
+            TrackingMode.MOVING -> listOf(
+                Triple(LocationManager.NETWORK_PROVIDER, MOVING_NETWORK_INTERVAL_MS, 15f),
+                Triple(LocationManager.GPS_PROVIDER, MOVING_GPS_INTERVAL_MS, 20f)
+            )
+            TrackingMode.STILL -> listOf(
+                Triple(LocationManager.NETWORK_PROVIDER, STILL_NETWORK_INTERVAL_MS, 30f),
+                Triple(LocationManager.GPS_PROVIDER, STILL_GPS_INTERVAL_MS, 50f)
+            )
+            TrackingMode.NEAR_PLACE -> listOf(
+                Triple(LocationManager.NETWORK_PROVIDER, NEAR_PLACE_INTERVAL_MS, 10f),
+                Triple(LocationManager.GPS_PROVIDER, NEAR_PLACE_INTERVAL_MS, 10f)
+            )
+        }
+
+        requests.forEach { (provider, minTime, minDistance) ->
             runCatching {
                 if (locationManager.isProviderEnabled(provider)) {
                     locationManager.requestLocationUpdates(provider, minTime, minDistance, listener)
                 }
             }
+        }
+    }
+
+    private fun refreshPlaces() {
+        serviceScope.launch {
+            val session = currentSession() ?: return@launch
+            cachedPlaces = runCatching { FamilyLocationSync.loadPlaces(session) }.getOrDefault(cachedPlaces)
         }
     }
 
@@ -135,12 +178,21 @@ class FamilyLocationService : Service() {
         }
         if (location.hasAccuracy() && location.accuracy > MAX_ACCEPTED_ACCURACY_M) return
         if (location.time > 0 && System.currentTimeMillis() - location.time > 2 * 60_000L) return
-        if (publishing) return
 
         val now = System.currentTimeMillis()
+        val desiredMode = desiredTrackingMode(location, now)
+        configureTracking(desiredMode)
+
+        if (publishing) return
+
         val previous = lastPublishedLocation
-        val movedEnough = previous == null || previous.distanceTo(location) >= MIN_PUBLISH_DISTANCE_M
-        val dueForHeartbeat = now - lastPublishedAt >= MIN_PUBLISH_INTERVAL_MS
+        val movementThreshold = if (location.hasAccuracy()) {
+            maxOf(MIN_PUBLISH_DISTANCE_M, (location.accuracy * 0.75f).coerceAtMost(80f))
+        } else {
+            MIN_PUBLISH_DISTANCE_M
+        }
+        val movedEnough = previous == null || previous.distanceTo(location) >= movementThreshold
+        val dueForHeartbeat = now - lastPublishedAt >= heartbeatInterval(desiredMode)
         if (!movedEnough && !dueForHeartbeat) return
 
         publishing = true
@@ -166,6 +218,7 @@ class FamilyLocationService : Service() {
                 runCatching {
                     val locations = FamilyLocationSync.loadLocations(session)
                     val places = FamilyLocationSync.loadPlaces(session)
+                    cachedPlaces = places
                     val members = SupabaseSync.loadMembers(session).filter { it.id != ALL_FAMILY_MEMBER_ID }
                     checkLocationTransitions(applicationContext, session.id, locations, places, members)
                 }
@@ -173,6 +226,53 @@ class FamilyLocationService : Service() {
                 publishing = false
             }
         }
+    }
+
+    private fun desiredTrackingMode(location: Location, now: Long): TrackingMode {
+        val previousObserved = lastObservedLocation
+        val movementThreshold = if (location.hasAccuracy()) {
+            maxOf(25f, (location.accuracy * 0.5f).coerceAtMost(60f))
+        } else {
+            25f
+        }
+        val moved = previousObserved?.distanceTo(location) ?: Float.MAX_VALUE
+        val speedShowsMovement = location.hasSpeed() && location.speed >= 0.8f
+        if (moved >= movementThreshold || speedShowsMovement) {
+            lastMeaningfulMovementAt = now
+        }
+        lastObservedLocation = Location(location)
+
+        val movingRecently = now - lastMeaningfulMovementAt <= MOVEMENT_RECENT_MS
+        val closeToSavedPlace = cachedPlaces.any { place ->
+            val distance = distanceToPlace(location, place)
+            val inside = distance <= place.radiusM.toFloat()
+            val nearBoundary = distance <= maxOf(NEAR_PLACE_MIN_DISTANCE_M, place.radiusM * 3f)
+            nearBoundary && (!inside || movingRecently)
+        }
+
+        return when {
+            closeToSavedPlace -> TrackingMode.NEAR_PLACE
+            movingRecently -> TrackingMode.MOVING
+            else -> TrackingMode.STILL
+        }
+    }
+
+    private fun heartbeatInterval(mode: TrackingMode): Long = when (mode) {
+        TrackingMode.MOVING -> MOVING_HEARTBEAT_MS
+        TrackingMode.STILL -> STILL_HEARTBEAT_MS
+        TrackingMode.NEAR_PLACE -> NEAR_PLACE_HEARTBEAT_MS
+    }
+
+    private fun distanceToPlace(location: Location, place: SyncFamilyPlace): Float {
+        val result = FloatArray(1)
+        Location.distanceBetween(
+            location.latitude,
+            location.longitude,
+            place.latitude,
+            place.longitude,
+            result
+        )
+        return result[0]
     }
 
     private fun currentSession(): FamilySession? {
@@ -214,7 +314,7 @@ class FamilyLocationService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_calendar)
             .setContentTitle("Familjekalendern")
-            .setContentText("Platsdelning aktiv i bakgrunden")
+            .setContentText("Smart platsdelning aktiv i bakgrunden")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
