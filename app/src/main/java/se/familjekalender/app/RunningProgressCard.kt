@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.Locale
 
 private data class RunEntry(
@@ -25,6 +26,12 @@ private data class RunEntry(
     val distanceKm: Double,
     val durationMinutes: Int,
     val paceSecondsPerKm: Int
+)
+
+private data class PlannedRun(
+    val event: SyncEvent,
+    val distanceKm: Double,
+    val runType: String
 )
 
 private fun parseRun(event: SyncEvent): RunEntry? {
@@ -36,6 +43,17 @@ private fun parseRun(event: SyncEvent): RunEntry? {
     if (distance <= 0.0 || minutes <= 0) return null
     val pace = ((minutes * 60.0) / distance).toInt()
     return RunEntry(event, distance, minutes, pace)
+}
+
+private fun parsePlannedRun(event: SyncEvent): PlannedRun? {
+    if (!event.title.startsWith("🏃 Plan: ")) return null
+    val body = event.title.removePrefix("🏃 Plan: ")
+    val parts = body.split(" · ")
+    if (parts.size < 2) return null
+    val runType = parts[0].trim().ifBlank { "Löpning" }
+    val distance = parts[1].removeSuffix(" km").replace(',', '.').toDoubleOrNull() ?: return null
+    if (distance <= 0.0) return null
+    return PlannedRun(event, distance, runType)
 }
 
 private fun paceText(secondsPerKm: Int): String =
@@ -51,6 +69,7 @@ fun RunningProgressCard(
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
+    var showPlan by remember { mutableStateOf(false) }
     var selectedMemberId by remember(members) { mutableStateOf(members.firstOrNull()?.id) }
 
     val runs = remember(events, selectedMemberId) {
@@ -60,9 +79,18 @@ fun RunningProgressCard(
             .sortedBy { it.event.date }
             .toList()
     }
+    val plannedRuns = remember(events, selectedMemberId) {
+        val today = LocalDate.now()
+        events.asSequence()
+            .filter { it.memberId == selectedMemberId && !it.date.isBefore(today) }
+            .mapNotNull(::parsePlannedRun)
+            .sortedWith(compareBy<PlannedRun> { it.event.date }.thenBy { it.event.time })
+            .toList()
+    }
     val totalKm = runs.sumOf { it.distanceKm }
     val bestPace = runs.minOfOrNull { it.paceSecondsPerKm }
     val latest = runs.lastOrNull()
+    val nextPlan = plannedRuns.firstOrNull()
 
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBg),
@@ -78,7 +106,11 @@ fun RunningProgressCard(
                 Column(Modifier.weight(1f)) {
                     Text("🏃 Löpning & progression", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Text(
-                        if (runs.isEmpty()) "Planera och följ utvecklingen" else "${runs.size} pass · ${"%.1f".format(Locale.US, totalKm)} km totalt",
+                        when {
+                            nextPlan != null -> "Nästa: ${nextPlan.event.date} ${nextPlan.event.time} · ${nextPlan.runType}"
+                            runs.isEmpty() -> "Planera och följ utvecklingen"
+                            else -> "${runs.size} pass · ${"%.1f".format(Locale.US, totalKm)} km totalt"
+                        },
                         color = Muted,
                         fontSize = 12.sp
                     )
@@ -114,6 +146,20 @@ fun RunningProgressCard(
                     RunStat("Totalt", "${"%.1f".format(Locale.US, totalKm)} km", Modifier.weight(1f))
                 }
 
+                if (plannedRuns.isNotEmpty()) {
+                    Spacer(Modifier.height(14.dp))
+                    Text("Kommande schema", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    plannedRuns.take(4).forEach { plan ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("${plan.event.date} · ${plan.event.time}", fontSize = 13.sp)
+                                Text(plan.runType, color = Muted, fontSize = 12.sp)
+                            }
+                            Text("${"%.1f".format(Locale.US, plan.distanceKm)} km", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
                 if (runs.size >= 2) {
                     Spacer(Modifier.height(14.dp))
                     Text("Tempo senaste passen", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
@@ -122,14 +168,22 @@ fun RunningProgressCard(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = { showAdd = true },
-                    enabled = selectedMemberId != null,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("+ Registrera löppass") }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { showPlan = true },
+                        enabled = selectedMemberId != null,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("+ Planera pass") }
+                    Button(
+                        onClick = { showAdd = true },
+                        enabled = selectedMemberId != null,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("+ Registrera") }
+                }
 
                 if (runs.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
+                    Text("Senaste passen", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     runs.takeLast(4).reversed().forEach { run ->
                         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -159,6 +213,26 @@ fun RunningProgressCard(
                     )
                     onChanged()
                     showAdd = false
+                }
+            }
+        )
+    }
+
+    if (showPlan && selectedMemberId != null) {
+        PlanRunDialog(
+            onDismiss = { showPlan = false },
+            onSave = { date, time, distance, runType ->
+                scope.launch {
+                    SupabaseSync.addEvent(
+                        session = session,
+                        title = "🏃 Plan: ${runType.trim()} · ${"%.1f".format(Locale.US, distance)} km",
+                        date = date,
+                        startTime = time,
+                        endTime = null,
+                        memberId = selectedMemberId
+                    )
+                    onChanged()
+                    showPlan = false
                 }
             }
         )
@@ -221,7 +295,7 @@ private fun AddRunDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(dateText, { dateText = it }, label = { Text("Datum (ÅÅÅÅ-MM-DD)") }, singleLine = true)
                 OutlinedTextField(distanceText, { distanceText = it }, label = { Text("Distans, km") }, singleLine = true)
-                OutlinedTextField(minutesText, { minutesText = it.filter(Char::isDigit) }, label = { Text("Tid, minuter") }, singleLine = true)
+                OutlinedTextField(minutesText, { minutesText = it.filter { ch -> ch.isDigit() } }, label = { Text("Tid, minuter") }, singleLine = true)
                 if (valid) {
                     val pace = (((minutes ?: 0) * 60.0) / (distance ?: 1.0)).toInt()
                     Text("Tempo: ${paceText(pace)}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
@@ -230,6 +304,39 @@ private fun AddRunDialog(
         },
         confirmButton = {
             Button(onClick = { onSave(date!!, distance!!, minutes!!) }, enabled = valid) { Text("Spara pass") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+    )
+}
+
+@Composable
+private fun PlanRunDialog(
+    onDismiss: () -> Unit,
+    onSave: (LocalDate, String, Double, String) -> Unit
+) {
+    var dateText by remember { mutableStateOf(LocalDate.now().plusDays(1).toString()) }
+    var timeText by remember { mutableStateOf("18:00") }
+    var distanceText by remember { mutableStateOf("") }
+    var runType by remember { mutableStateOf("Lugnt pass") }
+    val date = runCatching { LocalDate.parse(dateText.trim()) }.getOrNull()
+    val time = runCatching { LocalTime.parse(timeText.trim()) }.getOrNull()
+    val distance = distanceText.replace(',', '.').toDoubleOrNull()
+    val valid = date != null && time != null && distance != null && distance > 0 && runType.isNotBlank()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Planera löppass") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(dateText, { dateText = it }, label = { Text("Datum (ÅÅÅÅ-MM-DD)") }, singleLine = true)
+                OutlinedTextField(timeText, { timeText = it }, label = { Text("Tid (HH:MM)") }, singleLine = true)
+                OutlinedTextField(distanceText, { distanceText = it }, label = { Text("Planerad distans, km") }, singleLine = true)
+                OutlinedTextField(runType, { runType = it }, label = { Text("Passtyp") }, placeholder = { Text("Lugnt, intervaller, långpass…") }, singleLine = true)
+                Text("Passet hamnar även i familjekalendern.", color = Muted, fontSize = 12.sp)
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSave(date!!, timeText.trim(), distance!!, runType.trim()) }, enabled = valid) { Text("Lägg i schemat") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
     )
