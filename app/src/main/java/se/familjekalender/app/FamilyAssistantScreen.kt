@@ -1,9 +1,11 @@
 package se.familjekalender.app
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -12,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -267,6 +270,7 @@ internal fun FamilyAssistantCard(
 ) {
     var todos by remember { mutableStateOf(emptyList<AssistantTodo>()) }
     var popup by remember { mutableStateOf<AssistantPopup?>(null) }
+    var selectedMember by remember { mutableStateOf<SyncMember?>(null) }
 
     LaunchedEffect(session.id) {
         while (true) {
@@ -318,14 +322,43 @@ internal fun FamilyAssistantCard(
                 }
             }
 
-            // FamilyTodayCard above already gives the full at-a-glance day overview.
-            // Keep this card focused on planning, todo/shopping counts and conflicts.
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 AssistantStat("✓", "${openTodoItems.size} kvar", "To-Do", Modifier.weight(1f)) { popup = AssistantPopup.TODO }
                 AssistantStat("🛒", "${openShoppingItems.size} kvar", "Inköp", Modifier.weight(1f)) { popup = AssistantPopup.SHOPPING }
                 AssistantStat("●", "${todaysEvents.size}", "idag", Modifier.weight(1f)) { popup = AssistantPopup.TODAY }
                 AssistantStat("▣", "${tomorrowsEvents.size}", "imorgon", Modifier.weight(1f)) { popup = AssistantPopup.TOMORROW }
+            }
+
+            val realMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
+            if (realMembers.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text("Familjen", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                realMembers.forEach { member ->
+                    val todayCount = todaysEvents.count { it.memberId == member.id || it.memberId == ALL_FAMILY_MEMBER_ID }
+                    val tomorrowCount = tomorrowsEvents.count { it.memberId == member.id || it.memberId == ALL_FAMILY_MEMBER_ID }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedMember = member }
+                            .padding(vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(Color(member.colorArgb.toInt()))
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(member.name, modifier = Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "$todayCount idag · $tomorrowCount imorgon",
+                            color = Muted,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
             }
 
             if (conflicts.isNotEmpty()) {
@@ -370,6 +403,63 @@ internal fun FamilyAssistantCard(
             onDismiss = { popup = null }
         )
     }
+
+    selectedMember?.let { member ->
+        MemberTwoDayPopup(
+            member = member,
+            events = events,
+            today = today,
+            tomorrow = tomorrow,
+            onDismiss = { selectedMember = null }
+        )
+    }
+}
+
+@Composable
+private fun MemberTwoDayPopup(
+    member: SyncMember,
+    events: List<SyncEvent>,
+    today: LocalDate,
+    tomorrow: LocalDate,
+    onDismiss: () -> Unit
+) {
+    val todayEvents = events.filter { it.date == today && (it.memberId == member.id || it.memberId == ALL_FAMILY_MEMBER_ID) }.sortedBy { it.time }
+    val tomorrowEvents = events.filter { it.date == tomorrow && (it.memberId == member.id || it.memberId == ALL_FAMILY_MEMBER_ID) }.sortedBy { it.time }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(22.dp),
+        containerColor = Color(0xFF171A20),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                Spacer(Modifier.width(8.dp))
+                Text(member.name, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Idag", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                if (todayEvents.isEmpty()) Text("Inga aktiviteter idag.", color = Muted, fontSize = 12.sp)
+                todayEvents.forEach { event ->
+                    val time = event.time.takeIf { it.isNotBlank() } ?: "Hela dagen"
+                    DetailRow("•", "$time  ${event.title}", if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else null)
+                }
+
+                Spacer(Modifier.height(6.dp))
+                Text("Imorgon", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                if (tomorrowEvents.isEmpty()) Text("Inga aktiviteter imorgon.", color = Muted, fontSize = 12.sp)
+                tomorrowEvents.forEach { event ->
+                    val time = event.time.takeIf { it.isNotBlank() } ?: "Hela dagen"
+                    DetailRow("•", "$time  ${event.title}", if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else null)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+    )
 }
 
 @Composable

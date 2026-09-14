@@ -266,9 +266,8 @@ private fun SyncedApp(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    FamilyTodayCard(events = events, members = members)
-                    RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
                     FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
+                    RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
                     Box(
                         Modifier
                             .fillMaxWidth()
