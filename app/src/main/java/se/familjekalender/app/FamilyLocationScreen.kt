@@ -544,7 +544,12 @@ private fun LocationMapCard(
     batteryVisible: Boolean
 ) {
     var mapView by remember { mutableStateOf<MapView?>(null) }
+    var userMovedMap by remember { mutableStateOf(false) }
     val selected = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
+
+    LaunchedEffect(selectedMemberId) {
+        userMovedMap = false
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -559,7 +564,24 @@ private fun LocationMapCard(
                     MapView(context).apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
-                        controller.setZoom(13.0)
+                        setBuiltInZoomControls(false)
+                        setMinZoomLevel(4.0)
+                        setMaxZoomLevel(20.0)
+                        controller.setZoom(17.0)
+                        setOnTouchListener { view, event ->
+                            when (event.actionMasked) {
+                                android.view.MotionEvent.ACTION_DOWN,
+                                android.view.MotionEvent.ACTION_POINTER_DOWN,
+                                android.view.MotionEvent.ACTION_MOVE -> {
+                                    userMovedMap = true
+                                    view.parent?.requestDisallowInterceptTouchEvent(true)
+                                }
+                                android.view.MotionEvent.ACTION_UP,
+                                android.view.MotionEvent.ACTION_CANCEL ->
+                                    view.parent?.requestDisallowInterceptTouchEvent(false)
+                            }
+                            false
+                        }
                         mapView = this
                     }
                 },
@@ -576,11 +598,33 @@ private fun LocationMapCard(
                         )
                     }
                     selected?.let {
-                        map.controller.animateTo(GeoPoint(it.latitude, it.longitude))
+                        if (!userMovedMap) {
+                            map.controller.animateTo(GeoPoint(it.latitude, it.longitude))
+                        }
                     }
                     map.invalidate()
                 }
             )
+
+            Column(
+                modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SmallFloatingActionButton(
+                    onClick = { mapView?.controller?.zoomIn() },
+                    containerColor = Color(0xEE17151F),
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Zooma in")
+                }
+                SmallFloatingActionButton(
+                    onClick = { mapView?.controller?.zoomOut() },
+                    containerColor = Color(0xEE17151F),
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Zooma ut")
+                }
+            }
 
             selected?.let { item ->
                 val member = members.firstOrNull { it.id == item.memberId }
@@ -605,6 +649,7 @@ private fun LocationMapCard(
                             }
                         }
                         IconButton(onClick = {
+                            userMovedMap = false
                             mapView?.controller?.setZoom(17.0)
                             mapView?.controller?.animateTo(GeoPoint(item.latitude, item.longitude))
                         }) {
