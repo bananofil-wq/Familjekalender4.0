@@ -29,11 +29,15 @@ jobs:
           ref: ${{ inputs.source_ref }}
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
 
       - name: Restore Play upload keystore
         env:
@@ -50,9 +54,7 @@ jobs:
           FAMILJEKALENDER_KEYSTORE_PASSWORD: ${{ secrets.FAMILJEKALENDER_KEYSTORE_PASSWORD }}
           FAMILJEKALENDER_KEY_ALIAS: ${{ secrets.FAMILJEKALENDER_KEY_ALIAS }}
           FAMILJEKALENDER_KEY_PASSWORD: ${{ secrets.FAMILJEKALENDER_KEY_PASSWORD }}
-        run: |
-          chmod +x gradlew
-          ./gradlew clean bundleRelease --stacktrace
+        run: gradle clean :app:bundleRelease --stacktrace
 
       - name: Upload Google Play AAB
         uses: actions/upload-artifact@v4
