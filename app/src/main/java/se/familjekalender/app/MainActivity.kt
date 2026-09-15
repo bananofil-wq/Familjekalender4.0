@@ -60,6 +60,11 @@ enum class ThemeMode(val label: String, val emoji: String) {
     CLASSIC("Klassisk", "💜")
 }
 
+enum class UiLayoutMode(val label: String, val description: String) {
+    FULL("Fullständig", "Alla översikter och familjeverktyg direkt på startsidan"),
+    MINIMAL("Minimalistisk", "Ren kalender och dagsagenda med samma familjedata")
+}
+
 data class SeasonPalette(
     val mode: ThemeMode,
     val accent: Color,
@@ -126,6 +131,15 @@ fun FamilyCalendarApp() {
             }.getOrDefault(ThemeMode.AUTO)
         )
     }
+    var uiLayoutMode by remember {
+        mutableStateOf(
+            runCatching {
+                UiLayoutMode.valueOf(
+                    prefs.getString("ui_layout_mode", UiLayoutMode.FULL.name) ?: UiLayoutMode.FULL.name
+                )
+            }.getOrDefault(UiLayoutMode.FULL)
+        )
+    }
     val palette = paletteFor(themeMode)
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -156,6 +170,7 @@ fun FamilyCalendarApp() {
                         prefs.getString("sport_url", "") ?: "",
                         prefs.getString("sport_member_id", null),
                         themeMode,
+                        uiLayoutMode,
                         { url, memberId ->
                             prefs.edit()
                                 .putString("sport_url", url)
@@ -165,6 +180,10 @@ fun FamilyCalendarApp() {
                         {
                             themeMode = it
                             prefs.edit().putString("theme_mode", it.name).apply()
+                        },
+                        {
+                            uiLayoutMode = it
+                            prefs.edit().putString("ui_layout_mode", it.name).apply()
                         }
                     )
                 }
@@ -223,8 +242,10 @@ private fun SyncedApp(
     sportUrl: String,
     sportMemberId: String?,
     themeMode: ThemeMode,
+    uiLayoutMode: UiLayoutMode,
     onSportSettingsSaved: (String, String?) -> Unit,
-    onThemeModeSaved: (ThemeMode) -> Unit
+    onThemeModeSaved: (ThemeMode) -> Unit,
+    onUiLayoutModeSaved: (UiLayoutMode) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -270,9 +291,31 @@ private fun SyncedApp(
         }
     }
 
-    Scaffold(containerColor = Bg, bottomBar = { BottomNav(selectedTab) { selectedTab = it } }) { padding ->
+    Scaffold(
+        containerColor = Bg,
+        bottomBar = {
+            if (uiLayoutMode == UiLayoutMode.MINIMAL) {
+                MinimalBottomNav(selectedTab) { selectedTab = it }
+            } else {
+                BottomNav(selectedTab) { selectedTab = it }
+            }
+        }
+    ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedTab == 0) {
+                if (uiLayoutMode == UiLayoutMode.MINIMAL) {
+                    MinimalCalendarScreen(
+                        selectedDate = selectedDate,
+                        onSelect = { selectedDate = it },
+                        events = events,
+                        members = members,
+                        onAdd = {
+                            addEventInitialTitle = ""
+                            showAddEvent = true
+                        },
+                        onOpenSettings = { selectedTab = 4 }
+                    )
+                } else {
                 // The assistant card can be quite tall on busy days. Let the calendar tab
                 // scroll instead of forcing the month grid into whatever height remains.
                 // ExactCalendarScreen gets a stable viewport so all six week rows keep
@@ -310,6 +353,7 @@ private fun SyncedApp(
                         )
                     }
                 }
+                }
             } else {
                 Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
                     if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
@@ -324,6 +368,16 @@ private fun SyncedApp(
                         )
                         2 -> ToDoScreen(session)
                         3 -> {
+                            if (uiLayoutMode == UiLayoutMode.MINIMAL) {
+                                OutlinedButton(
+                                    onClick = { selectedTab = 5 },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.LocationOn, contentDescription = null)
+                                    Text(" Familjens plats")
+                                }
+                                Spacer(Modifier.height(10.dp))
+                            }
                             RunningProgressCard(
                                 session = session,
                                 members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
@@ -366,7 +420,17 @@ private fun SyncedApp(
                                 }
                             )
                         }
-                        4 -> SettingsScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID }, sportUrl, sportMemberId, themeMode, onThemeModeSaved, onSportSettingsSaved) { url, memberId ->
+                        4 -> SettingsScreen(
+                            session,
+                            members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                            sportUrl,
+                            sportMemberId,
+                            themeMode,
+                            uiLayoutMode,
+                            onThemeModeSaved,
+                            onUiLayoutModeSaved,
+                            onSportSettingsSaved
+                        ) { url, memberId ->
                             scope.launch {
                                 message = "Importerar SportAdmin…"
                                 runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
@@ -567,7 +631,9 @@ private fun SettingsScreen(
     initialSportUrl: String,
     initialSportMemberId: String?,
     themeMode: ThemeMode,
+    uiLayoutMode: UiLayoutMode,
     onThemeChanged: (ThemeMode) -> Unit,
+    onUiLayoutChanged: (UiLayoutMode) -> Unit,
     onSaveSportSettings: (String, String?) -> Unit,
     onImport: (String, String?) -> Unit
 ) {
@@ -592,6 +658,25 @@ private fun SettingsScreen(
             }
         }
     }
+    Spacer(Modifier.height(16.dp))
+    Text("Gränssnitt", fontWeight = FontWeight.Bold)
+    Text("Välj hur appens kalenderstart ska visas. Valet gäller bara den här telefonen.", color = Muted, fontSize = 12.sp)
+    UiLayoutMode.values().forEach { mode ->
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { onUiLayoutChanged(mode) }
+                .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(selected = uiLayoutMode == mode, onClick = { onUiLayoutChanged(mode) })
+            Column(Modifier.weight(1f)) {
+                Text(mode.label, fontWeight = FontWeight.SemiBold)
+                Text(mode.description, color = Muted, fontSize = 11.sp)
+            }
+        }
+    }
+
     Spacer(Modifier.height(16.dp))
     Text("Tema", fontWeight = FontWeight.Bold)
     ThemeMode.values().forEach { mode ->
@@ -629,6 +714,40 @@ private fun SettingsScreen(
     MailSettingsCard(session)
     Spacer(Modifier.height(20.dp))
     AppUpdateSettingsCard()
+}
+
+@Composable
+private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
+    val accent = Color(0xFFA66CFF)
+    val mappedSelection = when (selected) {
+        0 -> 0
+        1 -> 1
+        2 -> 2
+        3, 5 -> 3
+        else -> -1
+    }
+    NavigationBar(containerColor = Color(0xFA0B0B10), tonalElevation = 0.dp) {
+        listOf(
+            Triple(0, Icons.Default.CalendarMonth, "Kalender"),
+            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
+            Triple(2, Icons.Default.CheckCircle, "To-do"),
+            Triple(3, Icons.Default.People, "Familj")
+        ).forEachIndexed { index, (tab, icon, label) ->
+            NavigationBarItem(
+                selected = mappedSelection == index,
+                onClick = { onSelect(tab) },
+                icon = { Icon(icon, contentDescription = label) },
+                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 10.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = accent,
+                    selectedTextColor = accent,
+                    unselectedIconColor = Color(0xFFAAA8B7),
+                    unselectedTextColor = Color(0xFFAAA8B7),
+                    indicatorColor = accent.copy(alpha = .12f)
+                )
+            )
+        }
+    }
 }
 
 @Composable
