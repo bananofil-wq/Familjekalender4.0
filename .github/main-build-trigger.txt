@@ -1,0 +1,1 @@
+Native GPS run recorder merged and build-verified. Trigger signed update packaging.
