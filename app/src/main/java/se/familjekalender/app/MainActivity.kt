@@ -10,6 +10,17 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -250,6 +263,7 @@ private fun SyncedApp(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val motionEnabled = appMotionEnabled()
     val appPrefs = remember { context.getSharedPreferences("family_calendar", 0) }
     val palette = paletteFor(themeMode)
     var personalLayoutRevision by remember { mutableIntStateOf(0) }
@@ -307,151 +321,171 @@ private fun SyncedApp(
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedTab == 0) {
-                if (uiLayoutMode == UiLayoutMode.MINIMAL) {
-                    MinimalCalendarScreen(
-                        selectedDate = selectedDate,
-                        onSelect = { selectedDate = it },
-                        events = events,
-                        members = members,
-                        onAdd = {
-                            addEventInitialTitle = ""
-                            showAddEvent = true
-                        },
-                        onOpenSettings = { selectedTab = 4 }
-                    )
-                } else if (uiLayoutMode == UiLayoutMode.PERSONAL) {
-                    PersonalCalendarScreen(
-                        session = session,
-                        prefs = appPrefs,
-                        profile = personalProfile,
-                        revision = personalLayoutRevision,
-                        selectedDate = selectedDate,
-                        onSelectDate = { selectedDate = it },
-                        events = events,
-                        members = members,
-                        shopping = shopping,
-                        palette = palette,
-                        themeMode = themeMode,
-                        onAdd = {
-                            addEventInitialTitle = ""
-                            showAddEvent = true
-                        },
-                        onRefresh = {
-                            refresh()
-                            FamilyCalendarWidget.enqueueRefresh(context)
-                        }
-                    )
-                } else {
-                    RunningLifeDashboard(
-                        session = session,
-                        selectedDate = selectedDate,
-                        onSelectDate = { selectedDate = it },
-                        events = events,
-                        members = members,
-                        onAdd = {
-                            addEventInitialTitle = ""
-                            showAddEvent = true
-                        },
-                        onOpenSettings = { selectedTab = 4 },
-                        onRefresh = {
-                            refresh()
-                            FamilyCalendarWidget.enqueueRefresh(context)
-                        }
-                    )
+                AnimatedContent(
+                    targetState = uiLayoutMode,
+                    transitionSpec = {
+                        (fadeIn(tween(motionDuration(220, motionEnabled))) +
+                            scaleIn(tween(motionDuration(260, motionEnabled)), initialScale = .985f)) togetherWith
+                            (fadeOut(tween(motionDuration(150, motionEnabled))) +
+                                scaleOut(tween(motionDuration(180, motionEnabled)), targetScale = .99f))
+                    },
+                    label = "calendar-layout-mode"
+                ) { mode ->
+                    when (mode) {
+                        UiLayoutMode.MINIMAL -> MinimalCalendarScreen(
+                            selectedDate = selectedDate,
+                            onSelect = { selectedDate = it },
+                            events = events,
+                            members = members,
+                            onAdd = {
+                                addEventInitialTitle = ""
+                                showAddEvent = true
+                            },
+                            onOpenSettings = { selectedTab = 4 }
+                        )
+                        UiLayoutMode.PERSONAL -> PersonalCalendarScreen(
+                            session = session,
+                            prefs = appPrefs,
+                            profile = personalProfile,
+                            revision = personalLayoutRevision,
+                            selectedDate = selectedDate,
+                            onSelectDate = { selectedDate = it },
+                            events = events,
+                            members = members,
+                            shopping = shopping,
+                            palette = palette,
+                            themeMode = themeMode,
+                            onAdd = {
+                                addEventInitialTitle = ""
+                                showAddEvent = true
+                            },
+                            onRefresh = {
+                                refresh()
+                                FamilyCalendarWidget.enqueueRefresh(context)
+                            }
+                        )
+                        UiLayoutMode.FULL -> RunningLifeDashboard(
+                            session = session,
+                            selectedDate = selectedDate,
+                            onSelectDate = { selectedDate = it },
+                            events = events,
+                            members = members,
+                            onAdd = {
+                                addEventInitialTitle = ""
+                                showAddEvent = true
+                            },
+                            onOpenSettings = { selectedTab = 4 },
+                            onRefresh = {
+                                refresh()
+                                FamilyCalendarWidget.enqueueRefresh(context)
+                            }
+                        )
+                    }
                 }
             } else {
-                Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
-                    if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                    when (selectedTab) {
-                        1 -> ShoppingScreen(
-                            session,
-                            shopping,
-                            mailOffers,
-                            { name -> scope.launch { SupabaseSync.addShopping(session, name); refresh() } },
-                            { item -> scope.launch { SupabaseSync.toggleShopping(session, item); refresh() } },
-                            { scope.launch { SupabaseSync.clearChecked(session); refresh() } }
-                        )
-                        2 -> ToDoScreen(session)
-                        3 -> {
-                            if (uiLayoutMode == UiLayoutMode.MINIMAL) {
-                                OutlinedButton(
-                                    onClick = { selectedTab = 5 },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Icon(Icons.Default.LocationOn, contentDescription = null)
-                                    Text(" Familjens plats")
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        (fadeIn(tween(motionDuration(170, motionEnabled))) +
+                            slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 18 }) togetherWith
+                            (fadeOut(tween(motionDuration(120, motionEnabled))) +
+                                slideOutVertically(tween(motionDuration(160, motionEnabled))) { -it / 20 })
+                    },
+                    label = "main-tab-content"
+                ) { tab ->
+                    Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
+                        if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                        when (tab) {
+                            1 -> ShoppingScreen(
+                                session,
+                                shopping,
+                                mailOffers,
+                                { name -> scope.launch { SupabaseSync.addShopping(session, name); refresh() } },
+                                { item -> scope.launch { SupabaseSync.toggleShopping(session, item); refresh() } },
+                                { scope.launch { SupabaseSync.clearChecked(session); refresh() } }
+                            )
+                            2 -> ToDoScreen(session)
+                            3 -> {
+                                if (uiLayoutMode == UiLayoutMode.MINIMAL) {
+                                    OutlinedButton(
+                                        onClick = { selectedTab = 5 },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.LocationOn, contentDescription = null)
+                                        Text(" Familjens plats")
+                                    }
+                                    Spacer(Modifier.height(10.dp))
                                 }
+                                RunningProgressCard(
+                                    session = session,
+                                    members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                                    events = events,
+                                    onChanged = {
+                                        refresh()
+                                        FamilyCalendarWidget.enqueueRefresh(context)
+                                    }
+                                )
                                 Spacer(Modifier.height(10.dp))
+                                EditableFamilyScreen(
+                                    members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                                    events,
+                                    { name, role ->
+                                        scope.launch {
+                                            val realMemberCount = members.count { it.id != ALL_FAMILY_MEMBER_ID }
+                                            SupabaseSync.addMember(session, name, role, MemberColors[realMemberCount % MemberColors.size])
+                                            refresh()
+                                        }
+                                    },
+                                    { member, color ->
+                                        scope.launch {
+                                            SupabaseSync.updateMemberColor(session, member.id, color)
+                                            refresh()
+                                        }
+                                    },
+                                    { event, title, date, time ->
+                                        scope.launch {
+                                            SupabaseSync.updateEvent(session, event.id, title, date, time, event.endTime, event.memberId)
+                                            refresh()
+                                            FamilyCalendarWidget.enqueueRefresh(context)
+                                        }
+                                    },
+                                    { event ->
+                                        scope.launch {
+                                            deleteCalendarEventsDirect(session, listOf(event.id))
+                                            refresh()
+                                            FamilyCalendarWidget.enqueueRefresh(context)
+                                        }
+                                    }
+                                )
                             }
-                            RunningProgressCard(
-                                session = session,
-                                members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                                events = events,
-                                onChanged = {
-                                    refresh()
-                                    FamilyCalendarWidget.enqueueRefresh(context)
-                                }
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            EditableFamilyScreen(
+                            4 -> SettingsScreen(
+                                session,
                                 members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                                events,
-                                { name, role ->
-                                    scope.launch {
-                                        val realMemberCount = members.count { it.id != ALL_FAMILY_MEMBER_ID }
-                                        SupabaseSync.addMember(session, name, role, MemberColors[realMemberCount % MemberColors.size])
-                                        refresh()
-                                    }
+                                sportUrl,
+                                sportMemberId,
+                                themeMode,
+                                uiLayoutMode,
+                                personalProfile,
+                                personalLayoutRevision,
+                                onThemeModeSaved,
+                                onUiLayoutModeSaved,
+                                { profile ->
+                                    PersonalLayoutStore.setActiveProfile(appPrefs, profile)
+                                    personalLayoutRevision++
                                 },
-                                { member, color ->
-                                    scope.launch {
-                                        SupabaseSync.updateMemberColor(session, member.id, color)
-                                        refresh()
-                                    }
-                                },
-                                { event, title, date, time ->
-                                    scope.launch {
-                                        SupabaseSync.updateEvent(session, event.id, title, date, time, event.endTime, event.memberId)
-                                        refresh()
-                                        FamilyCalendarWidget.enqueueRefresh(context)
-                                    }
-                                },
-                                { event ->
-                                    scope.launch {
-                                        deleteCalendarEventsDirect(session, listOf(event.id))
-                                        refresh()
-                                        FamilyCalendarWidget.enqueueRefresh(context)
-                                    }
+                                { personalLayoutRevision++ },
+                                onSportSettingsSaved
+                            ) { url, memberId ->
+                                scope.launch {
+                                    message = "Importerar SportAdmin…"
+                                    runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
+                                        .onSuccess { message = "$it SportAdmin-aktiviteter synkade" }
+                                        .onFailure { message = "SportAdmin-fel: ${it.message}" }
+                                    refresh()
                                 }
-                            )
-                        }
-                        4 -> SettingsScreen(
-                            session,
-                            members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                            sportUrl,
-                            sportMemberId,
-                            themeMode,
-                            uiLayoutMode,
-                            personalProfile,
-                            personalLayoutRevision,
-                            onThemeModeSaved,
-                            onUiLayoutModeSaved,
-                            { profile ->
-                                PersonalLayoutStore.setActiveProfile(appPrefs, profile)
-                                personalLayoutRevision++
-                            },
-                            { personalLayoutRevision++ },
-                            onSportSettingsSaved
-                        ) { url, memberId ->
-                            scope.launch {
-                                message = "Importerar SportAdmin…"
-                                runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
-                                    .onSuccess { message = "$it SportAdmin-aktiviteter synkade" }
-                                    .onFailure { message = "SportAdmin-fel: ${it.message}" }
-                                refresh()
                             }
+                            5 -> FamilyLocationScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID })
                         }
-                        5 -> FamilyLocationScreen(session, members.filter { it.id != ALL_FAMILY_MEMBER_ID })
                     }
                 }
             }
@@ -499,12 +533,19 @@ private fun ShoppingScreen(
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit
 ) {
+    val motionEnabled = appMotionEnabled()
     var text by remember { mutableStateOf("") }
     var showClearConfirmation by remember { mutableStateOf(false) }
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
     val total = items.size
     val done = checkedItems.size
+    val progressTarget = if (total == 0) 0f else done.toFloat() / total.toFloat()
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressTarget,
+        animationSpec = tween(motionDuration(320, motionEnabled)),
+        label = "shopping-progress"
+    )
 
     fun categoryFor(name: String): String {
         val value = name.lowercase(Locale("sv", "SE"))
@@ -533,11 +574,11 @@ private fun ShoppingScreen(
                     Text(if (total == 0) "Listan är tom" else "$done av $total klara", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Text(if (openItems.isEmpty() && total > 0) "Allt är fixat" else "${openItems.size} kvar att handla", color = Muted, fontSize = 13.sp)
                 }
-                if (total > 0) Text("${done * 100 / total}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                if (total > 0) Text("${(animatedProgress * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             if (total > 0) {
                 Spacer(Modifier.height(10.dp))
-                LinearProgressIndicator(progress = { done.toFloat() / total.toFloat() }, modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)))
+                LinearProgressIndicator(progress = { animatedProgress }, modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)))
             }
         }
     }
@@ -554,58 +595,82 @@ private fun ShoppingScreen(
     Text("Tips: skriv flera varor separerade med kommatecken", color = Muted, fontSize = 11.sp)
     Spacer(Modifier.height(14.dp))
 
-    if (openItems.isEmpty() && checkedItems.isEmpty()) {
-        Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
-                Spacer(Modifier.height(8.dp))
-                Text("Dags att fylla listan", fontWeight = FontWeight.SemiBold)
-                Text("Lägg till det ni behöver ovan", color = Muted, fontSize = 13.sp)
+    AnimatedContent(
+        targetState = items,
+        transitionSpec = {
+            (fadeIn(tween(motionDuration(170, motionEnabled))) +
+                slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 16 }) togetherWith
+                (fadeOut(tween(motionDuration(120, motionEnabled))) +
+                    slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 18 })
+        },
+        label = "shopping-items"
+    ) { visibleItems ->
+        val visibleOpen = visibleItems.filterNot { it.checked }
+        val visibleChecked = visibleItems.filter { it.checked }
+        val visibleGrouped = visibleOpen.groupBy { categoryFor(it.name) }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .animateContentSize(tween(motionDuration(220, motionEnabled)))
+        ) {
+            if (visibleOpen.isEmpty() && visibleChecked.isEmpty()) {
+                Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("Dags att fylla listan", fontWeight = FontWeight.SemiBold)
+                        Text("Lägg till det ni behöver ovan", color = Muted, fontSize = 13.sp)
+                    }
+                }
             }
-        }
-    }
 
-    categoryOrder.forEach { category ->
-        val categoryItems = grouped[category].orEmpty()
-        if (categoryItems.isNotEmpty()) {
-            Text(category, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 3.dp))
-            categoryItems.forEach { item ->
-                Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = false, onCheckedChange = { onToggle(item) })
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(item.name, color = Color.White, fontSize = 16.sp)
-                            val offersForItem = mailOffers
-                                .filter { mailOfferMatchesItem(it, item.name) }
-                                .sortedBy { it.price }
-                                .take(3)
-                            offersForItem.forEach { offer ->
-                                val unit = offer.unitText?.let { " / $it" }.orEmpty()
-                                val formattedPrice = "%.2f".format(Locale.US, offer.price).replace('.', ',')
-                                Text(
-                                    "${offer.store}: $formattedPrice kr$unit",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontSize = 12.sp
-                                )
+            categoryOrder.forEach { category ->
+                val categoryItems = visibleGrouped[category].orEmpty()
+                if (categoryItems.isNotEmpty()) {
+                    Text(category, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 3.dp))
+                    categoryItems.forEach { item ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBg),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = false, onCheckedChange = { onToggle(item) })
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.name, color = Color.White, fontSize = 16.sp)
+                                    val offersForItem = mailOffers
+                                        .filter { mailOfferMatchesItem(it, item.name) }
+                                        .sortedBy { it.price }
+                                        .take(3)
+                                    offersForItem.forEach { offer ->
+                                        val unit = offer.unitText?.let { " / $it" }.orEmpty()
+                                        val formattedPrice = "%.2f".format(Locale.US, offer.price).replace('.', ',')
+                                        Text(
+                                            "${offer.store}: $formattedPrice kr$unit",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-    }
 
-    if (checkedItems.isNotEmpty()) {
-        Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Klara (${checkedItems.size})", color = Muted, fontWeight = FontWeight.SemiBold)
-            TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
-        }
-        checkedItems.forEach { item ->
-            Card(colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .62f)), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = true, onCheckedChange = { onToggle(item) })
-                    Text(item.name, color = Muted, fontSize = 15.sp, modifier = Modifier.weight(1f))
+            if (visibleChecked.isNotEmpty()) {
+                Spacer(Modifier.height(14.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Klara (${visibleChecked.size})", color = Muted, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
+                }
+                visibleChecked.forEach { item ->
+                    Card(colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .62f)), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = true, onCheckedChange = { onToggle(item) })
+                            Text(item.name, color = Muted, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
@@ -744,6 +809,30 @@ private fun SettingsScreen(
 }
 
 @Composable
+private fun AnimatedNavIcon(icon: ImageVector, label: String, selected: Boolean) {
+    val motionEnabled = appMotionEnabled()
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.08f else .96f,
+        animationSpec = tween(motionDuration(180, motionEnabled)),
+        label = "nav-icon-scale"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (selected) 1f else .78f,
+        animationSpec = tween(motionDuration(150, motionEnabled)),
+        label = "nav-icon-alpha"
+    )
+    Icon(
+        icon,
+        contentDescription = label,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+        }
+    )
+}
+
+@Composable
 private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = Color(0xFFA66CFF)
     val mappedSelection = when (selected) {
@@ -760,10 +849,11 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Triple(2, Icons.Default.CheckCircle, "To-do"),
             Triple(3, Icons.Default.People, "Familj")
         ).forEachIndexed { index, (tab, icon, label) ->
+            val isSelected = mappedSelection == index
             NavigationBarItem(
-                selected = mappedSelection == index,
+                selected = isSelected,
                 onClick = { onSelect(tab) },
-                icon = { Icon(icon, contentDescription = label) },
+                icon = { AnimatedNavIcon(icon, label, isSelected) },
                 label = { Text(label, maxLines = 1, softWrap = false, fontSize = 10.sp) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = accent,
@@ -789,10 +879,11 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Icons.Default.Settings to "Inställningar",
             Icons.Default.LocationOn to "Plats"
         ).forEachIndexed { i, (icon, label) ->
+            val isSelected = selected == i
             NavigationBarItem(
-                selected == i,
+                isSelected,
                 { onSelect(i) },
-                { Icon(icon, label) },
+                { AnimatedNavIcon(icon, label, isSelected) },
                 label = { Text(label, maxLines = 1, softWrap = false, fontSize = 9.sp) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = accent,
