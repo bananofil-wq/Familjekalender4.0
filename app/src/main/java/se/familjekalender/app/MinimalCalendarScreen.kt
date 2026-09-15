@@ -159,18 +159,11 @@ private fun MinimalMonthGrid(
     val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
     Row(Modifier.fillMaxWidth()) {
         weekdays.forEach { day ->
-            Text(
-                day,
-                color = MinimalMuted,
-                fontSize = 10.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
+            Text(day, color = MinimalMuted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
         }
     }
 
     Spacer(Modifier.height(8.dp))
-
     val first = month.atDay(1)
     val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
     val eventsByDate = remember(events) { events.groupBy { it.date } }
@@ -184,16 +177,8 @@ private fun MinimalMonthGrid(
                 val dayEvents = eventsByDate[date].orEmpty()
                 val birthday = dayEvents.any { it.title.trim().startsWith("🌈") }
 
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .height(54.dp)
-                        .clickable { onSelect(date) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSelected) {
-                        Box(Modifier.size(40.dp).clip(CircleShape).background(MinimalPurple))
-                    }
+                Box(Modifier.weight(1f).height(54.dp).clickable { onSelect(date) }, contentAlignment = Alignment.Center) {
+                    if (isSelected) Box(Modifier.size(40.dp).clip(CircleShape).background(MinimalPurple))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             date.dayOfMonth.toString(),
@@ -207,21 +192,16 @@ private fun MinimalMonthGrid(
                         )
                         Spacer(Modifier.height(3.dp))
                         if (birthday) {
-                            Text("🌈", fontSize = 9.sp, lineHeight = 9.sp)
+                            // Use the vector-drawn icon in a fixed square. Emoji glyph metrics can
+                            // vary by device/font and were visibly compressing the rainbow.
+                            Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+                                BirthdayRainbowIcon(Modifier.size(18.dp))
+                            }
                         } else if (dayEvents.isNotEmpty()) {
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                dayEvents
-                                    .mapNotNull { event -> memberById[event.memberId]?.colorArgb }
-                                    .distinct()
-                                    .take(3)
-                                    .forEach { colorArgb ->
-                                        Box(
-                                            Modifier
-                                                .size(5.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(colorArgb.toInt()))
-                                        )
-                                    }
+                                dayEvents.mapNotNull { event -> memberById[event.memberId]?.colorArgb }.distinct().take(3).forEach { colorArgb ->
+                                    Box(Modifier.size(5.dp).clip(CircleShape).background(Color(colorArgb.toInt())))
+                                }
                             }
                         } else {
                             Spacer(Modifier.height(9.dp))
@@ -234,45 +214,22 @@ private fun MinimalMonthGrid(
 }
 
 @Composable
-private fun MinimalAgenda(
-    date: LocalDate,
-    events: List<SyncEvent>,
-    memberById: Map<String, SyncMember>,
-    locale: Locale
-) {
+private fun MinimalAgenda(date: LocalDate, events: List<SyncEvent>, memberById: Map<String, SyncMember>, locale: Locale) {
     val headerFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
     val header = date.format(headerFormatter).replaceFirstChar { it.uppercase(locale) }
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MinimalSurface),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Card(colors = CardDefaults.cardColors(containerColor = MinimalSurface), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(header, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(
-                    if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
-                    color = MinimalMuted,
-                    fontSize = 12.sp
-                )
+                Text(if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter", color = MinimalMuted, fontSize = 12.sp)
             }
-
             if (events.isEmpty()) {
-                Spacer(Modifier.height(18.dp))
-                Text("Inga aktiviteter den här dagen", color = MinimalMuted, fontSize = 14.sp)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(18.dp)); Text("Inga aktiviteter den här dagen", color = MinimalMuted, fontSize = 14.sp); Spacer(Modifier.height(4.dp))
             } else {
                 Spacer(Modifier.height(10.dp))
                 events.forEachIndexed { index, event ->
                     MinimalAgendaRow(event, memberById[event.memberId])
-                    if (index != events.lastIndex) {
-                        HorizontalDivider(color = MinimalDivider, thickness = 1.dp)
-                    }
+                    if (index != events.lastIndex) HorizontalDivider(color = MinimalDivider, thickness = 1.dp)
                 }
             }
         }
@@ -282,43 +239,18 @@ private fun MinimalAgenda(
 @Composable
 private fun MinimalAgendaRow(event: SyncEvent, member: SyncMember?) {
     val accent = member?.let { Color(it.colorArgb.toInt()) } ?: MinimalPurple
-    val memberName = when {
-        event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"
-        member != null -> member.name
-        else -> "Familjen"
-    }
+    val memberName = when { event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"; member != null -> member.name; else -> "Familjen" }
     val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
     val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
-
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            Modifier
-                .width(4.dp)
-                .height(50.dp)
-                .clip(RoundedCornerShape(99.dp))
-                .background(accent)
-        )
+    Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.dp).height(50.dp).clip(RoundedCornerShape(99.dp)).background(accent))
         Spacer(Modifier.width(11.dp))
         Text(timeText, color = MinimalMuted, fontSize = 12.sp, modifier = Modifier.width(78.dp))
         Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
-                Spacer(Modifier.width(5.dp))
-                Text(memberName, color = MinimalMuted, fontSize = 11.sp)
+                Box(Modifier.size(7.dp).clip(CircleShape).background(accent)); Spacer(Modifier.width(5.dp)); Text(memberName, color = MinimalMuted, fontSize = 11.sp)
             }
         }
     }
