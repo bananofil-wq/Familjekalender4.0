@@ -207,7 +207,7 @@ private fun MinimalMonthGrid(
                         )
                         Spacer(Modifier.height(3.dp))
                         if (birthday) {
-                            Text("🌈", fontSize = 9.sp, lineHeight = 9.sp)
+                            BirthdayRainbowIcon(Modifier.size(width = 24.dp, height = 14.dp))
                         } else if (dayEvents.isNotEmpty()) {
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 dayEvents
