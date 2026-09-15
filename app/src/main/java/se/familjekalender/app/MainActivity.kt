@@ -231,6 +231,7 @@ private fun SyncedApp(
     val palette = paletteFor(themeMode)
     var members by remember { mutableStateOf(emptyList<SyncMember>()) }
     var shopping by remember { mutableStateOf(emptyList<SyncShoppingItem>()) }
+    var mailOffers by remember { mutableStateOf(emptyList<MailOffer>()) }
     var events by remember { mutableStateOf(emptyList<SyncEvent>()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -243,6 +244,7 @@ private fun SyncedApp(
         runCatching {
             members = SupabaseSync.loadMembers(session)
             shopping = SupabaseSync.loadShopping(session)
+            mailOffers = SupabaseSync.loadMailOffers(session)
             val loadedEvents = SupabaseSync.loadEvents(session)
             events = RecurringScheduleSync.filterPausedScheduleEvents(session, loadedEvents)
         }.onSuccess {
@@ -253,6 +255,7 @@ private fun SyncedApp(
     }
 
     LaunchedEffect(session.id, sportUrl, sportMemberId) {
+        MailSyncScheduler.schedule(context)
         suspend fun syncExternalCalendars() {
             if (sportUrl.isNotBlank()) {
                 runCatching { SupabaseSync.importSportAdmin(session, sportUrl, sportMemberId) }
@@ -314,6 +317,7 @@ private fun SyncedApp(
                         1 -> ShoppingScreen(
                             session,
                             shopping,
+                            mailOffers,
                             { name -> scope.launch { SupabaseSync.addShopping(session, name); refresh() } },
                             { item -> scope.launch { SupabaseSync.toggleShopping(session, item); refresh() } },
                             { scope.launch { SupabaseSync.clearChecked(session); refresh() } }
@@ -414,6 +418,7 @@ private fun SyncedApp(
 private fun ShoppingScreen(
     session: FamilySession,
     items: List<SyncShoppingItem>,
+    mailOffers: List<MailOffer>,
     onAdd: (String) -> Unit,
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit
@@ -492,7 +497,14 @@ private fun ShoppingScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = false, onCheckedChange = { onToggle(item) })
-                        Text(item.name, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(item.name, color = Color.White, fontSize = 16.sp)
+                            val offersForItem = mailOffers.filter { mailOfferMatchesItem(it, item.name) }.sortedBy { it.price }.take(3)
+                            offersForItem.forEach { offer ->
+                                val unit = offer.unitText?.let { " / $it" }.orEmpty()
+                                Text("${offer.store}: ${"%.2f".format(Locale.US, offer.price).replace('.', ',')} kr$unit", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -605,6 +617,8 @@ private fun SettingsScreen(
         modifier = Modifier.fillMaxWidth()
     ) { Text("Spara och synka nu") }
 
+    Spacer(Modifier.height(20.dp))
+    MailSettingsCard(session)
     Spacer(Modifier.height(20.dp))
     AppUpdateSettingsCard()
 }
