@@ -62,7 +62,8 @@ enum class ThemeMode(val label: String, val emoji: String) {
 
 enum class UiLayoutMode(val label: String, val description: String) {
     FULL("Fullständig", "Alla översikter och familjeverktyg direkt på startsidan"),
-    MINIMAL("Minimalistisk", "Ren kalender och dagsagenda med samma familjedata")
+    MINIMAL("Minimalistisk", "Ren kalender och dagsagenda med samma familjedata"),
+    PERSONAL("Personlig", "Tre egna layouter där du väljer moduler och deras position")
 }
 
 data class SeasonPalette(
@@ -249,7 +250,10 @@ private fun SyncedApp(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val appPrefs = remember { context.getSharedPreferences("family_calendar", 0) }
     val palette = paletteFor(themeMode)
+    var personalLayoutRevision by remember { mutableIntStateOf(0) }
+    val personalProfile = remember(personalLayoutRevision) { PersonalLayoutStore.activeProfile(appPrefs) }
     var members by remember { mutableStateOf(emptyList<SyncMember>()) }
     var shopping by remember { mutableStateOf(emptyList<SyncShoppingItem>()) }
     var mailOffers by remember { mutableStateOf(emptyList<MailOffer>()) }
@@ -314,6 +318,28 @@ private fun SyncedApp(
                             showAddEvent = true
                         },
                         onOpenSettings = { selectedTab = 4 }
+                    )
+                } else if (uiLayoutMode == UiLayoutMode.PERSONAL) {
+                    PersonalCalendarScreen(
+                        session = session,
+                        prefs = appPrefs,
+                        profile = personalProfile,
+                        revision = personalLayoutRevision,
+                        selectedDate = selectedDate,
+                        onSelectDate = { selectedDate = it },
+                        events = events,
+                        members = members,
+                        shopping = shopping,
+                        palette = palette,
+                        themeMode = themeMode,
+                        onAdd = {
+                            addEventInitialTitle = ""
+                            showAddEvent = true
+                        },
+                        onRefresh = {
+                            refresh()
+                            FamilyCalendarWidget.enqueueRefresh(context)
+                        }
                     )
                 } else {
                 // The assistant card can be quite tall on busy days. Let the calendar tab
@@ -427,8 +453,15 @@ private fun SyncedApp(
                             sportMemberId,
                             themeMode,
                             uiLayoutMode,
+                            personalProfile,
+                            personalLayoutRevision,
                             onThemeModeSaved,
                             onUiLayoutModeSaved,
+                            { profile ->
+                                PersonalLayoutStore.setActiveProfile(appPrefs, profile)
+                                personalLayoutRevision++
+                            },
+                            { personalLayoutRevision++ },
                             onSportSettingsSaved
                         ) { url, memberId ->
                             scope.launch {
@@ -632,8 +665,12 @@ private fun SettingsScreen(
     initialSportMemberId: String?,
     themeMode: ThemeMode,
     uiLayoutMode: UiLayoutMode,
+    personalProfile: Int,
+    personalLayoutRevision: Int,
     onThemeChanged: (ThemeMode) -> Unit,
     onUiLayoutChanged: (UiLayoutMode) -> Unit,
+    onPersonalProfileChanged: (Int) -> Unit,
+    onPersonalLayoutChanged: () -> Unit,
     onSaveSportSettings: (String, String?) -> Unit,
     onImport: (String, String?) -> Unit
 ) {
@@ -660,7 +697,7 @@ private fun SettingsScreen(
     }
     Spacer(Modifier.height(16.dp))
     Text("Gränssnitt", fontWeight = FontWeight.Bold)
-    Text("Välj hur appens kalenderstart ska visas. Valet gäller bara den här telefonen.", color = Muted, fontSize = 12.sp)
+    Text("Välj hur appens kalenderstart ska visas. Ditt senaste val sparas som standard på den här telefonen tills du själv byter igen.", color = Muted, fontSize = 12.sp)
     UiLayoutMode.values().forEach { mode ->
         Row(
             Modifier
@@ -675,6 +712,17 @@ private fun SettingsScreen(
                 Text(mode.description, color = Muted, fontSize = 11.sp)
             }
         }
+    }
+
+    if (uiLayoutMode == UiLayoutMode.PERSONAL) {
+        Spacer(Modifier.height(8.dp))
+        PersonalLayoutEditor(
+            prefs = context.getSharedPreferences("family_calendar", 0),
+            activeProfile = personalProfile,
+            revision = personalLayoutRevision,
+            onActiveProfileChanged = onPersonalProfileChanged,
+            onChanged = onPersonalLayoutChanged
+        )
     }
 
     Spacer(Modifier.height(16.dp))
