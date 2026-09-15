@@ -195,6 +195,15 @@ fun RunningProgressCard(
                     }
                 }
 
+                selectedMemberId?.let { memberId ->
+                    Spacer(Modifier.height(12.dp))
+                    RunRecorderPanel(
+                        session = session,
+                        memberId = memberId,
+                        onChanged = onChanged
+                    )
+                }
+
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RunStat("Senast", latest?.let { "${"%.1f".format(Locale.US, it.distanceKm)} km" } ?: "–", Modifier.weight(1f))
