@@ -26,10 +26,14 @@ jobs:
           p = Path('app/src/main/java/se/familjekalender/app/RunningProgressCard.kt')
           s = p.read_text()
           if 'RunRecorderPanel(' not in s:
-              marker = '''                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RunStat("Senast",'''
-              replacement = '''                selectedMemberId?.let { memberId ->
+              stat_anchor = 'RunStat("Senast", latest?.let'
+              stat_pos = s.find(stat_anchor)
+              if stat_pos < 0:
+                  raise SystemExit('Could not find the Senast run-stat anchor')
+              insert_at = s.rfind('                Spacer(Modifier.height(10.dp))', 0, stat_pos)
+              if insert_at < 0:
+                  raise SystemExit('Could not find insertion point before the Senast run-stat')
+              panel = '''                selectedMemberId?.let { memberId ->
                     Spacer(Modifier.height(12.dp))
                     RunRecorderPanel(
                         session = session,
@@ -38,12 +42,9 @@ jobs:
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RunStat("Senast",'''
-              if marker not in s:
-                  raise SystemExit('Could not find RunningProgressCard insertion marker')
-              p.write_text(s.replace(marker, replacement, 1))
+'''
+              s = s[:insert_at] + panel + s[insert_at:]
+              p.write_text(s)
           PY
 
       - name: Persist recorder UI integration
