@@ -1,0 +1,1 @@
+Trigger APK build after adding mandatory first-run family member identity selection.
