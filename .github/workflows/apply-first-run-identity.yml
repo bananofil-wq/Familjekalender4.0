@@ -1,0 +1,31 @@
+name: Apply first-run identity selection
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/apply_first_run_identity.py'
+      - '.github/workflows/apply-first-run-identity.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply first-run identity patch
+        run: python3 scripts/apply_first_run_identity.py
+      - name: Commit changes
+        run: |
+          git config user.name "bananofil-wq"
+          git config user.email "bananofil@gmail.com"
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/FirstRunIdentityGate.kt
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Require first-run family member selection"
+            git push
+          fi
