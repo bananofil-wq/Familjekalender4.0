@@ -1,0 +1,1 @@
+Build patched mail sync with multi-account IMAP, calendar invites, shopping history and email offers.
