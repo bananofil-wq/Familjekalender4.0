@@ -150,22 +150,24 @@ fun FamilyCalendarApp() {
                     session = created
                 }
             } else {
-                SyncedApp(
-                    session!!,
-                    prefs.getString("sport_url", "") ?: "",
-                    prefs.getString("sport_member_id", null),
-                    themeMode,
-                    { url, memberId ->
-                        prefs.edit()
-                            .putString("sport_url", url)
-                            .putString("sport_member_id", memberId)
-                            .apply()
-                    },
-                    {
-                        themeMode = it
-                        prefs.edit().putString("theme_mode", it.name).apply()
-                    }
-                )
+                FirstRunIdentityGate(session!!) {
+                    SyncedApp(
+                        session!!,
+                        prefs.getString("sport_url", "") ?: "",
+                        prefs.getString("sport_member_id", null),
+                        themeMode,
+                        { url, memberId ->
+                            prefs.edit()
+                                .putString("sport_url", url)
+                                .putString("sport_member_id", memberId)
+                                .apply()
+                        },
+                        {
+                            themeMode = it
+                            prefs.edit().putString("theme_mode", it.name).apply()
+                        }
+                    )
+                }
             }
         }
     }
