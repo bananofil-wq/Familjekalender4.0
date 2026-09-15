@@ -1,6 +1,8 @@
 package se.familjekalender.app
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,6 +11,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,6 +56,7 @@ internal fun MinimalCalendarScreen(
     onOpenSettings: () -> Unit
 ) {
     val locale = remember { Locale("sv", "SE") }
+    val motionEnabled = appMotionEnabled()
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     val memberById = remember(members) { members.associateBy { it.id } }
     val selectedEvents = remember(events, selectedDate) {
@@ -120,12 +125,16 @@ internal fun MinimalCalendarScreen(
         AnimatedContent(
             targetState = month,
             transitionSpec = {
+                val inMs = motionDuration(260, motionEnabled)
+                val outMs = motionDuration(220, motionEnabled)
+                val fadeInMs = motionDuration(180, motionEnabled)
+                val fadeOutMs = motionDuration(150, motionEnabled)
                 if (targetState > initialState) {
-                    (slideInHorizontally(tween(260)) { it / 5 } + fadeIn(tween(180))) togetherWith
-                        (slideOutHorizontally(tween(220)) { -it / 5 } + fadeOut(tween(150)))
+                    (slideInHorizontally(tween(inMs)) { it / 5 } + fadeIn(tween(fadeInMs))) togetherWith
+                        (slideOutHorizontally(tween(outMs)) { -it / 5 } + fadeOut(tween(fadeOutMs)))
                 } else {
-                    (slideInHorizontally(tween(260)) { -it / 5 } + fadeIn(tween(180))) togetherWith
-                        (slideOutHorizontally(tween(220)) { it / 5 } + fadeOut(tween(150)))
+                    (slideInHorizontally(tween(inMs)) { -it / 5 } + fadeIn(tween(fadeInMs))) togetherWith
+                        (slideOutHorizontally(tween(outMs)) { it / 5 } + fadeOut(tween(fadeOutMs)))
                 }
             },
             label = "clean-month"
@@ -134,6 +143,7 @@ internal fun MinimalCalendarScreen(
                 month = visibleMonth,
                 selectedDate = selectedDate,
                 events = events,
+                motionEnabled = motionEnabled,
                 onSelect = { date ->
                     month = YearMonth.from(date)
                     onSelect(date)
@@ -146,8 +156,10 @@ internal fun MinimalCalendarScreen(
         AnimatedContent(
             targetState = selectedDate,
             transitionSpec = {
-                (fadeIn(tween(180)) + slideInVertically(tween(220)) { it / 10 }) togetherWith
-                    (fadeOut(tween(140)) + slideOutVertically(tween(180)) { -it / 12 })
+                (fadeIn(tween(motionDuration(180, motionEnabled))) +
+                    slideInVertically(tween(motionDuration(220, motionEnabled))) { it / 10 }) togetherWith
+                    (fadeOut(tween(motionDuration(140, motionEnabled))) +
+                        slideOutVertically(tween(motionDuration(180, motionEnabled))) { -it / 12 })
             },
             label = "clean-agenda"
         ) { date ->
@@ -155,7 +167,8 @@ internal fun MinimalCalendarScreen(
                 date = date,
                 events = if (date == selectedDate) selectedEvents else events.filter { it.date == date }.sortedBy { it.time },
                 memberById = memberById,
-                locale = locale
+                locale = locale,
+                motionEnabled = motionEnabled
             )
         }
 
@@ -183,6 +196,7 @@ private fun MinimalMonthGrid(
     month: YearMonth,
     selectedDate: LocalDate,
     events: List<SyncEvent>,
+    motionEnabled: Boolean,
     onSelect: (LocalDate) -> Unit
 ) {
     val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
@@ -205,6 +219,25 @@ private fun MinimalMonthGrid(
                 val isSelected = date == selectedDate
                 val dayEvents = eventsByDate[date].orEmpty()
                 val birthday = dayEvents.any { it.title.trim().startsWith("🌈") }
+                val selectionScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1f else .78f,
+                    animationSpec = tween(motionDuration(220, motionEnabled)),
+                    label = "clean-date-selection-scale"
+                )
+                val selectionAlpha by animateFloatAsState(
+                    targetValue = if (isSelected) 1f else 0f,
+                    animationSpec = tween(motionDuration(180, motionEnabled)),
+                    label = "clean-date-selection-alpha"
+                )
+                val dayColor by animateColorAsState(
+                    targetValue = when {
+                        isSelected -> Color.White
+                        inMonth -> Color(0xFFF1F0F6)
+                        else -> Color(0xFF5F5E69)
+                    },
+                    animationSpec = tween(motionDuration(180, motionEnabled)),
+                    label = "clean-date-color"
+                )
 
                 Box(
                     Modifier
@@ -213,17 +246,21 @@ private fun MinimalMonthGrid(
                         .clickable { onSelect(date) },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isSelected) {
-                        Box(Modifier.size(40.dp).clip(CircleShape).background(MinimalPurple))
-                    }
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .graphicsLayer {
+                                scaleX = selectionScale
+                                scaleY = selectionScale
+                                alpha = selectionAlpha
+                            }
+                            .clip(CircleShape)
+                            .background(MinimalPurple)
+                    )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             date.dayOfMonth.toString(),
-                            color = when {
-                                isSelected -> Color.White
-                                inMonth -> Color(0xFFF1F0F6)
-                                else -> Color(0xFF5F5E69)
-                            },
+                            color = dayColor,
                             fontSize = 15.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -257,14 +294,17 @@ private fun MinimalAgenda(
     date: LocalDate,
     events: List<SyncEvent>,
     memberById: Map<String, SyncMember>,
-    locale: Locale
+    locale: Locale,
+    motionEnabled: Boolean
 ) {
     val headerFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
     val header = date.format(headerFormatter).replaceFirstChar { it.uppercase(locale) }
     Card(
         colors = CardDefaults.cardColors(containerColor = MinimalSurface),
         shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(tween(motionDuration(220, motionEnabled)))
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
             Row(
