@@ -1,5 +1,14 @@
 package se.familjekalender.app
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,7 +38,6 @@ import java.util.Locale
 
 private val MinimalBg = Color(0xFF0B0B10)
 private val MinimalSurface = Color(0xFF17171F)
-private val MinimalSurfaceRaised = Color(0xFF1D1D26)
 private val MinimalPurple = Color(0xFFA66CFF)
 private val MinimalMuted = Color(0xFFAAA8B7)
 private val MinimalDivider = Color(0xFF292933)
@@ -109,25 +117,47 @@ internal fun MinimalCalendarScreen(
             }
         }
 
-        MinimalMonthGrid(
-            month = month,
-            selectedDate = selectedDate,
-            events = events,
-            memberById = memberById,
-            onSelect = { date ->
-                month = YearMonth.from(date)
-                onSelect(date)
-            }
-        )
+        AnimatedContent(
+            targetState = month,
+            transitionSpec = {
+                if (targetState > initialState) {
+                    (slideInHorizontally(tween(260)) { it / 5 } + fadeIn(tween(180))) togetherWith
+                        (slideOutHorizontally(tween(220)) { -it / 5 } + fadeOut(tween(150)))
+                } else {
+                    (slideInHorizontally(tween(260)) { -it / 5 } + fadeIn(tween(180))) togetherWith
+                        (slideOutHorizontally(tween(220)) { it / 5 } + fadeOut(tween(150)))
+                }
+            },
+            label = "clean-month"
+        ) { visibleMonth ->
+            MinimalMonthGrid(
+                month = visibleMonth,
+                selectedDate = selectedDate,
+                events = events,
+                onSelect = { date ->
+                    month = YearMonth.from(date)
+                    onSelect(date)
+                }
+            )
+        }
 
         Spacer(Modifier.height(18.dp))
 
-        MinimalAgenda(
-            date = selectedDate,
-            events = selectedEvents,
-            memberById = memberById,
-            locale = locale
-        )
+        AnimatedContent(
+            targetState = selectedDate,
+            transitionSpec = {
+                (fadeIn(tween(180)) + slideInVertically(tween(220)) { it / 10 }) togetherWith
+                    (fadeOut(tween(140)) + slideOutVertically(tween(180)) { -it / 12 })
+            },
+            label = "clean-agenda"
+        ) { date ->
+            MinimalAgenda(
+                date = date,
+                events = if (date == selectedDate) selectedEvents else events.filter { it.date == date }.sortedBy { it.time },
+                memberById = memberById,
+                locale = locale
+            )
+        }
 
         Spacer(Modifier.height(20.dp))
 
@@ -153,7 +183,6 @@ private fun MinimalMonthGrid(
     month: YearMonth,
     selectedDate: LocalDate,
     events: List<SyncEvent>,
-    memberById: Map<String, SyncMember>,
     onSelect: (LocalDate) -> Unit
 ) {
     val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
@@ -177,8 +206,16 @@ private fun MinimalMonthGrid(
                 val dayEvents = eventsByDate[date].orEmpty()
                 val birthday = dayEvents.any { it.title.trim().startsWith("🌈") }
 
-                Box(Modifier.weight(1f).height(54.dp).clickable { onSelect(date) }, contentAlignment = Alignment.Center) {
-                    if (isSelected) Box(Modifier.size(40.dp).clip(CircleShape).background(MinimalPurple))
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(54.dp)
+                        .clickable { onSelect(date) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Box(Modifier.size(40.dp).clip(CircleShape).background(MinimalPurple))
+                    }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             date.dayOfMonth.toString(),
@@ -191,20 +228,22 @@ private fun MinimalMonthGrid(
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                         )
                         Spacer(Modifier.height(3.dp))
-                        if (birthday) {
-                            // Use the vector-drawn icon in a fixed square. Emoji glyph metrics can
-                            // vary by device/font and were visibly compressing the rainbow.
-                            Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
-                                BirthdayRainbowIcon(Modifier.size(18.dp))
-                            }
-                        } else if (dayEvents.isNotEmpty()) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                dayEvents.mapNotNull { event -> memberById[event.memberId]?.colorArgb }.distinct().take(3).forEach { colorArgb ->
-                                    Box(Modifier.size(5.dp).clip(CircleShape).background(Color(colorArgb.toInt())))
+                        when {
+                            birthday -> {
+                                Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+                                    BirthdayRainbowIcon(Modifier.size(18.dp))
                                 }
                             }
-                        } else {
-                            Spacer(Modifier.height(9.dp))
+                            dayEvents.isNotEmpty() -> {
+                                Box(
+                                    Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) Color.White else MinimalPurple.copy(alpha = .88f))
+                                )
+                                Spacer(Modifier.height(3.dp))
+                            }
+                            else -> Spacer(Modifier.height(9.dp))
                         }
                     }
                 }
@@ -214,17 +253,36 @@ private fun MinimalMonthGrid(
 }
 
 @Composable
-private fun MinimalAgenda(date: LocalDate, events: List<SyncEvent>, memberById: Map<String, SyncMember>, locale: Locale) {
+private fun MinimalAgenda(
+    date: LocalDate,
+    events: List<SyncEvent>,
+    memberById: Map<String, SyncMember>,
+    locale: Locale
+) {
     val headerFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
     val header = date.format(headerFormatter).replaceFirstChar { it.uppercase(locale) }
-    Card(colors = CardDefaults.cardColors(containerColor = MinimalSurface), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MinimalSurface),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(header, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter", color = MinimalMuted, fontSize = 12.sp)
+                Text(
+                    if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
+                    color = MinimalMuted,
+                    fontSize = 12.sp
+                )
             }
             if (events.isEmpty()) {
-                Spacer(Modifier.height(18.dp)); Text("Inga aktiviteter den här dagen", color = MinimalMuted, fontSize = 14.sp); Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(18.dp))
+                Text("Inga aktiviteter den här dagen", color = MinimalMuted, fontSize = 14.sp)
+                Spacer(Modifier.height(4.dp))
             } else {
                 Spacer(Modifier.height(10.dp))
                 events.forEachIndexed { index, event ->
@@ -239,18 +297,34 @@ private fun MinimalAgenda(date: LocalDate, events: List<SyncEvent>, memberById: 
 @Composable
 private fun MinimalAgendaRow(event: SyncEvent, member: SyncMember?) {
     val accent = member?.let { Color(it.colorArgb.toInt()) } ?: MinimalPurple
-    val memberName = when { event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"; member != null -> member.name; else -> "Familjen" }
+    val memberName = when {
+        event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"
+        member != null -> member.name
+        else -> "Familjen"
+    }
     val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
     val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
-    Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Box(Modifier.width(4.dp).height(50.dp).clip(RoundedCornerShape(99.dp)).background(accent))
         Spacer(Modifier.width(11.dp))
         Text(timeText, color = MinimalMuted, fontSize = 12.sp, modifier = Modifier.width(78.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(7.dp).clip(CircleShape).background(accent)); Spacer(Modifier.width(5.dp)); Text(memberName, color = MinimalMuted, fontSize = 11.sp)
+                Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
+                Spacer(Modifier.width(5.dp))
+                Text(memberName, color = MinimalMuted, fontSize = 11.sp)
             }
         }
     }
