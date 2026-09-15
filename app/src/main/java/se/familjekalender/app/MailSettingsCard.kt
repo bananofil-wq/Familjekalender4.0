@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -71,7 +70,7 @@ internal fun MailSettingsCard(session: FamilySession) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.fillMaxWidth(0.58f)) {
                             Text(account.label.ifBlank { account.email }, fontWeight = FontWeight.SemiBold)
                             Text(account.email, color = Muted, fontSize = 12.sp)
                         }
