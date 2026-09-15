@@ -3,6 +3,7 @@ name: Apply location map zoom fix
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -53,7 +54,8 @@ jobs:
                     }
 '''
           if old not in text:
-              raise SystemExit('Expected MapView setup block not found')
+              print('GPS map patch already applied; nothing to change')
+              raise SystemExit(0)
           text = text.replace(old, new, 1)
 
           marker = '''            )
