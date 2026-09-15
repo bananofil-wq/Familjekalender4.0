@@ -533,19 +533,12 @@ private fun ShoppingScreen(
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit
 ) {
-    val motionEnabled = appMotionEnabled()
     var text by remember { mutableStateOf("") }
     var showClearConfirmation by remember { mutableStateOf(false) }
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
     val total = items.size
     val done = checkedItems.size
-    val progressTarget = if (total == 0) 0f else done.toFloat() / total.toFloat()
-    val animatedProgress by animateFloatAsState(
-        targetValue = progressTarget,
-        animationSpec = tween(motionDuration(320, motionEnabled)),
-        label = "shopping-progress"
-    )
 
     fun categoryFor(name: String): String {
         val value = name.lowercase(Locale("sv", "SE"))
@@ -574,11 +567,11 @@ private fun ShoppingScreen(
                     Text(if (total == 0) "Listan är tom" else "$done av $total klara", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Text(if (openItems.isEmpty() && total > 0) "Allt är fixat" else "${openItems.size} kvar att handla", color = Muted, fontSize = 13.sp)
                 }
-                if (total > 0) Text("${(animatedProgress * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                if (total > 0) Text("${done * 100 / total}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
             if (total > 0) {
                 Spacer(Modifier.height(10.dp))
-                LinearProgressIndicator(progress = { animatedProgress }, modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)))
+                LinearProgressIndicator(progress = { done.toFloat() / total.toFloat() }, modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)))
             }
         }
     }
@@ -595,82 +588,58 @@ private fun ShoppingScreen(
     Text("Tips: skriv flera varor separerade med kommatecken", color = Muted, fontSize = 11.sp)
     Spacer(Modifier.height(14.dp))
 
-    AnimatedContent(
-        targetState = items,
-        transitionSpec = {
-            (fadeIn(tween(motionDuration(170, motionEnabled))) +
-                slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 16 }) togetherWith
-                (fadeOut(tween(motionDuration(120, motionEnabled))) +
-                    slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 18 })
-        },
-        label = "shopping-items"
-    ) { visibleItems ->
-        val visibleOpen = visibleItems.filterNot { it.checked }
-        val visibleChecked = visibleItems.filter { it.checked }
-        val visibleGrouped = visibleOpen.groupBy { categoryFor(it.name) }
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .animateContentSize(tween(motionDuration(220, motionEnabled)))
-        ) {
-            if (visibleOpen.isEmpty() && visibleChecked.isEmpty()) {
-                Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
-                        Spacer(Modifier.height(8.dp))
-                        Text("Dags att fylla listan", fontWeight = FontWeight.SemiBold)
-                        Text("Lägg till det ni behöver ovan", color = Muted, fontSize = 13.sp)
-                    }
-                }
+    if (openItems.isEmpty() && checkedItems.isEmpty()) {
+        Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Dags att fylla listan", fontWeight = FontWeight.SemiBold)
+                Text("Lägg till det ni behöver ovan", color = Muted, fontSize = 13.sp)
             }
+        }
+    }
 
-            categoryOrder.forEach { category ->
-                val categoryItems = visibleGrouped[category].orEmpty()
-                if (categoryItems.isNotEmpty()) {
-                    Text(category, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 3.dp))
-                    categoryItems.forEach { item ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = CardBg),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
-                        ) {
-                            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = false, onCheckedChange = { onToggle(item) })
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.name, color = Color.White, fontSize = 16.sp)
-                                    val offersForItem = mailOffers
-                                        .filter { mailOfferMatchesItem(it, item.name) }
-                                        .sortedBy { it.price }
-                                        .take(3)
-                                    offersForItem.forEach { offer ->
-                                        val unit = offer.unitText?.let { " / $it" }.orEmpty()
-                                        val formattedPrice = "%.2f".format(Locale.US, offer.price).replace('.', ',')
-                                        Text(
-                                            "${offer.store}: $formattedPrice kr$unit",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
+    categoryOrder.forEach { category ->
+        val categoryItems = grouped[category].orEmpty()
+        if (categoryItems.isNotEmpty()) {
+            Text(category, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 3.dp))
+            categoryItems.forEach { item ->
+                Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = false, onCheckedChange = { onToggle(item) })
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(item.name, color = Color.White, fontSize = 16.sp)
+                            val offersForItem = mailOffers
+                                .filter { mailOfferMatchesItem(it, item.name) }
+                                .sortedBy { it.price }
+                                .take(3)
+                            offersForItem.forEach { offer ->
+                                val unit = offer.unitText?.let { " / $it" }.orEmpty()
+                                val formattedPrice = "%.2f".format(Locale.US, offer.price).replace('.', ',')
+                                Text(
+                                    "${offer.store}: $formattedPrice kr$unit",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 12.sp
+                                )
                             }
                         }
                     }
                 }
             }
+        }
+    }
 
-            if (visibleChecked.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Klara (${visibleChecked.size})", color = Muted, fontWeight = FontWeight.SemiBold)
-                    TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
-                }
-                visibleChecked.forEach { item ->
-                    Card(colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .62f)), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = true, onCheckedChange = { onToggle(item) })
-                            Text(item.name, color = Muted, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                        }
-                    }
+    if (checkedItems.isNotEmpty()) {
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Klara (${checkedItems.size})", color = Muted, fontWeight = FontWeight.SemiBold)
+            TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
+        }
+        checkedItems.forEach { item ->
+            Card(colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .62f)), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = true, onCheckedChange = { onToggle(item) })
+                    Text(item.name, color = Muted, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 }
             }
         }
