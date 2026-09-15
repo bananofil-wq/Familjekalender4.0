@@ -61,9 +61,9 @@ enum class ThemeMode(val label: String, val emoji: String) {
 }
 
 enum class UiLayoutMode(val label: String, val description: String) {
-    FULL("Fullständig", "Alla översikter och familjeverktyg direkt på startsidan"),
-    MINIMAL("Minimalistisk", "Ren kalender och dagsagenda med samma familjedata"),
-    PERSONAL("Personlig", "Tre egna layouter där du väljer moduler och deras position")
+    FULL("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy"),
+    MINIMAL("Clean", "Ren månadskalender med en diskret markering per dag"),
+    PERSONAL("Anpassad", "Avancerad modulvy")
 }
 
 data class SeasonPalette(
@@ -136,9 +136,9 @@ fun FamilyCalendarApp() {
         mutableStateOf(
             runCatching {
                 UiLayoutMode.valueOf(
-                    prefs.getString("ui_layout_mode", UiLayoutMode.FULL.name) ?: UiLayoutMode.FULL.name
+                    prefs.getString("ui_layout_mode", UiLayoutMode.MINIMAL.name) ?: UiLayoutMode.MINIMAL.name
                 )
-            }.getOrDefault(UiLayoutMode.FULL)
+            }.getOrDefault(UiLayoutMode.MINIMAL)
         )
     }
     val palette = paletteFor(themeMode)
@@ -342,43 +342,22 @@ private fun SyncedApp(
                         }
                     )
                 } else {
-                // The assistant card can be quite tall on busy days. Let the calendar tab
-                // scroll instead of forcing the month grid into whatever height remains.
-                // ExactCalendarScreen gets a stable viewport so all six week rows keep
-                // their intended proportions on different phone aspect ratios.
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
-                    WeekOverviewCard(events, members)
-                    FamilyAutopilotCard(events, members)
-                    RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(590.dp)
-                    ) {
-                        ExactCalendarScreen(
-                            selectedDate,
-                            { selectedDate = it },
-                            events,
-                            members,
-                            palette,
-                            themeMode,
-                            onAdd = {
-                                addEventInitialTitle = ""
-                                showAddEvent = true
-                            },
-                            onAddLaundry = {
-                                addEventInitialTitle = "🧺 Tvätt"
-                                showAddEvent = true
-                            },
-                            addMenuRequest = assistantAddRequest
-                        )
-                    }
-                }
+                    RunningLifeDashboard(
+                        session = session,
+                        selectedDate = selectedDate,
+                        onSelectDate = { selectedDate = it },
+                        events = events,
+                        members = members,
+                        onAdd = {
+                            addEventInitialTitle = ""
+                            showAddEvent = true
+                        },
+                        onOpenSettings = { selectedTab = 4 },
+                        onRefresh = {
+                            refresh()
+                            FamilyCalendarWidget.enqueueRefresh(context)
+                        }
+                    )
                 }
             } else {
                 Column(Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState())) {
@@ -697,8 +676,8 @@ private fun SettingsScreen(
     }
     Spacer(Modifier.height(16.dp))
     Text("Gränssnitt", fontWeight = FontWeight.Bold)
-    Text("Välj hur appens kalenderstart ska visas. Ditt senaste val sparas som standard på den här telefonen tills du själv byter igen.", color = Muted, fontSize = 12.sp)
-    UiLayoutMode.values().forEach { mode ->
+    Text("Välj mellan en ren kalender och en vardagsvy med löpningen i fokus. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)
+    UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->
         Row(
             Modifier
                 .fillMaxWidth()
