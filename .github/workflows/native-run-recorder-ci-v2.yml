@@ -35,16 +35,16 @@ jobs:
               insert_at = s.rfind(spacer, 0, stat_pos)
               if insert_at < 0:
                   raise SystemExit('Could not find insertion point')
-              panel = '''                selectedMemberId?.let { memberId ->
-                    Spacer(Modifier.height(12.dp))
-                    RunRecorderPanel(
-                        session = session,
-                        memberId = memberId,
-                        onChanged = onChanged
-                    )
-                }
-
-'''
+              panel = (
+                  '                selectedMemberId?.let { memberId ->\n'
+                  '                    Spacer(Modifier.height(12.dp))\n'
+                  '                    RunRecorderPanel(\n'
+                  '                        session = session,\n'
+                  '                        memberId = memberId,\n'
+                  '                        onChanged = onChanged\n'
+                  '                    )\n'
+                  '                }\n\n'
+              )
               p.write_text(s[:insert_at] + panel + s[insert_at:])
           PY
 
