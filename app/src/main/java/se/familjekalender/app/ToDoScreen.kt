@@ -1,5 +1,14 @@
 package se.familjekalender.app
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -110,6 +119,7 @@ private object TodoSync {
 @Composable
 internal fun ToDoScreen(session: FamilySession) {
     val scope = rememberCoroutineScope()
+    val motionEnabled = appMotionEnabled()
     var items by remember { mutableStateOf(emptyList<SyncTodoItem>()) }
     var text by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
@@ -171,58 +181,79 @@ internal fun ToDoScreen(session: FamilySession) {
     }
 
     Spacer(Modifier.height(12.dp))
-    if (items.isEmpty()) {
-        Text("Inga uppgifter ännu", color = Muted)
-    }
 
-    items.forEach { item ->
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBg),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+    AnimatedContent(
+        targetState = items,
+        transitionSpec = {
+            (fadeIn(tween(motionDuration(170, motionEnabled))) +
+                slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 14 }) togetherWith
+                (fadeOut(tween(motionDuration(120, motionEnabled))) +
+                    slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 18 })
+        },
+        label = "todo-list"
+    ) { visibleItems ->
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .animateContentSize(tween(motionDuration(220, motionEnabled)))
         ) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = item.checked,
-                    onCheckedChange = {
-                        scope.launch {
-                            runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.toggle(session, item) } }
-                                .onFailure { error = it.message ?: "Kunde inte uppdatera" }
-                            refresh()
-                        }
+            if (visibleItems.isEmpty()) {
+                Text("Inga uppgifter ännu", color = Muted)
+            }
+
+            visibleItems.forEach { item ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = CardBg),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .animateContentSize(tween(motionDuration(180, motionEnabled)))
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = item.checked,
+                            onCheckedChange = {
+                                scope.launch {
+                                    runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.toggle(session, item) } }
+                                        .onFailure { error = it.message ?: "Kunde inte uppdatera" }
+                                    refresh()
+                                }
+                            }
+                        )
+                        Text(
+                            item.title,
+                            color = if (item.checked) Muted else Color.White,
+                            modifier = Modifier.weight(1f).clickable {
+                                scope.launch {
+                                    runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.toggle(session, item) } }
+                                        .onFailure { error = it.message ?: "Kunde inte uppdatera" }
+                                    refresh()
+                                }
+                            }
+                        )
+                        TextButton(onClick = {
+                            scope.launch {
+                                runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.delete(session, item) } }
+                                    .onFailure { error = it.message ?: "Kunde inte ta bort" }
+                                refresh()
+                            }
+                        }) { Text("Ta bort") }
                     }
-                )
-                Text(
-                    item.title,
-                    color = if (item.checked) Muted else Color.White,
-                    modifier = Modifier.weight(1f).clickable {
-                        scope.launch {
-                            runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.toggle(session, item) } }
-                                .onFailure { error = it.message ?: "Kunde inte uppdatera" }
-                            refresh()
-                        }
-                    }
-                )
+                }
+            }
+
+            if (visibleItems.any { it.checked }) {
                 TextButton(onClick = {
                     scope.launch {
-                        runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.delete(session, item) } }
-                            .onFailure { error = it.message ?: "Kunde inte ta bort" }
+                        runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.clearChecked(session) } }
+                            .onFailure { error = it.message ?: "Kunde inte rensa" }
                         refresh()
                     }
-                }) { Text("Ta bort") }
+                }) { Text("Rensa klara") }
             }
         }
-    }
-
-    if (items.any { it.checked }) {
-        TextButton(onClick = {
-            scope.launch {
-                runCatching { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { TodoSync.clearChecked(session) } }
-                    .onFailure { error = it.message ?: "Kunde inte rensa" }
-                refresh()
-            }
-        }) { Text("Rensa klara") }
     }
 }
