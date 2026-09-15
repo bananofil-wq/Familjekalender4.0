@@ -1,0 +1,285 @@
+package se.familjekalender.app
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
+
+private val LifeBg = Color(0xFF0B0B10)
+private val LifeSurface = Color(0xFF17171F)
+private val LifeSurfaceRaised = Color(0xFF1D1D26)
+private val LifePurple = Color(0xFFA66CFF)
+private val LifeMuted = Color(0xFFAAA8B7)
+private val LifeDivider = Color(0xFF292933)
+
+@Composable
+internal fun RunningLifeDashboard(
+    session: FamilySession,
+    selectedDate: LocalDate,
+    onSelectDate: (LocalDate) -> Unit,
+    events: List<SyncEvent>,
+    members: List<SyncMember>,
+    onAdd: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onRefresh: suspend () -> Unit
+) {
+    val locale = remember { Locale("sv", "SE") }
+    val weekStart = remember(selectedDate) {
+        selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())
+    }
+    val memberById = remember(members) { members.associateBy { it.id } }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(LifeBg)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 12.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Löpning & vardag", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+                Text("Veckan först. Löpningen när du vill.", color = LifeMuted, fontSize = 13.sp)
+            }
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Default.Settings, contentDescription = "Inställningar", tint = Color(0xFFD1CFDC))
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = LifeSurface),
+            shape = RoundedCornerShape(22.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Den här veckan", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Text(
+                        "${weekStart.month.getDisplayName(TextStyle.SHORT, locale)} ${weekStart.year}",
+                        color = LifeMuted,
+                        fontSize = 11.sp
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    repeat(7) { index ->
+                        val date = weekStart.plusDays(index.toLong())
+                        val dayEvents = remember(events, date) { events.filter { it.date == date } }
+                        LifeDayCell(
+                            date = date,
+                            selected = date == selectedDate,
+                            hasEvents = dayEvents.isNotEmpty(),
+                            hasRun = dayEvents.any { it.title.startsWith("🏃") },
+                            locale = locale,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onSelectDate(date) }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        AnimatedContent(
+            targetState = selectedDate,
+            transitionSpec = {
+                (fadeIn(tween(180)) + slideInVertically(tween(220)) { it / 8 }) togetherWith
+                    (fadeOut(tween(140)) + slideOutVertically(tween(180)) { -it / 10 })
+            },
+            label = "life-day-agenda"
+        ) { date ->
+            LifeAgendaCard(
+                date = date,
+                events = events.filter { it.date == date }.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title }),
+                memberById = memberById,
+                locale = locale
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        RunningProgressCard(
+            session = session,
+            members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+            events = events,
+            onChanged = onRefresh
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = onAdd,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = LifePurple)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Lägg till aktivitet", fontWeight = FontWeight.SemiBold)
+        }
+
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun LifeDayCell(
+    date: LocalDate,
+    selected: Boolean,
+    hasEvents: Boolean,
+    hasRun: Boolean,
+    locale: Locale,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.04f else 1f,
+        animationSpec = tween(180),
+        label = "life-day-scale"
+    )
+    val background = if (selected) LifePurple else Color.Transparent
+
+    Column(
+        modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(RoundedCornerShape(16.dp))
+            .background(background)
+            .clickable(onClick = onClick)
+            .padding(vertical = 9.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale).take(2).uppercase(locale),
+            color = if (selected) Color.White.copy(alpha = .82f) else LifeMuted,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            date.dayOfMonth.toString(),
+            color = Color.White,
+            fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+        )
+        Spacer(Modifier.height(6.dp))
+        when {
+            hasRun -> Text("●", color = if (selected) Color.White else MaterialTheme.colorScheme.primary, fontSize = 10.sp)
+            hasEvents -> Box(Modifier.size(5.dp).clip(CircleShape).background(if (selected) Color.White else LifeMuted))
+            else -> Spacer(Modifier.height(7.dp))
+        }
+    }
+}
+
+@Composable
+private fun LifeAgendaCard(
+    date: LocalDate,
+    events: List<SyncEvent>,
+    memberById: Map<String, SyncMember>,
+    locale: Locale
+) {
+    val formatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
+    val header = date.format(formatter).replaceFirstChar { it.uppercase(locale) }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = LifeSurfaceRaised),
+        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.fillMaxWidth().animateContentSize(tween(220))
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(header, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (events.isEmpty()) "Lugn dag" else if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
+                        color = LifeMuted,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            if (events.isEmpty()) {
+                Spacer(Modifier.height(14.dp))
+                Text("Inget planerat. Kalendern håller sig ur vägen.", color = LifeMuted, fontSize = 13.sp)
+            } else {
+                Spacer(Modifier.height(9.dp))
+                events.take(4).forEachIndexed { index, event ->
+                    val member = memberById[event.memberId]
+                    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: LifePurple
+                    val memberName = when {
+                        event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"
+                        member != null -> member.name
+                        else -> "Familjen"
+                    }
+                    val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
+                    val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" }
+                        ?: event.time.ifBlank { "Hela dagen" }
+
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.width(3.dp).height(38.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+                        Spacer(Modifier.width(10.dp))
+                        Text(timeText, color = LifeMuted, fontSize = 11.sp, modifier = Modifier.width(74.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(memberName, color = LifeMuted, fontSize = 10.sp)
+                        }
+                    }
+                    if (index < minOf(events.lastIndex, 3)) {
+                        HorizontalDivider(color = LifeDivider, thickness = 1.dp)
+                    }
+                }
+                if (events.size > 4) {
+                    Spacer(Modifier.height(7.dp))
+                    Text("+ ${events.size - 4} till", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
