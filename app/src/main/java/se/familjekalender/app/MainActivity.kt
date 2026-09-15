@@ -418,6 +418,7 @@ private fun SyncedApp(
 private fun ShoppingScreen(
     session: FamilySession,
     items: List<SyncShoppingItem>,
+    mailOffers: List<MailOffer>,
     onAdd: (String) -> Unit,
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit
@@ -496,7 +497,22 @@ private fun ShoppingScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = CardBg), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = false, onCheckedChange = { onToggle(item) })
-                        Text(item.name, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(item.name, color = Color.White, fontSize = 16.sp)
+                            val offersForItem = mailOffers
+                                .filter { mailOfferMatchesItem(it, item.name) }
+                                .sortedBy { it.price }
+                                .take(3)
+                            offersForItem.forEach { offer ->
+                                val unit = offer.unitText?.let { " / $it" }.orEmpty()
+                                val formattedPrice = "%.2f".format(Locale.US, offer.price).replace('.', ',')
+                                Text(
+                                    "${offer.store}: $formattedPrice kr$unit",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
