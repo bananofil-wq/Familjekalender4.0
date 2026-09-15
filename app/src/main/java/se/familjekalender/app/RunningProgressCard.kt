@@ -1,5 +1,16 @@
 package se.familjekalender.app
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -87,6 +99,7 @@ fun RunningProgressCard(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val motionEnabled = appMotionEnabled()
     var expanded by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
     var showPlan by remember { mutableStateOf(false) }
@@ -125,6 +138,11 @@ fun RunningProgressCard(
     }
     val monthlyGoalKm = monthlyGoalText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 }
     val monthlyGoalProgress = monthlyGoalKm?.let { (monthKm / it).coerceIn(0.0, 1.0).toFloat() } ?: 0f
+    val animatedGoalProgress by animateFloatAsState(
+        targetValue = monthlyGoalProgress,
+        animationSpec = tween(motionDuration(520, motionEnabled)),
+        label = "running-goal-progress"
+    )
     val activeWeeks = runs
         .map { java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear().let(it.event.date::get) to it.event.date.year }
         .distinct()
@@ -147,11 +165,19 @@ fun RunningProgressCard(
         longestDistance != null && latest.distanceKm == longestDistance -> "🏆 Längsta pass"
         else -> "Fortsätt bygga formen"
     }
+    val summaryText = when {
+        nextPlan != null -> "Nästa: ${nextPlan.event.date} ${nextPlan.event.time} · ${nextPlan.runType}"
+        runs.isEmpty() -> "Planera och följ utvecklingen"
+        else -> "${runs.size} pass · ${"%.1f".format(Locale.US, totalKm)} km totalt"
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBg),
         shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .animateContentSize(tween(motionDuration(240, motionEnabled)))
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(
@@ -161,193 +187,209 @@ fun RunningProgressCard(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("🏃 Löpning & progression", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(
-                        when {
-                            nextPlan != null -> "Nästa: ${nextPlan.event.date} ${nextPlan.event.time} · ${nextPlan.runType}"
-                            runs.isEmpty() -> "Planera och följ utvecklingen"
-                            else -> "${runs.size} pass · ${"%.1f".format(Locale.US, totalKm)} km totalt"
+                    AnimatedContent(
+                        targetState = summaryText,
+                        transitionSpec = {
+                            (fadeIn(tween(motionDuration(180, motionEnabled))) +
+                                slideInVertically(tween(motionDuration(220, motionEnabled))) { it / 10 }) togetherWith
+                                fadeOut(tween(motionDuration(120, motionEnabled)))
                         },
-                        color = Muted,
-                        fontSize = 12.sp
-                    )
+                        label = "running-summary"
+                    ) { summary ->
+                        Text(summary, color = Muted, fontSize = 12.sp)
+                    }
                 }
                 Text(if (expanded) "▴" else "▾", color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
             }
 
-            if (expanded) {
-                Spacer(Modifier.height(14.dp))
-                if (members.isNotEmpty()) {
-                    Text("Person", color = Muted, fontSize = 12.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        members.take(4).forEach { member ->
-                            FilterChip(
-                                selected = selectedMemberId == member.id,
-                                onClick = { selectedMemberId = member.id },
-                                label = { Text(member.name, maxLines = 1) },
-                                leadingIcon = {
-                                    Box(
-                                        Modifier.size(9.dp)
-                                            .background(Color(member.colorArgb.toInt()), CircleShape)
-                                    )
-                                }
-                            )
-                        }
-                    }
-                }
-
-                selectedMemberId?.let { memberId ->
-                    Spacer(Modifier.height(12.dp))
-                    RunRecorderPanel(
-                        session = session,
-                        memberId = memberId,
-                        onChanged = onChanged
-                    )
-                }
-
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RunStat("Senast", latest?.let { "${"%.1f".format(Locale.US, it.distanceKm)} km" } ?: "–", Modifier.weight(1f))
-                    RunStat("Bästa tempo", bestPace?.let(::paceText) ?: "–", Modifier.weight(1f))
-                    RunStat("Totalt", "${"%.1f".format(Locale.US, totalKm)} km", Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RunStat(
-                        "Senaste 7 dagar",
-                        "${recent7Runs.size} pass · ${"%.1f".format(Locale.US, recent7Km)} km",
-                        Modifier.weight(1f)
-                    )
-                    RunStat(
-                        "Utveckling",
-                        paceTrendText,
-                        Modifier.weight(1f)
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RunStat(
-                        "Den här månaden",
-                        "${monthRuns.size} pass · ${"%.1f".format(Locale.US, monthKm)} km",
-                        Modifier.weight(1f)
-                    )
-                    RunStat(
-                        "Aktiva veckor",
-                        if (activeWeeks > 0) "$activeWeeks totalt" else "–",
-                        Modifier.weight(1f)
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                Text("Månadsmål", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                Spacer(Modifier.height(6.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = monthlyGoalText,
-                        onValueChange = { value -> monthlyGoalText = value.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
-                        label = { Text("Mål km") },
-                        singleLine = true,
-                        modifier = Modifier.weight(0.42f)
-                    )
-                    Button(
-                        onClick = {
-                            val goal = monthlyGoalText.replace(',', '.').toFloatOrNull()
-                            if (goal != null && goal > 0f) goalPrefs.edit().putFloat(goalKey, goal).apply()
-                            else goalPrefs.edit().remove(goalKey).apply()
-                        },
-                        modifier = Modifier.weight(0.58f)
-                    ) { Text("Spara mål") }
-                }
-                if (monthlyGoalKm != null) {
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { monthlyGoalProgress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "${"%.1f".format(Locale.US, monthKm)} av ${"%.1f".format(Locale.US, monthlyGoalKm)} km · ${(monthlyGoalProgress * 100).toInt()}%",
-                        color = Muted,
-                        fontSize = 12.sp
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RunStat(
-                        "Längsta pass",
-                        longestDistance?.let { "${"%.1f".format(Locale.US, it)} km" } ?: "–",
-                        Modifier.weight(1f)
-                    )
-                    RunStat(
-                        "Personbästa",
-                        latestPbText,
-                        Modifier.weight(1f)
-                    )
-                }
-
-                if (plannedRuns.isNotEmpty()) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(tween(motionDuration(180, motionEnabled))) +
+                    slideInVertically(tween(motionDuration(230, motionEnabled))) { -it / 12 },
+                exit = fadeOut(tween(motionDuration(120, motionEnabled))) +
+                    slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 16 }
+            ) {
+                Column {
                     Spacer(Modifier.height(14.dp))
-                    Text("Kommande schema", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    plannedRuns.take(4).forEach { plan ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("${plan.event.date} · ${plan.event.time}", fontSize = 13.sp)
-                                Text(plan.runType, color = Muted, fontSize = 12.sp)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("${"%.1f".format(Locale.US, plan.distanceKm)} km", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                                TextButton(
-                                    onClick = { completingPlan = plan },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                                ) { Text("Registrera resultat", fontSize = 11.sp) }
-                            }
-                        }
-                    }
-                }
-
-                if (runs.size >= 2) {
-                    Spacer(Modifier.height(14.dp))
-                    Text("Tempo senaste passen", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Spacer(Modifier.height(6.dp))
-                    PaceGraph(runs.takeLast(8), Modifier.fillMaxWidth().height(110.dp))
-                }
-
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { showPlan = true },
-                        enabled = selectedMemberId != null,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+ Planera pass") }
-                    Button(
-                        onClick = { showAdd = true },
-                        enabled = selectedMemberId != null,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+ Registrera") }
-                }
-
-                if (runs.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    Text("Senaste passen", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    runs.takeLast(4).reversed().forEach { run ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(run.event.date.toString(), fontSize = 13.sp)
-                                Text("${"%.1f".format(Locale.US, run.distanceKm)} km · ${run.durationMinutes} min", color = Muted, fontSize = 12.sp)
-                                run.plannedDistanceKm?.let { planned ->
-                                    val diff = run.distanceKm - planned
-                                    val diffText = when {
-                                        diff > 0.049 -> "+${"%.1f".format(Locale.US, diff)} km"
-                                        diff < -0.049 -> "${"%.1f".format(Locale.US, diff)} km"
-                                        else -> "enligt plan"
+                    if (members.isNotEmpty()) {
+                        Text("Person", color = Muted, fontSize = 12.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            members.take(4).forEach { member ->
+                                FilterChip(
+                                    selected = selectedMemberId == member.id,
+                                    onClick = { selectedMemberId = member.id },
+                                    label = { Text(member.name, maxLines = 1) },
+                                    leadingIcon = {
+                                        Box(
+                                            Modifier.size(9.dp)
+                                                .background(Color(member.colorArgb.toInt()), CircleShape)
+                                        )
                                     }
-                                    Text(
-                                        "Plan ${"%.1f".format(Locale.US, planned)} km · $diffText",
-                                        color = Muted,
-                                        fontSize = 11.sp
-                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    selectedMemberId?.let { memberId ->
+                        Spacer(Modifier.height(12.dp))
+                        RunRecorderPanel(
+                            session = session,
+                            memberId = memberId,
+                            onChanged = onChanged
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RunStat("Senast", latest?.let { "${"%.1f".format(Locale.US, it.distanceKm)} km" } ?: "–", Modifier.weight(1f), motionEnabled)
+                        RunStat("Bästa tempo", bestPace?.let(::paceText) ?: "–", Modifier.weight(1f), motionEnabled)
+                        RunStat("Totalt", "${"%.1f".format(Locale.US, totalKm)} km", Modifier.weight(1f), motionEnabled)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RunStat(
+                            "Senaste 7 dagar",
+                            "${recent7Runs.size} pass · ${"%.1f".format(Locale.US, recent7Km)} km",
+                            Modifier.weight(1f),
+                            motionEnabled
+                        )
+                        RunStat(
+                            "Utveckling",
+                            paceTrendText,
+                            Modifier.weight(1f),
+                            motionEnabled
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RunStat(
+                            "Den här månaden",
+                            "${monthRuns.size} pass · ${"%.1f".format(Locale.US, monthKm)} km",
+                            Modifier.weight(1f),
+                            motionEnabled
+                        )
+                        RunStat(
+                            "Aktiva veckor",
+                            if (activeWeeks > 0) "$activeWeeks totalt" else "–",
+                            Modifier.weight(1f),
+                            motionEnabled
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text("Månadsmål", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = monthlyGoalText,
+                            onValueChange = { value -> monthlyGoalText = value.filter { it.isDigit() || it == ',' || it == '.' }.take(6) },
+                            label = { Text("Mål km") },
+                            singleLine = true,
+                            modifier = Modifier.weight(0.42f)
+                        )
+                        Button(
+                            onClick = {
+                                val goal = monthlyGoalText.replace(',', '.').toFloatOrNull()
+                                if (goal != null && goal > 0f) goalPrefs.edit().putFloat(goalKey, goal).apply()
+                                else goalPrefs.edit().remove(goalKey).apply()
+                            },
+                            modifier = Modifier.weight(0.58f)
+                        ) { Text("Spara mål") }
+                    }
+                    if (monthlyGoalKm != null) {
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { animatedGoalProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "${"%.1f".format(Locale.US, monthKm)} av ${"%.1f".format(Locale.US, monthlyGoalKm)} km · ${(animatedGoalProgress * 100).toInt()}%",
+                            color = Muted,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RunStat(
+                            "Längsta pass",
+                            longestDistance?.let { "${"%.1f".format(Locale.US, it)} km" } ?: "–",
+                            Modifier.weight(1f),
+                            motionEnabled
+                        )
+                        RunStat(
+                            "Personbästa",
+                            latestPbText,
+                            Modifier.weight(1f),
+                            motionEnabled
+                        )
+                    }
+
+                    if (plannedRuns.isNotEmpty()) {
+                        Spacer(Modifier.height(14.dp))
+                        Text("Kommande schema", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        plannedRuns.take(4).forEach { plan ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("${plan.event.date} · ${plan.event.time}", fontSize = 13.sp)
+                                    Text(plan.runType, color = Muted, fontSize = 12.sp)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("${"%.1f".format(Locale.US, plan.distanceKm)} km", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    TextButton(
+                                        onClick = { completingPlan = plan },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                    ) { Text("Registrera resultat", fontSize = 11.sp) }
                                 }
                             }
-                            Text(paceText(run.paceSecondsPerKm), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                        }
+                    }
+
+                    if (runs.size >= 2) {
+                        Spacer(Modifier.height(14.dp))
+                        Text("Tempo senaste passen", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Spacer(Modifier.height(6.dp))
+                        PaceGraph(runs.takeLast(8), Modifier.fillMaxWidth().height(110.dp), motionEnabled)
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { showPlan = true },
+                            enabled = selectedMemberId != null,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("+ Planera pass") }
+                        Button(
+                            onClick = { showAdd = true },
+                            enabled = selectedMemberId != null,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("+ Registrera") }
+                    }
+
+                    if (runs.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        Text("Senaste passen", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        runs.takeLast(4).reversed().forEach { run ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(run.event.date.toString(), fontSize = 13.sp)
+                                    Text("${"%.1f".format(Locale.US, run.distanceKm)} km · ${run.durationMinutes} min", color = Muted, fontSize = 12.sp)
+                                    run.plannedDistanceKm?.let { planned ->
+                                        val diff = run.distanceKm - planned
+                                        val diffText = when {
+                                            diff > 0.049 -> "+${"%.1f".format(Locale.US, diff)} km"
+                                            diff < -0.049 -> "${"%.1f".format(Locale.US, diff)} km"
+                                            else -> "enligt plan"
+                                        }
+                                        Text(
+                                            "Plan ${"%.1f".format(Locale.US, planned)} km · $diffText",
+                                            color = Muted,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                                Text(paceText(run.paceSecondsPerKm), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                            }
                         }
                     }
                 }
@@ -422,18 +464,73 @@ fun RunningProgressCard(
 }
 
 @Composable
-private fun RunStat(label: String, value: String, modifier: Modifier = Modifier) {
+private fun RunStat(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    motionEnabled: Boolean
+) {
     Surface(modifier = modifier, color = SoftPurple, shape = RoundedCornerShape(14.dp)) {
         Column(Modifier.padding(10.dp)) {
             Text(label, color = Muted, fontSize = 10.sp)
-            Text(value, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2)
+            AnimatedStatValue(value = value, motionEnabled = motionEnabled)
         }
     }
 }
 
 @Composable
-private fun PaceGraph(runs: List<RunEntry>, modifier: Modifier = Modifier) {
+private fun AnimatedStatValue(value: String, motionEnabled: Boolean) {
+    val match = remember(value) {
+        if (":" in value || "↑" in value || "↓" in value || "→" in value || "🏆" in value) null
+        else Regex("-?\\d+(?:[.,]\\d+)?").find(value)
+    }
+    val target = match?.value?.replace(',', '.')?.toFloatOrNull()
+    if (match == null || target == null) {
+        AnimatedContent(
+            targetState = value,
+            transitionSpec = {
+                fadeIn(tween(motionDuration(150, motionEnabled))) togetherWith
+                    fadeOut(tween(motionDuration(100, motionEnabled)))
+            },
+            label = "running-stat-text"
+        ) { shown ->
+            Text(shown, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2)
+        }
+        return
+    }
+
+    val animated = remember(value) { Animatable(if (motionEnabled) 0f else target) }
+    LaunchedEffect(value, motionEnabled) {
+        if (!motionEnabled) {
+            animated.snapTo(target)
+        } else {
+            animated.snapTo(0f)
+            animated.animateTo(target, animationSpec = tween(420))
+        }
+    }
+    val decimals = if (match.value.contains('.') || match.value.contains(',')) 1 else 0
+    val number = if (decimals == 0) "%.0f".format(Locale.US, animated.value)
+    else "%.1f".format(Locale.US, animated.value)
+    val display = value.replaceRange(match.range, number)
+    Text(display, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2)
+}
+
+@Composable
+private fun PaceGraph(
+    runs: List<RunEntry>,
+    modifier: Modifier = Modifier,
+    motionEnabled: Boolean
+) {
     val values = runs.map { it.paceSecondsPerKm.toFloat() }
+    val reveal = remember(values) { Animatable(if (motionEnabled) 0f else 1f) }
+    LaunchedEffect(values, motionEnabled) {
+        if (!motionEnabled) {
+            reveal.snapTo(1f)
+        } else {
+            reveal.snapTo(0f)
+            reveal.animateTo(1f, animationSpec = tween(620))
+        }
+    }
     Canvas(modifier) {
         if (values.size < 2) return@Canvas
         val min = values.minOrNull() ?: return@Canvas
@@ -447,12 +544,17 @@ private fun PaceGraph(runs: List<RunEntry>, modifier: Modifier = Modifier) {
             val y = size.height * (0.15f + normalized * 0.7f)
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
-        drawPath(path, color = Color(0xFFB47CFF), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
-        values.forEachIndexed { index, value ->
-            val x = index * stepX
-            val normalized = (value - min) / span
-            val y = size.height * (0.15f + normalized * 0.7f)
-            drawCircle(Color(0xFFB47CFF), radius = 6f, center = Offset(x, y))
+        val cutoff = size.width * reveal.value
+        clipRect(right = cutoff) {
+            drawPath(path, color = Color(0xFFB47CFF), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
+            values.forEachIndexed { index, value ->
+                val x = index * stepX
+                if (x <= cutoff + 2f) {
+                    val normalized = (value - min) / span
+                    val y = size.height * (0.15f + normalized * 0.7f)
+                    drawCircle(Color(0xFFB47CFF), radius = 6f, center = Offset(x, y))
+                }
+            }
         }
     }
 }
