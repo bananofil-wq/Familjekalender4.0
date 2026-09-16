@@ -1,24 +1,27 @@
 package se.familjekalender.app
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,6 +46,11 @@ private val LifePurple = Color(0xFFA66CFF)
 private val LifeMuted = Color(0xFFAAA8B7)
 private val LifeDivider = Color(0xFF292933)
 
+private enum class LifeFocus {
+    EVERYDAY,
+    RUNNING
+}
+
 @Composable
 internal fun RunningLifeDashboard(
     session: FamilySession,
@@ -56,15 +64,11 @@ internal fun RunningLifeDashboard(
 ) {
     val locale = remember { Locale("sv", "SE") }
     val motionEnabled = appMotionEnabled()
-    var revealRunning by remember { mutableStateOf(!motionEnabled) }
+    var focus by rememberSaveable { mutableStateOf(LifeFocus.EVERYDAY) }
     val weekStart = remember(selectedDate) {
         selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())
     }
     val memberById = remember(members) { members.associateBy { it.id } }
-
-    LaunchedEffect(Unit) {
-        revealRunning = true
-    }
 
     Column(
         Modifier
@@ -80,91 +84,117 @@ internal fun RunningLifeDashboard(
         ) {
             Column(Modifier.weight(1f)) {
                 Text("Löpning & vardag", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-                Text("Veckan först. Löpningen när du vill.", color = LifeMuted, fontSize = 13.sp)
+                Text(
+                    if (focus == LifeFocus.EVERYDAY) "Det viktigaste i veckan, utan brus."
+                    else "Träning, utveckling och historik i fokus.",
+                    color = LifeMuted,
+                    fontSize = 13.sp
+                )
             }
             IconButton(onClick = onOpenSettings) {
                 Icon(Icons.Default.Settings, contentDescription = "Inställningar", tint = Color(0xFFD1CFDC))
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = LifeSurface),
-            shape = RoundedCornerShape(22.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Den här veckan", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    Text(
-                        "${weekStart.month.getDisplayName(TextStyle.SHORT, locale)} ${weekStart.year}",
-                        color = LifeMuted,
-                        fontSize = 11.sp
-                    )
+        LifeFocusSelector(
+            focus = focus,
+            onFocusChanged = { focus = it },
+            motionEnabled = motionEnabled
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        AnimatedContent(
+            targetState = focus,
+            transitionSpec = {
+                val inMs = motionDuration(240, motionEnabled)
+                val outMs = motionDuration(180, motionEnabled)
+                if (targetState == LifeFocus.RUNNING) {
+                    (fadeIn(tween(inMs)) + slideInHorizontally(tween(inMs)) { it / 8 }) togetherWith
+                        (fadeOut(tween(outMs)) + slideOutHorizontally(tween(outMs)) { -it / 10 })
+                } else {
+                    (fadeIn(tween(inMs)) + slideInHorizontally(tween(inMs)) { -it / 8 }) togetherWith
+                        (fadeOut(tween(outMs)) + slideOutHorizontally(tween(outMs)) { it / 10 })
                 }
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    repeat(7) { index ->
-                        val date = weekStart.plusDays(index.toLong())
-                        val dayEvents = remember(events, date) { events.filter { it.date == date } }
-                        LifeDayCell(
+            },
+            label = "life-focus-content"
+        ) { currentFocus ->
+            when (currentFocus) {
+                LifeFocus.EVERYDAY -> Column {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = LifeSurface),
+                        shape = RoundedCornerShape(22.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Den här veckan", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                                Text(
+                                    "${weekStart.month.getDisplayName(TextStyle.SHORT, locale)} ${weekStart.year}",
+                                    color = LifeMuted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                repeat(7) { index ->
+                                    val date = weekStart.plusDays(index.toLong())
+                                    val dayEvents = remember(events, date) { events.filter { it.date == date } }
+                                    LifeDayCell(
+                                        date = date,
+                                        selected = date == selectedDate,
+                                        hasEvents = dayEvents.isNotEmpty(),
+                                        hasRun = dayEvents.any { it.title.startsWith("🏃") },
+                                        locale = locale,
+                                        motionEnabled = motionEnabled,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { onSelectDate(date) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    AnimatedContent(
+                        targetState = selectedDate,
+                        transitionSpec = {
+                            (fadeIn(tween(motionDuration(180, motionEnabled))) +
+                                slideInVertically(tween(motionDuration(220, motionEnabled))) { it / 8 }) togetherWith
+                                (fadeOut(tween(motionDuration(140, motionEnabled))) +
+                                    slideOutVertically(tween(motionDuration(180, motionEnabled))) { -it / 10 })
+                        },
+                        label = "life-day-agenda"
+                    ) { date ->
+                        LifeAgendaCard(
                             date = date,
-                            selected = date == selectedDate,
-                            hasEvents = dayEvents.isNotEmpty(),
-                            hasRun = dayEvents.any { it.title.startsWith("🏃") },
+                            events = events.filter { it.date == date }.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title }),
+                            memberById = memberById,
                             locale = locale,
-                            motionEnabled = motionEnabled,
-                            modifier = Modifier.weight(1f),
-                            onClick = { onSelectDate(date) }
+                            motionEnabled = motionEnabled
                         )
                     }
+                }
+
+                LifeFocus.RUNNING -> Column {
+                    RunningProgressCard(
+                        session = session,
+                        members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                        events = events,
+                        onChanged = onRefresh
+                    )
                 }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        AnimatedContent(
-            targetState = selectedDate,
-            transitionSpec = {
-                (fadeIn(tween(motionDuration(180, motionEnabled))) +
-                    slideInVertically(tween(motionDuration(220, motionEnabled))) { it / 8 }) togetherWith
-                    (fadeOut(tween(motionDuration(140, motionEnabled))) +
-                        slideOutVertically(tween(motionDuration(180, motionEnabled))) { -it / 10 })
-            },
-            label = "life-day-agenda"
-        ) { date ->
-            LifeAgendaCard(
-                date = date,
-                events = events.filter { it.date == date }.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title }),
-                memberById = memberById,
-                locale = locale,
-                motionEnabled = motionEnabled
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        AnimatedVisibility(
-            visible = revealRunning,
-            enter = fadeIn(tween(motionDuration(220, motionEnabled))) +
-                slideInVertically(tween(motionDuration(260, motionEnabled))) { it / 12 },
-            exit = fadeOut(tween(motionDuration(120, motionEnabled)))
-        ) {
-            RunningProgressCard(
-                session = session,
-                members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                events = events,
-                onChanged = onRefresh
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
         Button(
             onClick = onAdd,
@@ -178,6 +208,73 @@ internal fun RunningLifeDashboard(
         }
 
         Spacer(Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun LifeFocusSelector(
+    focus: LifeFocus,
+    onFocusChanged: (LifeFocus) -> Unit,
+    motionEnabled: Boolean
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = LifeSurface),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            LifeFocusButton(
+                label = "Vardag",
+                selected = focus == LifeFocus.EVERYDAY,
+                icon = { Icon(Icons.Default.EventNote, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                motionEnabled = motionEnabled,
+                modifier = Modifier.weight(1f),
+                onClick = { onFocusChanged(LifeFocus.EVERYDAY) }
+            )
+            LifeFocusButton(
+                label = "Löpning",
+                selected = focus == LifeFocus.RUNNING,
+                icon = { Icon(Icons.Default.DirectionsRun, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                motionEnabled = motionEnabled,
+                modifier = Modifier.weight(1f),
+                onClick = { onFocusChanged(LifeFocus.RUNNING) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun LifeFocusButton(
+    label: String,
+    selected: Boolean,
+    icon: @Composable () -> Unit,
+    motionEnabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1f else .985f,
+        animationSpec = tween(motionDuration(180, motionEnabled)),
+        label = "life-focus-scale"
+    )
+    Surface(
+        color = if (selected) LifePurple else Color.Transparent,
+        contentColor = if (selected) Color.White else LifeMuted,
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clickable(onClick = onClick)
+    ) {
+        Row(
+            Modifier.padding(vertical = 11.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            icon()
+            Spacer(Modifier.width(7.dp))
+            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        }
     }
 }
 
@@ -301,7 +398,14 @@ private fun LifeAgendaCard(
                         Spacer(Modifier.width(10.dp))
                         Text(timeText, color = LifeMuted, fontSize = 11.sp, modifier = Modifier.width(74.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                title,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             Text(memberName, color = LifeMuted, fontSize = 10.sp)
                         }
                     }
@@ -311,7 +415,12 @@ private fun LifeAgendaCard(
                 }
                 if (events.size > 4) {
                     Spacer(Modifier.height(7.dp))
-                    Text("+ ${events.size - 4} till", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "+ ${events.size - 4} till",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
