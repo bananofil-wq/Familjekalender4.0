@@ -1,5 +1,8 @@
 package se.familjekalender.app
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Row
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -305,19 +308,35 @@ internal fun AppUpdateSettingsCard() {
     var statusText by remember { mutableStateOf("Tryck för att kontrollera om en ny version finns.") }
     var statusIsError by remember { mutableStateOf(false) }
 
-    Text("Appuppdatering", fontWeight = FontWeight.Bold)
     Card(
-        colors = CardDefaults.cardColors(containerColor = CardBg),
+        colors = CardDefaults.cardColors(containerColor = LuxurySurface),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Installerad version: $currentVersion", color = Muted)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                statusText,
-                color = if (statusIsError) MaterialTheme.colorScheme.error else Color.White
-            )
+        Column(Modifier.padding(18.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Appuppdatering", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText)
+                    Text("Installerad version · $currentVersion", color = LuxuryTextMuted, fontSize = 12.sp)
+                }
+                Text("SYSTEM", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
             Spacer(Modifier.height(12.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    statusText,
+                    modifier = Modifier.padding(12.dp),
+                    color = if (statusIsError) MaterialTheme.colorScheme.error else LuxuryTextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+            }
+            Spacer(Modifier.height(10.dp))
 
             OutlinedButton(
                 onClick = {
@@ -343,7 +362,8 @@ internal fun AppUpdateSettingsCard() {
                     }
                 },
                 enabled = !checking && !updating,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = MaterialTheme.shapes.medium
             ) {
                 Text(if (checking) "Kontrollerar…" else "Sök efter uppdatering")
             }
@@ -375,7 +395,8 @@ internal fun AppUpdateSettingsCard() {
                         }
                     },
                     enabled = !checking && !updating,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text(if (updating) "Laddar ner…" else "Uppdatera nu")
                 }
@@ -383,3 +404,4 @@ internal fun AppUpdateSettingsCard() {
         }
     }
 }
+

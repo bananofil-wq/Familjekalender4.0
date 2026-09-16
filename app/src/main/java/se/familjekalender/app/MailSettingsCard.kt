@@ -1,5 +1,6 @@
 package se.familjekalender.app
 
+import androidx.compose.material3.MaterialTheme
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -140,17 +141,23 @@ internal fun MailSettingsCard(session: FamilySession) {
         }
     }
 
-    Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Mailkoppling", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Text(
-                "Koppla Gmail med Google. Kalenderinbjudningar från mail läggs in automatiskt och erbjudanden kan matchas mot inköpslistan.",
-                color = Muted,
-                fontSize = 12.sp
-            )
+    Card(
+        colors = CardDefaults.cardColors(containerColor = LuxurySurface),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("E-post", fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = LuxuryText)
+                    Text("Kalenderinbjudningar och erbjudanden kan läggas in automatiskt.", color = LuxuryTextMuted, fontSize = 12.sp)
+                }
+                Text("AUTO", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
             Spacer(Modifier.height(8.dp))
             if (accounts.isEmpty()) {
-                Text("Inga mailkonton kopplade ännu.", color = Muted, fontSize = 13.sp)
+                Text("Ingen e-post är ansluten ännu.", color = LuxuryTextMuted, fontSize = 12.sp)
             } else {
                 accounts.forEach { account ->
                     Row(
@@ -187,13 +194,15 @@ internal fun MailSettingsCard(session: FamilySession) {
             Button(
                 enabled = !syncing,
                 onClick = ::startGmailAuthorization,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = MaterialTheme.shapes.medium
             ) { Text(if (syncing) "Arbetar…" else "Koppla Gmail") }
 
             OutlinedButton(
                 enabled = !syncing,
                 onClick = { showAddOther = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = MaterialTheme.shapes.medium
             ) { Text("Annan e-post (IMAP)") }
 
             if (accounts.any { it.enabled }) {
@@ -215,17 +224,24 @@ internal fun MailSettingsCard(session: FamilySession) {
                 ) { Text(if (syncing) "Synkar…" else "Synka mail nu") }
             }
 
-            if (status.isNotBlank()) Text(status, color = Muted, fontSize = 12.sp)
-            Spacer(Modifier.height(6.dp))
+            if (status.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(status, modifier = Modifier.padding(12.dp), color = LuxuryTextMuted, fontSize = 12.sp)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Text("Privat och säkert", color = LuxuryText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(3.dp))
             Text(
-                "Gmail använder Googles behörighetsflöde och inget Gmail-lösenord sparas i appen. Automatisk kontroll körs var 30:e minut.",
-                color = Muted,
-                fontSize = 11.sp
-            )
-            Text(
-                "För iCloud, Yahoo och annan IMAP krypteras kontouppgifterna med Android Keystore och sparas bara på den här telefonen.",
-                color = Muted,
-                fontSize = 11.sp
+                "Google-inloggning används för Gmail och inget Gmail-lösenord sparas. Övriga IMAP-konton skyddas med Android Keystore på den här telefonen.",
+                color = LuxuryTextMuted,
+                fontSize = 11.sp,
+                lineHeight = 16.sp
             )
         }
     }
