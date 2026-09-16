@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -326,7 +330,7 @@ fun PersonalCalendarScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
             ) {
                 Text(
-                    "Välj en widget. Du kan göra den halv- eller fullbredd, flytta den, ta bort den eller lägga till nya widgetar.",
+                    "Tryck på en widget. Dra i ≡-handtaget för att flytta den och dra i ↔-handtaget för att ändra bredd. Du kan också ta bort eller lägga till widgetar.",
                     modifier = Modifier.padding(11.dp),
                     color = Muted,
                     fontSize = 11.sp
@@ -357,9 +361,8 @@ fun PersonalCalendarScreen(
                         canMoveUp = modules.indexOf(module) > 0,
                         canMoveDown = modules.indexOf(module) in 0 until modules.lastIndex,
                         onSelect = { selectedModule = module },
-                        onToggleWidth = {
-                            val next = if (width == 2) 1 else 2
-                            PersonalLayoutStore.saveWidgetWidth(prefs, profile, module, next)
+                        onSetWidth = { newWidth ->
+                            PersonalLayoutStore.saveWidgetWidth(prefs, profile, module, newWidth)
                             widthRevision++
                         },
                         onMoveUp = { moveModule(module, -1) },
@@ -491,14 +494,20 @@ private fun PersonalEditableWidget(
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     onSelect: () -> Unit,
-    onToggleWidth: () -> Unit,
+    onSetWidth: (Int) -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onRemove: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val density = LocalDensity.current
+    val reorderThresholdPx = with(density) { 64.dp.toPx() }
+    val resizeThresholdPx = with(density) { 34.dp.toPx() }
+    var dragOffsetY by remember(module) { mutableFloatStateOf(0f) }
+    var resizeOffsetX by remember(module) { mutableFloatStateOf(0f) }
+
     Card(
-        modifier = modifier,
+        modifier = modifier.graphicsLayer { translationY = if (selected) dragOffsetY else 0f },
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else if (editMode) BorderStroke(1.dp, Color.White.copy(alpha = .12f)) else null,
         shape = RoundedCornerShape(18.dp)
@@ -506,25 +515,84 @@ private fun PersonalEditableWidget(
         Column(Modifier.fillMaxWidth()) {
             if (selected) {
                 Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = .10f), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(module.label, modifier = Modifier.weight(1f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(34.dp)) {
-                                Icon(Icons.Default.ArrowUpward, contentDescription = "Flytta upp", modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(34.dp)) {
-                                Icon(Icons.Default.ArrowDownward, contentDescription = "Flytta ner", modifier = Modifier.size(18.dp))
-                            }
                             IconButton(onClick = onRemove, modifier = Modifier.size(34.dp)) {
-                                Icon(Icons.Default.Close, contentDescription = "Ta bort", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Close, contentDescription = "Ta bort widget", modifier = Modifier.size(18.dp))
                             }
                         }
-                        OutlinedButton(
-                            onClick = onToggleWidth,
-                            modifier = Modifier.fillMaxWidth().height(36.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(if (widthColumns == 2) "Storlek: full bredd · tryck för halv" else "Storlek: halv bredd · tryck för full", fontSize = 10.sp)
+                            Surface(
+                                color = Color.White.copy(alpha = .07f),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(38.dp)
+                                    .pointerInput(module, canMoveUp, canMoveDown) {
+                                        detectDragGestures(
+                                            onDragStart = {
+                                                onSelect()
+                                                dragOffsetY = 0f
+                                            },
+                                            onDragEnd = { dragOffsetY = 0f },
+                                            onDragCancel = { dragOffsetY = 0f }
+                                        ) { change, dragAmount ->
+                                            change.consume()
+                                            dragOffsetY += dragAmount.y
+                                            if (dragOffsetY <= -reorderThresholdPx && canMoveUp) {
+                                                onMoveUp()
+                                                dragOffsetY += reorderThresholdPx
+                                            } else if (dragOffsetY >= reorderThresholdPx && canMoveDown) {
+                                                onMoveDown()
+                                                dragOffsetY -= reorderThresholdPx
+                                            }
+                                        }
+                                    }
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("≡  Flytta", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                }
+                            }
+
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(38.dp)
+                                    .clickable { onSetWidth(if (widthColumns == 2) 1 else 2) }
+                                    .pointerInput(module, widthColumns) {
+                                        detectDragGestures(
+                                            onDragStart = { resizeOffsetX = 0f },
+                                            onDragEnd = { resizeOffsetX = 0f },
+                                            onDragCancel = { resizeOffsetX = 0f }
+                                        ) { change, dragAmount ->
+                                            change.consume()
+                                            resizeOffsetX += dragAmount.x
+                                            if (resizeOffsetX <= -resizeThresholdPx) {
+                                                if (widthColumns != 1) onSetWidth(1)
+                                                resizeOffsetX = 0f
+                                            } else if (resizeOffsetX >= resizeThresholdPx) {
+                                                if (widthColumns != 2) onSetWidth(2)
+                                                resizeOffsetX = 0f
+                                            }
+                                        }
+                                    }
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        if (widthColumns == 2) "↔  Full" else "↔  Halv",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
