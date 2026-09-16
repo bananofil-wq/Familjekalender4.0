@@ -207,6 +207,13 @@ fun RunRecorderPanel(
                         }
                     }
                 }
+
+                HorizontalDivider()
+                Text("Extern löpdata", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                HealthConnectSettingsCard(
+                    session = session,
+                    onSynced = onChanged
+                )
             }
         }
     }
