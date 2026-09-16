@@ -97,35 +97,35 @@ object HealthConnectSync {
             )
         )
 
-        return response.records
-            .asSequence()
-            .filter {
-                it.exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_RUNNING ||
-                    it.exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL
-            }
-            .mapNotNull { exercise ->
-                val aggregate = healthClient.aggregate(
-                    AggregateRequest(
-                        metrics = setOf(DistanceRecord.DISTANCE_TOTAL),
-                        timeRangeFilter = TimeRangeFilter.between(exercise.startTime, exercise.endTime)
-                    )
+        val runs = mutableListOf<HealthConnectRun>()
+        for (exercise in response.records) {
+            if (
+                exercise.exerciseType != ExerciseSessionRecord.EXERCISE_TYPE_RUNNING &&
+                exercise.exerciseType != ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL
+            ) continue
+
+            val aggregate = healthClient.aggregate(
+                AggregateRequest(
+                    metrics = setOf(DistanceRecord.DISTANCE_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(exercise.startTime, exercise.endTime)
                 )
-                val meters = aggregate[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0
-                val distanceKm = meters / 1000.0
-                if (distanceKm <= 0.0) return@mapNotNull null
-                val minutes = Duration.between(exercise.startTime, exercise.endTime)
-                    .toMinutes()
-                    .toInt()
-                    .coerceAtLeast(1)
-                HealthConnectRun(
-                    recordId = exercise.metadata.id,
-                    startTime = exercise.startTime,
-                    endTime = exercise.endTime,
-                    distanceKm = distanceKm,
-                    durationMinutes = minutes
-                )
-            }
-            .toList()
+            )
+            val meters = aggregate[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0
+            val distanceKm = meters / 1000.0
+            if (distanceKm <= 0.0) continue
+            val minutes = Duration.between(exercise.startTime, exercise.endTime)
+                .toMinutes()
+                .toInt()
+                .coerceAtLeast(1)
+            runs += HealthConnectRun(
+                recordId = exercise.metadata.id,
+                startTime = exercise.startTime,
+                endTime = exercise.endTime,
+                distanceKm = distanceKm,
+                durationMinutes = minutes
+            )
+        }
+        return runs
     }
 
     suspend fun syncToCalendar(context: Context, session: FamilySession): Int {
