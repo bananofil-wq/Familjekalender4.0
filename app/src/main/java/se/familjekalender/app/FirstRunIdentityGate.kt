@@ -21,6 +21,10 @@ import kotlinx.coroutines.launch
 private const val MAIN_PREFS = "family_calendar"
 private const val LOCATION_PREFS_IDENTITY = "family_calendar_location"
 private const val DEVICE_MEMBER_KEY = "device_member_id"
+private const val IDENTITY_CONFIRMATION_VERSION = "20260916_v2"
+
+private fun identityConfirmationKey(sessionId: String) =
+    "identity_prompt_confirmed_${IDENTITY_CONFIRMATION_VERSION}_$sessionId"
 
 @Composable
 fun FirstRunIdentityGate(
@@ -31,6 +35,7 @@ fun FirstRunIdentityGate(
     val scope = rememberCoroutineScope()
     val mainPrefs = remember { context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE) }
     val locationPrefs = remember { context.getSharedPreferences(LOCATION_PREFS_IDENTITY, Context.MODE_PRIVATE) }
+    val confirmationKey = remember(session.id) { identityConfirmationKey(session.id) }
 
     var members by remember(session.id) { mutableStateOf<List<SyncMember>>(emptyList()) }
     var loading by remember(session.id) { mutableStateOf(true) }
@@ -41,11 +46,18 @@ fun FirstRunIdentityGate(
                 ?: locationPrefs.getString(DEVICE_MEMBER_KEY, null)
         )
     }
+    var identityConfirmed by remember(session.id) {
+        mutableStateOf(mainPrefs.getBoolean(confirmationKey, false))
+    }
 
-    fun persistIdentity(memberId: String) {
+    fun persistIdentity(memberId: String, confirmedByUser: Boolean = false) {
         selectedMemberId = memberId
         mainPrefs.edit().putString(DEVICE_MEMBER_KEY, memberId).apply()
         locationPrefs.edit().putString(DEVICE_MEMBER_KEY, memberId).apply()
+        if (confirmedByUser) {
+            identityConfirmed = true
+            mainPrefs.edit().putBoolean(confirmationKey, true).apply()
+        }
     }
 
     suspend fun reloadMembers() {
@@ -70,7 +82,7 @@ fun FirstRunIdentityGate(
 
     LaunchedEffect(session.id) { reloadMembers() }
 
-    val chosenIsValid = selectedMemberId != null && members.any { it.id == selectedMemberId }
+    val chosenIsValid = identityConfirmed && selectedMemberId != null && members.any { it.id == selectedMemberId }
     if (chosenIsValid) {
         content()
         return
@@ -117,7 +129,7 @@ fun FirstRunIdentityGate(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { persistIdentity(member.id) },
+                                        .clickable { persistIdentity(member.id, confirmedByUser = true) },
                                     shape = RoundedCornerShape(18.dp),
                                     border = BorderStroke(1.dp, Color(member.colorArgb).copy(alpha = .75f)),
                                     colors = CardDefaults.cardColors(containerColor = Color(member.colorArgb).copy(alpha = .12f))
@@ -185,7 +197,7 @@ fun FirstRunIdentityGate(
                                                 it.role.equals(newRole.trim(), ignoreCase = true)
                                         } ?: loaded.lastOrNull { it.name.equals(newName.trim(), ignoreCase = true) }
                                             ?: error("Kunde inte hitta den skapade personen")
-                                        persistIdentity(created.id)
+                                        persistIdentity(created.id, confirmedByUser = true)
                                     }.onFailure {
                                         error = it.message ?: "Kunde inte skapa personen"
                                     }

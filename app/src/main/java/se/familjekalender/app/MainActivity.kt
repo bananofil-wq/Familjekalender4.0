@@ -878,7 +878,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
         0 -> 0
         1 -> 1
         2 -> 2
-        3, 5 -> 3
+        3 -> 3
+        5 -> 4
         else -> -1
     }
     NavigationBar(containerColor = Color(0xFA0B0B10), tonalElevation = 0.dp) {
@@ -886,7 +887,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
             Triple(1, Icons.Default.ShoppingCart, "Inköp"),
             Triple(2, Icons.Default.CheckCircle, "To-do"),
-            Triple(3, Icons.Default.People, "Familj")
+            Triple(3, Icons.Default.People, "Familj"),
+            Triple(5, Icons.Default.LocationOn, "Plats")
         ).forEachIndexed { index, (tab, icon, label) ->
             val isSelected = mappedSelection == index
             NavigationBarItem(

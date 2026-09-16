@@ -272,6 +272,7 @@ internal fun FamilyAssistantCard(
     var popup by remember { mutableStateOf<AssistantPopup?>(null) }
     var selectedMember by remember { mutableStateOf<SyncMember?>(null) }
     var todayPlanExpanded by remember { mutableStateOf(false) }
+    var showAttentionDetails by remember { mutableStateOf(false) }
 
     LaunchedEffect(session.id) {
         while (true) {
@@ -419,12 +420,12 @@ internal fun FamilyAssistantCard(
                 Surface(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = .08f),
                     shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().clickable { showAttentionDetails = true }
                 ) {
                     Column(Modifier.padding(13.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text("Behöver din uppmärksamhet", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
-                            Text("$attentionCount", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Text("$attentionCount  ›", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                         Spacer(Modifier.height(6.dp))
                         conflicts.take(2).forEach { Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
@@ -450,6 +451,54 @@ internal fun FamilyAssistantCard(
                 }
             }
         }
+    }
+
+    if (showAttentionDetails) {
+        val attentionItems = buildList {
+            conflicts.forEach { add("Krock" to it) }
+            planning.forEach { add("Planering" to it) }
+            actions.forEach { add("Förslag" to it) }
+        }
+        AlertDialog(
+            onDismissRequest = { showAttentionDetails = false },
+            shape = RoundedCornerShape(22.dp),
+            containerColor = Color(0xFF171A20),
+            title = {
+                Column {
+                    Text("Behöver din uppmärksamhet", fontWeight = FontWeight.Bold)
+                    Text("${attentionItems.size} saker att gå igenom", color = Muted, fontSize = 12.sp)
+                }
+            },
+            text = {
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    attentionItems.forEachIndexed { index, (kind, detail) ->
+                        Surface(
+                            color = when (kind) {
+                                "Krock" -> MaterialTheme.colorScheme.error.copy(alpha = .09f)
+                                "Förslag" -> MaterialTheme.colorScheme.primary.copy(alpha = .09f)
+                                else -> Color.White.copy(alpha = .045f)
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text("${index + 1}. $kind", color = if (kind == "Krock") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(3.dp))
+                                Text(detail, color = Color.White, fontSize = 13.sp)
+                                if (kind != "Förslag") {
+                                    Spacer(Modifier.height(5.dp))
+                                    Text("Åtgärd: ${weekActionSuggestion(detail)}", color = Muted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showAttentionDetails = false }) { Text("Stäng") } }
+        )
     }
 
     popup?.let { selected ->
