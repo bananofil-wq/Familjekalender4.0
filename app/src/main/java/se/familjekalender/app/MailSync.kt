@@ -53,11 +53,11 @@ import javax.mail.UIDFolder
 
 private val MAIL_STOCKHOLM: ZoneId = ZoneId.of("Europe/Stockholm")
 internal const val GMAIL_AUTH_SCOPE = "https://mail.google.com/"
-private const val GOOGLE_ACCOUNT_TYPE = "com.google"
+internal const val GOOGLE_ACCOUNT_TYPE = "com.google"
 
 internal fun gmailAuthorizationRequest(email: String? = null): AuthorizationRequest {
     val builder = AuthorizationRequest.builder()
-        .setRequestedScopes(listOf(Scope(GMAIL_AUTH_SCOPE), Scope("email")))
+        .setRequestedScopes(listOf(Scope(GMAIL_AUTH_SCOPE)))
     if (!email.isNullOrBlank()) {
         builder.setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
     }
@@ -70,7 +70,7 @@ internal suspend fun requestGmailAuthorization(context: Context, email: String? 
 internal suspend fun revokeGmailAuthorization(context: Context, email: String) {
     val request = RevokeAccessRequest.builder()
         .setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
-        .setScopes(listOf(Scope(GMAIL_AUTH_SCOPE), Scope("email")))
+        .setScopes(listOf(Scope(GMAIL_AUTH_SCOPE)))
         .build()
     Identity.getAuthorizationClient(context).revokeAccess(request).await()
 }
@@ -210,8 +210,12 @@ class MailSyncWorker(appContext: Context, params: WorkerParameters) : CoroutineW
 }
 
 internal object MailSyncEngine {
-    suspend fun testAccount(context: Context, account: MailAccount) = withContext(Dispatchers.IO) {
-        openStore(context, account).use { connection ->
+    suspend fun testAccount(
+        context: Context,
+        account: MailAccount,
+        accessTokenOverride: String? = null
+    ) = withContext(Dispatchers.IO) {
+        openStore(context, account, accessTokenOverride).use { connection ->
             val folder = connection.store.getFolder("INBOX")
             folder.open(Folder.READ_ONLY)
             folder.close(false)
@@ -307,7 +311,7 @@ internal object MailSyncEngine {
         return Pair(eventCount, offerCount)
     }
 
-    private suspend fun openStore(context: Context, account: MailAccount): StoreConnection {
+    private suspend fun openStore(context: Context, account: MailAccount, accessTokenOverride: String? = null): StoreConnection {
         val googleOauth = account.host.equals("imap.gmail.com", ignoreCase = true) && account.password.isBlank()
         val props = Properties().apply {
             put("mail.store.protocol", "imaps")
@@ -324,11 +328,13 @@ internal object MailSyncEngine {
             }
         }
         val credential = if (googleOauth) {
-            val authorization = requestGmailAuthorization(context, account.email)
-            if (authorization.hasResolution()) {
-                error("Gmail-behörigheten behöver förnyas under Inställningar > Mailkoppling")
+            accessTokenOverride?.takeIf { it.isNotBlank() } ?: run {
+                val authorization = requestGmailAuthorization(context, account.email)
+                if (authorization.hasResolution()) {
+                    error("Gmail-behörigheten behöver förnyas under Inställningar > E-post")
+                }
+                authorization.accessToken ?: error("Google returnerade ingen åtkomsttoken")
             }
-            authorization.accessToken ?: error("Google returnerade ingen åtkomsttoken")
         } else {
             account.password
         }
