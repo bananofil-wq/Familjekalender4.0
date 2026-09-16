@@ -1,6 +1,7 @@
 package se.familjekalender.app
 
 import android.content.SharedPreferences
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,6 +40,8 @@ object PersonalLayoutStore {
     private const val ACTIVE_PROFILE = "personal_active_profile"
     private fun profileKey(profile: Int) = "personal_profile_${profile}_modules"
     private fun profileNameKey(profile: Int) = "personal_profile_${profile}_name"
+    private fun widgetWidthKey(profile: Int, module: PersonalCalendarModule) =
+        "personal_profile_${profile}_widget_width_${module.name}"
 
     private val defaults = mapOf(
         1 to listOf(PersonalCalendarModule.ASSISTANT, PersonalCalendarModule.TODAY, PersonalCalendarModule.CALENDAR),
@@ -71,6 +74,13 @@ object PersonalLayoutStore {
     fun saveModules(prefs: SharedPreferences, profile: Int, modules: List<PersonalCalendarModule>) {
         prefs.edit().putString(profileKey(profile), modules.distinct().joinToString(",") { it.name }).apply()
     }
+
+    fun widgetWidth(prefs: SharedPreferences, profile: Int, module: PersonalCalendarModule): Int =
+        prefs.getInt(widgetWidthKey(profile.coerceIn(1, 3), module), 2).coerceIn(1, 2)
+
+    fun saveWidgetWidth(prefs: SharedPreferences, profile: Int, module: PersonalCalendarModule, columns: Int) {
+        prefs.edit().putInt(widgetWidthKey(profile.coerceIn(1, 3), module), columns.coerceIn(1, 2)).apply()
+    }
 }
 
 @Composable
@@ -101,7 +111,7 @@ fun PersonalLayoutEditor(
     ) {
         Column(Modifier.padding(14.dp)) {
             Text("Personligt läge", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("Bygg kalendern som du vill ha den. Välj vilka delar som ska visas, ändra ordningen och spara upp till tre egna layouter.", color = Muted, fontSize = 12.sp)
+            Text("Välj vilka delar som ska finnas i profilen. På själva Personligt-sidan kan du sedan trycka Redigera och ändra storlek, ordning, lägga till eller ta bort widgetar direkt.", color = Muted, fontSize = 12.sp)
             Spacer(Modifier.height(10.dp))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -234,8 +244,52 @@ fun PersonalCalendarScreen(
     onRefresh: suspend () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val modules = remember(profile, revision) { PersonalLayoutStore.modules(prefs, profile) }
+    var modules by remember(profile, revision) {
+        mutableStateOf(PersonalLayoutStore.modules(prefs, profile))
+    }
     val profileName = remember(profile, revision) { PersonalLayoutStore.profileName(prefs, profile) }
+    var editMode by remember(profile) { mutableStateOf(false) }
+    var selectedModule by remember(profile) { mutableStateOf<PersonalCalendarModule?>(null) }
+    var showAddWidget by remember(profile) { mutableStateOf(false) }
+    var widthRevision by remember(profile) { mutableIntStateOf(0) }
+
+    fun persistModules(updated: List<PersonalCalendarModule>) {
+        modules = updated.distinct()
+        PersonalLayoutStore.saveModules(prefs, profile, modules)
+        if (selectedModule !in modules) selectedModule = null
+    }
+
+    fun moveModule(module: PersonalCalendarModule, delta: Int) {
+        val from = modules.indexOf(module)
+        if (from < 0) return
+        val to = (from + delta).coerceIn(0, modules.lastIndex)
+        if (from == to) return
+        val updated = modules.toMutableList()
+        updated.removeAt(from)
+        updated.add(to, module)
+        persistModules(updated)
+    }
+
+    val widths = remember(modules, profile, widthRevision) {
+        modules.associateWith { module -> PersonalLayoutStore.widgetWidth(prefs, profile, module) }
+    }
+    val widgetRows = remember(modules, widths) {
+        buildList<List<PersonalCalendarModule>> {
+            var pendingHalf: PersonalCalendarModule? = null
+            modules.forEach { module ->
+                if (widths[module] == 2) {
+                    pendingHalf?.let { add(listOf(it)); pendingHalf = null }
+                    add(listOf(module))
+                } else if (pendingHalf == null) {
+                    pendingHalf = module
+                } else {
+                    add(listOf(pendingHalf!!, module))
+                    pendingHalf = null
+                }
+            }
+            pendingHalf?.let { add(listOf(it)) }
+        }
+    }
 
     Column(
         Modifier
@@ -250,67 +304,239 @@ fun PersonalCalendarScreen(
                 if (profileName.isNotBlank()) {
                     Text(profileName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                 }
-                Text("${modules.size} aktiva moduler", color = Muted, fontSize = 11.sp)
+                Text(
+                    if (editMode) "Tryck på en widget för att ändra den" else "${modules.size} aktiva widgetar",
+                    color = Muted,
+                    fontSize = 11.sp
+                )
+            }
+            if (editMode) {
+                TextButton(onClick = { editMode = false; selectedModule = null; showAddWidget = false }) {
+                    Text("Klar", fontWeight = FontWeight.Bold)
+                }
+            } else {
+                OutlinedButton(onClick = { editMode = true }) { Text("Redigera") }
             }
         }
 
-        modules.forEach { module ->
-            when (module) {
-                PersonalCalendarModule.ASSISTANT ->
-                    FamilyAssistantCard(session, events, members, shopping, onAdd)
+        if (editMode) {
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = .08f),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    "Välj en widget. Du kan göra den halv- eller fullbredd, flytta den, ta bort den eller lägga till nya widgetar.",
+                    modifier = Modifier.padding(11.dp),
+                    color = Muted,
+                    fontSize = 11.sp
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+        }
 
-                PersonalCalendarModule.WEEK ->
-                    WeekOverviewCard(events, members)
-
-                PersonalCalendarModule.AUTOPILOT ->
-                    FamilyAutopilotCard(events, members)
-
-                PersonalCalendarModule.TODAY ->
-                    PersonalTodayAgenda(selectedDate, events, members)
-
-                PersonalCalendarModule.CALENDAR ->
-                    Box(Modifier.fillMaxWidth().height(590.dp)) {
-                        ExactCalendarScreen(
-                            selectedDate,
-                            onSelectDate,
-                            events,
-                            members,
-                            palette,
-                            themeMode,
-                            onAdd = onAdd,
-                            onAddLaundry = onAdd,
-                            addMenuRequest = 0
-                        )
+        widgetRows.forEach { rowModules ->
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                rowModules.forEach { module ->
+                    val width = widths[module] ?: 2
+                    val itemModifier = if (rowModules.size == 2 || width == 1) {
+                        Modifier.weight(1f)
+                    } else {
+                        Modifier.fillMaxWidth()
                     }
+                    PersonalEditableWidget(
+                        module = module,
+                        modifier = itemModifier,
+                        selected = editMode && selectedModule == module,
+                        editMode = editMode,
+                        widthColumns = width,
+                        canMoveUp = modules.indexOf(module) > 0,
+                        canMoveDown = modules.indexOf(module) in 0 until modules.lastIndex,
+                        onSelect = { selectedModule = module },
+                        onToggleWidth = {
+                            val next = if (width == 2) 1 else 2
+                            PersonalLayoutStore.saveWidgetWidth(prefs, profile, module, next)
+                            widthRevision++
+                        },
+                        onMoveUp = { moveModule(module, -1) },
+                        onMoveDown = { moveModule(module, 1) },
+                        onRemove = { persistModules(modules - module) }
+                    ) {
+                        when (module) {
+                            PersonalCalendarModule.ASSISTANT ->
+                                FamilyAssistantCard(session, events, members, shopping, onAdd)
 
-                PersonalCalendarModule.RECURRING ->
-                    RecurringLifeCard(session = session, events = events) {
-                        scope.launch { onRefresh() }
+                            PersonalCalendarModule.WEEK ->
+                                WeekOverviewCard(events, members)
+
+                            PersonalCalendarModule.AUTOPILOT ->
+                                FamilyAutopilotCard(events, members)
+
+                            PersonalCalendarModule.TODAY ->
+                                PersonalTodayAgenda(selectedDate, events, members)
+
+                            PersonalCalendarModule.CALENDAR ->
+                                Box(Modifier.fillMaxWidth().height(590.dp)) {
+                                    ExactCalendarScreen(
+                                        selectedDate,
+                                        onSelectDate,
+                                        events,
+                                        members,
+                                        palette,
+                                        themeMode,
+                                        onAdd = onAdd,
+                                        onAddLaundry = onAdd,
+                                        addMenuRequest = 0
+                                    )
+                                }
+
+                            PersonalCalendarModule.RECURRING ->
+                                RecurringLifeCard(session = session, events = events) {
+                                    scope.launch { onRefresh() }
+                                }
+
+                            PersonalCalendarModule.RUNNING ->
+                                RunningProgressCard(
+                                    session = session,
+                                    members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                                    events = events,
+                                    onChanged = { onRefresh() }
+                                )
+                        }
                     }
-
-                PersonalCalendarModule.RUNNING ->
-                    RunningProgressCard(
-                        session = session,
-                        members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                        events = events,
-                        onChanged = { onRefresh() }
-                    )
+                }
+                if (rowModules.size == 1 && (widths[rowModules.first()] ?: 2) == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
             }
         }
 
-        if (modules.isEmpty()) {
+        if (editMode) {
+            OutlinedButton(
+                onClick = { showAddWidget = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Lägg till widget")
+            }
+        }
+
+        if (modules.isEmpty() && !editMode) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBg),
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
-                Text(
-                    "Den här profilen har inga moduler ännu. Lägg till dem under Inställningar → Gränssnitt → Personlig.",
-                    modifier = Modifier.padding(16.dp),
-                    color = Muted
-                )
+                Column(Modifier.padding(16.dp)) {
+                    Text("Den här profilen är tom.", color = Muted)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { editMode = true; showAddWidget = true }) {
+                        Text("Lägg till widget")
+                    }
+                }
             }
         }
         Spacer(Modifier.height(14.dp))
+    }
+
+    if (showAddWidget) {
+        val available = PersonalCalendarModule.values().filter { it !in modules }
+        AlertDialog(
+            onDismissRequest = { showAddWidget = false },
+            title = { Text("Lägg till widget") },
+            text = {
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    if (available.isEmpty()) {
+                        Text("Alla widgetar är redan tillagda.", color = Muted)
+                    } else {
+                        available.forEach { module ->
+                            Surface(
+                                color = Color.White.copy(alpha = .04f),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    persistModules(modules + module)
+                                    selectedModule = module
+                                    showAddWidget = false
+                                }
+                            ) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text(module.label, fontWeight = FontWeight.SemiBold)
+                                    Text(module.description, color = Muted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showAddWidget = false }) { Text("Stäng") } }
+        )
+    }
+}
+
+@Composable
+private fun PersonalEditableWidget(
+    module: PersonalCalendarModule,
+    modifier: Modifier,
+    selected: Boolean,
+    editMode: Boolean,
+    widthColumns: Int,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onSelect: () -> Unit,
+    onToggleWidth: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onRemove: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else if (editMode) BorderStroke(1.dp, Color.White.copy(alpha = .12f)) else null,
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            if (selected) {
+                Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = .10f), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(module.label, modifier = Modifier.weight(1f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(34.dp)) {
+                                Icon(Icons.Default.ArrowUpward, contentDescription = "Flytta upp", modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(34.dp)) {
+                                Icon(Icons.Default.ArrowDownward, contentDescription = "Flytta ner", modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = onRemove, modifier = Modifier.size(34.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Ta bort", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = onToggleWidth,
+                            modifier = Modifier.fillMaxWidth().height(36.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text(if (widthColumns == 2) "Storlek: full bredd · tryck för halv" else "Storlek: halv bredd · tryck för full", fontSize = 10.sp)
+                        }
+                    }
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .then(if (editMode) Modifier.clickable(onClick = onSelect) else Modifier)
+            ) {
+                content()
+            }
+        }
     }
 }
 
