@@ -124,6 +124,7 @@ internal fun MinimalCalendarScreen(
 
         AnimatedContent(
             targetState = month,
+            modifier = Modifier.fillMaxWidth(),
             transitionSpec = {
                 val inMs = motionDuration(260, motionEnabled)
                 val outMs = motionDuration(220, motionEnabled)
@@ -200,87 +201,94 @@ private fun MinimalMonthGrid(
     onSelect: (LocalDate) -> Unit
 ) {
     val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
-    Row(Modifier.fillMaxWidth()) {
-        weekdays.forEach { day ->
-            Text(day, color = MinimalMuted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
-        }
-    }
-
-    Spacer(Modifier.height(8.dp))
     val first = month.atDay(1)
-    val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
+    val leadingDays = first.dayOfWeek.value - 1
+    val gridStart = first.minusDays(leadingDays.toLong())
+    val rowCount = ((leadingDays + month.lengthOfMonth() + 6) / 7).coerceIn(4, 6)
     val eventsByDate = remember(events) { events.groupBy { it.date } }
 
-    repeat(6) { row ->
+    // AnimatedContent lays out multiple root children on top of each other.
+    // Keep the whole month grid under one Column so week rows retain their height.
+    Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth()) {
-            repeat(7) { column ->
-                val date = gridStart.plusDays((row * 7 + column).toLong())
-                val inMonth = YearMonth.from(date) == month
-                val isSelected = date == selectedDate
-                val dayEvents = eventsByDate[date].orEmpty()
-                val birthday = dayEvents.any { it.title.trim().startsWith("🌈") }
-                val selectionScale by animateFloatAsState(
-                    targetValue = if (isSelected) 1f else .78f,
-                    animationSpec = tween(motionDuration(220, motionEnabled)),
-                    label = "clean-date-selection-scale"
-                )
-                val selectionAlpha by animateFloatAsState(
-                    targetValue = if (isSelected) 1f else 0f,
-                    animationSpec = tween(motionDuration(180, motionEnabled)),
-                    label = "clean-date-selection-alpha"
-                )
-                val dayColor by animateColorAsState(
-                    targetValue = when {
-                        isSelected -> Color.White
-                        inMonth -> Color(0xFFF1F0F6)
-                        else -> Color(0xFF5F5E69)
-                    },
-                    animationSpec = tween(motionDuration(180, motionEnabled)),
-                    label = "clean-date-color"
-                )
+            weekdays.forEach { day ->
+                Text(day, color = MinimalMuted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+            }
+        }
 
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .height(54.dp)
-                        .clickable { onSelect(date) },
-                    contentAlignment = Alignment.Center
-                ) {
+        Spacer(Modifier.height(8.dp))
+
+        repeat(rowCount) { row ->
+            Row(Modifier.fillMaxWidth()) {
+                repeat(7) { column ->
+                    val date = gridStart.plusDays((row * 7 + column).toLong())
+                    val inMonth = YearMonth.from(date) == month
+                    val isSelected = date == selectedDate
+                    val dayEvents = eventsByDate[date].orEmpty()
+                    val birthday = dayEvents.any { it.title.trim().startsWith("🌈") }
+                    val selectionScale by animateFloatAsState(
+                        targetValue = if (isSelected) 1f else .78f,
+                        animationSpec = tween(motionDuration(220, motionEnabled)),
+                        label = "clean-date-selection-scale"
+                    )
+                    val selectionAlpha by animateFloatAsState(
+                        targetValue = if (isSelected) 1f else 0f,
+                        animationSpec = tween(motionDuration(180, motionEnabled)),
+                        label = "clean-date-selection-alpha"
+                    )
+                    val dayColor by animateColorAsState(
+                        targetValue = when {
+                            isSelected -> Color.White
+                            inMonth -> Color(0xFFF1F0F6)
+                            else -> Color(0xFF5F5E69)
+                        },
+                        animationSpec = tween(motionDuration(180, motionEnabled)),
+                        label = "clean-date-color"
+                    )
+
                     Box(
                         Modifier
-                            .size(40.dp)
-                            .graphicsLayer {
-                                scaleX = selectionScale
-                                scaleY = selectionScale
-                                alpha = selectionAlpha
-                            }
-                            .clip(CircleShape)
-                            .background(MinimalPurple)
-                    )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            date.dayOfMonth.toString(),
-                            color = dayColor,
-                            fontSize = 15.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                        )
-                        Spacer(Modifier.height(3.dp))
-                        when {
-                            birthday -> {
-                                Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
-                                    BirthdayRainbowIcon(Modifier.size(18.dp))
+                            .weight(1f)
+                            .height(54.dp)
+                            .clickable { onSelect(date) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .graphicsLayer {
+                                    scaleX = selectionScale
+                                    scaleY = selectionScale
+                                    alpha = selectionAlpha
                                 }
+                                .clip(CircleShape)
+                                .background(MinimalPurple)
+                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                date.dayOfMonth.toString(),
+                                color = dayColor,
+                                fontSize = 15.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            Spacer(Modifier.height(3.dp))
+                            when {
+                                birthday -> {
+                                    Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+                                        BirthdayRainbowIcon(Modifier.size(18.dp))
+                                    }
+                                }
+                                dayEvents.isNotEmpty() -> {
+                                    Box(
+                                        Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isSelected) Color.White else MinimalPurple.copy(alpha = .88f))
+                                    )
+                                    Spacer(Modifier.height(3.dp))
+                                }
+                                else -> Spacer(Modifier.height(9.dp))
                             }
-                            dayEvents.isNotEmpty() -> {
-                                Box(
-                                    Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isSelected) Color.White else MinimalPurple.copy(alpha = .88f))
-                                )
-                                Spacer(Modifier.height(3.dp))
-                            }
-                            else -> Spacer(Modifier.height(9.dp))
                         }
                     }
                 }
