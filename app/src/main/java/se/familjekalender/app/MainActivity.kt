@@ -74,8 +74,9 @@ enum class ThemeMode(val label: String, val emoji: String) {
 }
 
 enum class UiLayoutMode(val label: String, val description: String) {
-    FULL("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy"),
     MINIMAL("Clean", "Ren månadskalender med en diskret markering per dag"),
+    FULL("Fullständigt", "Alla översikter, familjeverktyg och den fulla kalendern"),
+    RUNNING("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy"),
     PERSONAL("Personligt", "Bygg din egen kalender med valbara delar och egen ordning")
 }
 
@@ -364,7 +365,49 @@ private fun SyncedApp(
                                 FamilyCalendarWidget.enqueueRefresh(context)
                             }
                         )
-                        UiLayoutMode.FULL -> RunningLifeDashboard(
+                        UiLayoutMode.FULL -> Column(
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
+                            WeekOverviewCard(events, members)
+                            FamilyAutopilotCard(events, members)
+                            RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
+                            RunningProgressCard(
+                                session = session,
+                                members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                                events = events,
+                                onChanged = {
+                                    refresh()
+                                    FamilyCalendarWidget.enqueueRefresh(context)
+                                }
+                            )
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(590.dp)
+                            ) {
+                                ExactCalendarScreen(
+                                    selectedDate,
+                                    { selectedDate = it },
+                                    events,
+                                    members,
+                                    palette,
+                                    themeMode,
+                                    onAdd = {
+                                        addEventInitialTitle = ""
+                                        showAddEvent = true
+                                    },
+                                    onAddLaundry = {
+                                        addEventInitialTitle = "🧺 Tvätt"
+                                        showAddEvent = true
+                                    },
+                                    addMenuRequest = assistantAddRequest
+                                )
+                            }
+                        }
+                        UiLayoutMode.RUNNING -> RunningLifeDashboard(
                             session = session,
                             selectedDate = selectedDate,
                             onSelectDate = { selectedDate = it },
@@ -737,7 +780,7 @@ private fun SettingsScreen(
     }
     Spacer(Modifier.height(16.dp))
     Text("Gränssnitt", fontWeight = FontWeight.Bold)
-    Text("Välj Clean, Löpning & vardag eller Personligt. I Personligt bestämmer du själv vilka delar kalendern ska visa och i vilken ordning. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)
+    Text("Välj Clean, Fullständigt, Löpning & vardag eller Personligt. I Personligt bestämmer du själv vilka delar kalendern ska visa och i vilken ordning. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)
     UiLayoutMode.values().forEach { mode ->
         Row(
             Modifier

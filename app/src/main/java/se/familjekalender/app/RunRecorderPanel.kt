@@ -35,6 +35,7 @@ fun RunRecorderPanel(
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var busyFinishing by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
+    var replayRunId by remember(memberId) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(memberId) {
         while (true) {
@@ -159,17 +160,52 @@ fun RunRecorderPanel(
             errorText?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
 
             if (!isThisMemberRecording) {
-                latestRun?.let { run ->
-                    val km = runDistanceKm(run.points)
-                    val seconds = run.durationMillis / 1000L
+                val savedRuns = store.runsFor(memberId)
+                if (savedRuns.isNotEmpty()) {
                     HorizontalDivider()
-                    Text("Senaste inspelade rundan", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        RecorderStat("Distans", "%.2f km".format(Locale.US, km), Modifier.weight(1f))
-                        RecorderStat("Tid", formatDuration(seconds), Modifier.weight(1f))
-                        RecorderStat("Tempo", paceSecondsPerKm(km, seconds)?.let(::formatPace) ?: "–", Modifier.weight(1f))
+                    Text("Inspelade rundor", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text("Öppna valfri GPS-runda och spela upp den på kartan.", color = Muted, fontSize = 11.sp)
+                    savedRuns.take(12).forEach { run ->
+                        val km = runDistanceKm(run.points)
+                        val seconds = run.durationMillis / 1000L
+                        val date = Instant.ofEpochMilli(run.startedAtMillis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                        val expanded = replayRunId == run.id
+                        Surface(
+                            color = CardBg,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(date.toString(), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        Text(
+                                            "%.2f km · %s · %s".format(
+                                                Locale.US,
+                                                km,
+                                                formatDuration(seconds),
+                                                paceSecondsPerKm(km, seconds)?.let(::formatPace) ?: "–"
+                                            ),
+                                            color = Muted,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    TextButton(onClick = { replayRunId = if (expanded) null else run.id }) {
+                                        Text(if (expanded) "Stäng" else "Visa / spela upp")
+                                    }
+                                }
+                                if (expanded && run.points.isNotEmpty()) {
+                                    RunReplayMap(run, Modifier.fillMaxWidth())
+                                }
+                            }
+                        }
                     }
-                    if (run.points.isNotEmpty()) RunReplayMap(run, Modifier.fillMaxWidth())
                 }
             }
         }
