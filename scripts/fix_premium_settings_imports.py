@@ -15,7 +15,6 @@ mail_path = src / "MailSettingsCard.kt"
 mail = mail_path.read_text(encoding="utf-8")
 for imp in [
     "androidx.compose.material3.MaterialTheme",
-    "androidx.compose.foundation.layout.weight",
 ]:
     mail = ensure_import(mail, imp)
 mail_path.write_text(mail, encoding="utf-8")
@@ -24,7 +23,6 @@ update_path = src / "AppUpdate.kt"
 update = update_path.read_text(encoding="utf-8")
 for imp in [
     "androidx.compose.foundation.layout.Row",
-    "androidx.compose.foundation.layout.weight",
     "androidx.compose.ui.Alignment",
     "androidx.compose.ui.unit.sp",
 ]:
