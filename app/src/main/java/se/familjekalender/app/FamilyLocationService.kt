@@ -32,6 +32,10 @@ class FamilyLocationService : Service() {
         private const val LOCATION_PREFS = "family_calendar_location"
         private const val FAMILY_PREFS = "family_calendar"
 
+        private const val LIVE_INTERVAL_MS = 3_000L
+        private const val LIVE_HEARTBEAT_MS = 5_000L
+        private const val LIVE_MIN_DISTANCE_M = 3f
+
         private const val MOVING_NETWORK_INTERVAL_MS = 45_000L
         private const val MOVING_GPS_INTERVAL_MS = 60_000L
         private const val STILL_NETWORK_INTERVAL_MS = 90_000L
@@ -63,7 +67,7 @@ class FamilyLocationService : Service() {
         }
     }
 
-    private enum class TrackingMode { MOVING, STILL, NEAR_PLACE }
+    private enum class TrackingMode { LIVE, MOVING, STILL, NEAR_PLACE }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationManager: LocationManager
@@ -98,7 +102,7 @@ class FamilyLocationService : Service() {
             return START_NOT_STICKY
         }
 
-        configureTracking(TrackingMode.MOVING, force = trackingMode == null)
+        configureTracking(if (liveViewActive()) TrackingMode.LIVE else TrackingMode.MOVING, force = true)
         refreshPlaces()
         publishRecentCachedLocation()
         return START_STICKY
@@ -122,6 +126,10 @@ class FamilyLocationService : Service() {
             !prefs.getString("device_member_id", null).isNullOrBlank()
     }
 
+    private fun liveViewActive(): Boolean =
+        getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
+            .getBoolean("live_view_active", false)
+
     private fun configureTracking(mode: TrackingMode, force: Boolean = false) {
         if (!hasLocationPermission()) return
         if (!force && trackingMode == mode) return
@@ -130,6 +138,10 @@ class FamilyLocationService : Service() {
         trackingMode = mode
 
         val requests = when (mode) {
+            TrackingMode.LIVE -> listOf(
+                Triple(LocationManager.NETWORK_PROVIDER, LIVE_INTERVAL_MS, LIVE_MIN_DISTANCE_M),
+                Triple(LocationManager.GPS_PROVIDER, LIVE_INTERVAL_MS, LIVE_MIN_DISTANCE_M)
+            )
             TrackingMode.MOVING -> listOf(
                 Triple(LocationManager.NETWORK_PROVIDER, MOVING_NETWORK_INTERVAL_MS, 15f),
                 Triple(LocationManager.GPS_PROVIDER, MOVING_GPS_INTERVAL_MS, 20f)
@@ -180,13 +192,15 @@ class FamilyLocationService : Service() {
         if (location.time > 0 && System.currentTimeMillis() - location.time > 2 * 60_000L) return
 
         val now = System.currentTimeMillis()
-        val desiredMode = desiredTrackingMode(location, now)
+        val desiredMode = if (liveViewActive()) TrackingMode.LIVE else desiredTrackingMode(location, now)
         configureTracking(desiredMode)
 
         if (publishing) return
 
         val previous = lastPublishedLocation
-        val movementThreshold = if (location.hasAccuracy()) {
+        val movementThreshold = if (desiredMode == TrackingMode.LIVE) {
+            LIVE_MIN_DISTANCE_M
+        } else if (location.hasAccuracy()) {
             maxOf(MIN_PUBLISH_DISTANCE_M, (location.accuracy * 0.75f).coerceAtMost(80f))
         } else {
             MIN_PUBLISH_DISTANCE_M
@@ -258,6 +272,7 @@ class FamilyLocationService : Service() {
     }
 
     private fun heartbeatInterval(mode: TrackingMode): Long = when (mode) {
+        TrackingMode.LIVE -> LIVE_HEARTBEAT_MS
         TrackingMode.MOVING -> MOVING_HEARTBEAT_MS
         TrackingMode.STILL -> STILL_HEARTBEAT_MS
         TrackingMode.NEAR_PLACE -> NEAR_PLACE_HEARTBEAT_MS
