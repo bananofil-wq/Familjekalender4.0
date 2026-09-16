@@ -23,6 +23,7 @@ class FamilyCalendarApplication : Application() {
         prefs = getSharedPreferences("family_calendar", 0)
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
         attachPushIdentity()
+        HealthConnectSyncScheduler.schedule(this)
 
         appScope.launch {
             OneSignal.Notifications.requestPermission(false)
