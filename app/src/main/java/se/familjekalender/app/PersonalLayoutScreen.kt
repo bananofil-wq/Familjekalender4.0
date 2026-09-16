@@ -244,7 +244,6 @@ fun PersonalCalendarScreen(
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
@@ -252,9 +251,6 @@ fun PersonalCalendarScreen(
                     Text(profileName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                 }
                 Text("${modules.size} aktiva moduler", color = Muted, fontSize = 11.sp)
-            }
-            FilledIconButton(onClick = onAdd) {
-                Icon(Icons.Default.Add, contentDescription = "Lägg till aktivitet")
             }
         }
 
