@@ -18,25 +18,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * One visual language for the whole app.
- * Seasonal themes may change the accent, while surfaces, typography, radius and motion stay consistent.
+ * Familjeappens gemensamma visuella språk.
+ *
+ * Varumärkesaccenten är stabil genom hela appen. Säsongsteman får fortfarande
+ * ge kalenderbilder och sekundära detaljer personlighet, men knappar, navigation,
+ * val och primära kontroller använder samma identitet överallt.
  */
-internal val LuxuryBackground = Color(0xFF0B0A0F)
-internal val LuxurySurface = Color(0xFF141218)
-internal val LuxurySurfaceElevated = Color(0xFF1B1821)
-internal val LuxurySurfaceHigh = Color(0xFF24202B)
-internal val LuxuryText = Color(0xFFF8F5FA)
-internal val LuxuryTextMuted = Color(0xFFBBB4C2)
-internal val LuxuryOutline = Color(0xFF4A4352)
-internal val LuxuryOutlineSoft = Color(0xFF2F2A36)
-internal val LuxuryChampagne = Color(0xFFE3C995)
-internal val LuxuryError = Color(0xFFFF8A9B)
+internal val LuxuryBackground = Color(0xFF09080D)
+internal val LuxurySurface = Color(0xFF111016)
+internal val LuxurySurfaceElevated = Color(0xFF18161F)
+internal val LuxurySurfaceHigh = Color(0xFF211E29)
+internal val LuxuryText = Color(0xFFF7F3F8)
+internal val LuxuryTextMuted = Color(0xFFAFA8B8)
+internal val LuxuryOutline = Color(0xFF3B3544)
+internal val LuxuryOutlineSoft = Color(0xFF29242F)
+internal val LuxuryAccent = Color(0xFFB792F6)
+internal val LuxuryAccentSoft = Color(0xFF2A2038)
+internal val LuxuryChampagne = Color(0xFFD8C3A5)
+internal val LuxurySuccess = Color(0xFF78D6B1)
+internal val LuxuryError = Color(0xFFFF8FA0)
 
 internal object LuxuryMotion {
-    const val Micro = 150
-    const val Fast = 220
-    const val Standard = 340
-    const val Slow = 520
+    const val Micro = 130
+    const val Fast = 190
+    const val Standard = 300
+    const val Slow = 430
 }
 
 private fun luxuryStyle(
@@ -53,21 +59,21 @@ private fun luxuryStyle(
 )
 
 internal val LuxuryTypography = Typography(
-    displayLarge = luxuryStyle(52, 58, FontWeight.SemiBold, -1.0f),
-    displayMedium = luxuryStyle(44, 50, FontWeight.SemiBold, -0.8f),
-    displaySmall = luxuryStyle(36, 42, FontWeight.SemiBold, -0.5f),
-    headlineLarge = luxuryStyle(32, 38, FontWeight.SemiBold, -0.4f),
-    headlineMedium = luxuryStyle(28, 34, FontWeight.SemiBold, -0.3f),
-    headlineSmall = luxuryStyle(24, 30, FontWeight.SemiBold, -0.2f),
-    titleLarge = luxuryStyle(22, 28, FontWeight.SemiBold, -0.15f),
+    displayLarge = luxuryStyle(50, 56, FontWeight.SemiBold, -1.0f),
+    displayMedium = luxuryStyle(42, 48, FontWeight.SemiBold, -0.8f),
+    displaySmall = luxuryStyle(34, 40, FontWeight.SemiBold, -0.5f),
+    headlineLarge = luxuryStyle(31, 37, FontWeight.SemiBold, -0.4f),
+    headlineMedium = luxuryStyle(27, 33, FontWeight.SemiBold, -0.3f),
+    headlineSmall = luxuryStyle(23, 29, FontWeight.SemiBold, -0.2f),
+    titleLarge = luxuryStyle(21, 27, FontWeight.SemiBold, -0.15f),
     titleMedium = luxuryStyle(16, 22, FontWeight.SemiBold, 0f),
     titleSmall = luxuryStyle(14, 20, FontWeight.SemiBold, 0.05f),
-    bodyLarge = luxuryStyle(16, 24, FontWeight.Normal, 0.05f),
-    bodyMedium = luxuryStyle(14, 21, FontWeight.Normal, 0.08f),
-    bodySmall = luxuryStyle(12, 18, FontWeight.Normal, 0.1f),
-    labelLarge = luxuryStyle(14, 20, FontWeight.SemiBold, 0.1f),
-    labelMedium = luxuryStyle(12, 17, FontWeight.SemiBold, 0.15f),
-    labelSmall = luxuryStyle(11, 16, FontWeight.Medium, 0.2f)
+    bodyLarge = luxuryStyle(16, 24, FontWeight.Normal, 0.03f),
+    bodyMedium = luxuryStyle(14, 21, FontWeight.Normal, 0.06f),
+    bodySmall = luxuryStyle(12, 18, FontWeight.Normal, 0.08f),
+    labelLarge = luxuryStyle(14, 20, FontWeight.SemiBold, 0.08f),
+    labelMedium = luxuryStyle(12, 17, FontWeight.SemiBold, 0.12f),
+    labelSmall = luxuryStyle(11, 16, FontWeight.Medium, 0.16f)
 )
 
 internal val LuxuryShapes = Shapes(
@@ -75,7 +81,7 @@ internal val LuxuryShapes = Shapes(
     small = RoundedCornerShape(14.dp),
     medium = RoundedCornerShape(20.dp),
     large = RoundedCornerShape(26.dp),
-    extraLarge = RoundedCornerShape(30.dp)
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 @Composable
@@ -85,7 +91,7 @@ internal fun FamiljekalenderLuxuryTheme(
 ) {
     val motionEnabled = appMotionEnabled()
     val accent by animateColorAsState(
-        targetValue = palette.accent,
+        targetValue = LuxuryAccent,
         animationSpec = tween(
             durationMillis = motionDuration(LuxuryMotion.Slow, motionEnabled),
             easing = FastOutSlowInEasing
@@ -96,24 +102,24 @@ internal fun FamiljekalenderLuxuryTheme(
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = accent,
-            onPrimary = Color(0xFF140F18),
-            primaryContainer = palette.soft,
+            onPrimary = Color(0xFF130F18),
+            primaryContainer = LuxuryAccentSoft,
             onPrimaryContainer = LuxuryText,
             secondary = accent,
-            onSecondary = Color(0xFF140F18),
+            onSecondary = Color(0xFF130F18),
             secondaryContainer = LuxurySurfaceHigh,
             onSecondaryContainer = LuxuryText,
-            tertiary = LuxuryChampagne,
-            onTertiary = Color(0xFF18130B),
-            tertiaryContainer = Color(0xFF302819),
-            onTertiaryContainer = Color(0xFFF5E8CD),
+            tertiary = palette.accent,
+            onTertiary = Color(0xFF171019),
+            tertiaryContainer = palette.soft,
+            onTertiaryContainer = LuxuryText,
             background = LuxuryBackground,
             onBackground = LuxuryText,
             surface = LuxurySurface,
             onSurface = LuxuryText,
             surfaceVariant = LuxurySurfaceElevated,
             onSurfaceVariant = LuxuryTextMuted,
-            surfaceTint = accent,
+            surfaceTint = Color.Transparent,
             inverseSurface = LuxuryText,
             inverseOnSurface = LuxuryBackground,
             outline = LuxuryOutline,
