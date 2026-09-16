@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.permission.PermissionController
 import androidx.health.connect.client.records.DistanceRecord
@@ -33,7 +34,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private const val HEALTH_CONNECT_PROVIDER = "com.google.android.apps.healthdata"
-private val HEALTH_CONNECT_PERMISSIONS = setOf(
+private val HEALTH_CONNECT_BASE_PERMISSIONS = setOf(
     HealthPermission.getReadPermission(ExerciseSessionRecord::class),
     HealthPermission.getReadPermission(DistanceRecord::class)
 )
@@ -54,16 +55,40 @@ object HealthConnectSync {
     private fun client(context: Context): HealthConnectClient =
         HealthConnectClient.getOrCreate(context, HEALTH_CONNECT_PROVIDER)
 
-    suspend fun hasPermissions(context: Context): Boolean {
-        if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) return false
-        return client(context).permissionController.getGrantedPermissions().containsAll(HEALTH_CONNECT_PERMISSIONS)
+    fun requestedPermissions(context: Context): Set<String> {
+        if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) return HEALTH_CONNECT_BASE_PERMISSIONS
+        val healthClient = client(context)
+        val backgroundAvailable = healthClient.features.getFeatureStatus(
+            HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND
+        ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+        return if (backgroundAvailable) {
+            HEALTH_CONNECT_BASE_PERMISSIONS + HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
+        } else {
+            HEALTH_CONNECT_BASE_PERMISSIONS
+        }
     }
 
-    suspend fun readRunningSessions(context: Context, lookbackDays: Long = 365): List<HealthConnectRun> {
+    suspend fun hasPermissions(context: Context): Boolean {
+        if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) return false
+        return client(context).permissionController.getGrantedPermissions().containsAll(HEALTH_CONNECT_BASE_PERMISSIONS)
+    }
+
+    suspend fun hasBackgroundPermission(context: Context): Boolean {
+        if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) return false
+        val healthClient = client(context)
+        val backgroundAvailable = healthClient.features.getFeatureStatus(
+            HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND
+        ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+        if (!backgroundAvailable) return false
+        return HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND in
+            healthClient.permissionController.getGrantedPermissions()
+    }
+
+    suspend fun readRunningSessions(context: Context, lookbackDays: Long = 30): List<HealthConnectRun> {
         if (!hasPermissions(context)) return emptyList()
         val healthClient = client(context)
         val end = Instant.now()
-        val start = end.minus(Duration.ofDays(lookbackDays.coerceAtLeast(1)))
+        val start = end.minus(Duration.ofDays(lookbackDays.coerceIn(1, 30)))
         val response = healthClient.readRecords(
             ReadRecordsRequest(
                 recordType = ExerciseSessionRecord::class,
@@ -78,21 +103,24 @@ object HealthConnectSync {
                 it.exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_RUNNING ||
                     it.exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL
             }
-            .mapNotNull { session ->
+            .mapNotNull { exercise ->
                 val aggregate = healthClient.aggregate(
                     AggregateRequest(
                         metrics = setOf(DistanceRecord.DISTANCE_TOTAL),
-                        timeRangeFilter = TimeRangeFilter.between(session.startTime, session.endTime)
+                        timeRangeFilter = TimeRangeFilter.between(exercise.startTime, exercise.endTime)
                     )
                 )
                 val meters = aggregate[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0
                 val distanceKm = meters / 1000.0
                 if (distanceKm <= 0.0) return@mapNotNull null
-                val minutes = Duration.between(session.startTime, session.endTime).toMinutes().toInt().coerceAtLeast(1)
+                val minutes = Duration.between(exercise.startTime, exercise.endTime)
+                    .toMinutes()
+                    .toInt()
+                    .coerceAtLeast(1)
                 HealthConnectRun(
-                    recordId = session.metadata.id,
-                    startTime = session.startTime,
-                    endTime = session.endTime,
+                    recordId = exercise.metadata.id,
+                    startTime = exercise.startTime,
+                    endTime = exercise.endTime,
                     distanceKm = distanceKm,
                     durationMinutes = minutes
                 )
@@ -109,28 +137,26 @@ object HealthConnectSync {
         var added = 0
 
         runs.forEach { run ->
+            val externalKey = "health_connect:${run.recordId}"
+            if (existing.any { it.seriesId == externalKey }) return@forEach
+
             val startLocal = run.startTime.atZone(HEALTH_STOCKHOLM)
             val endLocal = run.endTime.atZone(HEALTH_STOCKHOLM)
             val date = startLocal.toLocalDate()
             val startText = startLocal.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))
             val endText = endLocal.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))
-            val alreadyImported = existing.any { event ->
-                event.source == "health_connect" &&
-                    event.memberId == memberId &&
-                    event.date == date &&
-                    event.time == startText
-            }
-            if (!alreadyImported) {
-                SupabaseSync.addHealthConnectRun(
-                    session = session,
-                    title = "🏃 Löpning · ${"%.2f".format(Locale.US, run.distanceKm)} km · ${run.durationMinutes} min",
-                    date = date,
-                    startTime = startText,
-                    endTime = endText,
-                    memberId = memberId
-                )
-                added++
-            }
+            val title = "🏃 Löpning · ${"%.2f".format(Locale.US, run.distanceKm)} km · ${run.durationMinutes} min"
+
+            SupabaseSync.addEvent(
+                session = session,
+                title = title,
+                date = date,
+                startTime = startText,
+                endTime = endText,
+                memberId = memberId,
+                seriesId = externalKey
+            )
+            added++
         }
         return added
     }
@@ -139,6 +165,8 @@ object HealthConnectSync {
         val uri = Uri.parse("market://details?id=$HEALTH_CONNECT_PROVIDER&url=healthconnect%3A%2F%2Fonboarding")
         val intent = Intent(Intent.ACTION_VIEW, uri).apply {
             setPackage("com.android.vending")
+            putExtra("overlay", true)
+            putExtra("callerId", context.packageName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { context.startActivity(intent) }
@@ -154,12 +182,14 @@ fun HealthConnectSettingsCard(
     val scope = rememberCoroutineScope()
     var sdkStatus by remember { mutableIntStateOf(HealthConnectSync.sdkStatus(context)) }
     var connected by remember { mutableStateOf(false) }
+    var backgroundSync by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
 
     suspend fun refreshConnectionState() {
         sdkStatus = HealthConnectSync.sdkStatus(context)
         connected = HealthConnectSync.hasPermissions(context)
+        backgroundSync = HealthConnectSync.hasBackgroundPermission(context)
     }
 
     suspend fun syncNow() {
@@ -177,7 +207,8 @@ fun HealthConnectSettingsCard(
     val permissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { granted ->
-        connected = granted.containsAll(HEALTH_CONNECT_PERMISSIONS)
+        connected = granted.containsAll(HEALTH_CONNECT_BASE_PERMISSIONS)
+        backgroundSync = HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND in granted
         if (connected) scope.launch { syncNow() }
         else message = "Behörighet till träningspass och distans behövs för synkning"
     }
@@ -198,7 +229,7 @@ fun HealthConnectSettingsCard(
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBg),
         shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -218,7 +249,8 @@ fun HealthConnectSettingsCard(
                         when {
                             sdkStatus == HealthConnectClient.SDK_UNAVAILABLE -> "Stöds inte på den här enheten"
                             sdkStatus == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "Health Connect behöver installeras eller uppdateras"
-                            connected -> "Ansluten · löppass synkas automatiskt"
+                            connected && backgroundSync -> "Ansluten · automatisk synk är aktiv"
+                            connected -> "Ansluten · synkar när Familjekalendern används"
                             else -> "Google/Android hälsodata · inte ansluten"
                         },
                         color = Muted,
@@ -254,7 +286,7 @@ fun HealthConnectSettingsCard(
                     Button(
                         onClick = {
                             if (connected) scope.launch { syncNow() }
-                            else permissionLauncher.launch(HEALTH_CONNECT_PERMISSIONS)
+                            else permissionLauncher.launch(HealthConnectSync.requestedPermissions(context))
                         },
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth()
