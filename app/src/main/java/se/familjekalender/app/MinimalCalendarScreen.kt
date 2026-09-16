@@ -11,8 +11,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,12 +42,6 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-
-private val MinimalBg = Color(0xFF0B0B10)
-private val MinimalSurface = Color(0xFF17171F)
-private val MinimalPurple = Color(0xFFA66CFF)
-private val MinimalMuted = Color(0xFFAAA8B7)
-private val MinimalDivider = Color(0xFF292933)
 
 @Composable
 internal fun MinimalCalendarScreen(
@@ -71,79 +68,106 @@ internal fun MinimalCalendarScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(MinimalBg)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Column {
-                Text("Familjeappen", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Mer tid tillsammans", color = MinimalMuted, fontSize = 14.sp)
-                    Spacer(Modifier.width(6.dp))
-                    Text("♥", color = MinimalPurple, fontSize = 15.sp)
-                }
-            }
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Default.Settings, contentDescription = "Inställningar", tint = Color(0xFFD1CFDC))
-            }
-        }
-
-        Spacer(Modifier.height(22.dp))
-
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = {
-                val next = month.minusMonths(1)
-                month = next
-                onSelect(next.atDay(1))
-            }) {
-                Text("‹", color = MinimalMuted, fontSize = 34.sp, fontWeight = FontWeight.Light)
+            Column {
+                Text(
+                    "Familjeappen",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.headlineLarge
+                )
+                Spacer(Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+                    Spacer(Modifier.width(7.dp))
+                    Text(
+                        "Mer tid tillsammans",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
-            Text(
-                month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
-                color = Color.White,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            TextButton(onClick = {
-                val next = month.plusMonths(1)
-                month = next
-                onSelect(next.atDay(1))
-            }) {
-                Text("›", color = MinimalMuted, fontSize = 34.sp, fontWeight = FontWeight.Light)
+            Surface(
+                shape = RoundedCornerShape(17.dp),
+                color = LuxurySurfaceElevated,
+                border = BorderStroke(1.dp, LuxuryOutlineSoft)
+            ) {
+                IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Inställningar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
+
+        Spacer(Modifier.height(28.dp))
+
+        Surface(
+            color = LuxurySurface,
+            shape = RoundedCornerShape(22.dp),
+            border = BorderStroke(1.dp, LuxuryOutlineSoft),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = {
+                    val next = month.minusMonths(1)
+                    month = next
+                    onSelect(next.atDay(1))
+                }) {
+                    Icon(Icons.Default.ChevronLeft, contentDescription = "Föregående månad", tint = LuxuryTextMuted)
+                }
+                Text(
+                    month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
+                    color = LuxuryText,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                IconButton(onClick = {
+                    val next = month.plusMonths(1)
+                    month = next
+                    onSelect(next.atDay(1))
+                }) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Nästa månad", tint = LuxuryTextMuted)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
 
         AnimatedContent(
             targetState = month,
             modifier = Modifier.fillMaxWidth(),
             transitionSpec = {
-                val inMs = motionDuration(260, motionEnabled)
-                val outMs = motionDuration(220, motionEnabled)
-                val fadeInMs = motionDuration(180, motionEnabled)
-                val fadeOutMs = motionDuration(150, motionEnabled)
+                val inMs = motionDuration(LuxuryMotion.Standard, motionEnabled)
+                val outMs = motionDuration(LuxuryMotion.Fast, motionEnabled)
                 if (targetState > initialState) {
-                    (slideInHorizontally(tween(inMs)) { it / 5 } + fadeIn(tween(fadeInMs))) togetherWith
-                        (slideOutHorizontally(tween(outMs)) { -it / 5 } + fadeOut(tween(fadeOutMs)))
+                    (slideInHorizontally(tween(inMs)) { it / 10 } + fadeIn(tween(inMs))) togetherWith
+                        (slideOutHorizontally(tween(outMs)) { -it / 12 } + fadeOut(tween(outMs)))
                 } else {
-                    (slideInHorizontally(tween(inMs)) { -it / 5 } + fadeIn(tween(fadeInMs))) togetherWith
-                        (slideOutHorizontally(tween(outMs)) { it / 5 } + fadeOut(tween(fadeOutMs)))
+                    (slideInHorizontally(tween(inMs)) { -it / 10 } + fadeIn(tween(inMs))) togetherWith
+                        (slideOutHorizontally(tween(outMs)) { it / 12 } + fadeOut(tween(outMs)))
                 }
             },
             label = "clean-month"
         ) { visibleMonth ->
-            MinimalMonthGrid(
+            PremiumMonthGrid(
                 month = visibleMonth,
                 selectedDate = selectedDate,
                 events = events,
+                members = memberById,
                 motionEnabled = motionEnabled,
                 onSelect = { date ->
                     month = YearMonth.from(date)
@@ -152,19 +176,19 @@ internal fun MinimalCalendarScreen(
             )
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(22.dp))
 
         AnimatedContent(
             targetState = selectedDate,
             transitionSpec = {
-                (fadeIn(tween(motionDuration(180, motionEnabled))) +
-                    slideInVertically(tween(motionDuration(220, motionEnabled))) { it / 10 }) togetherWith
-                    (fadeOut(tween(motionDuration(140, motionEnabled))) +
-                        slideOutVertically(tween(motionDuration(180, motionEnabled))) { -it / 12 })
+                (fadeIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) +
+                    slideInVertically(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) { it / 18 }) togetherWith
+                    (fadeOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) +
+                        slideOutVertically(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) { -it / 20 })
             },
             label = "clean-agenda"
         ) { date ->
-            MinimalAgenda(
+            PremiumAgenda(
                 date = date,
                 events = if (date == selectedDate) selectedEvents else events.filter { it.date == date }.sortedBy { it.time },
                 memberById = memberById,
@@ -173,30 +197,33 @@ internal fun MinimalCalendarScreen(
             )
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(18.dp))
 
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            FilledIconButton(
-                onClick = onAdd,
-                modifier = Modifier.size(68.dp),
-                shape = CircleShape,
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = MinimalPurple)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Lägg till aktivitet", tint = Color.White, modifier = Modifier.size(34.dp))
-            }
-            Spacer(Modifier.height(7.dp))
-            Text("Lägg till aktivitet", color = MinimalMuted, fontSize = 13.sp)
+        Button(
+            onClick = onAdd,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(9.dp))
+            Text("Lägg till aktivitet", style = MaterialTheme.typography.labelLarge)
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun MinimalMonthGrid(
+private fun PremiumMonthGrid(
     month: YearMonth,
     selectedDate: LocalDate,
     events: List<SyncEvent>,
+    members: Map<String, SyncMember>,
     motionEnabled: Boolean,
     onSelect: (LocalDate) -> Unit
 ) {
@@ -207,16 +234,20 @@ private fun MinimalMonthGrid(
     val rowCount = ((leadingDays + month.lengthOfMonth() + 6) / 7).coerceIn(4, 6)
     val eventsByDate = remember(events) { events.groupBy { it.date } }
 
-    // AnimatedContent lays out multiple root children on top of each other.
-    // Keep the whole month grid under one Column so week rows retain their height.
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth()) {
             weekdays.forEach { day ->
-                Text(day, color = MinimalMuted, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                Text(
+                    day,
+                    color = LuxuryTextMuted.copy(alpha = .82f),
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
 
         repeat(rowCount) { row ->
             Row(Modifier.fillMaxWidth()) {
@@ -226,68 +257,56 @@ private fun MinimalMonthGrid(
                     val isSelected = date == selectedDate
                     val dayEvents = eventsByDate[date].orEmpty()
                     val birthday = dayEvents.any { it.title.trim().startsWith("🌈") }
-                    val selectionScale by animateFloatAsState(
-                        targetValue = if (isSelected) 1f else .78f,
-                        animationSpec = tween(motionDuration(220, motionEnabled)),
-                        label = "clean-date-selection-scale"
-                    )
-                    val selectionAlpha by animateFloatAsState(
-                        targetValue = if (isSelected) 1f else 0f,
-                        animationSpec = tween(motionDuration(180, motionEnabled)),
-                        label = "clean-date-selection-alpha"
-                    )
-                    val dayColor by animateColorAsState(
-                        targetValue = when {
-                            isSelected -> Color.White
-                            inMonth -> Color(0xFFF1F0F6)
-                            else -> Color(0xFF5F5E69)
-                        },
-                        animationSpec = tween(motionDuration(180, motionEnabled)),
-                        label = "clean-date-color"
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1f else .93f,
+                        animationSpec = tween(motionDuration(LuxuryMotion.Fast, motionEnabled)),
+                        label = "premium-date-scale"
                     )
 
                     Box(
                         Modifier
                             .weight(1f)
-                            .height(54.dp)
+                            .height(58.dp)
                             .clickable { onSelect(date) },
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            Modifier
-                                .size(40.dp)
-                                .graphicsLayer {
-                                    scaleX = selectionScale
-                                    scaleY = selectionScale
-                                    alpha = selectionAlpha
-                                }
-                                .clip(CircleShape)
-                                .background(MinimalPurple)
-                        )
+                        if (isSelected) {
+                            Box(
+                                Modifier
+                                    .size(42.dp)
+                                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = .18f))
+                                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .62f), CircleShape)
+                            )
+                        }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 date.dayOfMonth.toString(),
-                                color = dayColor,
+                                color = when {
+                                    isSelected -> LuxuryText
+                                    inMonth -> LuxuryText.copy(alpha = .96f)
+                                    else -> LuxuryTextMuted.copy(alpha = .42f)
+                                },
                                 fontSize = 15.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                             )
-                            Spacer(Modifier.height(3.dp))
+                            Spacer(Modifier.height(5.dp))
                             when {
-                                birthday -> {
-                                    Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
-                                        BirthdayRainbowIcon(Modifier.size(18.dp))
+                                birthday -> Box(Modifier.size(17.dp), contentAlignment = Alignment.Center) {
+                                    BirthdayRainbowIcon(Modifier.size(17.dp))
+                                }
+                                dayEvents.isNotEmpty() -> Row(
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    dayEvents.take(3).forEach { event ->
+                                        val dotColor = members[event.memberId]?.let { Color(it.colorArgb.toInt()) }
+                                            ?: MaterialTheme.colorScheme.primary
+                                        Box(Modifier.size(5.dp).clip(CircleShape).background(dotColor))
                                     }
                                 }
-                                dayEvents.isNotEmpty() -> {
-                                    Box(
-                                        Modifier
-                                            .size(6.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isSelected) Color.White else MinimalPurple.copy(alpha = .88f))
-                                    )
-                                    Spacer(Modifier.height(3.dp))
-                                }
-                                else -> Spacer(Modifier.height(9.dp))
+                                else -> Spacer(Modifier.height(5.dp))
                             }
                         }
                     }
@@ -298,7 +317,7 @@ private fun MinimalMonthGrid(
 }
 
 @Composable
-private fun MinimalAgenda(
+private fun PremiumAgenda(
     date: LocalDate,
     events: List<SyncEvent>,
     memberById: Map<String, SyncMember>,
@@ -307,35 +326,45 @@ private fun MinimalAgenda(
 ) {
     val headerFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
     val header = date.format(headerFormatter).replaceFirstChar { it.uppercase(locale) }
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = MinimalSurface),
-        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, LuxuryOutlineSoft),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(tween(motionDuration(220, motionEnabled)))
+            .animateContentSize(tween(motionDuration(LuxuryMotion.Standard, motionEnabled)))
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(header, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(
-                    if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
-                    color = MinimalMuted,
-                    fontSize = 12.sp
-                )
+                Text(header, color = LuxuryText, style = MaterialTheme.typography.titleLarge)
+                Surface(
+                    color = LuxurySurfaceHigh,
+                    shape = RoundedCornerShape(99.dp)
+                ) {
+                    Text(
+                        if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
+                        color = LuxuryTextMuted,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
             }
+
             if (events.isEmpty()) {
                 Spacer(Modifier.height(18.dp))
-                Text("Inga aktiviteter den här dagen", color = MinimalMuted, fontSize = 14.sp)
-                Spacer(Modifier.height(4.dp))
+                Text("Inga aktiviteter den här dagen", color = LuxuryTextMuted, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(2.dp))
+                Text("En lugn dag i familjens kalender.", color = LuxuryTextMuted.copy(alpha = .72f), style = MaterialTheme.typography.bodySmall)
             } else {
-                Spacer(Modifier.height(10.dp))
-                events.forEachIndexed { index, event ->
-                    MinimalAgendaRow(event, memberById[event.memberId])
-                    if (index != events.lastIndex) HorizontalDivider(color = MinimalDivider, thickness = 1.dp)
+                Spacer(Modifier.height(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    events.forEach { event -> PremiumAgendaRow(event, memberById[event.memberId]) }
                 }
             }
         }
@@ -343,8 +372,8 @@ private fun MinimalAgenda(
 }
 
 @Composable
-private fun MinimalAgendaRow(event: SyncEvent, member: SyncMember?) {
-    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: MinimalPurple
+private fun PremiumAgendaRow(event: SyncEvent, member: SyncMember?) {
+    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: MaterialTheme.colorScheme.primary
     val memberName = when {
         event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"
         member != null -> member.name
@@ -352,27 +381,35 @@ private fun MinimalAgendaRow(event: SyncEvent, member: SyncMember?) {
     }
     val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
     val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically
+
+    Surface(
+        color = LuxurySurface,
+        shape = RoundedCornerShape(17.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Box(Modifier.width(4.dp).height(50.dp).clip(RoundedCornerShape(99.dp)).background(accent))
-        Spacer(Modifier.width(11.dp))
-        Text(timeText, color = MinimalMuted, fontSize = 12.sp, modifier = Modifier.width(78.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(3.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
-                Spacer(Modifier.width(5.dp))
-                Text(memberName, color = MinimalMuted, fontSize = 11.sp)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.width(3.dp).height(44.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.width(72.dp)) {
+                Text(timeText, color = LuxuryTextMuted, style = MaterialTheme.typography.labelMedium)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    color = LuxuryText,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
+                    Spacer(Modifier.width(6.dp))
+                    Text(memberName, color = LuxuryTextMuted, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }
