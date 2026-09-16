@@ -1,0 +1,31 @@
+name: Validate selected day ring
+on:
+  push:
+    branches: [fix/selected-day-icons-inside-ring-20260916]
+permissions:
+  contents: write
+jobs:
+  fix-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/selected-day-icons-inside-ring-20260916
+      - name: Apply selected day ring fix
+        run: python3 scripts/fix_selected_day_icon_ring.py
+      - name: Persist fix
+        run: |
+          if ! git diff --quiet; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add app/src/main/java/se/familjekalender/app/MinimalCalendarScreen.kt
+            git commit -m "Håll valda dagens ikoner innanför ringen"
+            git push
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon
