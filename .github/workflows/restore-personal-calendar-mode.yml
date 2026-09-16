@@ -67,3 +67,4 @@ jobs:
           git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/PersonalLayoutScreen.kt
           git commit -m "Restore personal calendar mode"
           git push
+# trigger: personal mode restoration
