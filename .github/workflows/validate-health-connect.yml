@@ -35,3 +35,4 @@ jobs:
           name: health-connect-validation-log
           path: build-health-connect.log
           if-no-files-found: error
+      # validation rerun after PermissionController import correction
