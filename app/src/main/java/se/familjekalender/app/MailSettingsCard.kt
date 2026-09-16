@@ -1,6 +1,9 @@
 package se.familjekalender.app
 
-import androidx.compose.foundation.clickable
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +16,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -32,12 +34,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.android.gms.auth.api.identity.AuthorizationResult
+import com.google.android.gms.auth.api.identity.Identity
 import kotlinx.coroutines.launch
 
 private data class MailProviderPreset(val name: String, val host: String, val hint: String)
 
 private val MAIL_PRESETS = listOf(
-    MailProviderPreset("Gmail", "imap.gmail.com", "Använd ett app-lösenord från Google-kontot."),
     MailProviderPreset("iCloud", "imap.mail.me.com", "Använd ett appspecifikt lösenord från Apple-ID."),
     MailProviderPreset("Yahoo", "imap.mail.yahoo.com", "Använd ett app-lösenord från Yahoo."),
     MailProviderPreset("Annan IMAP", "", "Ange IMAP-server och lösenord/app-lösenord.")
@@ -48,15 +51,100 @@ internal fun MailSettingsCard(session: FamilySession) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var accounts by remember { mutableStateOf(MailAccountStore.load(context)) }
-    var showAdd by remember { mutableStateOf(false) }
+    var showAddOther by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var syncing by remember { mutableStateOf(false) }
+
+    fun finishGmailAuthorization(result: AuthorizationResult) {
+        val email = result.toGoogleSignInAccount()?.email.orEmpty().trim()
+        if (email.isBlank()) {
+            syncing = false
+            status = "Google-kontot saknar en tillgänglig mailadress."
+            return
+        }
+        if (result.accessToken.isNullOrBlank()) {
+            syncing = false
+            status = "Google gav ingen Gmail-behörighet. Försök igen."
+            return
+        }
+        val account = MailAccount(
+            label = "Gmail",
+            email = email,
+            host = "imap.gmail.com",
+            port = 993,
+            username = email,
+            password = ""
+        )
+        scope.launch {
+            syncing = true
+            status = "Kontrollerar Gmail…"
+            runCatching { MailSyncEngine.testAccount(context, account) }
+                .onSuccess {
+                    accounts = accounts.filterNot {
+                        it.host.equals("imap.gmail.com", ignoreCase = true) && it.email.equals(email, ignoreCase = true)
+                    } + account
+                    MailAccountStore.save(context, accounts)
+                    MailSyncScheduler.schedule(context)
+                    val summary = MailSyncEngine.syncAll(context, session)
+                    status = "Gmail är kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
+                }
+                .onFailure {
+                    status = "Kunde inte koppla Gmail: ${it.message ?: "Google-behörigheten misslyckades"}"
+                }
+            syncing = false
+        }
+    }
+
+    val gmailAuthorizationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        val data = activityResult.data
+        if (activityResult.resultCode != Activity.RESULT_OK || data == null) {
+            syncing = false
+            status = "Gmail-kopplingen avbröts."
+        } else {
+            runCatching { Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data) }
+                .onSuccess(::finishGmailAuthorization)
+                .onFailure {
+                    syncing = false
+                    status = "Kunde inte slutföra Google-inloggningen: ${it.message ?: "okänt fel"}"
+                }
+        }
+    }
+
+    fun startGmailAuthorization() {
+        scope.launch {
+            syncing = true
+            status = "Öppnar Google…"
+            runCatching { requestGmailAuthorization(context) }
+                .onSuccess { authorization ->
+                    if (authorization.hasResolution()) {
+                        val pendingIntent = authorization.pendingIntent
+                        if (pendingIntent == null) {
+                            syncing = false
+                            status = "Google kunde inte öppna kontoväljaren."
+                        } else {
+                            syncing = false
+                            gmailAuthorizationLauncher.launch(
+                                IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                            )
+                        }
+                    } else {
+                        finishGmailAuthorization(authorization)
+                    }
+                }
+                .onFailure {
+                    syncing = false
+                    status = "Kunde inte öppna Google-inloggningen: ${it.message ?: "okänt fel"}"
+                }
+        }
+    }
 
     Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("Mailkoppling", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Text(
-                "Kalenderinbjudningar från mail läggs in automatiskt. Reklam- och erbjudandemail matchas mot varor ni brukar köpa.",
+                "Koppla Gmail med Google. Kalenderinbjudningar från mail läggs in automatiskt och erbjudanden kan matchas mot inköpslistan.",
                 color = Muted,
                 fontSize = 12.sp
             )
@@ -83,14 +171,31 @@ internal fun MailSettingsCard(session: FamilySession) {
                             }
                         )
                         TextButton(onClick = {
-                            accounts = accounts.filterNot { it.id == account.id }
-                            MailAccountStore.save(context, accounts)
+                            scope.launch {
+                                val googleOauth = account.host.equals("imap.gmail.com", ignoreCase = true) && account.password.isBlank()
+                                if (googleOauth) runCatching { revokeGmailAuthorization(context, account.email) }
+                                accounts = accounts.filterNot { it.id == account.id }
+                                MailAccountStore.save(context, accounts)
+                                status = "Mailkontot är bortkopplat."
+                            }
                         }) { Text("Ta bort") }
                     }
                 }
             }
+
             Spacer(Modifier.height(8.dp))
-            Button(onClick = { showAdd = true }, modifier = Modifier.fillMaxWidth()) { Text("+ Koppla mailkonto") }
+            Button(
+                enabled = !syncing,
+                onClick = ::startGmailAuthorization,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(if (syncing) "Arbetar…" else "Koppla Gmail") }
+
+            OutlinedButton(
+                enabled = !syncing,
+                onClick = { showAddOther = true },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Annan e-post (IMAP)") }
+
             if (accounts.any { it.enabled }) {
                 OutlinedButton(
                     enabled = !syncing,
@@ -109,36 +214,37 @@ internal fun MailSettingsCard(session: FamilySession) {
                     modifier = Modifier.fillMaxWidth()
                 ) { Text(if (syncing) "Synkar…" else "Synka mail nu") }
             }
+
             if (status.isNotBlank()) Text(status, color = Muted, fontSize = 12.sp)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Kontouppgifterna krypteras med Android Keystore och sparas bara på den här telefonen. Automatisk kontroll körs var 30:e minut.",
+                "Gmail använder Googles behörighetsflöde och inget Gmail-lösenord sparas i appen. Automatisk kontroll körs var 30:e minut.",
                 color = Muted,
                 fontSize = 11.sp
             )
             Text(
-                "Microsoft/Outlook kräver OAuth och stöds därför inte med vanligt IMAP-lösenord i denna första version.",
+                "För iCloud, Yahoo och annan IMAP krypteras kontouppgifterna med Android Keystore och sparas bara på den här telefonen.",
                 color = Muted,
                 fontSize = 11.sp
             )
         }
     }
 
-    if (showAdd) {
+    if (showAddOther) {
         AddMailAccountDialog(
-            onDismiss = { showAdd = false },
+            onDismiss = { showAddOther = false },
             onSaved = { account ->
                 scope.launch {
                     syncing = true
                     status = "Kontrollerar ${account.email}…"
-                    runCatching { MailSyncEngine.testAccount(account) }
+                    runCatching { MailSyncEngine.testAccount(context, account) }
                         .onSuccess {
                             accounts = accounts + account
                             MailAccountStore.save(context, accounts)
                             MailSyncScheduler.schedule(context)
                             val summary = MailSyncEngine.syncAll(context, session)
                             status = "Kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
-                            showAdd = false
+                            showAddOther = false
                         }
                         .onFailure { status = "Kunde inte ansluta: ${it.message ?: "kontrollera IMAP och app-lösenord"}" }
                     syncing = false
@@ -160,20 +266,11 @@ private fun AddMailAccountDialog(onDismiss: () -> Unit, onSaved: (MailAccount) -
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Koppla mailkonto") },
+        title = { Text("Koppla annan e-post") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    MAIL_PRESETS.take(2).forEach { item ->
-                        FilterChip(
-                            selected = preset == item,
-                            onClick = { preset = item; host = item.host },
-                            label = { Text(item.name) }
-                        )
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    MAIL_PRESETS.drop(2).forEach { item ->
+                    MAIL_PRESETS.forEach { item ->
                         FilterChip(
                             selected = preset == item,
                             onClick = { preset = item; host = item.host },

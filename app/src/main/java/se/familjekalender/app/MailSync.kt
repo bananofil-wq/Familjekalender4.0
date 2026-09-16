@@ -1,5 +1,6 @@
 package se.familjekalender.app
 
+import android.accounts.Account
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -14,8 +15,14 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.AuthorizationResult
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.RevokeAccessRequest
+import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.InputStream
@@ -45,6 +52,28 @@ import javax.mail.Session
 import javax.mail.UIDFolder
 
 private val MAIL_STOCKHOLM: ZoneId = ZoneId.of("Europe/Stockholm")
+internal const val GMAIL_AUTH_SCOPE = "https://mail.google.com/"
+private const val GOOGLE_ACCOUNT_TYPE = "com.google"
+
+internal fun gmailAuthorizationRequest(email: String? = null): AuthorizationRequest {
+    val builder = AuthorizationRequest.builder()
+        .setRequestedScopes(listOf(Scope(GMAIL_AUTH_SCOPE), Scope("email")))
+    if (!email.isNullOrBlank()) {
+        builder.setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
+    }
+    return builder.build()
+}
+
+internal suspend fun requestGmailAuthorization(context: Context, email: String? = null): AuthorizationResult =
+    Identity.getAuthorizationClient(context).authorize(gmailAuthorizationRequest(email)).await()
+
+internal suspend fun revokeGmailAuthorization(context: Context, email: String) {
+    val request = RevokeAccessRequest.builder()
+        .setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
+        .setScopes(listOf(Scope(GMAIL_AUTH_SCOPE), Scope("email")))
+        .build()
+    Identity.getAuthorizationClient(context).revokeAccess(request).await()
+}
 
 data class MailAccount(
     val id: String = UUID.randomUUID().toString(),
@@ -181,8 +210,8 @@ class MailSyncWorker(appContext: Context, params: WorkerParameters) : CoroutineW
 }
 
 internal object MailSyncEngine {
-    suspend fun testAccount(account: MailAccount) = withContext(Dispatchers.IO) {
-        openStore(account).use { connection ->
+    suspend fun testAccount(context: Context, account: MailAccount) = withContext(Dispatchers.IO) {
+        openStore(context, account).use { connection ->
             val folder = connection.store.getFolder("INBOX")
             folder.open(Folder.READ_ONLY)
             folder.close(false)
@@ -218,7 +247,7 @@ internal object MailSyncEngine {
         val lastUid = statePrefs.getLong("uid_${account.id}", 0L)
         var maxUid = lastUid
 
-        openStore(account).use { connection ->
+        openStore(context, account).use { connection ->
             val folder = connection.store.getFolder("INBOX")
             folder.open(Folder.READ_ONLY)
             try {
@@ -278,7 +307,8 @@ internal object MailSyncEngine {
         return Pair(eventCount, offerCount)
     }
 
-    private fun openStore(account: MailAccount): StoreConnection {
+    private suspend fun openStore(context: Context, account: MailAccount): StoreConnection {
+        val googleOauth = account.host.equals("imap.gmail.com", ignoreCase = true) && account.password.isBlank()
         val props = Properties().apply {
             put("mail.store.protocol", "imaps")
             put("mail.imaps.host", account.host)
@@ -287,10 +317,24 @@ internal object MailSyncEngine {
             put("mail.imaps.connectiontimeout", "15000")
             put("mail.imaps.timeout", "25000")
             put("mail.imaps.writetimeout", "25000")
+            if (googleOauth) {
+                put("mail.imaps.auth.mechanisms", "XOAUTH2")
+                put("mail.imaps.auth.login.disable", "true")
+                put("mail.imaps.auth.plain.disable", "true")
+            }
+        }
+        val credential = if (googleOauth) {
+            val authorization = requestGmailAuthorization(context, account.email)
+            if (authorization.hasResolution()) {
+                error("Gmail-behörigheten behöver förnyas under Inställningar > Mailkoppling")
+            }
+            authorization.accessToken ?: error("Google returnerade ingen åtkomsttoken")
+        } else {
+            account.password
         }
         val session = Session.getInstance(props)
         val store = session.getStore("imaps")
-        store.connect(account.host, account.port, account.username.ifBlank { account.email }, account.password)
+        store.connect(account.host, account.port, account.username.ifBlank { account.email }, credential)
         return StoreConnection(store)
     }
 
