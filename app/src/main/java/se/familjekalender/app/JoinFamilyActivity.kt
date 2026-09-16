@@ -24,13 +24,13 @@ class JoinFamilyActivity : ComponentActivity() {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = Color(0xFFB47CFF),
-                    background = Color(0xFF0F0E13),
-                    surface = Color(0xFF1B191F),
+                    background = LuxuryBackground,
+                    surface = LuxurySurface,
                     onBackground = Color.White,
                     onSurface = Color.White
                 )
             ) {
-                Surface(Modifier.fillMaxSize(), color = Color(0xFF0F0E13)) {
+                Surface(Modifier.fillMaxSize(), color = LuxuryBackground) {
                     JoinFamilyScreen(
                         code = code,
                         onJoined = { session ->
@@ -71,11 +71,11 @@ private fun JoinFamilyScreen(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     if (code.isBlank()) "Inbjudningslänken saknar familjekod." else "Du har fått en inbjudan till Familjekalendern.",
-                    color = Color(0xFFAAA4B2)
+                    color = LuxuryTextMuted
                 )
                 if (code.isNotBlank()) {
                     Spacer(Modifier.height(14.dp))
-                    Text("Familjekod", color = Color(0xFFAAA4B2), fontSize = 12.sp)
+                    Text("Familjekod", color = LuxuryTextMuted, fontSize = 12.sp)
                     Text(code, color = MaterialTheme.colorScheme.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
                 if (error.isNotBlank()) {
