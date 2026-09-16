@@ -1,1 +1,0 @@
-Apply and validate drag-and-resize widget editing for Personligt läge.
