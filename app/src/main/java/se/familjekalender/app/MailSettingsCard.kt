@@ -1,6 +1,7 @@
 package se.familjekalender.app
 
 import androidx.compose.material3.MaterialTheme
+import android.accounts.AccountManager
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.AccountPicker
 import kotlinx.coroutines.launch
 
 private data class MailProviderPreset(val name: String, val host: String, val hint: String)
@@ -55,17 +57,23 @@ internal fun MailSettingsCard(session: FamilySession) {
     var showAddOther by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var syncing by remember { mutableStateOf(false) }
+    var pendingGmailEmail by remember { mutableStateOf<String?>(null) }
 
-    fun finishGmailAuthorization(result: AuthorizationResult) {
-        val email = result.toGoogleSignInAccount()?.email.orEmpty().trim()
+    fun finishGmailAuthorization(result: AuthorizationResult, preferredEmail: String? = pendingGmailEmail) {
+        val email = preferredEmail?.trim().orEmpty()
+            .ifBlank { result.toGoogleSignInAccount()?.email.orEmpty().trim() }
+        val accessToken = result.accessToken.orEmpty()
+        val gmailGranted = result.grantedScopes.any { it == GMAIL_AUTH_SCOPE }
         if (email.isBlank()) {
             syncing = false
+            pendingGmailEmail = null
             status = "Google-kontot saknar en tillgänglig mailadress."
             return
         }
-        if (result.accessToken.isNullOrBlank()) {
+        if (!gmailGranted || accessToken.isBlank()) {
             syncing = false
-            status = "Google gav ingen Gmail-behörighet. Försök igen."
+            pendingGmailEmail = null
+            status = "Gmail-behörigheten blev inte godkänd. Tryck på Koppla Gmail och godkänn åtkomst till Gmail."
             return
         }
         val account = MailAccount(
@@ -79,7 +87,7 @@ internal fun MailSettingsCard(session: FamilySession) {
         scope.launch {
             syncing = true
             status = "Kontrollerar Gmail…"
-            runCatching { MailSyncEngine.testAccount(context, account) }
+            runCatching { MailSyncEngine.testAccount(context, account, accessToken) }
                 .onSuccess {
                     accounts = accounts.filterNot {
                         it.host.equals("imap.gmail.com", ignoreCase = true) && it.email.equals(email, ignoreCase = true)
@@ -92,6 +100,7 @@ internal fun MailSettingsCard(session: FamilySession) {
                 .onFailure {
                     status = "Kunde inte koppla Gmail: ${it.message ?: "Google-behörigheten misslyckades"}"
                 }
+            pendingGmailEmail = null
             syncing = false
         }
     }
@@ -99,31 +108,36 @@ internal fun MailSettingsCard(session: FamilySession) {
     val gmailAuthorizationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { activityResult ->
+        val selectedEmail = pendingGmailEmail
         val data = activityResult.data
         if (activityResult.resultCode != Activity.RESULT_OK || data == null) {
             syncing = false
-            status = "Gmail-kopplingen avbröts."
+            pendingGmailEmail = null
+            status = "Google-behörigheten stängdes innan Gmail kopplades. Försök igen och välj Tillåt."
         } else {
             runCatching { Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data) }
-                .onSuccess(::finishGmailAuthorization)
+                .onSuccess { finishGmailAuthorization(it, selectedEmail) }
                 .onFailure {
                     syncing = false
-                    status = "Kunde inte slutföra Google-inloggningen: ${it.message ?: "okänt fel"}"
+                    pendingGmailEmail = null
+                    status = "Kunde inte slutföra Google-behörigheten: ${it.message ?: "okänt fel"}"
                 }
         }
     }
 
-    fun startGmailAuthorization() {
+    fun authorizeSelectedGmail(email: String) {
         scope.launch {
             syncing = true
-            status = "Öppnar Google…"
-            runCatching { requestGmailAuthorization(context) }
+            pendingGmailEmail = email
+            status = "Begär Gmail-behörighet för $email…"
+            runCatching { requestGmailAuthorization(context, email) }
                 .onSuccess { authorization ->
                     if (authorization.hasResolution()) {
                         val pendingIntent = authorization.pendingIntent
                         if (pendingIntent == null) {
                             syncing = false
-                            status = "Google kunde inte öppna kontoväljaren."
+                            pendingGmailEmail = null
+                            status = "Google kunde inte öppna behörighetsdialogen."
                         } else {
                             syncing = false
                             gmailAuthorizationLauncher.launch(
@@ -131,14 +145,53 @@ internal fun MailSettingsCard(session: FamilySession) {
                             )
                         }
                     } else {
-                        finishGmailAuthorization(authorization)
+                        finishGmailAuthorization(authorization, email)
                     }
                 }
                 .onFailure {
                     syncing = false
-                    status = "Kunde inte öppna Google-inloggningen: ${it.message ?: "okänt fel"}"
+                    pendingGmailEmail = null
+                    status = "Kunde inte begära Gmail-behörighet: ${it.message ?: "okänt fel"}"
                 }
         }
+    }
+
+    val gmailAccountPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { activityResult ->
+        if (activityResult.resultCode != Activity.RESULT_OK || activityResult.data == null) {
+            syncing = false
+            pendingGmailEmail = null
+            status = "Inget Google-konto valdes."
+        } else {
+            val email = activityResult.data
+                ?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
+                ?.trim()
+                .orEmpty()
+            if (email.isBlank()) {
+                syncing = false
+                pendingGmailEmail = null
+                status = "Google returnerade inget konto. Försök igen."
+            } else {
+                authorizeSelectedGmail(email)
+            }
+        }
+    }
+
+    fun startGmailAuthorization() {
+        syncing = true
+        status = "Välj Google-konto…"
+        val options = AccountPicker.AccountChooserOptions.Builder()
+            .setAllowableAccountsTypes(listOf(GOOGLE_ACCOUNT_TYPE))
+            .setAlwaysShowAccountPicker(true)
+            .setTitleOverrideText("Välj Gmail-konto")
+            .build()
+        runCatching { AccountPicker.newChooseAccountIntent(options) }
+            .onSuccess { gmailAccountPickerLauncher.launch(it) }
+            .onFailure {
+                syncing = false
+                status = "Kunde inte öppna Google-kontovalet: ${it.message ?: "okänt fel"}"
+            }
     }
 
     Card(
