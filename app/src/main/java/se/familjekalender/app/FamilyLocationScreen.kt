@@ -40,9 +40,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.tileprovider.tilesource.XYTileSource
-import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -54,22 +54,18 @@ import kotlin.math.*
 private const val LOCATION_PREFS = "family_calendar_location"
 private const val LOCATION_CHANNEL = "family_location_alerts"
 
-private val SATELLITE_TILES = XYTileSource(
-    "EsriWorldImagery", 0, 19, 256, ".jpg",
-    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/")
-) { zoom, x, y ->
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$zoom/$y/$x"
-}
-
-private val SATELLITE_TILES = XYTileSource(
+private val SATELLITE_TILES = object : OnlineTileSourceBase(
     "EsriWorldImagery",
     0,
     19,
     256,
-    ".jpg",
-    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/")
-) { zoom, x, y ->
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$zoom/$y/$x"
+    "",
+    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"),
+    "Tiles © Esri"
+) {
+    override fun getTileURLString(pMapTileIndex: Long): String =
+        getBaseUrl() + MapTileIndex.getZoom(pMapTileIndex) + "/" +
+            MapTileIndex.getY(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex)
 }
 
 @Composable
@@ -93,18 +89,8 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     var showSecurity by remember { mutableStateOf(false) }
     var editingPlace by remember { mutableStateOf<SyncFamilyPlace?>(null) }
 
-    DisposableEffect(session.id) {
-        prefs.edit().putBoolean("live_view_active", true).apply()
-        if (sharing && selectedMemberId != null) FamilyLocationService.start(context)
-        onDispose {
-            prefs.edit().putBoolean("live_view_active", false).apply()
-            if (sharing && selectedMemberId != null) FamilyLocationService.start(context)
-        }
-    }
-
-    // While the Plats screen is visible, switch the foreground tracker to live mode.
-    // The service falls back to its battery-friendly cadence as soon as this screen closes.
-    DisposableEffect(session.id) {
+    // Use denser GPS updates only while the Plats view is actually open.
+    DisposableEffect(session.id, sharing, selectedMemberId) {
         prefs.edit().putBoolean("live_view_active", true).apply()
         if (sharing && selectedMemberId != null) FamilyLocationService.start(context)
         onDispose {
@@ -606,7 +592,7 @@ private fun LocationMapCard(
                         setMultiTouchControls(true)
                         setBuiltInZoomControls(false)
                         setMinZoomLevel(4.0)
-                        setMaxZoomLevel(20.0)
+                        setMaxZoomLevel(19.0)
                         controller.setZoom(17.0)
                         setOnTouchListener { view, event ->
                             when (event.actionMasked) {
@@ -658,20 +644,6 @@ private fun LocationMapCard(
                         color = Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            selected?.let { current ->
-                Surface(
-                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color(0xD917151F)
-                ) {
-                    Text(
-                        "Live · ${formatUpdated(current.updatedAt)}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
                     )
                 }
             }
