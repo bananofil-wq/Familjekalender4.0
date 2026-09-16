@@ -1,3 +1,4 @@
+# Restoration helper is intentionally idempotent; this commit triggers a signed build after the source patch.
 from pathlib import Path
 
 MAIN = Path("app/src/main/java/se/familjekalender/app/MainActivity.kt")
