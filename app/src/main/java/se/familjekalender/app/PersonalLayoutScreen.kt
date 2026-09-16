@@ -89,8 +89,8 @@ fun PersonalLayoutEditor(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(14.dp)) {
-            Text("Personliga layouter", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("Tre separata profiler. Varje profil sparar egna moduler och egen ordning.", color = Muted, fontSize = 12.sp)
+            Text("Personligt läge", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("Bygg kalendern som du vill ha den. Välj vilka delar som ska visas, ändra ordningen och spara upp till tre egna layouter.", color = Muted, fontSize = 12.sp)
             Spacer(Modifier.height(10.dp))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

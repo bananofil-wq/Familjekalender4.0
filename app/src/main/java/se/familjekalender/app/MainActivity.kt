@@ -76,7 +76,7 @@ enum class ThemeMode(val label: String, val emoji: String) {
 enum class UiLayoutMode(val label: String, val description: String) {
     FULL("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy"),
     MINIMAL("Clean", "Ren månadskalender med en diskret markering per dag"),
-    PERSONAL("Anpassad", "Avancerad modulvy")
+    PERSONAL("Personligt", "Bygg din egen kalender med valbara delar och egen ordning")
 }
 
 data class SeasonPalette(
@@ -737,8 +737,8 @@ private fun SettingsScreen(
     }
     Spacer(Modifier.height(16.dp))
     Text("Gränssnitt", fontWeight = FontWeight.Bold)
-    Text("Välj mellan en ren kalender och en vardagsvy med löpningen i fokus. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)
-    UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->
+    Text("Välj Clean, Löpning & vardag eller Personligt. I Personligt bestämmer du själv vilka delar kalendern ska visa och i vilken ordning. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)
+    UiLayoutMode.values().forEach { mode ->
         Row(
             Modifier
                 .fillMaxWidth()
