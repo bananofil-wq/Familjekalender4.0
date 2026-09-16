@@ -36,10 +36,6 @@ class FamilyLocationService : Service() {
         private const val LIVE_HEARTBEAT_MS = 5_000L
         private const val LIVE_MIN_DISTANCE_M = 3f
 
-        private const val LIVE_INTERVAL_MS = 3_000L
-        private const val LIVE_HEARTBEAT_MS = 5_000L
-        private const val LIVE_MIN_DISTANCE_M = 3f
-
         private const val MOVING_NETWORK_INTERVAL_MS = 45_000L
         private const val MOVING_GPS_INTERVAL_MS = 60_000L
         private const val STILL_NETWORK_INTERVAL_MS = 90_000L
@@ -129,9 +125,6 @@ class FamilyLocationService : Service() {
         return prefs.getBoolean("sharing_enabled", false) &&
             !prefs.getString("device_member_id", null).isNullOrBlank()
     }
-
-    private fun liveViewActive(): Boolean =
-        getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE).getBoolean("live_view_active", false)
 
     private fun liveViewActive(): Boolean =
         getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
