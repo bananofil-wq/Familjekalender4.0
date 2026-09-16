@@ -38,6 +38,7 @@ enum class PersonalCalendarModule(val label: String, val description: String) {
 object PersonalLayoutStore {
     private const val ACTIVE_PROFILE = "personal_active_profile"
     private fun profileKey(profile: Int) = "personal_profile_${profile}_modules"
+    private fun profileNameKey(profile: Int) = "personal_profile_${profile}_name"
 
     private val defaults = mapOf(
         1 to listOf(PersonalCalendarModule.ASSISTANT, PersonalCalendarModule.TODAY, PersonalCalendarModule.CALENDAR),
@@ -49,6 +50,13 @@ object PersonalLayoutStore {
 
     fun setActiveProfile(prefs: SharedPreferences, profile: Int) {
         prefs.edit().putInt(ACTIVE_PROFILE, profile.coerceIn(1, 3)).apply()
+    }
+
+    fun profileName(prefs: SharedPreferences, profile: Int): String =
+        prefs.getString(profileNameKey(profile.coerceIn(1, 3)), "").orEmpty()
+
+    fun saveProfileName(prefs: SharedPreferences, profile: Int, name: String) {
+        prefs.edit().putString(profileNameKey(profile.coerceIn(1, 3)), name).apply()
     }
 
     fun modules(prefs: SharedPreferences, profile: Int): List<PersonalCalendarModule> {
@@ -76,6 +84,9 @@ fun PersonalLayoutEditor(
     var modules by remember(activeProfile, revision) {
         mutableStateOf(PersonalLayoutStore.modules(prefs, activeProfile))
     }
+    var profileName by remember(activeProfile, revision) {
+        mutableStateOf(PersonalLayoutStore.profileName(prefs, activeProfile))
+    }
 
     fun persist(updated: List<PersonalCalendarModule>) {
         modules = updated
@@ -95,19 +106,41 @@ fun PersonalLayoutEditor(
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 (1..3).forEach { profile ->
+                    val savedName = PersonalLayoutStore.profileName(prefs, profile)
+                    val selectorLabel = savedName.ifBlank { profile.toString() }
                     if (profile == activeProfile) {
                         Button(
                             onClick = { onActiveProfileChanged(profile) },
                             modifier = Modifier.weight(1f)
-                        ) { Text("Personlig $profile") }
+                        ) { Text(selectorLabel, maxLines = 1) }
                     } else {
                         OutlinedButton(
                             onClick = { onActiveProfileChanged(profile) },
                             modifier = Modifier.weight(1f)
-                        ) { Text("$profile") }
+                        ) { Text(selectorLabel, maxLines = 1) }
                     }
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = profileName,
+                onValueChange = { value ->
+                    profileName = value
+                    PersonalLayoutStore.saveProfileName(prefs, activeProfile, value)
+                    onChanged()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Namn på gränssnittet (valfritt)") },
+                placeholder = { Text("Kan lämnas tomt") }
+            )
+            Text(
+                "Om fältet lämnas tomt visas ingen rubrik i det personliga gränssnittet.",
+                color = Muted,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+            )
 
             Spacer(Modifier.height(14.dp))
             Text("Aktiva moduler · i denna ordning", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
@@ -202,6 +235,7 @@ fun PersonalCalendarScreen(
 ) {
     val scope = rememberCoroutineScope()
     val modules = remember(profile, revision) { PersonalLayoutStore.modules(prefs, profile) }
+    val profileName = remember(profile, revision) { PersonalLayoutStore.profileName(prefs, profile) }
 
     Column(
         Modifier
@@ -213,8 +247,10 @@ fun PersonalCalendarScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("Personlig $profile", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+            Column(Modifier.weight(1f)) {
+                if (profileName.isNotBlank()) {
+                    Text(profileName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                }
                 Text("${modules.size} aktiva moduler", color = Muted, fontSize = 11.sp)
             }
             FilledIconButton(onClick = onAdd) {
