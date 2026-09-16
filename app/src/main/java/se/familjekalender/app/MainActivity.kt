@@ -781,7 +781,7 @@ private fun SettingsScreen(
     Spacer(Modifier.height(16.dp))
     Text("Gränssnitt", fontWeight = FontWeight.Bold)
     Text("Välj Clean, Fullständigt, Löpning & vardag eller Personligt. I Personligt bestämmer du själv vilka delar kalendern ska visa och i vilken ordning. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)
-    UiLayoutMode.values().forEach { mode ->
+    UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->
         Row(
             Modifier
                 .fillMaxWidth()
