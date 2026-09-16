@@ -754,89 +754,180 @@ private fun SettingsScreen(
     var memberId by remember(initialSportMemberId, members) {
         mutableStateOf(initialSportMemberId?.takeIf { id -> members.any { it.id == id } } ?: members.firstOrNull()?.id)
     }
-    Text("Inställningar", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-    Card(colors = CardDefaults.cardColors(containerColor = CardBg), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text(session.name, fontSize = 18.sp)
-            Text("Familjekod", color = Muted)
-            Text(session.code, color = MaterialTheme.colorScheme.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Button(onClick = { shareFamilyInvite(context, session) }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Share, null)
-                Text(" Bjud in till familjen")
-            }
-            OutlinedButton(onClick = { copyFamilyCode(context, session.code) }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.ContentCopy, null)
-                Text(" Kopiera familjekod")
-            }
-        }
-    }
-    Spacer(Modifier.height(16.dp))
-    Text("Gränssnitt", fontWeight = FontWeight.Bold)
-    Text("Välj Clean, Fullständigt, Löpning & vardag eller Personligt. I Personligt bestämmer du själv vilka delar kalendern ska visa och i vilken ordning. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)
-    UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable { onUiLayoutChanged(mode) }
-                .padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
+
+    Text("Inställningar", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText)
+    Text("Familj, utseende och anslutningar", color = LuxuryTextMuted, fontSize = 13.sp)
+    Spacer(Modifier.height(18.dp))
+
+    SettingsSectionCard(
+        title = session.name,
+        subtitle = "Familjekod · ${session.code}"
+    ) {
+        Button(
+            onClick = { shareFamilyInvite(context, session) },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = MaterialTheme.shapes.medium
         ) {
-            RadioButton(selected = uiLayoutMode == mode, onClick = { onUiLayoutChanged(mode) })
-            Column(Modifier.weight(1f)) {
-                Text(mode.label, fontWeight = FontWeight.SemiBold)
-                Text(mode.description, color = Muted, fontSize = 11.sp)
-            }
+            Icon(Icons.Default.Share, null)
+            Spacer(Modifier.width(8.dp))
+            Text("Bjud in till familjen")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { copyFamilyCode(context, session.code) },
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Icon(Icons.Default.ContentCopy, null)
+            Spacer(Modifier.width(8.dp))
+            Text("Kopiera familjekod")
         }
     }
 
-    if (uiLayoutMode == UiLayoutMode.PERSONAL) {
-        Spacer(Modifier.height(8.dp))
-        PersonalLayoutEditor(
-            prefs = context.getSharedPreferences("family_calendar", 0),
-            activeProfile = personalProfile,
-            revision = personalLayoutRevision,
-            onActiveProfileChanged = onPersonalProfileChanged,
-            onChanged = onPersonalLayoutChanged
-        )
-    }
-
-    Spacer(Modifier.height(16.dp))
-    Text("Tema", fontWeight = FontWeight.Bold)
-    ThemeMode.values().forEach { mode ->
-        Row(Modifier.fillMaxWidth().clickable { onThemeChanged(mode) }.padding(8.dp)) {
-            RadioButton(themeMode == mode, { onThemeChanged(mode) })
-            Text("${mode.emoji} ${mode.label}")
-        }
-    }
-    Spacer(Modifier.height(12.dp))
-    Text("SportAdmin", fontWeight = FontWeight.Bold)
-    Text("Koppla lagets kalender till rätt familjemedlem. Den uppdateras automatiskt var 30:e minut.", color = Muted, fontSize = 12.sp)
-    OutlinedTextField(url, { url = it }, label = { Text("Kalenderlänk") }, modifier = Modifier.fillMaxWidth())
-    if (members.isNotEmpty()) {
-        Spacer(Modifier.height(8.dp))
-        Text("Gäller", color = Muted, fontSize = 12.sp)
-        members.forEach { member ->
-            Row(
-                Modifier.fillMaxWidth().clickable { memberId = member.id }.padding(vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
+    Spacer(Modifier.height(14.dp))
+    SettingsSectionCard(
+        title = "Utseende",
+        subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen."
+    ) {
+        UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->
+            val selected = uiLayoutMode == mode
+            Surface(
+                color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f) else LuxurySurfaceElevated,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 7.dp)
+                    .clickable { onUiLayoutChanged(mode) }
             ) {
-                RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
-                Box(Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
-                Spacer(Modifier.width(8.dp))
-                Text(member.name)
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = selected, onClick = { onUiLayoutChanged(mode) })
+                    Spacer(Modifier.width(4.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(mode.label, fontWeight = FontWeight.SemiBold, color = LuxuryText)
+                        Text(mode.description, color = LuxuryTextMuted, fontSize = 11.sp, lineHeight = 16.sp)
+                    }
+                }
+            }
+        }
+
+        if (uiLayoutMode == UiLayoutMode.PERSONAL) {
+            Spacer(Modifier.height(6.dp))
+            PersonalLayoutEditor(
+                prefs = context.getSharedPreferences("family_calendar", 0),
+                activeProfile = personalProfile,
+                revision = personalLayoutRevision,
+                onActiveProfileChanged = onPersonalProfileChanged,
+                onChanged = onPersonalLayoutChanged
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Text("Färgtema", color = LuxuryTextMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(6.dp))
+        ThemeMode.values().forEach { mode ->
+            val selected = themeMode == mode
+            Surface(
+                color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f) else Color.Transparent,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onThemeChanged(mode) }
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = selected, onClick = { onThemeChanged(mode) })
+                    Spacer(Modifier.width(4.dp))
+                    Text(mode.label, color = LuxuryText, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+                }
             }
         }
     }
-    Button(
-        onClick = { onSaveSportSettings(url.trim(), memberId); onImport(url.trim(), memberId) },
-        enabled = url.isNotBlank() && memberId != null,
-        modifier = Modifier.fillMaxWidth()
-    ) { Text("Spara och synka nu") }
 
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(14.dp))
+    SettingsSectionCard(
+        title = "SportAdmin",
+        subtitle = "Synka lagets kalender automatiskt var 30:e minut."
+    ) {
+        OutlinedTextField(
+            value = url,
+            onValueChange = { url = it },
+            label = { Text("Kalenderlänk") },
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (members.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Text("Gäller för", color = LuxuryTextMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(4.dp))
+            members.forEach { member ->
+                val selected = memberId == member.id
+                Surface(
+                    color = if (selected) LuxurySurfaceHigh else Color.Transparent,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { memberId = member.id }
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selected, onClick = { memberId = member.id })
+                        Box(Modifier.size(9.dp).clip(CircleShape).background(Color(member.colorArgb.toInt())))
+                        Spacer(Modifier.width(9.dp))
+                        Text(member.name, color = LuxuryText, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Button(
+            onClick = { onSaveSportSettings(url.trim(), memberId); onImport(url.trim(), memberId) },
+            enabled = url.isNotBlank() && memberId != null,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.buttonColors(
+                disabledContainerColor = LuxurySurfaceHigh,
+                disabledContentColor = LuxuryTextMuted.copy(alpha = .55f)
+            )
+        ) { Text("Spara och synka") }
+    }
+
+    Spacer(Modifier.height(14.dp))
     MailSettingsCard(session)
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(14.dp))
     AppUpdateSettingsCard()
+    Spacer(Modifier.height(52.dp))
+}
+
+@Composable
+private fun SettingsSectionCard(
+    title: String,
+    subtitle: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = LuxurySurface),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText)
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(Modifier.height(3.dp))
+                Text(subtitle, color = LuxuryTextMuted, fontSize = 12.sp, lineHeight = 17.sp)
+            }
+            Spacer(Modifier.height(14.dp))
+            content()
+        }
+    }
 }
 
 @Composable
