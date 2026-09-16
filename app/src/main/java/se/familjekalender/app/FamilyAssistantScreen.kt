@@ -10,12 +10,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -300,41 +305,42 @@ internal fun FamilyAssistantCard(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = CardBg),
-        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = LuxurySurface),
+        shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).fillMaxWidth()
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp).fillMaxWidth()
     ) {
-        Column(Modifier.padding(18.dp)) {
+        Column(Modifier.padding(22.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text(greeting, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Text("Dagens plan, krockar och det som behöver lösas.", fontSize = 14.sp, color = Muted)
+                    Text(greeting, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Det viktigaste för familjen just nu.", fontSize = 14.sp, color = LuxuryTextMuted)
                 }
                 FilledIconButton(
                     onClick = onAdd,
-                    modifier = Modifier.size(52.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Color(0xFF8F22FF),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Lägg till", modifier = Modifier.size(30.dp))
+                    Icon(Icons.Default.Add, contentDescription = "Lägg till", modifier = Modifier.size(25.dp))
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                AssistantStat("✓", "${openTodoItems.size} kvar", "To-Do", Modifier.weight(1f)) { popup = AssistantPopup.TODO }
-                AssistantStat("🛒", "${openShoppingItems.size} kvar", "Inköp", Modifier.weight(1f)) { popup = AssistantPopup.SHOPPING }
-                AssistantStat("●", "${todaysEvents.size}", "idag", Modifier.weight(1f)) { popup = AssistantPopup.TODAY }
-                AssistantStat("▣", "${tomorrowsEvents.size}", "imorgon", Modifier.weight(1f)) { popup = AssistantPopup.TOMORROW }
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistantStat(Icons.Default.CheckCircle, "${openTodoItems.size}", "To-do kvar", Modifier.weight(1f)) { popup = AssistantPopup.TODO }
+                AssistantStat(Icons.Default.ShoppingCart, "${openShoppingItems.size}", "Inköp kvar", Modifier.weight(1f)) { popup = AssistantPopup.SHOPPING }
+                AssistantStat(Icons.Default.Today, "${todaysEvents.size}", "Idag", Modifier.weight(1f)) { popup = AssistantPopup.TODAY }
+                AssistantStat(Icons.Default.Event, "${tomorrowsEvents.size}", "Imorgon", Modifier.weight(1f)) { popup = AssistantPopup.TOMORROW }
             }
 
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Dagens plan", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
+                Text("Dagens plan", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText, modifier = Modifier.weight(1f))
                 TextButton(
                     onClick = { todayPlanExpanded = !todayPlanExpanded },
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
@@ -386,7 +392,7 @@ internal fun FamilyAssistantCard(
             val realMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
             if (realMembers.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                Text("Familjen", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("FAMILJEN", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = LuxuryTextMuted, letterSpacing = 1.1.sp)
                 realMembers.forEach { member ->
                     val todayCount = todaysEvents.count { it.memberId == member.id || it.memberId == ALL_FAMILY_MEMBER_ID }
                     val tomorrowCount = tomorrowsEvents.count { it.memberId == member.id || it.memberId == ALL_FAMILY_MEMBER_ID }
@@ -394,7 +400,7 @@ internal fun FamilyAssistantCard(
                         Modifier
                             .fillMaxWidth()
                             .clickable { selectedMember = member }
-                            .padding(vertical = 7.dp),
+                            .padding(vertical = 9.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -415,22 +421,26 @@ internal fun FamilyAssistantCard(
             }
 
             val attentionCount = conflicts.size + planning.size + actions.size
+            val attentionPreview = conflicts.firstOrNull() ?: planning.firstOrNull() ?: actions.firstOrNull()
             if (attentionCount > 0) {
                 Spacer(Modifier.height(14.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = .08f),
-                    shape = RoundedCornerShape(16.dp),
+                    color = LuxurySurfaceHigh,
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, LuxuryOutlineSoft),
                     modifier = Modifier.fillMaxWidth().clickable { showAttentionDetails = true }
                 ) {
                     Column(Modifier.padding(13.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Behöver din uppmärksamhet", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
-                            Text("$attentionCount  ›", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Text("Behöver din uppmärksamhet", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText, modifier = Modifier.weight(1f))
+                            Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = .14f), shape = RoundedCornerShape(99.dp)) {
+                                Text("$attentionCount  ›", modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                         Spacer(Modifier.height(6.dp))
-                        conflicts.take(2).forEach { Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.error) }
-                        planning.take(2).forEach { Text("• $it", fontSize = 12.sp, color = Color.White.copy(alpha = .88f)) }
-                        actions.take(1).forEach { Text("• $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary) }
+                        attentionPreview?.let {
+                            Text(it, fontSize = 12.sp, lineHeight = 18.sp, color = LuxuryTextMuted, maxLines = 2)
+                        }
                     }
                 }
             } else {
@@ -462,7 +472,7 @@ internal fun FamilyAssistantCard(
         AlertDialog(
             onDismissRequest = { showAttentionDetails = false },
             shape = RoundedCornerShape(22.dp),
-            containerColor = Color(0xFF171A20),
+            containerColor = LuxurySurfaceElevated,
             title = {
                 Column {
                     Text("Behöver din uppmärksamhet", fontWeight = FontWeight.Bold)
@@ -976,7 +986,7 @@ private fun MemberTwoDayPopup(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(22.dp),
-        containerColor = Color(0xFF171A20),
+        containerColor = LuxurySurfaceElevated,
         title = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1086,25 +1096,33 @@ private fun MemberTwoDayPopup(
 
 @Composable
 private fun AssistantStat(
-    icon: String,
+    icon: ImageVector,
     value: String,
     label: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Card(
+    Surface(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .13f))
+        shape = RoundedCornerShape(18.dp),
+        color = LuxurySurfaceElevated
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 3.dp),
+            Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 5.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(icon, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text(label, fontSize = 10.sp, color = Muted, maxLines = 1)
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
+                shape = CircleShape,
+                modifier = Modifier.size(30.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                }
+            }
+            Spacer(Modifier.height(7.dp))
+            Text(value, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText, maxLines = 1)
+            Text(label, fontSize = 10.sp, color = LuxuryTextMuted, maxLines = 1)
         }
     }
 }
@@ -1130,7 +1148,7 @@ private fun AssistantDetailPopup(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(22.dp),
-        containerColor = Color(0xFF171A20),
+        containerColor = LuxurySurfaceElevated,
         title = {
             Column {
                 Text(title, fontWeight = FontWeight.Bold)
@@ -1171,7 +1189,7 @@ private fun AssistantDetailPopup(
 @Composable
 private fun DetailRow(icon: String, text: String, secondary: String? = null) {
     Surface(
-        color = Color(0xFF20242B),
+        color = LuxurySurfaceHigh,
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth()
     ) {

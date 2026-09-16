@@ -865,7 +865,7 @@ private fun AnimatedNavIcon(icon: ImageVector, label: String, selected: Boolean)
 
 @Composable
 private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    val accent = Color(0xFFA66CFF)
+    val accent = MaterialTheme.colorScheme.primary
     val mappedSelection = when (selected) {
         0 -> 0
         1 -> 1
@@ -874,7 +874,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
         5 -> 4
         else -> -1
     }
-    NavigationBar(containerColor = Color(0xFA0B0B10), tonalElevation = 0.dp) {
+    NavigationBar(containerColor = LuxuryBackground.copy(alpha = .985f), tonalElevation = 0.dp) {
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
             Triple(1, Icons.Default.ShoppingCart, "Inköp"),
@@ -891,9 +891,9 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = accent,
                     selectedTextColor = accent,
-                    unselectedIconColor = Color(0xFFAAA8B7),
-                    unselectedTextColor = Color(0xFFAAA8B7),
-                    indicatorColor = accent.copy(alpha = .12f)
+                    unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
+                    unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
+                    indicatorColor = LuxurySurfaceHigh
                 )
             )
         }
@@ -902,8 +902,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
 
 @Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    val accent = Color(0xFF9C4DFF)
-    NavigationBar(containerColor = Color(0xF20F0E13)) {
+    val accent = MaterialTheme.colorScheme.primary
+    NavigationBar(containerColor = LuxuryBackground.copy(alpha = .985f), tonalElevation = 0.dp) {
         listOf(
             Icons.Default.CalendarMonth to "Kalender",
             Icons.Default.ShoppingCart to "Inköp",
@@ -921,7 +921,9 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = accent,
                     selectedTextColor = accent,
-                    indicatorColor = accent.copy(alpha = .15f)
+                    unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
+                    unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
+                    indicatorColor = LuxurySurfaceHigh
                 )
             )
         }
@@ -1008,8 +1010,8 @@ private fun AddEventDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.fillMaxWidth(0.94f),
-        shape = RoundedCornerShape(22.dp),
-        containerColor = Color(0xFF17131D),
+        shape = RoundedCornerShape(26.dp),
+        containerColor = LuxurySurfaceElevated,
         titleContentColor = Color.White,
         textContentColor = Color.White,
         title = { Text(if (isBirthday) "Ny födelsedag" else "Ny aktivitet", fontWeight = FontWeight.Bold) },
