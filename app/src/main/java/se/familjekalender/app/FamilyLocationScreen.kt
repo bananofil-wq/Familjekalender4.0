@@ -42,6 +42,7 @@ import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -52,6 +53,13 @@ import kotlin.math.*
 
 private const val LOCATION_PREFS = "family_calendar_location"
 private const val LOCATION_CHANNEL = "family_location_alerts"
+
+private val SATELLITE_TILES = XYTileSource(
+    "EsriWorldImagery", 0, 19, 256, ".jpg",
+    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/")
+) { zoom, x, y ->
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/$zoom/$y/$x"
+}
 
 private val SATELLITE_TILES = XYTileSource(
     "EsriWorldImagery",
@@ -84,6 +92,15 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     var showHistory by remember { mutableStateOf(false) }
     var showSecurity by remember { mutableStateOf(false) }
     var editingPlace by remember { mutableStateOf<SyncFamilyPlace?>(null) }
+
+    DisposableEffect(session.id) {
+        prefs.edit().putBoolean("live_view_active", true).apply()
+        if (sharing && selectedMemberId != null) FamilyLocationService.start(context)
+        onDispose {
+            prefs.edit().putBoolean("live_view_active", false).apply()
+            if (sharing && selectedMemberId != null) FamilyLocationService.start(context)
+        }
+    }
 
     // While the Plats screen is visible, switch the foreground tracker to live mode.
     // The service falls back to its battery-friendly cadence as soon as this screen closes.
@@ -641,6 +658,20 @@ private fun LocationMapCard(
                         color = Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            selected?.let { current ->
+                Surface(
+                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xD917151F)
+                ) {
+                    Text(
+                        "Live · ${formatUpdated(current.updatedAt)}",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
                     )
                 }
             }
