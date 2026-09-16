@@ -57,11 +57,11 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-internal val Bg = Color(0xFF0F0E13)
-internal val CardBg = Color(0xFF1B191F)
+internal val Bg = LuxuryBackground
+internal val CardBg = LuxurySurface
 internal val Purple = Color(0xFFB47CFF)
-internal val SoftPurple = Color(0xFF2B2038)
-internal val Muted = Color(0xFFAAA4B2)
+internal val SoftPurple = LuxurySurfaceHigh
+internal val Muted = LuxuryTextMuted
 private val MemberColors = listOf(0xFFB47CFF, 0xFFFF77A8, 0xFF62A9FF, 0xFF6DD6A7, 0xFFFFB86B)
 
 enum class ThemeMode(val label: String, val emoji: String) {
@@ -156,19 +156,11 @@ fun FamilyCalendarApp() {
         )
     }
     val palette = paletteFor(themeMode)
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = palette.accent,
-            secondary = palette.accent,
-            surfaceVariant = palette.soft,
-            outline = palette.accent.copy(alpha = .55f),
-            background = Bg,
-            surface = CardBg,
-            onBackground = Color.White,
-            onSurface = Color.White
-        )
-    ) {
-        Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
+    FamiljekalenderLuxuryTheme(palette) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize()
+        ) {
             if (session == null) {
                 FamilySetupScreen { created ->
                     prefs.edit()
@@ -311,7 +303,7 @@ private fun SyncedApp(
     }
 
     Scaffold(
-        containerColor = Bg,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (uiLayoutMode == UiLayoutMode.MINIMAL) {
                 MinimalBottomNav(selectedTab) { selectedTab = it }
@@ -325,10 +317,10 @@ private fun SyncedApp(
                 AnimatedContent(
                     targetState = uiLayoutMode,
                     transitionSpec = {
-                        (fadeIn(tween(motionDuration(220, motionEnabled))) +
-                            scaleIn(tween(motionDuration(260, motionEnabled)), initialScale = .985f)) togetherWith
-                            (fadeOut(tween(motionDuration(150, motionEnabled))) +
-                                scaleOut(tween(motionDuration(180, motionEnabled)), targetScale = .99f))
+                        (fadeIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) +
+                            scaleIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled)), initialScale = .992f)) togetherWith
+                            (fadeOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) +
+                                scaleOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled)), targetScale = .996f))
                     },
                     label = "calendar-layout-mode"
                 ) { mode ->
@@ -429,10 +421,10 @@ private fun SyncedApp(
                 AnimatedContent(
                     targetState = selectedTab,
                     transitionSpec = {
-                        (fadeIn(tween(motionDuration(170, motionEnabled))) +
-                            slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 18 }) togetherWith
-                            (fadeOut(tween(motionDuration(120, motionEnabled))) +
-                                slideOutVertically(tween(motionDuration(160, motionEnabled))) { -it / 20 })
+                        (fadeIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) +
+                            slideInVertically(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) { it / 28 }) togetherWith
+                            (fadeOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) +
+                                slideOutVertically(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) { -it / 30 })
                     },
                     label = "main-tab-content"
                 ) { tab ->
@@ -641,9 +633,9 @@ private fun ShoppingScreen(
     AnimatedContent(
         targetState = items,
         transitionSpec = {
-            (fadeIn(tween(motionDuration(170, motionEnabled))) +
+            (fadeIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) +
                 slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 16 }) togetherWith
-                (fadeOut(tween(motionDuration(120, motionEnabled))) +
+                (fadeOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) +
                     slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 18 })
         },
         label = "shopping-items"
