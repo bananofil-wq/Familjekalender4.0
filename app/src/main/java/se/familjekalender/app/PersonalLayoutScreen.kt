@@ -620,6 +620,12 @@ private fun PersonalTodayAgenda(
         events.filter { it.date == selectedDate }.sortedBy { it.time }
     }
     val memberMap = remember(members) { members.associateBy { it.id } }
+    val groups = remember(dayEvents) {
+        dayEvents.groupBy { it.memberId }
+            .entries
+            .sortedBy { group -> group.value.minOfOrNull { it.time } ?: "" }
+    }
+    var expandedGroups by remember(selectedDate) { mutableStateOf(emptySet<String>()) }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBg),
@@ -641,19 +647,66 @@ private fun PersonalTodayAgenda(
             if (dayEvents.isEmpty()) {
                 Text("Inga aktiviteter", color = Muted, fontSize = 12.sp)
             } else {
-                dayEvents.forEach { event ->
-                    val who = when {
-                        event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"
-                        else -> memberMap[event.memberId]?.name ?: "Familjen"
-                    }
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Text(event.time.ifBlank { "Hela dagen" }, modifier = Modifier.width(72.dp), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Column(Modifier.weight(1f)) {
-                            Text(event.title, fontSize = 12.sp, color = Color.White)
-                            Text(who, fontSize = 10.sp, color = Muted)
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    groups.forEach { group ->
+                        val memberId = group.key
+                        val personEvents = group.value.sortedBy { it.time }
+                        val member = memberId?.let { memberMap[it] }
+                        val who = when {
+                            memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
+                            member != null -> member.name
+                            else -> "Familjen"
+                        }
+                        val accent = when {
+                            memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFFFD75E)
+                            member != null -> Color(member.colorArgb.toInt())
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                        val groupKey = memberId ?: "__unassigned__"
+                        val expanded = groupKey in expandedGroups
+
+                        Surface(
+                            color = Color.White.copy(alpha = .04f),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, accent.copy(alpha = .26f)),
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                expandedGroups = if (expanded) expandedGroups - groupKey else expandedGroups + groupKey
+                            }
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 11.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.size(9.dp).background(accent, RoundedCornerShape(99.dp)))
+                                Spacer(Modifier.width(9.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(who, fontSize = 13.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        if (personEvents.size == 1) "1 aktivitet" else "${personEvents.size} aktiviteter",
+                                        fontSize = 10.sp,
+                                        color = Muted
+                                    )
+                                }
+                                Text(if (expanded) "Dölj" else "Visa", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        if (expanded) {
+                            personEvents.forEach { event ->
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Text(
+                                        event.time.ifBlank { "Hela dagen" },
+                                        modifier = Modifier.width(72.dp),
+                                        color = accent,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(event.title, modifier = Modifier.weight(1f), fontSize = 12.sp, color = Color.White)
+                                }
+                            }
                         }
                     }
                 }

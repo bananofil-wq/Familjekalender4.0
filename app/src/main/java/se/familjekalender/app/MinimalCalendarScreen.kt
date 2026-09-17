@@ -333,6 +333,12 @@ private fun PremiumAgenda(
 ) {
     val headerFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
     val header = date.format(headerFormatter).replaceFirstChar { it.uppercase(locale) }
+    val groups = remember(events) {
+        events.groupBy { it.memberId }
+            .entries
+            .sortedBy { group -> group.value.minOfOrNull { it.time } ?: "" }
+    }
+    var expandedGroups by remember(date) { mutableStateOf(emptySet<String>()) }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
@@ -350,10 +356,7 @@ private fun PremiumAgenda(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(header, color = LuxuryText, style = MaterialTheme.typography.titleLarge)
-                Surface(
-                    color = LuxurySurfaceHigh,
-                    shape = RoundedCornerShape(99.dp)
-                ) {
+                Surface(color = LuxurySurfaceHigh, shape = RoundedCornerShape(99.dp)) {
                     Text(
                         if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
                         color = LuxuryTextMuted,
@@ -371,7 +374,60 @@ private fun PremiumAgenda(
             } else {
                 Spacer(Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    events.forEach { event -> PremiumAgendaRow(event, memberById[event.memberId]) }
+                    groups.forEach { group ->
+                        val memberId = group.key
+                        val personEvents = group.value.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
+                        val member = memberId?.let { memberById[it] }
+                        val memberName = when {
+                            memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
+                            member != null -> member.name
+                            else -> "Familjen"
+                        }
+                        val accent = when {
+                            memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFFFD75E)
+                            member != null -> Color(member.colorArgb.toInt())
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                        val groupKey = memberId ?: "__unassigned__"
+                        val expanded = groupKey in expandedGroups
+
+                        Surface(
+                            color = LuxurySurface,
+                            shape = RoundedCornerShape(17.dp),
+                            border = BorderStroke(1.dp, accent.copy(alpha = .28f)),
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                expandedGroups = if (expanded) expandedGroups - groupKey else expandedGroups + groupKey
+                            }
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.width(3.dp).height(38.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(memberName, color = LuxuryText, style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        if (personEvents.size == 1) "1 aktivitet" else "${personEvents.size} aktiviteter",
+                                        color = LuxuryTextMuted,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Text(
+                                    if (expanded) "Dölj" else "Visa",
+                                    color = accent,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        if (expanded) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                personEvents.forEach { event -> PremiumAgendaRow(event, member) }
+                            }
+                        }
+                    }
                 }
             }
         }

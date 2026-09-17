@@ -593,6 +593,12 @@ private fun LifeAgendaCard(
 ) {
     val formatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
     val header = date.format(formatter).replaceFirstChar { it.uppercase(locale) }
+    val groups = remember(events) {
+        events.groupBy { it.memberId }
+            .entries
+            .sortedBy { group -> group.value.minOfOrNull { it.time } ?: "" }
+    }
+    var expandedGroups by remember(date) { mutableStateOf(emptySet<String>()) }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = LifeSurfaceRaised),
@@ -622,49 +628,74 @@ private fun LifeAgendaCard(
                 Text("Inget planerat. Kalendern håller sig ur vägen.", color = LifeMuted, fontSize = 13.sp)
             } else {
                 Spacer(Modifier.height(9.dp))
-                events.take(4).forEachIndexed { index, event ->
-                    val member = memberById[event.memberId]
-                    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: LifePurple
-                    val memberName = when {
-                        event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"
-                        member != null -> member.name
-                        else -> "Familjen"
-                    }
-                    val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
-                    val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" }
-                        ?: event.time.ifBlank { "Hela dagen" }
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    groups.forEach { group ->
+                        val memberId = group.key
+                        val personEvents = group.value.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
+                        val member = memberId?.let { memberById[it] }
+                        val accent = when {
+                            memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFFFD75E)
+                            member != null -> Color(member.colorArgb.toInt())
+                            else -> LifePurple
+                        }
+                        val memberName = when {
+                            memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
+                            member != null -> member.name
+                            else -> "Familjen"
+                        }
+                        val groupKey = memberId ?: "__unassigned__"
+                        val expanded = groupKey in expandedGroups
 
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(Modifier.width(3.dp).height(38.dp).clip(RoundedCornerShape(99.dp)).background(accent))
-                        Spacer(Modifier.width(10.dp))
-                        Text(timeText, color = LifeMuted, fontSize = 11.sp, modifier = Modifier.width(74.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                title,
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(memberName, color = LifeMuted, fontSize = 10.sp)
+                        Surface(
+                            color = LifeSurface,
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = .28f)),
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                expandedGroups = if (expanded) expandedGroups - groupKey else expandedGroups + groupKey
+                            }
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.width(3.dp).height(36.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(memberName, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        if (personEvents.size == 1) "1 aktivitet" else "${personEvents.size} aktiviteter",
+                                        color = LifeMuted,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                                Text(if (expanded) "Dölj" else "Visa", color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        if (expanded) {
+                            personEvents.forEachIndexed { index, event ->
+                                val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
+                                val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" }
+                                    ?: event.time.ifBlank { "Hela dagen" }
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(timeText, color = LifeMuted, fontSize = 11.sp, modifier = Modifier.width(78.dp))
+                                    Text(
+                                        title,
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                if (index < personEvents.lastIndex) HorizontalDivider(color = LifeDivider, thickness = 1.dp)
+                            }
                         }
                     }
-                    if (index < minOf(events.lastIndex, 3)) {
-                        HorizontalDivider(color = LifeDivider, thickness = 1.dp)
-                    }
-                }
-                if (events.size > 4) {
-                    Spacer(Modifier.height(7.dp))
-                    Text(
-                        "+ ${events.size - 4} till",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
             }
         }
