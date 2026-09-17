@@ -1,2 +1,3 @@
-Signed update requested after verified calendar grouping and per-person location notification changes.
-Requested: 2026-09-17
+Signed update requested after verified premium glass Clean implementation.
+Requested: 2026-09-17 18:43 UTC
+Version: 4.3.20260917.7
