@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - '.github/workflows/signed-update-now.yml'
+      - '.github/signed-update-trigger.txt'
   workflow_dispatch:
 
 permissions:
@@ -15,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091702'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260917.2'
+      FAMILJEKALENDER_VERSION_CODE: '2026091703'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260917.3'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -70,12 +71,12 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Prepare update APK
-        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260917.2.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260917.3.apk
 
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-signed-update-4.3.20260917.2
-          path: Familjekalender-4.3.20260917.2.apk
+          name: Familjekalender-signed-update-4.3.20260917.3
+          path: Familjekalender-4.3.20260917.3.apk
           if-no-files-found: error
           retention-days: 30
