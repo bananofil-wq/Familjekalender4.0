@@ -22,19 +22,74 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Apply Google Calendar and Personal mode fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('app/src/main/java/se/familjekalender/app/SupabaseSync.kt')
+          s = p.read_text()
+          anchor = '    suspend fun importSportAdmin(session: FamilySession, webcalUrl: String, memberId: String?): Int = withContext(Dispatchers.IO) {'
+          if anchor not in s:
+              raise SystemExit('Supabase importSportAdmin anchor not found')
+          if 'suspend fun upsertExternalEvent(' not in s:
+              fn = '''    suspend fun upsertExternalEvent(
+        session: FamilySession,
+        source: String,
+        externalId: String,
+        title: String,
+        startsAt: ZonedDateTime,
+        endsAt: ZonedDateTime?,
+        memberId: String?
+    ) = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("family_id", session.id)
+            .put("title", title)
+            .put("starts_at", startsAt.toOffsetDateTime().toString())
+            .put("source", source)
+            .put("external_id", externalId)
+            .put("updated_at", OffsetDateTime.now().toString())
+        if (endsAt != null && endsAt.isAfter(startsAt)) body.put("ends_at", endsAt.toOffsetDateTime().toString())
+        else body.put("ends_at", JSONObject.NULL)
+        if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL)
+        else body.put("member_id", memberId)
+        request(
+            "POST",
+            "/rest/v1/calendar_events?on_conflict=family_id,source,external_id",
+            body,
+            session.code,
+            preferRepresentation = false,
+            preferExtra = "resolution=merge-duplicates"
+        )
+    }
+
+'''
+              s = s.replace(anchor, fn + anchor, 1)
+              p.write_text(s)
+
+          p = Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
+          s = p.read_text()
+          s = s.replace('RUNNING("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy")',
+                        'RUNNING("Sportläge", "Träning, vardag, progression och familjens schema i en samlad vy")')
+          s = s.replace('PERSONAL("Personligt", "Bygg din egen kalender med valbara delar och egen ordning")',
+                        'PERSONAL("Personligt", "Customiza din egen vy: lägg till, ta bort, flytta och ändra storlek på alla dashboarddelar")')
+          s = s.replace('UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->',
+                        'UiLayoutMode.values().forEach { mode ->')
+          p.write_text(s)
+
       - name: Apply shopping redesign
         run: python3 scripts/apply_simple_shopping_redesign.py
 
-      - name: Persist shopping redesign
+      - name: Persist source fixes
         shell: bash
         run: |
           if git diff --quiet; then
-            echo "Shopping redesign already applied"
+            echo "Source fixes already applied"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add app/src/main/java/se/familjekalender/app/MainActivity.kt
-            git commit -m "Redesign shopping list and remove price comparison"
+            git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/SupabaseSync.kt
+            git commit -m "Fix Google Calendar sync and restore Personal mode"
             git push origin HEAD:main
           fi
 
