@@ -23,118 +23,34 @@ jobs:
           if old not in s: raise SystemExit('Clean call anchor missing')
           s=s.replace(old,new,1)
           p.write_text(s)
-
           p=Path('app/src/main/java/se/familjekalender/app/MinimalCalendarScreen.kt')
-          s=p.read_text()
-          start=s.index('@Composable\ninternal fun MinimalCalendarScreen(')
-          end=s.index('\n@Composable', start+20)
+          s=p.read_text(); start=s.index('@Composable\ninternal fun MinimalCalendarScreen('); end=s.index('\n@Composable', start+20)
           replacement=r'''@Composable
 internal fun MinimalCalendarScreen(
-    selectedDate: LocalDate,
-    onSelect: (LocalDate) -> Unit,
-    events: List<SyncEvent>,
-    members: List<SyncMember>,
-    onAdd: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onSwitchToSport: () -> Unit
+    selectedDate: LocalDate, onSelect: (LocalDate) -> Unit, events: List<SyncEvent>, members: List<SyncMember>,
+    onAdd: () -> Unit, onOpenSettings: () -> Unit, onSwitchToSport: () -> Unit
 ) {
-    val locale = remember { Locale("sv", "SE") }
-    val motionEnabled = appMotionEnabled()
-    var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
-    val memberById = remember(members) { members.associateBy { it.id } }
-    val selectedEvents = remember(events, selectedDate) {
-        events.filter { it.date == selectedDate }.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
-    }
-    LaunchedEffect(selectedDate) {
-        val target = YearMonth.from(selectedDate)
-        if (target != month) month = target
-    }
-
+    val locale=remember{Locale("sv","SE")}; val motionEnabled=appMotionEnabled(); var month by remember{mutableStateOf(YearMonth.from(selectedDate))}
+    val memberById=remember(members){members.associateBy{it.id}}; val selectedEvents=remember(events,selectedDate){events.filter{it.date==selectedDate}.sortedWith(compareBy<SyncEvent>{it.time}.thenBy{it.title})}
+    LaunchedEffect(selectedDate){val target=YearMonth.from(selectedDate);if(target!=month)month=target}
     Box(Modifier.fillMaxSize()) {
-        androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(id = R.drawable.season_autumn),
-            contentDescription = null,
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.season_autumn),null,Modifier.fillMaxSize(),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(Color(0x66100A18)))
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp)
-        ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text("Familjekalender", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Familjen i fokus", color = Color.White.copy(alpha=.72f), fontSize = 12.sp)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Surface(onClick = onAdd, shape = CircleShape, color = Color(0x55201B2C), border = BorderStroke(1.dp, Color.White.copy(alpha=.16f))) {
-                        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Icon(Icons.Default.Add, null, tint = Color.White) }
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Surface(shape = RoundedCornerShape(22.dp), color = Color(0x7A151221), border = BorderStroke(1.dp, Color.White.copy(alpha=.14f))) {
-                Row(Modifier.padding(4.dp)) {
-                    Surface(shape = RoundedCornerShape(18.dp), color = Color(0xFF7557E8)) {
-                        Text("Clean", color=Color.White, fontWeight=FontWeight.SemiBold, modifier=Modifier.padding(horizontal=22.dp, vertical=10.dp))
-                    }
-                    Surface(onClick=onSwitchToSport, shape = RoundedCornerShape(18.dp), color = Color.Transparent) {
-                        Text("Sportläge", color=Color.White.copy(alpha=.76f), modifier=Modifier.padding(horizontal=22.dp, vertical=10.dp))
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Surface(shape = RoundedCornerShape(28.dp), color = Color(0x9A171322), border = BorderStroke(1.dp, Color.White.copy(alpha=.15f)), modifier=Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically) {
-                        IconButton(onClick={ val m=month.minusMonths(1); month=m; onSelect(m.atDay(1)) }) { Icon(Icons.Default.ChevronLeft,null,tint=Color.White) }
-                        Text(month.month.getDisplayName(TextStyle.FULL,locale).replaceFirstChar{it.uppercase(locale)}+" ${month.year}", color=Color.White, fontSize=22.sp, fontWeight=FontWeight.SemiBold)
-                        IconButton(onClick={ val m=month.plusMonths(1); month=m; onSelect(m.atDay(1)) }) { Icon(Icons.Default.ChevronRight,null,tint=Color.White) }
-                    }
-                    AnimatedContent(targetState=month, transitionSpec={ fadeIn(tween(motionDuration(LuxuryMotion.Standard,motionEnabled))) togetherWith fadeOut(tween(motionDuration(LuxuryMotion.Fast,motionEnabled))) }, label="glass-month") { visibleMonth ->
-                        PremiumMonthGrid(visibleMonth, selectedDate, events, memberById, motionEnabled) { date -> month=YearMonth.from(date); onSelect(date) }
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Surface(shape=RoundedCornerShape(24.dp), color=Color(0xA01A1626), border=BorderStroke(1.dp,Color.White.copy(alpha=.14f)), modifier=Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Idag", color=Color.White.copy(alpha=.65f), fontSize=12.sp, fontWeight=FontWeight.Bold)
-                    Text(selectedDate.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)).replaceFirstChar{it.uppercase(locale)}, color=Color.White, fontSize=19.sp, fontWeight=FontWeight.SemiBold)
-                    Spacer(Modifier.height(10.dp))
-                    if (selectedEvents.isEmpty()) Text("Inga aktiviteter planerade", color=Color.White.copy(alpha=.72f))
-                    else selectedEvents.take(3).forEach { e ->
-                        Row(Modifier.fillMaxWidth().padding(vertical=5.dp), verticalAlignment=Alignment.CenterVertically) {
-                            Box(Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
-                            Spacer(Modifier.width(9.dp)); Text(e.time, color=Color.White.copy(alpha=.7f), fontSize=12.sp); Spacer(Modifier.width(9.dp)); Text(e.title, color=Color.White, maxLines=1, overflow=TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                Surface(shape=RoundedCornerShape(24.dp), color=Color(0xA01A1626), border=BorderStroke(1.dp,Color.White.copy(alpha=.14f)), modifier=Modifier.weight(1f)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("✦  Assistent", color=Color.White, fontWeight=FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        Text(if(selectedEvents.isEmpty()) "Lugn dag – inget kräver din uppmärksamhet." else "${selectedEvents.size} aktiviteter. Jag håller ihop dagen.", color=Color.White.copy(alpha=.78f), fontSize=13.sp)
-                    }
-                }
-                Surface(onClick=onOpenSettings, shape=RoundedCornerShape(24.dp), color=Color(0xA01A1626), border=BorderStroke(1.dp,Color.White.copy(alpha=.14f)), modifier=Modifier.width(92.dp)) {
-                    Column(Modifier.padding(14.dp), horizontalAlignment=Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Settings,"Inställningar",tint=Color.White); Spacer(Modifier.height(6.dp)); Text("Inställningar",color=Color.White.copy(alpha=.75f),fontSize=10.sp)
-                    }
-                }
-            }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=12.dp)) {
+            Row(Modifier.fillMaxWidth(),Arrangement.SpaceBetween,Alignment.CenterVertically){Column{Text("Familjekalender",color=Color.White,fontSize=30.sp,fontWeight=FontWeight.SemiBold);Text("Familjen i fokus",color=Color.White.copy(alpha=.72f),fontSize=12.sp)};Surface(onClick=onAdd,shape=CircleShape,color=Color(0x55201B2C),border=BorderStroke(1.dp,Color.White.copy(alpha=.16f))){Box(Modifier.size(44.dp),contentAlignment=Alignment.Center){Icon(Icons.Default.Add,null,tint=Color.White)}}}
+            Spacer(Modifier.height(12.dp));Surface(shape=RoundedCornerShape(22.dp),color=Color(0x7A151221),border=BorderStroke(1.dp,Color.White.copy(alpha=.14f))){Row(Modifier.padding(4.dp)){Surface(shape=RoundedCornerShape(18.dp),color=Color(0xFF7557E8)){Text("Clean",color=Color.White,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(horizontal=22.dp,vertical=10.dp))};Surface(onClick=onSwitchToSport,shape=RoundedCornerShape(18.dp),color=Color.Transparent){Text("Sportläge",color=Color.White.copy(alpha=.76f),modifier=Modifier.padding(horizontal=22.dp,vertical=10.dp))}}}
+            Spacer(Modifier.height(12.dp));Surface(shape=RoundedCornerShape(28.dp),color=Color(0x9A171322),border=BorderStroke(1.dp,Color.White.copy(alpha=.15f)),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(14.dp)){Row(Modifier.fillMaxWidth(),Arrangement.SpaceBetween,Alignment.CenterVertically){IconButton(onClick={val m=month.minusMonths(1);month=m;onSelect(m.atDay(1))}){Icon(Icons.Default.ChevronLeft,null,tint=Color.White)};Text(month.month.getDisplayName(TextStyle.FULL,locale).replaceFirstChar{it.uppercase(locale)}+" ${month.year}",color=Color.White,fontSize=22.sp,fontWeight=FontWeight.SemiBold);IconButton(onClick={val m=month.plusMonths(1);month=m;onSelect(m.atDay(1))}){Icon(Icons.Default.ChevronRight,null,tint=Color.White)}};AnimatedContent(targetState=month,transitionSpec={fadeIn(tween(motionDuration(LuxuryMotion.Standard,motionEnabled))) togetherWith fadeOut(tween(motionDuration(LuxuryMotion.Fast,motionEnabled)))},label="glass-month"){visibleMonth->PremiumMonthGrid(visibleMonth,selectedDate,events,memberById,motionEnabled){date->month=YearMonth.from(date);onSelect(date)}}}}
+            Spacer(Modifier.height(12.dp));Surface(shape=RoundedCornerShape(24.dp),color=Color(0xA01A1626),border=BorderStroke(1.dp,Color.White.copy(alpha=.14f)),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){Text("Idag",color=Color.White.copy(alpha=.65f),fontSize=12.sp,fontWeight=FontWeight.Bold);Text(selectedDate.format(DateTimeFormatter.ofPattern("EEEE d MMMM",locale)).replaceFirstChar{it.uppercase(locale)},color=Color.White,fontSize=19.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(10.dp));if(selectedEvents.isEmpty())Text("Inga aktiviteter planerade",color=Color.White.copy(alpha=.72f)) else selectedEvents.take(3).forEach{e->Row(Modifier.fillMaxWidth().padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary));Spacer(Modifier.width(9.dp));Text(e.time,color=Color.White.copy(alpha=.7f),fontSize=12.sp);Spacer(Modifier.width(9.dp));Text(e.title,color=Color.White,maxLines=1,overflow=TextOverflow.Ellipsis)}}}}
+            Spacer(Modifier.height(12.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){Surface(shape=RoundedCornerShape(24.dp),color=Color(0xA01A1626),border=BorderStroke(1.dp,Color.White.copy(alpha=.14f)),modifier=Modifier.weight(1f)){Column(Modifier.padding(16.dp)){Text("✦  Assistent",color=Color.White,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(8.dp));Text(if(selectedEvents.isEmpty())"Lugn dag – inget kräver din uppmärksamhet." else "${selectedEvents.size} aktiviteter. Jag håller ihop dagen.",color=Color.White.copy(alpha=.78f),fontSize=13.sp)}};Surface(onClick=onOpenSettings,shape=RoundedCornerShape(24.dp),color=Color(0xA01A1626),border=BorderStroke(1.dp,Color.White.copy(alpha=.14f)),modifier=Modifier.width(92.dp)){Column(Modifier.padding(14.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.Settings,"Inställningar",tint=Color.White);Spacer(Modifier.height(6.dp));Text("Inställningar",color=Color.White.copy(alpha=.75f),fontSize=10.sp)}}}
             Spacer(Modifier.height(18.dp))
         }
     }
 }'''
-          s=s[:start]+replacement+s[end:]
-          p.write_text(s)
+          p.write_text(s[:start]+replacement+s[end:])
           PY
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add app/src/main/java/se/familjekalender/app/MainActivity.kt app/src/main/java/se/familjekalender/app/MinimalCalendarScreen.kt
           git commit -m 'Implement approved premium glass Clean screen'
           git push
+# trigger 2
