@@ -14,7 +14,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 
 private const val WIDGET_SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
 private const val WIDGET_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
@@ -211,7 +210,7 @@ class FamilyCalendarWidgetWorker(
 
         val escapedWho = Regex.escape(who)
         cleaned = cleaned.replace(
-            Regex("""^\s*$escapedWho\s*(?:[•·|:\-–]\s*)?""", RegexOption.IGNORE_CASE),
+            Regex("""^\s*$escapedWho\s*(?:[•·|:–-]\s*)?""".replace("\\s", "\\s"), RegexOption.IGNORE_CASE),
             ""
         )
 
@@ -222,10 +221,10 @@ class FamilyCalendarWidgetWorker(
         }
 
         cleaned = cleaned
-            .replace(Regex("""\b\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b"""), " ")
-            .replace(Regex("""\b${Regex.escape(startTime)}\b"""), " ")
-            .replace(Regex("""(^|\s)[•·|]\s*"""), " ")
-            .replace(Regex("""\s{2,}"""), " ")
+            .replace(Regex("""\b\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b""".replace("\\b", "\b").replace("\\d", "\d").replace("\\s", "\s")), " ")
+            .replace(Regex("""\b${Regex.escape(startTime)}\b""".replace("\\b", "\b")), " ")
+            .replace(Regex("""(^|\s)[•·|]\s*""".replace("\\s", "\s")), " ")
+            .replace(Regex("""\s{2,}""".replace("\\s", "\s")), " ")
             .trim()
             .trim('•', '·', '-', '–', '|', ':')
             .trim()
