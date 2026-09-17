@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -14,14 +14,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Apply grouped day overview in all modes
-        run: python3 scripts/group_day_overview.py
-
-      - name: Apply per-person location alert controls
-        run: python3 scripts/add_location_alert_controls.py
 
       - name: Verify approved seasonal images
         run: python3 scripts/verify-season-images.py
@@ -43,98 +35,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-4.0-debug
+          name: Familjekalender-current-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
-      - name: Commit verified app changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt \
-            app/src/main/java/se/familjekalender/app/MinimalCalendarScreen.kt \
-            app/src/main/java/se/familjekalender/app/PersonalLayoutScreen.kt \
-            app/src/main/java/se/familjekalender/app/RunningLifeDashboard.kt \
-            app/src/main/java/se/familjekalender/app/FamilyLocationScreen.kt
-          if git diff --cached --quiet; then
-            echo "Verified app changes already present on main"
-          else
-            git commit -m "Apply verified calendar and location alert changes"
-            git fetch origin main
-            git rebase origin/main
-            git push origin HEAD:main
-          fi
-
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Render app screens
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: default
-          arch: x86_64
-          profile: pixel_6
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell pm grant se.familjekalender.app android.permission.POST_NOTIFICATIONS || true
-            adb shell input keyevent KEYCODE_WAKEUP || true
-            adb shell wm dismiss-keyguard || true
-            adb logcat -c || true
-
-            adb shell am force-stop se.familjekalender.app
-            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen calendar
-            sleep 3
-            adb shell dumpsys activity top > activity-top-calendar.txt || true
-            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-calendar.txt
-            adb exec-out screencap -p > calendar-screen.png
-            test -s calendar-screen.png
-
-            adb shell am force-stop se.familjekalender.app
-            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen shopping
-            sleep 3
-            adb shell dumpsys activity top > activity-top-shopping.txt || true
-            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-shopping.txt
-            adb exec-out screencap -p > shopping-screen.png
-            test -s shopping-screen.png
-
-            adb shell am force-stop se.familjekalender.app
-            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen todo
-            sleep 3
-            adb shell dumpsys activity top > activity-top-todo.txt || true
-            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-todo.txt
-            adb exec-out screencap -p > todo-screen.png
-            test -s todo-screen.png
-
-            adb shell am force-stop se.familjekalender.app
-            adb shell am start -W -n se.familjekalender.app/.DesignPreviewActivity --es screen settings
-            sleep 3
-            adb shell dumpsys activity top > activity-top-settings.txt || true
-            grep -q "se.familjekalender.app/.DesignPreviewActivity" activity-top-settings.txt
-            adb exec-out screencap -p > settings-screen.png
-            test -s settings-screen.png
-
-            adb logcat -d -v threadtime > app-logcat.txt || true
-            touch app-logcat.txt
-            ! grep -q "FATAL EXCEPTION.*se.familjekalender.app" app-logcat.txt
-
-      - name: Upload rendered app screens
-        uses: actions/upload-artifact@v4
-        with:
-          name: Familjekalender-app-screens
-          path: |
-            calendar-screen.png
-            shopping-screen.png
-            todo-screen.png
-            settings-screen.png
-            app-logcat.txt
-            activity-top-calendar.txt
-            activity-top-shopping.txt
-            activity-top-todo.txt
-            activity-top-settings.txt
