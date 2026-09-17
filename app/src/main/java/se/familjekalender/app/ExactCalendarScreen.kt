@@ -485,7 +485,73 @@ private fun DayOverviewPopup(
                 if (events.isEmpty()) {
                     Text("Inget inlagt den här dagen.", color = Color.White.copy(alpha = .62f))
                 } else {
-                    events.forEach { event ->
+                    var expandedGroupKeys by remember(date) { mutableStateOf(emptySet<String>()) }
+                    val groupedEvents = events.groupBy { it.memberId }
+                    groupedEvents.forEach { (memberId, personEvents) ->
+                        val groupMember = members.find { it.id == memberId }
+                        val groupName = groupMember?.name
+                            ?: if (memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else "Familjen"
+                        val groupColor = if (memberId == ALL_FAMILY_MEMBER_ID) {
+                            Color(0xFFFFD75E)
+                        } else {
+                            groupMember?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
+                        }
+                        val groupKey = "member:${memberId ?: "unassigned"}"
+                        val expanded = personEvents.size == 1 || groupKey in expandedGroupKeys
+
+                        if (personEvents.size > 1) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        expandedGroupKeys = if (groupKey in expandedGroupKeys) {
+                                            expandedGroupKeys - groupKey
+                                        } else {
+                                            expandedGroupKeys + groupKey
+                                        }
+                                    },
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color(0xFF20242B),
+                                border = BorderStroke(1.dp, groupColor.copy(alpha = .34f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 13.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(13.dp)
+                                            .clip(CircleShape)
+                                            .background(groupColor)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            groupName,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 16.sp
+                                        )
+                                        Text(
+                                            "${personEvents.size} aktiviteter",
+                                            color = Color.White.copy(alpha = .62f),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Text(
+                                        if (expanded) "Dölj" else "Visa alla",
+                                        color = groupColor,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        if (expanded) {
+                            personEvents.sortedBy { it.time }.forEach { event ->
                         val member = members.find { it.id == event.memberId }
                         val allFamily = event.memberId == ALL_FAMILY_MEMBER_ID
                         val birthday = isBirthdayEvent(event)
@@ -540,6 +606,8 @@ private fun DayOverviewPopup(
                                         }
                                     }
                                 }
+                            }
+                        }
                             }
                         }
                     }
