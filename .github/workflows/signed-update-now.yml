@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091708'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260917.8'
+      FAMILJEKALENDER_VERSION_CODE: '2026091709'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260917.9'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -69,13 +69,13 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Prepare update APK
-        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260917.8.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260917.9.apk
 
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-signed-update-4.3.20260917.8
-          path: Familjekalender-4.3.20260917.8.apk
+          name: Familjekalender-signed-update-4.3.20260917.9
+          path: Familjekalender-4.3.20260917.9.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -86,13 +86,10 @@ jobs:
         run: |
           set -euo pipefail
           cat > release-notes.txt <<'EOF'
-          Gemensam premiumdesign för Familjekalenderns fyra kalenderlägen.
+          Widgetfix för morgondagens aktiviteter.
 
-          • Clean behåller den godkända höstbakgrunden, glass-korten, månadskalendern, dagsöversikten, assistenten och väderkortet.
-          • Fullständigt använder samma visuella språk med familjeöversikter och full kalender i tydliga glass-paneler.
-          • Sportläge använder samma premiumstil med löpning, träning, utveckling och historik i fokus.
-          • Personligt använder samma premiumstil samtidigt som valbara moduler och den personliga layouten finns kvar.
-          • Navigation, lila accenter, bakgrundsbehandling och kortdesign är nu konsekventa mellan lägena.
+          • Widgeten visar nu upp till två aktiviteter under Imorgon i stället för att alltid kapa listan efter den första.
+          • Behåller premiumdesignen och funktionerna från 4.3.20260917.8.
           EOF
           gh release create "v${FAMILJEKALENDER_VERSION_NAME}" \
             "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" \
