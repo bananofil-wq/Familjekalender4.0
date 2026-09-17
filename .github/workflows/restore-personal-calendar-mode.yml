@@ -26,12 +26,17 @@ jobs:
 
           text = text.replace(
               '    PERSONAL("Anpassad", "Avancerad modulvy")',
+              '    PERSONAL("Personligt", "Helt anpassningsbar vy där du lägger till, tar bort, flyttar och ändrar storlek på alla delar.")',
+              1
+          )
+          text = text.replace(
               '    PERSONAL("Personligt", "Bygg din egen kalender med valbara delar och egen ordning")',
+              '    PERSONAL("Personligt", "Helt anpassningsbar vy där du lägger till, tar bort, flyttar och ändrar storlek på alla delar.")',
               1
           )
           text = text.replace(
               'Text("Välj mellan en ren kalender och en vardagsvy med löpningen i fokus. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)',
-              'Text("Välj Clean, Löpning & vardag eller Personligt. I Personligt bestämmer du själv vilka delar kalendern ska visa och i vilken ordning. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)',
+              'Text("Välj Clean, Löpning & vardag eller Personligt. I Personligt bestämmer du själv vilka delar som visas och kan lägga till, ta bort, flytta och ändra storlek på dem. Valet sparas på den här telefonen.", color = Muted, fontSize = 12.sp)',
               1
           )
           text = text.replace(
@@ -53,6 +58,7 @@ jobs:
               'Text("Bygg kalendern som du vill ha den. Välj vilka delar som ska visas, ändra ordningen och spara upp till tre egna layouter.", color = Muted, fontSize = 12.sp)',
               1
           )
+          # Startsidan i Personligt visar aldrig lägesnamnet "Personligt". Endast ett frivilligt eget profilnamn kan visas.
           personal.write_text(p)
           PY
       - name: Commit changes
@@ -67,3 +73,4 @@ jobs:
           git commit -m "Restore personal calendar mode"
           git push origin main
 # build trigger after personal mode restoration
+# retrigger 2026-09-17: restore selectable fully customizable Personal mode without a mode-name heading on home
