@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="14dp">
+    android:padding="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -24,7 +24,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="#FFFFFFFF"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -33,63 +33,130 @@
                 android:id="@+id/widget_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:textColor="#B3FFFFFF"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:maxLines="1"
                 android:ellipsize="end" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/widget_refresh"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:gravity="center"
             android:background="@drawable/widget_refresh_bg"
             android:text="↻"
             android:textColor="#FFFFFFFF"
-            android:textSize="20sp"
+            android:textSize="17sp"
             android:contentDescription="Uppdatera" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/widget_summary"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="7dp"
-        android:paddingLeft="8dp"
-        android:paddingTop="5dp"
-        android:paddingRight="8dp"
-        android:paddingBottom="5dp"
-        android:background="@drawable/widget_refresh_bg"
-        android:textColor="#E6FFFFFF"
-        android:textSize="11sp"
-        android:maxLines="1"
-        android:ellipsize="end" />
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_todo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:gravity="center_vertical"
+            android:paddingLeft="8dp"
+            android:paddingTop="4dp"
+            android:paddingRight="8dp"
+            android:paddingBottom="4dp"
+            android:background="@drawable/widget_refresh_bg"
+            android:textColor="#E6FFFFFF"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/widget_shopping"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:gravity="center_vertical"
+            android:paddingLeft="8dp"
+            android:paddingTop="4dp"
+            android:paddingRight="8dp"
+            android:paddingBottom="4dp"
+            android:background="@drawable/widget_refresh_bg"
+            android:textColor="#E6FFFFFF"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:gravity="end"
+        android:textColor="#70FFFFFF"
+        android:textSize="9sp"
+        android:maxLines="1" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="7dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="4dp"
         android:background="#22FFFFFF"
         android:text="" />
 
-    <TextView
-        android:id="@+id/widget_event_1"
-        style="@style/WidgetEventText" />
+    <LinearLayout android:id="@+id/widget_event_1" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_1_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_1_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_1_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_event_2" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_2_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_2_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_2_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_event_3" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_3_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_3_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_3_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_event_4" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_4_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_4_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_4_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
 
     <TextView
-        android:id="@+id/widget_event_2"
-        style="@style/WidgetEventText" />
-
-    <TextView
-        android:id="@+id/widget_event_3"
-        style="@style/WidgetEventText" />
-
-    <TextView
-        android:id="@+id/widget_event_4"
-        style="@style/WidgetEventText"
+        android:id="@+id/widget_tomorrow_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="1dp"
+        android:text="Imorgon"
+        android:textColor="#AFCB9BFF"
+        android:textSize="10sp"
+        android:textStyle="bold"
         android:visibility="gone" />
+
+    <LinearLayout android:id="@+id/widget_tomorrow_1" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_1_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_1_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_1_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_tomorrow_2" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_2_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_2_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_2_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
 
 </LinearLayout>
