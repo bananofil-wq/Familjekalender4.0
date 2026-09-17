@@ -497,10 +497,9 @@ private fun DayOverviewPopup(
                             groupMember?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
                         }
                         val groupKey = "member:${memberId ?: "unassigned"}"
-                        val expanded = personEvents.size == 1 || groupKey in expandedGroupKeys
+                        val expanded = groupKey in expandedGroupKeys
 
-                        if (personEvents.size > 1) {
-                            Surface(
+                        Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -541,14 +540,13 @@ private fun DayOverviewPopup(
                                         )
                                     }
                                     Text(
-                                        if (expanded) "Dölj" else "Visa alla",
+                                        if (expanded) "Dölj" else "Visa",
                                         color = groupColor,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 12.sp
                                     )
                                 }
                             }
-                        }
 
                         if (expanded) {
                             personEvents.sortedBy { it.time }.forEach { event ->
