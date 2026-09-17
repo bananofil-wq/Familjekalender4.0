@@ -208,26 +208,31 @@ class FamilyCalendarWidgetWorker(
     private fun cleanActivityTitle(title: String, startTime: String, endTime: String?, who: String): String {
         var cleaned = title.removePrefix("🌈").trim()
 
-        val escapedWho = Regex.escape(who)
-        cleaned = cleaned.replace(
-            Regex("""^\s*$escapedWho\s*(?:[•·|:–-]\s*)?""".replace("\\s", "\\s"), RegexOption.IGNORE_CASE),
-            ""
-        )
-
-        val exactRange = endTime?.takeIf { it.isNotBlank() }?.let { "$startTime–$it" }
-        val exactRangeDash = endTime?.takeIf { it.isNotBlank() }?.let { "$startTime-$it" }
-        listOfNotNull(exactRange, exactRangeDash).forEach { range ->
-            cleaned = cleaned.replace(range, " ", ignoreCase = true)
+        if (cleaned.startsWith(who, ignoreCase = true)) {
+            cleaned = cleaned.drop(who.length).trimStart()
+            cleaned = cleaned.trimStart('•', '·', '|', ':', '-', '–').trimStart()
         }
 
+        val ranges = buildList {
+            endTime?.takeIf { it.isNotBlank() }?.let {
+                add("$startTime–$it")
+                add("$startTime-$it")
+                add("$startTime – $it")
+                add("$startTime - $it")
+            }
+        }
+        ranges.forEach { range ->
+            cleaned = cleaned.replace(range, " ", ignoreCase = true)
+        }
+        cleaned = cleaned.replace(startTime, " ", ignoreCase = true)
+
         cleaned = cleaned
-            .replace(Regex("""\b\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b""".replace("\\b", "\b").replace("\\d", "\d").replace("\\s", "\s")), " ")
-            .replace(Regex("""\b${Regex.escape(startTime)}\b""".replace("\\b", "\b")), " ")
-            .replace(Regex("""(^|\s)[•·|]\s*""".replace("\\s", "\s")), " ")
-            .replace(Regex("""\s{2,}""".replace("\\s", "\s")), " ")
+            .replace("  ", " ")
+            .replace("  ", " ")
             .trim()
             .trim('•', '·', '-', '–', '|', ':')
             .trim()
+
         return cleaned.ifBlank { "Aktivitet" }
     }
 
