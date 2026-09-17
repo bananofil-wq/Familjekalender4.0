@@ -1,19 +1,8 @@
 package se.familjekalender.app
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,14 +13,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +36,13 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
+private val CleanPurple = Color(0xFF8A5CF6)
+private val CleanPurpleBright = Color(0xFFAA72FF)
+private val CleanGlass = Color(0xB8171422)
+private val CleanGlassSoft = Color(0xA61C1828)
+private val CleanBorder = Color.White.copy(alpha = .13f)
+private val CleanMuted = Color.White.copy(alpha = .66f)
+
 @Composable
 internal fun MinimalCalendarScreen(
     selectedDate: LocalDate,
@@ -53,378 +53,326 @@ internal fun MinimalCalendarScreen(
     onOpenSettings: () -> Unit
 ) {
     val locale = remember { Locale("sv", "SE") }
-    val motionEnabled = appMotionEnabled()
+    val today = LocalDate.now()
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val memberById = remember(members) { members.associateBy { it.id } }
+    val eventsByDate = remember(events) { events.groupBy { it.date } }
     val selectedEvents = remember(events, selectedDate) {
-        events.filter { it.date == selectedDate }.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
+        events.filter { it.date == selectedDate }
+            .sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
     }
 
     LaunchedEffect(selectedDate) {
-        val selectedMonth = YearMonth.from(selectedDate)
-        if (selectedMonth != month) month = selectedMonth
+        val target = YearMonth.from(selectedDate)
+        if (target != month) month = target
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    "Familjeappen",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.headlineLarge
-                )
-                Spacer(Modifier.height(3.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
-                    Spacer(Modifier.width(7.dp))
-                    Text(
-                        "Mer tid tillsammans",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
+    Box(Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(R.drawable.season_autumn),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0x44120B16),
+                            Color(0x66120C19),
+                            Color(0x99110D18)
+                        )
                     )
-                }
-            }
-            Surface(
-                shape = RoundedCornerShape(17.dp),
-                color = LuxurySurfaceElevated,
-                border = BorderStroke(1.dp, LuxuryOutlineSoft)
-            ) {
-                IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Inställningar",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(28.dp))
-
-        Surface(
-            color = LuxurySurface,
-            shape = RoundedCornerShape(22.dp),
-            border = BorderStroke(1.dp, LuxuryOutlineSoft),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = {
-                    val next = month.minusMonths(1)
-                    month = next
-                    onSelect(next.atDay(1))
-                }) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Föregående månad", tint = LuxuryTextMuted)
-                }
-                Text(
-                    month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
-                    color = LuxuryText,
-                    style = MaterialTheme.typography.titleLarge
                 )
-                IconButton(onClick = {
-                    val next = month.plusMonths(1)
-                    month = next
-                    onSelect(next.atDay(1))
-                }) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Nästa månad", tint = LuxuryTextMuted)
-                }
-            }
-        }
+        )
 
-        Spacer(Modifier.height(18.dp))
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            CleanHeader(
+                onSearch = { showSearch = true },
+                onAdd = onAdd
+            )
 
-        AnimatedContent(
-            targetState = month,
-            modifier = Modifier.fillMaxWidth(),
-            transitionSpec = {
-                val inMs = motionDuration(LuxuryMotion.Standard, motionEnabled)
-                val outMs = motionDuration(LuxuryMotion.Fast, motionEnabled)
-                if (targetState > initialState) {
-                    (slideInHorizontally(tween(inMs)) { it / 10 } + fadeIn(tween(inMs))) togetherWith
-                        (slideOutHorizontally(tween(outMs)) { -it / 12 } + fadeOut(tween(outMs)))
-                } else {
-                    (slideInHorizontally(tween(inMs)) { -it / 10 } + fadeIn(tween(inMs))) togetherWith
-                        (slideOutHorizontally(tween(outMs)) { it / 12 } + fadeOut(tween(outMs)))
-                }
-            },
-            label = "clean-month"
-        ) { visibleMonth ->
-            PremiumMonthGrid(
-                month = visibleMonth,
+            Spacer(Modifier.height(12.dp))
+
+            CleanCalendarCard(
+                month = month,
                 selectedDate = selectedDate,
-                events = events,
-                members = memberById,
-                motionEnabled = motionEnabled,
+                today = today,
+                locale = locale,
+                eventsByDate = eventsByDate,
+                memberById = memberById,
                 onSelect = { date ->
                     month = YearMonth.from(date)
                     onSelect(date)
+                },
+                onPrevious = {
+                    val next = month.minusMonths(1)
+                    month = next
+                    onSelect(next.atDay(1))
+                },
+                onNext = {
+                    val next = month.plusMonths(1)
+                    month = next
+                    onSelect(next.atDay(1))
+                },
+                onToday = {
+                    month = YearMonth.from(today)
+                    onSelect(today)
                 }
             )
-        }
 
-        Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(12.dp))
 
-        AnimatedContent(
-            targetState = selectedDate,
-            transitionSpec = {
-                (fadeIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) +
-                    slideInVertically(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) { it / 18 }) togetherWith
-                    (fadeOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) +
-                        slideOutVertically(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) { -it / 20 })
-            },
-            label = "clean-agenda"
-        ) { date ->
-            PremiumAgenda(
-                date = date,
-                events = if (date == selectedDate) selectedEvents else events.filter { it.date == date }.sortedBy { it.time },
+            CleanAgendaCard(
+                date = selectedDate,
+                today = today,
+                events = selectedEvents,
                 memberById = memberById,
-                locale = locale,
-                motionEnabled = motionEnabled
+                locale = locale
             )
-        }
 
-        Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
 
-        Button(
-            onClick = onAdd,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(9.dp))
-            Text("Lägg till aktivitet", style = MaterialTheme.typography.labelLarge)
-        }
-
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun PremiumMonthGrid(
-    month: YearMonth,
-    selectedDate: LocalDate,
-    events: List<SyncEvent>,
-    members: Map<String, SyncMember>,
-    motionEnabled: Boolean,
-    onSelect: (LocalDate) -> Unit
-) {
-    val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
-    val first = month.atDay(1)
-    val leadingDays = first.dayOfWeek.value - 1
-    val gridStart = first.minusDays(leadingDays.toLong())
-    val rowCount = ((leadingDays + month.lengthOfMonth() + 6) / 7).coerceIn(4, 6)
-    val eventsByDate = remember(events) { events.groupBy { it.date } }
-
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth()) {
-            weekdays.forEach { day ->
-                Text(
-                    day,
-                    color = LuxuryTextMuted.copy(alpha = .82f),
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center,
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                CleanAssistantCard(
+                    eventCount = selectedEvents.size,
+                    modifier = Modifier.weight(1.65f)
+                )
+                CleanWeatherCard(
+                    onOpenSettings = onOpenSettings,
                     modifier = Modifier.weight(1f)
                 )
             }
+
+            Spacer(Modifier.height(18.dp))
         }
+    }
 
-        Spacer(Modifier.height(10.dp))
-
-        repeat(rowCount) { row ->
-            Row(Modifier.fillMaxWidth()) {
-                repeat(7) { column ->
-                    val date = gridStart.plusDays((row * 7 + column).toLong())
-                    val inMonth = YearMonth.from(date) == month
-                    val isSelected = date == selectedDate
-                    val dayEvents = eventsByDate[date].orEmpty()
-                    val birthday = dayEvents.any { it.title.trim().startsWith("🌈") }
-                    val scale by animateFloatAsState(
-                        targetValue = if (isSelected) 1f else .93f,
-                        animationSpec = tween(motionDuration(LuxuryMotion.Fast, motionEnabled)),
-                        label = "premium-date-scale"
+    if (showSearch) {
+        val normalized = searchQuery.trim()
+        val matches = remember(events, normalized) {
+            if (normalized.isBlank()) emptyList()
+            else events.filter { it.title.contains(normalized, ignoreCase = true) }
+                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+                .take(6)
+        }
+        AlertDialog(
+            onDismissRequest = { showSearch = false },
+            title = { Text("Sök i kalendern") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        placeholder = { Text("Aktivitet") },
+                        modifier = Modifier.fillMaxWidth()
                     )
-
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .height(58.dp)
-                            .clickable { onSelect(date) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Box(
-                                Modifier
-                                    .size(48.dp)
-                                    .graphicsLayer { scaleX = scale; scaleY = scale }
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = .18f))
-                                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .62f), CircleShape)
-                            )
-                        }
-                        Column(
-                            modifier = if (isSelected) Modifier.size(48.dp) else Modifier,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = if (isSelected) Arrangement.Center else Arrangement.Top
+                    matches.forEach { event ->
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSelect(event.date)
+                                    month = YearMonth.from(event.date)
+                                    showSearch = false
+                                    searchQuery = ""
+                                }
                         ) {
-                            Text(
-                                date.dayOfMonth.toString(),
-                                color = when {
-                                    isSelected -> LuxuryText
-                                    inMonth -> LuxuryText.copy(alpha = .96f)
-                                    else -> LuxuryTextMuted.copy(alpha = .42f)
-                                },
-                                fontSize = 15.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                            )
-                            Spacer(Modifier.height(if (isSelected) 2.dp else 5.dp))
-                            when {
-                                birthday -> Box(
-                                    Modifier.size(if (isSelected) 13.dp else 17.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    BirthdayRainbowIcon(Modifier.size(if (isSelected) 13.dp else 17.dp))
-                                }
-                                dayEvents.isNotEmpty() -> Row(
-                                    horizontalArrangement = Arrangement.spacedBy(if (isSelected) 2.dp else 3.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    dayEvents.take(3).forEach { event ->
-                                        val dotColor = members[event.memberId]?.let { Color(it.colorArgb.toInt()) }
-                                            ?: MaterialTheme.colorScheme.primary
-                                        Box(Modifier.size(if (isSelected) 4.dp else 5.dp).clip(CircleShape).background(dotColor))
-                                    }
-                                }
-                                else -> Spacer(Modifier.height(if (isSelected) 4.dp else 5.dp))
+                            Column(Modifier.padding(12.dp)) {
+                                Text(event.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${event.date} • ${event.time}", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
+                    if (normalized.isNotBlank() && matches.isEmpty()) {
+                        Text("Inga träffar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSearch = false }) { Text("Stäng") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Familjekalender",
+                    color = Color.White,
+                    fontFamily = FontFamily.Cursive,
+                    fontSize = 31.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.width(6.dp))
+                Text("♡", color = CleanPurpleBright, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                "TILLSAMMANS VARJE DAG",
+                color = Color.White.copy(alpha = .67f),
+                fontSize = 9.sp,
+                letterSpacing = 1.8.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(43.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x661C1726))
+                    .clickable(onClick = onSearch),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Search, contentDescription = "Sök", tint = Color.White, modifier = Modifier.size(21.dp))
+            }
+            Box(
+                Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(CleanPurpleBright, CleanPurple)))
+                    .clickable(onClick = onAdd),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Lägg till aktivitet", tint = Color.White, modifier = Modifier.size(27.dp))
             }
         }
     }
 }
 
 @Composable
-private fun PremiumAgenda(
-    date: LocalDate,
-    events: List<SyncEvent>,
-    memberById: Map<String, SyncMember>,
+private fun CleanCalendarCard(
+    month: YearMonth,
+    selectedDate: LocalDate,
+    today: LocalDate,
     locale: Locale,
-    motionEnabled: Boolean
+    eventsByDate: Map<LocalDate, List<SyncEvent>>,
+    memberById: Map<String, SyncMember>,
+    onSelect: (LocalDate) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onToday: () -> Unit
 ) {
-    val headerFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
-    val header = date.format(headerFormatter).replaceFirstChar { it.uppercase(locale) }
-    val groups = remember(events) {
-        events.groupBy { it.memberId }
-            .entries
-            .sortedBy { group -> group.value.minOfOrNull { it.time } ?: "" }
-    }
-    var expandedGroups by remember(date) { mutableStateOf(emptySet<String>()) }
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, LuxuryOutlineSoft),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(tween(motionDuration(LuxuryMotion.Standard, motionEnabled)))
+    Surface(
+        color = CleanGlass,
+        shape = RoundedCornerShape(27.dp),
+        border = BorderStroke(1.dp, CleanBorder),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(header, color = LuxuryText, style = MaterialTheme.typography.titleLarge)
-                Surface(color = LuxurySurfaceHigh, shape = RoundedCornerShape(99.dp)) {
+                Text(
+                    month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color.White.copy(alpha = .08f),
+                        shape = RoundedCornerShape(99.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = .11f)),
+                        modifier = Modifier.clickable(onClick = onToday)
+                    ) {
+                        Text("Idag", color = Color.White, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
+                    }
+                    SmallGlassIconButton(Icons.Default.ChevronLeft, "Föregående månad", onPrevious)
+                    SmallGlassIconButton(Icons.Default.ChevronRight, "Nästa månad", onNext)
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
+            Row(Modifier.fillMaxWidth()) {
+                weekdays.forEach { day ->
                     Text(
-                        if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
-                        color = LuxuryTextMuted,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        day,
+                        color = Color.White.copy(alpha = .52f),
+                        fontSize = 9.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            if (events.isEmpty()) {
-                Spacer(Modifier.height(18.dp))
-                Text("Inga aktiviteter den här dagen", color = LuxuryTextMuted, style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(2.dp))
-                Text("En lugn dag i familjens kalender.", color = LuxuryTextMuted.copy(alpha = .72f), style = MaterialTheme.typography.bodySmall)
-            } else {
-                Spacer(Modifier.height(12.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    groups.forEach { group ->
-                        val memberId = group.key
-                        val personEvents = group.value.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
-                        val member = memberId?.let { memberById[it] }
-                        val memberName = when {
-                            memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
-                            member != null -> member.name
-                            else -> "Familjen"
-                        }
-                        val accent = when {
-                            memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFFFD75E)
-                            member != null -> Color(member.colorArgb.toInt())
-                            else -> MaterialTheme.colorScheme.primary
-                        }
-                        val groupKey = memberId ?: "__unassigned__"
-                        val expanded = groupKey in expandedGroups
+            Spacer(Modifier.height(6.dp))
 
-                        Surface(
-                            color = LuxurySurface,
-                            shape = RoundedCornerShape(17.dp),
-                            border = BorderStroke(1.dp, accent.copy(alpha = .28f)),
-                            modifier = Modifier.fillMaxWidth().clickable {
-                                expandedGroups = if (expanded) expandedGroups - groupKey else expandedGroups + groupKey
-                            }
+            val first = month.atDay(1)
+            val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
+            repeat(6) { row ->
+                Row(Modifier.fillMaxWidth()) {
+                    repeat(7) { column ->
+                        val date = gridStart.plusDays((row * 7 + column).toLong())
+                        val inMonth = YearMonth.from(date) == month
+                        val isSelected = date == selectedDate
+                        val dayEvents = eventsByDate[date].orEmpty()
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clickable { onSelect(date) },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(Modifier.width(3.dp).height(38.dp).clip(RoundedCornerShape(99.dp)).background(accent))
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(memberName, color = LuxuryText, style = MaterialTheme.typography.titleMedium)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = if (isSelected) {
+                                        Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(Brush.linearGradient(listOf(CleanPurpleBright, CleanPurple)))
+                                    } else Modifier.size(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
-                                        if (personEvents.size == 1) "1 aktivitet" else "${personEvents.size} aktiviteter",
-                                        color = LuxuryTextMuted,
-                                        style = MaterialTheme.typography.bodySmall
+                                        date.dayOfMonth.toString(),
+                                        color = when {
+                                            isSelected -> Color.White
+                                            inMonth -> Color.White.copy(alpha = .92f)
+                                            else -> Color.White.copy(alpha = .30f)
+                                        },
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected || date == today) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
-                                Text(
-                                    if (expanded) "Dölj" else "Visa",
-                                    color = accent,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-
-                        if (expanded) {
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                personEvents.forEach { event -> PremiumAgendaRow(event, member) }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                    modifier = Modifier.height(5.dp)
+                                ) {
+                                    dayEvents.take(3).forEach { event ->
+                                        val color = memberById[event.memberId]?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
+                                        Box(Modifier.size(4.dp).clip(CircleShape).background(color))
+                                    }
+                                }
                             }
                         }
                     }
@@ -435,45 +383,153 @@ private fun PremiumAgenda(
 }
 
 @Composable
-private fun PremiumAgendaRow(event: SyncEvent, member: SyncMember?) {
-    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: MaterialTheme.colorScheme.primary
-    val memberName = when {
-        event.memberId == ALL_FAMILY_MEMBER_ID -> "Familjen"
-        member != null -> member.name
-        else -> "Familjen"
+private fun SmallGlassIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(33.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = .07f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = description, tint = Color.White.copy(alpha = .86f), modifier = Modifier.size(18.dp))
     }
-    val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
-    val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
+}
 
+@Composable
+private fun CleanAgendaCard(
+    date: LocalDate,
+    today: LocalDate,
+    events: List<SyncEvent>,
+    memberById: Map<String, SyncMember>,
+    locale: Locale
+) {
+    val formatted = date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)).replaceFirstChar { it.uppercase(locale) }
     Surface(
-        color = LuxurySurface,
-        shape = RoundedCornerShape(17.dp),
+        color = CleanGlassSoft,
+        shape = RoundedCornerShape(25.dp),
+        border = BorderStroke(1.dp, CleanBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(Modifier.width(3.dp).height(44.dp).clip(RoundedCornerShape(99.dp)).background(accent))
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.width(72.dp)) {
-                Text(timeText, color = LuxuryTextMuted, style = MaterialTheme.typography.labelMedium)
-            }
-            Column(Modifier.weight(1f)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    title,
-                    color = LuxuryText,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    if (date == today) "Idag • $formatted" else formatted,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(Modifier.height(3.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
-                    Spacer(Modifier.width(6.dp))
-                    Text(memberName, color = LuxuryTextMuted, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
+                    color = CleanMuted,
+                    fontSize = 10.sp
+                )
+            }
+
+            if (events.isEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text("Inga aktiviteter planerade", color = CleanMuted, fontSize = 13.sp)
+            } else {
+                Spacer(Modifier.height(8.dp))
+                events.take(3).forEachIndexed { index, event ->
+                    val member = memberById[event.memberId]
+                    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.width(3.dp).height(35.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+                        Spacer(Modifier.width(10.dp))
+                        Text(event.time, color = Color.White.copy(alpha = .67f), fontSize = 11.sp, modifier = Modifier.width(42.dp))
+                        Box(Modifier.size(24.dp).clip(CircleShape).background(accent.copy(alpha = .20f)), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
+                        }
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(event.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member?.name ?: "Övrigt",
+                                color = Color.White.copy(alpha = .52f),
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .36f), modifier = Modifier.size(18.dp))
+                    }
+                    if (index < events.take(3).lastIndex) {
+                        HorizontalDivider(color = Color.White.copy(alpha = .07f), thickness = .5.dp)
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CleanAssistantCard(eventCount: Int, modifier: Modifier = Modifier) {
+    Surface(
+        color = CleanGlassSoft,
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, CleanBorder),
+        modifier = modifier.heightIn(min = 100.dp)
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(CleanPurple.copy(alpha = .22f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("✦", color = CleanPurpleBright, fontSize = 20.sp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Assistenten", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    if (eventCount == 0) "Allt ser bra ut idag! 🎉" else "Du har $eventCount aktiviteter idag.",
+                    color = Color.White.copy(alpha = .67f),
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp
+                )
+            }
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .32f), modifier = Modifier.size(17.dp))
+        }
+    }
+}
+
+@Composable
+private fun CleanWeatherCard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        color = CleanGlassSoft,
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, CleanBorder),
+        modifier = modifier
+            .heightIn(min = 100.dp)
+            .clickable(onClick = onOpenSettings)
+    ) {
+        Column(
+            Modifier.padding(13.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.White.copy(alpha = .80f), modifier = Modifier.size(25.dp))
+            Spacer(Modifier.height(4.dp))
+            Text("—°", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("Väder", color = Color.White.copy(alpha = .70f), fontSize = 10.sp)
+            Text("Ej anslutet", color = Color.White.copy(alpha = .45f), fontSize = 9.sp)
         }
     }
 }
