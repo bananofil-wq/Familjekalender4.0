@@ -248,6 +248,8 @@ internal fun AutomaticUpdateNotice() {
     var updating by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
 
+    PostUpdateInfoNotice()
+
     LaunchedEffect(currentVersion) {
         runCatching { findAvailableUpdate(currentVersion) }
             .onSuccess { availableUpdate = it }
@@ -404,4 +406,3 @@ internal fun AppUpdateSettingsCard() {
         }
     }
 }
-
