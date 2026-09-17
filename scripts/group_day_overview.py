@@ -1,3 +1,4 @@
+# Applies the grouped per-person day overview before the verified Android build.
 from pathlib import Path
 
 path = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
