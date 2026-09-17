@@ -1,4 +1,4 @@
-# Applies the grouped per-person day overview before the verified Android build.
+# Applies the grouped per-person day overview before the verified Android build. Build trigger v2.
 from pathlib import Path
 
 path = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
