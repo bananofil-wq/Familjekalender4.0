@@ -76,7 +76,7 @@ enum class ThemeMode(val label: String, val emoji: String) {
 enum class UiLayoutMode(val label: String, val description: String) {
     MINIMAL("Clean", "Ren månadskalender med en diskret markering per dag"),
     FULL("Fullständigt", "Alla översikter, familjeverktyg och den fulla kalendern"),
-    RUNNING("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy"),
+    RUNNING("Sportläge", "Löpning i fokus med träningspass, progression, schema och återhämtning"),
     PERSONAL("Personligt", "Helt anpassningsbar vy där du lägger till, tar bort, flyttar och ändrar storlek på alla delar.")
 }
 
@@ -366,15 +366,6 @@ private fun SyncedApp(
                             WeekOverviewCard(events, members)
                             FamilyAutopilotCard(events, members)
                             RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
-                            RunningProgressCard(
-                                session = session,
-                                members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                                events = events,
-                                onChanged = {
-                                    refresh()
-                                    FamilyCalendarWidget.enqueueRefresh(context)
-                                }
-                            )
                             Box(
                                 Modifier
                                     .fillMaxWidth()
@@ -451,16 +442,6 @@ private fun SyncedApp(
                                     }
                                     Spacer(Modifier.height(10.dp))
                                 }
-                                RunningProgressCard(
-                                    session = session,
-                                    members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                                    events = events,
-                                    onChanged = {
-                                        refresh()
-                                        FamilyCalendarWidget.enqueueRefresh(context)
-                                    }
-                                )
-                                Spacer(Modifier.height(10.dp))
                                 EditableFamilyScreen(
                                     members.filter { it.id != ALL_FAMILY_MEMBER_ID },
                                     events,
@@ -957,31 +938,21 @@ private fun AnimatedNavIcon(icon: ImageVector, label: String, selected: Boolean)
 @Composable
 private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    val mappedSelection = when (selected) {
-        0 -> 0
-        1 -> 1
-        2 -> 2
-        3 -> 3
-        5 -> 4
-        else -> -1
-    }
     NavigationBar(containerColor = LuxuryBackground.copy(alpha = .985f), tonalElevation = 0.dp) {
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
-            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
-            Triple(2, Icons.Default.CheckCircle, "To-do"),
             Triple(3, Icons.Default.People, "Familj"),
-            Triple(5, Icons.Default.LocationOn, "Plats")
-        ).forEachIndexed { index, (tab, icon, label) ->
-            val isSelected = mappedSelection == index
+            Triple(2, Icons.Default.CheckCircle, "Att göra"),
+            Triple(4, Icons.Default.Settings, "Inställningar")
+        ).forEach { (tab, icon, label) ->
+            val isSelected = selected == tab
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onSelect(tab) },
                 icon = { AnimatedNavIcon(icon, label, isSelected) },
                 label = { Text(label, maxLines = 1, softWrap = false, fontSize = 10.sp) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = accent,
-                    selectedTextColor = accent,
+                    selectedIconColor = accent, selectedTextColor = accent,
                     unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
                     unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
                     indicatorColor = LuxurySurfaceHigh
