@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="12dp">
+    android:padding="14dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,94 +21,88 @@
 
             <TextView
                 android:id="@+id/widget_date"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="#FFFFFFFF"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:maxLines="2" />
 
             <TextView
                 android:id="@+id/widget_status"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:textColor="#B3FFFFFF"
-                android:textSize="11sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:layout_marginTop="2dp"
+                android:textColor="#C8FFFFFF"
+                android:textSize="12sp"
+                android:maxLines="2" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/widget_refresh"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="8dp"
             android:gravity="center"
             android:background="@drawable/widget_refresh_bg"
             android:text="↻"
             android:textColor="#FFFFFFFF"
-            android:textSize="17sp"
+            android:textSize="15sp"
             android:contentDescription="Uppdatera" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="9dp"
+        android:gravity="start"
         android:orientation="horizontal">
 
         <TextView
             android:id="@+id/widget_todo"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="3dp"
+            android:layout_marginEnd="6dp"
             android:gravity="center_vertical"
-            android:paddingLeft="8dp"
-            android:paddingTop="4dp"
-            android:paddingRight="8dp"
-            android:paddingBottom="4dp"
+            android:paddingLeft="10dp"
+            android:paddingTop="5dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="5dp"
             android:background="@drawable/widget_refresh_bg"
-            android:textColor="#E6FFFFFF"
+            android:textColor="#FFFFFFFF"
             android:textSize="11sp"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:textStyle="bold"
+            android:maxLines="1" />
 
         <TextView
             android:id="@+id/widget_shopping"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="3dp"
             android:gravity="center_vertical"
-            android:paddingLeft="8dp"
-            android:paddingTop="4dp"
-            android:paddingRight="8dp"
-            android:paddingBottom="4dp"
+            android:paddingLeft="10dp"
+            android:paddingTop="5dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="5dp"
             android:background="@drawable/widget_refresh_bg"
-            android:textColor="#E6FFFFFF"
+            android:textColor="#FFFFFFFF"
             android:textSize="11sp"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:textStyle="bold"
+            android:maxLines="1" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/widget_updated"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:gravity="end"
-        android:textColor="#70FFFFFF"
-        android:textSize="9sp"
-        android:maxLines="1" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:text="" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="9dp"
         android:layout_marginBottom="4dp"
-        android:background="#22FFFFFF"
+        android:background="#28FFFFFF"
         android:text="" />
 
     <LinearLayout android:id="@+id/widget_event_1" style="@style/WidgetEventRow">
@@ -139,10 +133,10 @@
         android:id="@+id/widget_tomorrow_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="1dp"
+        android:layout_marginTop="7dp"
+        android:layout_marginBottom="2dp"
         android:text="Imorgon"
-        android:textColor="#AFCB9BFF"
+        android:textColor="#AFFFFFFF"
         android:textSize="10sp"
         android:textStyle="bold"
         android:visibility="gone" />
