@@ -107,11 +107,11 @@ class FamilyCalendarWidgetWorker(
                             null, ALL_FAMILY_MEMBER_ID -> "Alla"
                             else -> members[event.memberId]?.name.orEmpty()
                         }
-                        val title = event.title.removePrefix("🌈").trim()
-                        val suffix = if (who.isBlank()) "" else " • $who"
-                        val prefix = if (isTomorrow) "Imorgon ${event.time}" else event.time
                         views.setViewVisibility(rowIds[index], View.VISIBLE)
-                        views.setTextViewText(rowIds[index], "$prefix  $title$suffix")
+                        views.setTextViewText(
+                            rowIds[index],
+                            formatWidgetEventRow(isTomorrow, event, who)
+                        )
                     }
                 }
 
@@ -127,6 +127,28 @@ class FamilyCalendarWidgetWorker(
             }
             Result.retry()
         }
+    }
+
+    private fun formatWidgetEventRow(isTomorrow: Boolean, event: SyncEvent, who: String): String {
+        val rawTitle = event.title.removePrefix("🌈").trim()
+        val timeRangePattern = Regex("""\s*•\s*\d{2}:\d{2}\s*[–-]\s*\d{2}:\d{2}\s*""")
+        val activity = rawTitle
+            .replace(timeRangePattern, " ")
+            .replace(Regex("""\s{2,}"""), " ")
+            .trim()
+            .trim('•')
+            .trim()
+        val timeText = event.endTime
+            ?.takeIf { it.isNotBlank() }
+            ?.let { "${event.time}–$it" }
+            ?: event.time
+        val parts = buildList {
+            if (isTomorrow) add("Imorgon")
+            if (who.isNotBlank()) add(who)
+            add(timeText)
+            if (activity.isNotBlank()) add(activity)
+        }
+        return parts.joinToString(" · ")
     }
 
     private suspend fun loadOpenTodoCount(session: FamilySession): Int = withContext(Dispatchers.IO) {
