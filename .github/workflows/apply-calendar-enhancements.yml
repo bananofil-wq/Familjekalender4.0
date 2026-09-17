@@ -1,119 +1,15 @@
-# Source patches below are already applied; this commit triggers a signed build containing them.
-name: Apply calendar enhancements
+name: Apply calendar enhancements (legacy)
 
+# Legacy source-patching workflow disabled. Its calendar offset assumptions no longer
+# match the current UI and it must not interfere with the Clean/Sport redesign.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  legacy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Apply calendar fixes
-        shell: bash
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          cal = Path('app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt')
-          s = cal.read_text()
-
-          # Move only the month/date panel higher. Keep its size and the seasonal image unchanged.
-          if '.offset(y = (-92).dp)' in s:
-              s = s.replace('.offset(y = (-92).dp)', '.offset(y = (-130).dp)', 1)
-          elif '.offset(y = (-38).dp)' in s:
-              s = s.replace('.offset(y = (-38).dp)', '.offset(y = (-130).dp)', 1)
-          elif '.offset(y = (-130).dp)' not in s:
-              raise SystemExit('Calendar month panel offset not found')
-
-          # Expose the month cleanup dialog in the + menu.
-          anchor = '''                    Button(\n                        onClick = {\n                            showAddMenu = false\n                            onAddLaundry()\n                        },\n                        modifier = Modifier.fillMaxWidth()\n                    ) { Text("🧺 Tvätt") }'''
-          replacement = anchor + '''\n                    OutlinedButton(\n                        onClick = {\n                            showAddMenu = false\n                            showManageMonth = true\n                        },\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)\n                    ) { Text("Hantera / rensa kalender") }'''
-          if 'Text("Hantera / rensa kalender")' not in s:
-              if anchor in s:
-                  s = s.replace(anchor, replacement, 1)
-              else:
-                  raise SystemExit('Add-menu anchor not found')
-
-          # Give the day popup access to the complete event list and a bulk-delete callback.
-          old = '''            events = events.filter { it.date == popupDate }.sortedBy { it.time },\n            members = members,'''
-          new = '''            events = events.filter { it.date == popupDate }.sortedBy { it.time },\n            allEvents = events,\n            members = members,'''
-          if old in s:
-              s = s.replace(old, new, 1)
-
-          old = '''            onDelete = { event ->\n                val session = currentFamilySession(context)\n                if (session != null) {\n                    scope.launch {\n                        runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }\n                            .onSuccess {\n                                dayPopupDate = null\n                                refreshActivity()\n                            }\n                    }\n                }\n            }\n        )'''
-          new = '''            onDelete = { event ->\n                val session = currentFamilySession(context)\n                if (session != null) {\n                    scope.launch {\n                        runCatching { deleteCalendarEventsDirect(session, listOf(event.id)) }\n                            .onSuccess {\n                                dayPopupDate = null\n                                refreshActivity()\n                            }\n                    }\n                }\n            },\n            onDeleteMany = { eventsToDelete ->\n                val session = currentFamilySession(context)\n                if (session != null) {\n                    scope.launch {\n                        runCatching { deleteCalendarEventsDirect(session, eventsToDelete.map { it.id }) }\n                            .onSuccess {\n                                dayPopupDate = null\n                                refreshActivity()\n                            }\n                    }\n                }\n            }\n        )'''
-          if old in s:
-              s = s.replace(old, new, 1)
-
-          old = '''private fun DayOverviewPopup(\n    date: LocalDate,\n    events: List<SyncEvent>,\n    members: List<SyncMember>,\n    onDismiss: () -> Unit,\n    onAdd: () -> Unit,\n    onEdit: (SyncEvent) -> Unit,\n    onDelete: (SyncEvent) -> Unit\n) {'''
-          new = '''private fun DayOverviewPopup(\n    date: LocalDate,\n    events: List<SyncEvent>,\n    allEvents: List<SyncEvent>,\n    members: List<SyncMember>,\n    onDismiss: () -> Unit,\n    onAdd: () -> Unit,\n    onEdit: (SyncEvent) -> Unit,\n    onDelete: (SyncEvent) -> Unit,\n    onDeleteMany: (List<SyncEvent>) -> Unit\n) {'''
-          if old in s:
-              s = s.replace(old, new, 1)
-
-          old = '''    val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))\n\n    AlertDialog('''
-          new = '''    val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))\n    var deleteChoiceEvent by remember { mutableStateOf<SyncEvent?>(null) }\n\n    AlertDialog('''
-          if old in s:
-              s = s.replace(old, new, 1)
-
-          old = '                                            onClick = { onDelete(event) },'
-          new = '                                            onClick = { deleteChoiceEvent = event },'
-          if old in s:
-              s = s.replace(old, new, 1)
-
-          marker = '''        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }\n    )\n}\n\n@Composable\nprivate fun EditEventDialog'''
-          insert = '''        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }\n    )\n\n    deleteChoiceEvent?.let { event ->\n        val today = LocalDate.now()\n        val series = allEvents.filter { candidate ->\n            candidate.source != "sportadmin" &&\n                candidate.memberId == event.memberId &&\n                candidate.title == event.title &&\n                !candidate.date.isBefore(today)\n        }.sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })\n\n        AlertDialog(\n            onDismissRequest = { deleteChoiceEvent = null },\n            title = { Text("Ta bort aktivitet") },\n            text = {\n                Text(\n                    if (series.size > 1)\n                        "Ta bort bara denna förekomst eller hela den återkommande serien (${series.size} framtida aktiviteter)?"\n                    else\n                        "Ta bort denna aktivitet?"\n                )\n            },\n            confirmButton = {\n                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {\n                    if (series.size > 1) {\n                        TextButton(onClick = {\n                            onDeleteMany(series)\n                            deleteChoiceEvent = null\n                        }) { Text("Hela serien", color = MaterialTheme.colorScheme.error) }\n                    }\n                    Button(onClick = {\n                        onDelete(event)\n                        deleteChoiceEvent = null\n                    }) { Text("Bara denna") }\n                }\n            },\n            dismissButton = { TextButton(onClick = { deleteChoiceEvent = null }) { Text("Avbryt") } }\n        )\n    }\n}\n\n@Composable\nprivate fun EditEventDialog'''
-          if marker in s and 'Hela serien' not in s:
-              s = s.replace(marker, insert, 1)
-
-          cal.write_text(s)
-
-          agenda = Path('app/src/main/java/se/familjekalender/app/MemberAgendaDialog.kt')
-          a = agenda.read_text()
-
-          old_selected = '''                if (selectionMode && selectedEvents.isNotEmpty()) {\n                    Button(\n                        onClick = { confirmDeleteSelected = true },\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)\n                    ) { Text("Ta bort valda (${selectedEvents.size})") }\n                }\n'''
-          if old_selected in a:
-              a = a.replace(old_selected, '', 1)
-
-          old_all = '''                if (deletableUpcoming.isNotEmpty()) {\n                    Spacer(Modifier.height(8.dp))\n                    OutlinedButton(\n                        onClick = { confirmDeleteAll = true },\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)\n                    ) {\n                        Text("Ta bort alla framtida (${deletableUpcoming.size})")\n                    }\n                    if (upcoming.size != deletableUpcoming.size) {\n                        Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)\n                    }\n                }\n'''
-          replacement_all = '''                if (upcoming.size != deletableUpcoming.size) {\n                    Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)\n                }\n'''
-          if old_all in a:
-              a = a.replace(old_all, replacement_all, 1)
-
-          old_footer = '''        confirmButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }\n'''
-          new_footer = '''        confirmButton = {\n            Row(\n                horizontalArrangement = Arrangement.spacedBy(8.dp),\n                verticalAlignment = Alignment.CenterVertically\n            ) {\n                if (selectionMode && selectedEvents.isNotEmpty()) {\n                    TextButton(onClick = { confirmDeleteSelected = true }) {\n                        Text("Ta bort valda (${selectedEvents.size})", color = MaterialTheme.colorScheme.error)\n                    }\n                } else if (!selectionMode && deletableUpcoming.isNotEmpty()) {\n                    TextButton(onClick = { confirmDeleteAll = true }) {\n                        Text("Ta bort alla (${deletableUpcoming.size})", color = MaterialTheme.colorScheme.error)\n                    }\n                }\n                TextButton(onClick = onDismiss) { Text("Stäng") }\n            }\n        }\n'''
-          if old_footer in a:
-              a = a.replace(old_footer, new_footer, 1)
-          elif 'Ta bort valda (${selectedEvents.size})' not in a:
-              raise SystemExit('Member agenda footer anchor not found')
-
-          old = '            title = { Text("Ta bort alla framtida aktiviteter?") },'
-          new = '            title = { Text("Ta bort alla ${deletableUpcoming.size} framtida aktiviteter för ${member.name}?") },'
-          if old in a:
-              a = a.replace(old, new, 1)
-
-          agenda.write_text(a)
-          PY
-
-      - name: Commit source fix
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt app/src/main/java/se/familjekalender/app/MemberAgendaDialog.kt
-          if git diff --cached --quiet; then
-            echo "Already fixed"
-            exit 0
-          fi
-          git commit -m "Move calendar higher and improve bulk delete controls"
-          git push
+      - run: echo "Legacy calendar patch is intentionally disabled."
