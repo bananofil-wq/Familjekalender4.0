@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091704'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260917.4'
+      FAMILJEKALENDER_VERSION_CODE: '2026091705'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260917.5'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -69,13 +69,13 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Prepare update APK
-        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260917.4.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260917.5.apk
 
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-signed-update-4.3.20260917.4
-          path: Familjekalender-4.3.20260917.4.apk
+          name: Familjekalender-signed-update-4.3.20260917.5
+          path: Familjekalender-4.3.20260917.5.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -85,9 +85,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cat > release-notes.txt <<'EOF'
+          Nyheter sedan 4.3.311: tydligare kalender, bättre platsnotiser och smidigare uppdateringar.
+
+          • Aktiviteter grupperas per person i dagsöversikten i alla kalenderlägen. Tryck på personens kort för att visa alla aktiviteter.
+
+          • Platsnotiser kan styras per familjemedlem och är avstängda som standard tills du själv aktiverar dem.
+
+          • Appen använder signerade uppdateringar som kan installeras ovanpå den befintliga versionen utan att appdata behöver tas bort.
+
+          • Efter en uppdatering visas nu en liten informationsruta med en kort sammanfattning. Tryck på Mer för en mer ingående lista över vad som ändrats.
+          EOF
           gh release create "v${FAMILJEKALENDER_VERSION_NAME}" \
             "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" \
             --target main \
             --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
-            --notes "Signerad uppdatering för Familjekalendern. Kan installeras direkt ovanpå tidigare signerad version." \
+            --notes-file release-notes.txt \
             --latest
