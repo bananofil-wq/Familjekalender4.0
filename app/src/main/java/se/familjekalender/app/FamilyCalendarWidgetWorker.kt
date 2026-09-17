@@ -82,18 +82,18 @@ class FamilyCalendarWidgetWorker(
                         }
                     }
                     .take(4)
-                val visibleTomorrow = tomorrowsEvents.take(2)
-                val conflicts = countConflicts(visibleToday)
+                val visibleTomorrow = tomorrowsEvents.take(1)
 
-                val status = when {
-                    conflicts > 0 -> "⚠ $conflicts ${if (conflicts == 1) "krock" else "krockar"} idag"
-                    visibleToday.isEmpty() -> "Ingen aktivitet kvar idag"
-                    else -> "✓ ${visibleToday.size} ${if (visibleToday.size == 1) "aktivitet" else "aktiviteter"} idag"
+                val todayCount = todaysEvents.size
+                val status = when (todayCount) {
+                    0 -> "Ingen aktivitet idag"
+                    1 -> "✓ 1 aktivitet idag"
+                    else -> "✓ $todayCount aktiviteter idag"
                 }
                 views.setTextViewText(R.id.widget_status, status)
                 views.setTextViewText(R.id.widget_todo, "✓ $openTodos To-Do")
                 views.setTextViewText(R.id.widget_shopping, "🛒 $openShopping inköp")
-                views.setTextViewText(R.id.widget_updated, "Uppdaterad ${now.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+                views.setTextViewText(R.id.widget_updated, "")
 
                 val todayContainers = intArrayOf(
                     R.id.widget_event_1,
@@ -169,7 +169,7 @@ class FamilyCalendarWidgetWorker(
                 views.setTextViewText(R.id.widget_status, "Kunde inte uppdatera just nu")
                 views.setTextViewText(R.id.widget_todo, "✓ To-Do")
                 views.setTextViewText(R.id.widget_shopping, "🛒 Inköp")
-                views.setTextViewText(R.id.widget_updated, "Tryck ↻ för att försöka igen")
+                views.setTextViewText(R.id.widget_updated, "")
                 manager.updateAppWidget(widgetId, views)
             }
             Result.retry()
@@ -201,24 +201,33 @@ class FamilyCalendarWidgetWorker(
             ?: event.time
         return WidgetRow(
             who = who,
-            activity = cleanActivityTitle(event.title, event.time, event.endTime),
+            activity = cleanActivityTitle(event.title, event.time, event.endTime, who),
             time = timeText
         )
     }
 
-    private fun cleanActivityTitle(title: String, startTime: String, endTime: String?): String {
+    private fun cleanActivityTitle(title: String, startTime: String, endTime: String?, who: String): String {
         var cleaned = title.removePrefix("🌈").trim()
+
+        val escapedWho = Regex.escape(who)
+        cleaned = cleaned.replace(
+            Regex("""^\s*$escapedWho\s*(?:[•·|:\-–]\s*)?""", RegexOption.IGNORE_CASE),
+            ""
+        )
+
         val exactRange = endTime?.takeIf { it.isNotBlank() }?.let { "$startTime–$it" }
         val exactRangeDash = endTime?.takeIf { it.isNotBlank() }?.let { "$startTime-$it" }
         listOfNotNull(exactRange, exactRangeDash).forEach { range ->
             cleaned = cleaned.replace(range, " ", ignoreCase = true)
         }
+
         cleaned = cleaned
             .replace(Regex("""\b\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b"""), " ")
+            .replace(Regex("""\b${Regex.escape(startTime)}\b"""), " ")
             .replace(Regex("""(^|\s)[•·|]\s*"""), " ")
             .replace(Regex("""\s{2,}"""), " ")
             .trim()
-            .trim('•', '·', '-', '–', '|')
+            .trim('•', '·', '-', '–', '|', ':')
             .trim()
         return cleaned.ifBlank { "Aktivitet" }
     }
@@ -251,29 +260,5 @@ class FamilyCalendarWidgetWorker(
         } finally {
             connection.disconnect()
         }
-    }
-
-    private fun countConflicts(events: List<SyncEvent>): Int {
-        val grouped = events
-            .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
-            .groupBy { it.memberId }
-        var conflicts = 0
-        grouped.values.forEach { memberEvents ->
-            val ranges = memberEvents.mapNotNull { event ->
-                val start = parseLocalTime(event.time) ?: return@mapNotNull null
-                val startMinutes = start.hour * 60 + start.minute
-                val parsedEnd = parseLocalTime(event.endTime)
-                var endMinutes = parsedEnd?.let { it.hour * 60 + it.minute } ?: (startMinutes + 60)
-                if (endMinutes <= startMinutes) endMinutes += 24 * 60
-                startMinutes to endMinutes
-            }.sortedBy { it.first }
-            for (i in ranges.indices) {
-                for (j in i + 1 until ranges.size) {
-                    if (ranges[j].first >= ranges[i].second) break
-                    conflicts++
-                }
-            }
-        }
-        return conflicts
     }
 }
