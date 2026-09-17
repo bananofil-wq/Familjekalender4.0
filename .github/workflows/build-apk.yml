@@ -20,6 +20,9 @@ jobs:
       - name: Apply grouped day overview in all modes
         run: python3 scripts/group_day_overview.py
 
+      - name: Apply per-person location alert controls
+        run: python3 scripts/add_location_alert_controls.py
+
       - name: Verify approved seasonal images
         run: python3 scripts/verify-season-images.py
 
@@ -44,7 +47,7 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Commit verified grouped overview
+      - name: Commit verified app changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -52,11 +55,12 @@ jobs:
             app/src/main/java/se/familjekalender/app/ExactCalendarScreen.kt \
             app/src/main/java/se/familjekalender/app/MinimalCalendarScreen.kt \
             app/src/main/java/se/familjekalender/app/PersonalLayoutScreen.kt \
-            app/src/main/java/se/familjekalender/app/RunningLifeDashboard.kt
+            app/src/main/java/se/familjekalender/app/RunningLifeDashboard.kt \
+            app/src/main/java/se/familjekalender/app/FamilyLocationScreen.kt
           if git diff --cached --quiet; then
-            echo "Grouped day overview already present in all modes"
+            echo "Verified app changes already present on main"
           else
-            git commit -m "Group daily activities by person in all modes"
+            git commit -m "Apply verified calendar and location alert changes"
             git fetch origin main
             git rebase origin/main
             git push origin HEAD:main
