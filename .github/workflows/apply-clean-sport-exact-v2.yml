@@ -1,0 +1,48 @@
+name: Apply exact Clean and Sport layout separation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-clean-sport-exact-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch current UI safely
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('app/src/main/java/se/familjekalender/app/MainActivity.kt')
+          s=p.read_text()
+          s=s.replace('RUNNING("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy")','RUNNING("Sportläge", "Löpning i fokus med träningspass, progression, schema och återhämtning")')
+          # Running belongs to Sport mode, not Full.
+          block='''                            RunningProgressCard(\n                                session = session,\n                                members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },\n                                events = events,\n                                onChanged = {\n                                    refresh()\n                                    FamilyCalendarWidget.enqueueRefresh(context)\n                                }\n                            )\n'''
+          s=s.replace(block,'',1)
+          # Family tab must not show running content in Clean/Full.
+          family_run='''                                RunningProgressCard(\n                                    session = session,\n                                    members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },\n                                    events = events,\n                                    onChanged = {\n                                        refresh()\n                                        FamilyCalendarWidget.enqueueRefresh(context)\n                                    }\n                                )\n                                Spacer(Modifier.height(10.dp))\n'''
+          s=s.replace(family_run,'',1)
+          # Exact approved Clean bottom navigation: Calendar, Family, To-do, Settings.
+          start=s.index('@Composable\nprivate fun MinimalBottomNav')
+          end=s.index('\n@Composable\nprivate fun BottomNav', start)
+          nav='''@Composable\nprivate fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {\n    val accent = MaterialTheme.colorScheme.primary\n    NavigationBar(containerColor = LuxuryBackground.copy(alpha = .985f), tonalElevation = 0.dp) {\n        listOf(\n            Triple(0, Icons.Default.CalendarMonth, "Kalender"),\n            Triple(3, Icons.Default.People, "Familj"),\n            Triple(2, Icons.Default.CheckCircle, "Att göra"),\n            Triple(4, Icons.Default.Settings, "Inställningar")\n        ).forEach { (tab, icon, label) ->\n            val isSelected = selected == tab\n            NavigationBarItem(\n                selected = isSelected,\n                onClick = { onSelect(tab) },\n                icon = { AnimatedNavIcon(icon, label, isSelected) },\n                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 10.sp) },\n                colors = NavigationBarItemDefaults.colors(\n                    selectedIconColor = accent, selectedTextColor = accent,\n                    unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),\n                    unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),\n                    indicatorColor = LuxurySurfaceHigh\n                )\n            )\n        }\n    }\n}\n'''
+          s=s[:start]+nav+s[end:]
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/se/familjekalender/app/MainActivity.kt
+          git diff --cached --quiet && exit 0
+          git commit -m 'Separate Sport mode and match Clean navigation'
+          git push
