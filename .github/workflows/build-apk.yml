@@ -57,7 +57,9 @@ jobs:
             echo "Grouped day overview already present in all modes"
           else
             git commit -m "Group daily activities by person in all modes"
-            git push origin main
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
           fi
 
       - name: Enable KVM
