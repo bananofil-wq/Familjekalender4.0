@@ -112,6 +112,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_root, openPending)
+            views.setOnClickPendingIntent(R.id.widget_todo, openPending)
+            views.setOnClickPendingIntent(R.id.widget_shopping, openPending)
 
             val refreshIntent = Intent(context, FamilyCalendarWidget::class.java).apply {
                 action = ACTION_REFRESH
@@ -130,11 +132,32 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 R.id.widget_event_1,
                 R.id.widget_event_2,
                 R.id.widget_event_3,
-                R.id.widget_event_4
-            ).forEach {
-                views.setViewVisibility(it, View.GONE)
-                views.setTextViewText(it, "")
-            }
+                R.id.widget_event_4,
+                R.id.widget_tomorrow_1,
+                R.id.widget_tomorrow_2
+            ).forEach { views.setViewVisibility(it, View.GONE) }
+            views.setViewVisibility(R.id.widget_tomorrow_header, View.GONE)
+
+            intArrayOf(
+                R.id.widget_event_1_who,
+                R.id.widget_event_1_activity,
+                R.id.widget_event_1_time,
+                R.id.widget_event_2_who,
+                R.id.widget_event_2_activity,
+                R.id.widget_event_2_time,
+                R.id.widget_event_3_who,
+                R.id.widget_event_3_activity,
+                R.id.widget_event_3_time,
+                R.id.widget_event_4_who,
+                R.id.widget_event_4_activity,
+                R.id.widget_event_4_time,
+                R.id.widget_tomorrow_1_who,
+                R.id.widget_tomorrow_1_activity,
+                R.id.widget_tomorrow_1_time,
+                R.id.widget_tomorrow_2_who,
+                R.id.widget_tomorrow_2_activity,
+                R.id.widget_tomorrow_2_time
+            ).forEach { views.setTextViewText(it, "") }
         }
     }
 }
