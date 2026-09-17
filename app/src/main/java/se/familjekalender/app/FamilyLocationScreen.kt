@@ -79,6 +79,8 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     var selectedMapMember by remember { mutableStateOf<String?>(null) }
     var sharing by remember { mutableStateOf(prefs.getBoolean("sharing_enabled", false)) }
     var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
+    var locationAlertsEnabled by remember { mutableStateOf(prefs.getBoolean("location_alerts_enabled", false)) }
+    var alertPreferenceRevision by remember { mutableIntStateOf(0) }
     var locations by remember { mutableStateOf(emptyList<SyncFamilyLocation>()) }
     var places by remember { mutableStateOf(emptyList<SyncFamilyPlace>()) }
     var status by remember { mutableStateOf("") }
@@ -346,6 +348,73 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     if (sharing) "Aktiv även när appen ligger i bakgrunden" else "Avstängd"
                 ) {
                     if (sharing) scope.launch { publishNow() } else startSharing()
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LocationIcon(Icons.Default.Notifications)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Platsnotiser", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            if (locationAlertsEnabled) "Aktiverat · välj personer nedan" else "Avstängt",
+                            color = Muted,
+                            fontSize = 13.sp
+                        )
+                    }
+                    Switch(
+                        checked = locationAlertsEnabled,
+                        onCheckedChange = { enabled ->
+                            locationAlertsEnabled = enabled
+                            prefs.edit().putBoolean("location_alerts_enabled", enabled).apply()
+                            status = if (enabled) "Platsnotiser aktiverade" else "Platsnotiser avstängda"
+                            if (enabled) ensureNotificationPermission()
+                        }
+                    )
+                }
+
+                if (locationAlertsEnabled) {
+                    Text(
+                        "Välj vilka personer du vill få ankomst- och avresenotiser om",
+                        color = Muted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
+                    )
+                    familyMembers.forEach { member ->
+                        val memberAlerts = remember(member.id, alertPreferenceRevision) {
+                            prefs.getBoolean("location_alert_member_${member.id}", false)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(member.colorArgb.toInt()))
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(member.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Text("Meddela när ${member.name} kommer eller lämnar", color = Muted, fontSize = 12.sp)
+                            }
+                            Switch(
+                                checked = memberAlerts,
+                                onCheckedChange = { enabled ->
+                                    prefs.edit().putBoolean("location_alert_member_${member.id}", enabled).apply()
+                                    alertPreferenceRevision++
+                                    status = if (enabled) {
+                                        "Platsnotiser för ${member.name} aktiverade"
+                                    } else {
+                                        "Platsnotiser för ${member.name} avstängda"
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
 
                 val arrivalEnabled = places.isNotEmpty() && places.any { it.arrivalAlerts }
@@ -817,7 +886,7 @@ private fun AddDestinationDialog(
                     label = { Text("Radie i meter") },
                     singleLine = true
                 )
-                Text("Ankomst- och avresenotiser aktiveras för nya destinationer och kan ändras efteråt.", color = Muted, fontSize = 12.sp)
+                Text("Platsnotiser är avstängda tills du själv aktiverar dem. Ankomst och avresa kan sedan styras per destination.", color = Muted, fontSize = 12.sp)
             }
         },
         confirmButton = {
@@ -864,9 +933,13 @@ internal fun checkLocationTransitions(
     members: List<SyncMember>
 ) {
     if (locations.isEmpty() || places.isEmpty()) return
+    val alertPrefs = context.getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
+    if (!alertPrefs.getBoolean("location_alerts_enabled", false)) return
+
     val prefs = context.getSharedPreferences("location_geofence_state_$familyId", Context.MODE_PRIVATE)
 
     locations.forEach { location ->
+        if (!alertPrefs.getBoolean("location_alert_member_${location.memberId}", false)) return@forEach
         places.forEach { place ->
             val inside = distanceMeters(location.latitude, location.longitude, place.latitude, place.longitude) <= place.radiusM
             val key = "${location.memberId}_${place.id}"
