@@ -77,7 +77,7 @@ enum class UiLayoutMode(val label: String, val description: String) {
     MINIMAL("Clean", "Ren månadskalender med en diskret markering per dag"),
     FULL("Fullständigt", "Alla översikter, familjeverktyg och den fulla kalendern"),
     RUNNING("Löpning & vardag", "Veckan, dagens åtaganden och löpningen i en lugn personlig vy"),
-    PERSONAL("Personligt", "Bygg din egen kalender med valbara delar och egen ordning")
+    PERSONAL("Personligt", "Helt anpassningsbar vy där du lägger till, tar bort, flyttar och ändrar storlek på alla delar.")
 }
 
 data class SeasonPalette(
@@ -789,7 +789,7 @@ private fun SettingsScreen(
         title = "Utseende",
         subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen."
     ) {
-        UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->
+        UiLayoutMode.values().forEach { mode ->
             val selected = uiLayoutMode == mode
             Surface(
                 color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f) else LuxurySurfaceElevated,
