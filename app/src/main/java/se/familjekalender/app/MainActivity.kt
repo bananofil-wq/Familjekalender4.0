@@ -58,10 +58,10 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 internal val Bg = LuxuryBackground
-internal val CardBg = LuxurySurface
-internal val Purple = Color(0xFFB47CFF)
-internal val SoftPurple = LuxurySurfaceHigh
-internal val Muted = LuxuryTextMuted
+internal val CardBg = PremiumGlass
+internal val Purple = PremiumPurpleBright
+internal val SoftPurple = PremiumGlassRaised
+internal val Muted = PremiumMuted
 private val MemberColors = listOf(0xFFB47CFF, 0xFFFF77A8, 0xFF62A9FF, 0xFF6DD6A7, 0xFFFFB86B)
 
 enum class ThemeMode(val label: String, val emoji: String) {
@@ -336,76 +336,96 @@ private fun SyncedApp(
                             },
                             onOpenSettings = { selectedTab = 4 }
                         )
-                        UiLayoutMode.PERSONAL -> PersonalCalendarScreen(
-                            session = session,
-                            prefs = appPrefs,
-                            profile = personalProfile,
-                            revision = personalLayoutRevision,
-                            selectedDate = selectedDate,
-                            onSelectDate = { selectedDate = it },
-                            events = events,
-                            members = members,
-                            shopping = shopping,
-                            palette = palette,
-                            themeMode = themeMode,
-                            onAdd = {
-                                addEventInitialTitle = ""
-                                showAddEvent = true
-                            },
-                            onRefresh = {
-                                refresh()
-                                FamilyCalendarWidget.enqueueRefresh(context)
-                            }
-                        )
-                        UiLayoutMode.FULL -> Column(
-                            Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
-                            WeekOverviewCard(events, members)
-                            FamilyAutopilotCard(events, members)
-                            RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
-                            Box(
+                        UiLayoutMode.PERSONAL -> PremiumModeBackground {
+                            PersonalCalendarScreen(
+                                session = session,
+                                prefs = appPrefs,
+                                profile = personalProfile,
+                                revision = personalLayoutRevision,
+                                selectedDate = selectedDate,
+                                onSelectDate = { selectedDate = it },
+                                events = events,
+                                members = members,
+                                shopping = shopping,
+                                palette = palette,
+                                themeMode = themeMode,
+                                onAdd = {
+                                    addEventInitialTitle = ""
+                                    showAddEvent = true
+                                },
+                                onRefresh = {
+                                    refresh()
+                                    FamilyCalendarWidget.enqueueRefresh(context)
+                                }
+                            )
+                        }
+                        UiLayoutMode.FULL -> PremiumModeBackground {
+                            Column(
                                 Modifier
-                                    .fillMaxWidth()
-                                    .height(590.dp)
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 14.dp, vertical = 12.dp)
                             ) {
-                                ExactCalendarScreen(
-                                    selectedDate,
-                                    { selectedDate = it },
-                                    events,
-                                    members,
-                                    palette,
-                                    themeMode,
-                                    onAdd = {
-                                        addEventInitialTitle = ""
-                                        showAddEvent = true
-                                    },
-                                    onAddLaundry = {
-                                        addEventInitialTitle = "🧺 Tvätt"
-                                        showAddEvent = true
-                                    },
-                                    addMenuRequest = assistantAddRequest
+                                PremiumModeHeader(
+                                    title = "Familjekalender",
+                                    subtitle = "Fullständig familjeöversikt",
+                                    onSettings = { selectedTab = 4 }
                                 )
+                                Spacer(Modifier.height(12.dp))
+                                FamilyAssistantCard(session, events, members, shopping) { assistantAddRequest++ }
+                                Spacer(Modifier.height(10.dp))
+                                WeekOverviewCard(events, members)
+                                Spacer(Modifier.height(10.dp))
+                                FamilyAutopilotCard(events, members)
+                                Spacer(Modifier.height(10.dp))
+                                RecurringLifeCard(session = session, events = events) { scope.launch { refresh() } }
+                                Spacer(Modifier.height(10.dp))
+                                PremiumGlassPanel(Modifier.fillMaxWidth()) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(590.dp)
+                                    ) {
+                                        ExactCalendarScreen(
+                                            selectedDate,
+                                            { selectedDate = it },
+                                            events,
+                                            members,
+                                            palette,
+                                            themeMode,
+                                            onAdd = {
+                                                addEventInitialTitle = ""
+                                                showAddEvent = true
+                                            },
+                                            onAddLaundry = {
+                                                addEventInitialTitle = "🧺 Tvätt"
+                                                showAddEvent = true
+                                            },
+                                            addMenuRequest = assistantAddRequest
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(16.dp))
                             }
                         }
-                        UiLayoutMode.RUNNING -> RunningLifeDashboard(
-                            session = session,
-                            selectedDate = selectedDate,
-                            onSelectDate = { selectedDate = it },
-                            events = events,
-                            members = members,
-                            onAdd = {
-                                addEventInitialTitle = ""
-                                showAddEvent = true
-                            },
-                            onOpenSettings = { selectedTab = 4 },
-                            onRefresh = {
-                                refresh()
-                                FamilyCalendarWidget.enqueueRefresh(context)
-                            }
-                        )
+                        UiLayoutMode.RUNNING -> PremiumModeBackground {
+                            RunningLifeDashboard(
+                                session = session,
+                                selectedDate = selectedDate,
+                                onSelectDate = { selectedDate = it },
+                                events = events,
+                                members = members,
+                                onAdd = {
+                                    addEventInitialTitle = ""
+                                    showAddEvent = true
+                                },
+                                onOpenSettings = { selectedTab = 4 },
+                                onRefresh = {
+                                    refresh()
+                                    FamilyCalendarWidget.enqueueRefresh(context)
+                                }
+                            )
+                        }
                     }
                 }
             } else {
@@ -938,7 +958,7 @@ private fun AnimatedNavIcon(icon: ImageVector, label: String, selected: Boolean)
 @Composable
 private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    NavigationBar(containerColor = LuxuryBackground.copy(alpha = .985f), tonalElevation = 0.dp) {
+    NavigationBar(containerColor = PremiumGlassRaised.copy(alpha = .96f), tonalElevation = 0.dp) {
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
             Triple(3, Icons.Default.People, "Familj"),
@@ -955,7 +975,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                     selectedIconColor = accent, selectedTextColor = accent,
                     unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
                     unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
-                    indicatorColor = LuxurySurfaceHigh
+                    indicatorColor = PremiumPurple.copy(alpha = .18f)
                 )
             )
         }
@@ -965,7 +985,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    NavigationBar(containerColor = LuxuryBackground.copy(alpha = .985f), tonalElevation = 0.dp) {
+    NavigationBar(containerColor = PremiumGlassRaised.copy(alpha = .96f), tonalElevation = 0.dp) {
         listOf(
             Icons.Default.CalendarMonth to "Kalender",
             Icons.Default.ShoppingCart to "Inköp",
@@ -985,7 +1005,7 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
                     selectedTextColor = accent,
                     unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
                     unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
-                    indicatorColor = LuxurySurfaceHigh
+                    indicatorColor = PremiumPurple.copy(alpha = .18f)
                 )
             )
         }

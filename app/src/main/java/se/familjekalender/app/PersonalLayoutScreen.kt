@@ -109,7 +109,7 @@ fun PersonalLayoutEditor(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = CardBg),
+        colors = CardDefaults.cardColors(containerColor = PremiumGlass),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -299,15 +299,21 @@ fun PersonalCalendarScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .padding(top = 12.dp)
     ) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+            PremiumModeHeader(
+                title = profileName.ifBlank { "Familjekalender" },
+                subtitle = "Personligt läge",
+                onAdd = onAdd
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                if (profileName.isNotBlank()) {
-                    Text(profileName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                }
                 Text(
                     if (editMode) "Tryck på en widget för att ändra den" else "${modules.size} aktiva widgetar",
                     color = Muted,
@@ -432,7 +438,7 @@ fun PersonalCalendarScreen(
 
         if (modules.isEmpty() && !editMode) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = CardBg),
+                colors = CardDefaults.cardColors(containerColor = PremiumGlass),
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -462,7 +468,7 @@ fun PersonalCalendarScreen(
                     } else {
                         available.forEach { module ->
                             Surface(
-                                color = Color.White.copy(alpha = .04f),
+                                color = PremiumGlassSoft,
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     persistModules(modules + module)
@@ -628,7 +634,7 @@ private fun PersonalTodayAgenda(
     var expandedGroups by remember(selectedDate) { mutableStateOf(emptySet<String>()) }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = CardBg),
+        colors = CardDefaults.cardColors(containerColor = PremiumGlass),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
@@ -666,7 +672,7 @@ private fun PersonalTodayAgenda(
                         val expanded = groupKey in expandedGroups
 
                         Surface(
-                            color = Color.White.copy(alpha = .04f),
+                            color = PremiumGlassSoft,
                             shape = RoundedCornerShape(14.dp),
                             border = BorderStroke(1.dp, accent.copy(alpha = .26f)),
                             modifier = Modifier.fillMaxWidth().clickable {
