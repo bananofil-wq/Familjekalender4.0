@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-signed-update:
@@ -78,3 +78,16 @@ jobs:
           path: Familjekalender-4.3.20260917.4.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish latest app update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "v${FAMILJEKALENDER_VERSION_NAME}" \
+            "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" \
+            --target main \
+            --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
+            --notes "Signerad uppdatering för Familjekalendern. Kan installeras direkt ovanpå tidigare signerad version." \
+            --latest
