@@ -112,3 +112,5 @@ jobs:
             activity-top-shopping.txt
             activity-top-todo.txt
             activity-top-settings.txt
+
+# Build trigger after widget compile fix
