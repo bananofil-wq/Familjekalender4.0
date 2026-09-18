@@ -58,6 +58,8 @@ internal fun MinimalCalendarScreen(
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var openedEvent by remember { mutableStateOf<SyncEvent?>(null) }
+    var showAssistantDetails by remember { mutableStateOf(false) }
+    var showWeatherDetails by remember { mutableStateOf(false) }
     val memberById = remember(members) { members.associateBy { it.id } }
     val eventsByDate = remember(events) { events.groupBy { it.date } }
     val selectedEvents = remember(events, selectedDate) {
@@ -150,10 +152,11 @@ internal fun MinimalCalendarScreen(
             ) {
                 CleanAssistantCard(
                     eventCount = selectedEvents.size,
+                    onClick = { showAssistantDetails = true },
                     modifier = Modifier.weight(1.65f)
                 )
                 CleanWeatherCard(
-                    onOpenSettings = onOpenSettings,
+                    onClick = { showWeatherDetails = true },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -245,6 +248,46 @@ internal fun MinimalCalendarScreen(
                 TextButton(onClick = { openedEvent = null }) {
                     Text("Stäng")
                 }
+            }
+        )
+    }
+
+    if (showAssistantDetails) {
+        AlertDialog(
+            onDismissRequest = { showAssistantDetails = false },
+            title = { Text("Assistenten", fontWeight = FontWeight.SemiBold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (selectedEvents.isEmpty()) {
+                        Text("Allt ser lugnt ut för den valda dagen.")
+                    } else {
+                        Text("Du har ${selectedEvents.size} aktiviteter den valda dagen.")
+                        selectedEvents.take(6).forEach { event ->
+                            val memberName = if (event.memberId == ALL_FAMILY_MEMBER_ID) {
+                                "Hela familjen"
+                            } else {
+                                memberById[event.memberId]?.name ?: "Övrigt"
+                            }
+                            Text("• ${event.time}  ${event.title} · $memberName")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAssistantDetails = false }) { Text("Stäng") }
+            }
+        )
+    }
+
+    if (showWeatherDetails) {
+        AlertDialog(
+            onDismissRequest = { showWeatherDetails = false },
+            title = { Text("Väder", fontWeight = FontWeight.SemiBold) },
+            text = {
+                Text("Väderfunktionen är inte ansluten ännu. Kortet är nu klickbart och visar status här.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showWeatherDetails = false }) { Text("Stäng") }
             }
         )
     }
@@ -517,12 +560,18 @@ private fun CleanAgendaCard(
 }
 
 @Composable
-private fun CleanAssistantCard(eventCount: Int, modifier: Modifier = Modifier) {
+private fun CleanAssistantCard(
+    eventCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
         color = CleanGlassSoft,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, CleanBorder),
-        modifier = modifier.heightIn(min = 100.dp)
+        modifier = modifier
+            .heightIn(min = 100.dp)
+            .clickable(onClick = onClick)
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -551,13 +600,14 @@ private fun CleanAssistantCard(eventCount: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CleanWeatherCard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
+private fun CleanWeatherCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        onClick = onOpenSettings,
         color = CleanGlassSoft,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, CleanBorder),
-        modifier = modifier.heightIn(min = 100.dp)
+        modifier = modifier
+            .heightIn(min = 100.dp)
+            .clickable(onClick = onClick)
     ) {
         Column(
             Modifier.padding(13.dp),
