@@ -24,12 +24,20 @@ jobs:
         with:
           ref: main
 
+      - name: Initialize build diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'checkout\n' > /tmp/familjekalender-build-stage
+          : > /tmp/familjekalender-build.log
+
       - name: Restore permanent release signing key
         shell: bash
         env:
           SIGNING_BUNDLE: ${{ secrets.FAMILJEKALENDER_SIGNING_BUNDLE }}
         run: |
           set -euo pipefail
+          printf 'restore-signing-key\n' > /tmp/familjekalender-build-stage
           if [ -z "${SIGNING_BUNDLE:-}" ]; then
             echo 'FAMILJEKALENDER_SIGNING_BUNDLE is not configured.' >&2
             exit 1
@@ -59,17 +67,30 @@ jobs:
           gradle-version: '8.13'
 
       - name: Build signed release APK
-        run: gradle :app:assembleRelease --stacktrace
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'gradle-assemble-release\n' > /tmp/familjekalender-build-stage
+          gradle :app:assembleRelease --stacktrace 2>&1 | tee /tmp/familjekalender-build.log
 
       - name: Verify APK signature
         shell: bash
         run: |
           set -euo pipefail
+          printf 'verify-apk-signature\n' > /tmp/familjekalender-build-stage
           APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)/apksigner"
           "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Prepare update APK
-        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.2.apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'prepare-update-apk\n' > /tmp/familjekalender-build-stage
+          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.2.apk
+
+      - name: Mark artifact upload stage
+        shell: bash
+        run: printf 'upload-artifact\n' > /tmp/familjekalender-build-stage
 
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
@@ -85,6 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          printf 'publish-github-release\n' > /tmp/familjekalender-build-stage
           cat > release-notes.txt <<'EOF'
           Interaktionsfix för Clean-läget.
 
@@ -138,7 +160,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p build-triggers
           FAILURE_MARKER="build-triggers/signed-failed-${FAMILJEKALENDER_VERSION_NAME}.txt"
-          printf 'Signed APK build failed: %s\n' "${FAMILJEKALENDER_VERSION_NAME}" > "$FAILURE_MARKER"
+          STAGE="$(cat /tmp/familjekalender-build-stage 2>/dev/null || printf 'unknown')"
+          {
+            printf 'Signed APK build failed: %s\n' "${FAMILJEKALENDER_VERSION_NAME}"
+            printf 'Stage: %s\n' "$STAGE"
+            printf 'Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\n'
+            if [ -s /tmp/familjekalender-build.log ]; then
+              printf '\nLast Gradle output:\n'
+              tail -n 80 /tmp/familjekalender-build.log
+            fi
+          } > "$FAILURE_MARKER"
           git add "$FAILURE_MARKER"
           if git diff --cached --quiet; then
             exit 0
