@@ -19,6 +19,7 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.RevokeAccessRequest
+import com.google.android.gms.common.Scopes
 import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,17 +56,35 @@ private val MAIL_STOCKHOLM: ZoneId = ZoneId.of("Europe/Stockholm")
 internal const val GMAIL_AUTH_SCOPE = "https://mail.google.com/"
 internal const val GOOGLE_ACCOUNT_TYPE = "com.google"
 
-internal fun gmailAuthorizationRequest(email: String? = null): AuthorizationRequest {
+internal fun gmailAuthorizationRequest(
+    email: String? = null,
+    selectAccount: Boolean = false
+): AuthorizationRequest {
     val builder = AuthorizationRequest.builder()
-        .setRequestedScopes(listOf(Scope(GMAIL_AUTH_SCOPE)))
+        .setRequestedScopes(
+            listOf(
+                Scope(GMAIL_AUTH_SCOPE),
+                Scope(Scopes.EMAIL)
+            )
+        )
+
     if (!email.isNullOrBlank()) {
         builder.setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
+    } else if (selectAccount) {
+        builder.setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT)
     }
+
     return builder.build()
 }
 
-internal suspend fun requestGmailAuthorization(context: Context, email: String? = null): AuthorizationResult =
-    Identity.getAuthorizationClient(context).authorize(gmailAuthorizationRequest(email)).await()
+internal suspend fun requestGmailAuthorization(
+    context: Context,
+    email: String? = null,
+    selectAccount: Boolean = false
+): AuthorizationResult =
+    Identity.getAuthorizationClient(context)
+        .authorize(gmailAuthorizationRequest(email, selectAccount))
+        .await()
 
 internal suspend fun revokeGmailAuthorization(context: Context, email: String) {
     val request = RevokeAccessRequest.builder()
