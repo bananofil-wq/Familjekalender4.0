@@ -1,5 +1,9 @@
 package se.familjekalender.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -23,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -43,6 +49,18 @@ private val CleanGlassSoft = Color(0xA61C1828)
 private val CleanBorder = Color.White.copy(alpha = .13f)
 private val CleanMuted = Color.White.copy(alpha = .66f)
 
+private val EmbeddedTimeRange = Regex("""(?:\s*[·•]\s*)?\b\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b""")
+
+private fun cleanEventTitle(event: SyncEvent): String =
+    event.title
+        .replace(EmbeddedTimeRange, "")
+        .replace(Regex("""\s*·\s*·\s*"""), " · ")
+        .trim()
+        .trim('·', '-', ' ')
+
+private fun cleanEventTime(event: SyncEvent): String =
+    event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
+
 @Composable
 internal fun MinimalCalendarScreen(
     selectedDate: LocalDate,
@@ -52,6 +70,7 @@ internal fun MinimalCalendarScreen(
     onAdd: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val context = LocalContext.current
     val locale = remember { Locale("sv", "SE") }
     val today = LocalDate.now()
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
@@ -60,6 +79,29 @@ internal fun MinimalCalendarScreen(
     var openedEvent by remember { mutableStateOf<SyncEvent?>(null) }
     var showAssistantDetails by remember { mutableStateOf(false) }
     var showWeatherDetails by remember { mutableStateOf(false) }
+    var weather by remember { mutableStateOf<CleanWeatherSnapshot?>(null) }
+    var weatherLoading by remember { mutableStateOf(false) }
+    var weatherError by remember { mutableStateOf<String?>(null) }
+    var weatherRefreshRequest by remember { mutableIntStateOf(0) }
+    var forceWeatherRefresh by remember { mutableStateOf(false) }
+
+    fun hasWeatherLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    val weatherPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        showWeatherDetails = true
+        if (grants.values.any { it }) {
+            weatherError = null
+            forceWeatherRefresh = true
+            weatherRefreshRequest++
+        } else {
+            weatherError = "Platsbehörighet behövs för att visa väder där du befinner dig."
+        }
+    }
+
     val memberById = remember(members) { members.associateBy { it.id } }
     val eventsByDate = remember(events) { events.groupBy { it.date } }
     val selectedEvents = remember(events, selectedDate) {
@@ -70,6 +112,18 @@ internal fun MinimalCalendarScreen(
     LaunchedEffect(selectedDate) {
         val target = YearMonth.from(selectedDate)
         if (target != month) month = target
+    }
+
+    LaunchedEffect(weatherRefreshRequest) {
+        if (!hasWeatherLocationPermission()) return@LaunchedEffect
+        weatherLoading = true
+        weatherError = null
+        val force = forceWeatherRefresh
+        forceWeatherRefresh = false
+        runCatching { CleanWeatherService.loadCurrent(context, force = force) }
+            .onSuccess { weather = it }
+            .onFailure { weatherError = it.message ?: "Kunde inte hämta vädret." }
+        weatherLoading = false
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -156,7 +210,23 @@ internal fun MinimalCalendarScreen(
                     modifier = Modifier.weight(1.65f)
                 )
                 CleanWeatherCard(
-                    onClick = { showWeatherDetails = true },
+                    weather = weather,
+                    loading = weatherLoading,
+                    hasLocationPermission = hasWeatherLocationPermission(),
+                    onClick = {
+                        showWeatherDetails = true
+                        if (hasWeatherLocationPermission()) {
+                            forceWeatherRefresh = true
+                            weatherRefreshRequest++
+                        } else {
+                            weatherPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -231,7 +301,7 @@ internal fun MinimalCalendarScreen(
             onDismissRequest = { openedEvent = null },
             title = {
                 Text(
-                    event.title,
+                    cleanEventTitle(event),
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -255,26 +325,86 @@ internal fun MinimalCalendarScreen(
     if (showAssistantDetails) {
         AlertDialog(
             onDismissRequest = { showAssistantDetails = false },
-            title = { Text("Assistenten", fontWeight = FontWeight.SemiBold) },
+            containerColor = Color(0xE61A1624),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 0.dp,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(CleanPurple.copy(alpha = .24f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("✦", color = CleanPurpleBright, fontSize = 24.sp)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text("Assistenten", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                }
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (selectedEvents.isEmpty()) {
-                        Text("Allt ser lugnt ut för den valda dagen.")
-                    } else {
-                        Text("Du har ${selectedEvents.size} aktiviteter den valda dagen.")
-                        selectedEvents.take(6).forEach { event ->
-                            val memberName = if (event.memberId == ALL_FAMILY_MEMBER_ID) {
-                                "Hela familjen"
-                            } else {
-                                memberById[event.memberId]?.name ?: "Övrigt"
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        if (selectedEvents.isEmpty()) "Allt ser lugnt ut för den valda dagen."
+                        else "Du har ${selectedEvents.size} aktiviteter den valda dagen.",
+                        color = Color.White.copy(alpha = .76f),
+                        fontSize = 14.sp
+                    )
+                    selectedEvents.take(6).forEach { event ->
+                        val memberName = if (event.memberId == ALL_FAMILY_MEMBER_ID) {
+                            "Hela familjen"
+                        } else {
+                            memberById[event.memberId]?.name ?: "Övrigt"
+                        }
+                        Surface(
+                            color = Color.White.copy(alpha = .045f),
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showAssistantDetails = false
+                                    openedEvent = event
+                                }
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(CleanPurple.copy(alpha = .20f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(Modifier.size(7.dp).clip(CircleShape).background(CleanPurpleBright))
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    "${cleanEventTime(event)} · ${cleanEventTitle(event)} · $memberName",
+                                    color = Color.White.copy(alpha = .90f),
+                                    fontSize = 13.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = .38f),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
-                            Text("• ${event.time}  ${event.title} · $memberName")
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAssistantDetails = false }) { Text("Stäng") }
+                TextButton(onClick = { showAssistantDetails = false }) {
+                    Text("Stäng", color = CleanPurpleBright, fontWeight = FontWeight.SemiBold)
+                }
             }
         )
     }
@@ -282,12 +412,78 @@ internal fun MinimalCalendarScreen(
     if (showWeatherDetails) {
         AlertDialog(
             onDismissRequest = { showWeatherDetails = false },
-            title = { Text("Väder", fontWeight = FontWeight.SemiBold) },
+            containerColor = Color(0xE61A1624),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 0.dp,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = .07f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.White.copy(alpha = .88f))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text("Väder", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                }
+            },
             text = {
-                Text("Väderfunktionen är inte ansluten ännu. Kortet är nu klickbart och visar status här.")
+                when {
+                    weatherLoading -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Text("Hämtar aktuellt väder…", color = Color.White.copy(alpha = .76f))
+                        }
+                    }
+                    weather != null -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(
+                                "${weather!!.temperatureC}°",
+                                color = Color.White,
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(weather!!.description, color = Color.White.copy(alpha = .76f), fontSize = 16.sp)
+                            Text(
+                                "Aktuellt väder för din nuvarande plats.",
+                                color = Color.White.copy(alpha = .52f),
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                    else -> {
+                        Text(
+                            weatherError ?: if (hasWeatherLocationPermission()) {
+                                "Kunde inte hämta vädret just nu."
+                            } else {
+                                "Tillåt platsåtkomst för att visa aktuellt väder."
+                            },
+                            color = Color.White.copy(alpha = .76f)
+                        )
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = { showWeatherDetails = false }) { Text("Stäng") }
+                TextButton(onClick = { showWeatherDetails = false }) {
+                    Text("Stäng", color = CleanPurpleBright, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                if (hasWeatherLocationPermission()) {
+                    TextButton(
+                        enabled = !weatherLoading,
+                        onClick = {
+                            forceWeatherRefresh = true
+                            weatherRefreshRequest++
+                        }
+                    ) {
+                        Text("Uppdatera", color = CleanPurpleBright)
+                    }
+                }
             }
         )
     }
@@ -539,7 +735,7 @@ private fun CleanAgendaCard(
                         }
                         Spacer(Modifier.width(9.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(event.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(cleanEventTitle(event), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
                                 if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member?.name ?: "Övrigt",
                                 color = Color.White.copy(alpha = .52f),
@@ -600,7 +796,13 @@ private fun CleanAssistantCard(
 }
 
 @Composable
-private fun CleanWeatherCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun CleanWeatherCard(
+    weather: CleanWeatherSnapshot?,
+    loading: Boolean,
+    hasLocationPermission: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
         color = CleanGlassSoft,
         shape = RoundedCornerShape(24.dp),
@@ -616,9 +818,29 @@ private fun CleanWeatherCard(onClick: () -> Unit, modifier: Modifier = Modifier)
         ) {
             Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.White.copy(alpha = .80f), modifier = Modifier.size(25.dp))
             Spacer(Modifier.height(4.dp))
-            Text("—°", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                when {
+                    weather != null -> "${weather.temperatureC}°"
+                    loading -> "…"
+                    else -> "—°"
+                },
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold
+            )
             Text("Väder", color = Color.White.copy(alpha = .70f), fontSize = 10.sp)
-            Text("Ej anslutet", color = Color.White.copy(alpha = .45f), fontSize = 9.sp)
+            Text(
+                when {
+                    weather != null -> weather.description
+                    loading -> "Hämtar…"
+                    hasLocationPermission -> "Tryck för väder"
+                    else -> "Aktivera plats"
+                },
+                color = Color.White.copy(alpha = .48f),
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
