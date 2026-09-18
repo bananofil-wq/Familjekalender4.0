@@ -65,7 +65,11 @@ data class SyncEvent(
 object SupabaseSync {
     suspend fun createFamily(name: String): FamilySession = withContext(Dispatchers.IO) {
         val body = JSONObject().put("p_name", name.ifBlank { "Min familj" })
-        val result = request("POST", "/rest/v1/rpc/create_family", body = body)
+        val result = familyApiRequest(
+            method = "POST",
+            path = "/rest/v1/rpc/create_family",
+            body = body
+        )
         val row = JSONArray(result).getJSONObject(0)
         FamilySession(row.getString("id"), row.getString("name"), row.getString("join_code"))
     }
@@ -564,6 +568,49 @@ object SupabaseSync {
             connection.readTimeout = 20000
             connection.instanceFollowRedirects = true
             connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun familyApiRequest(
+        method: String,
+        path: String,
+        body: JSONObject? = null
+    ): String {
+        val connection = URL("$SUPABASE_URL/functions/v1/family-api").openConnection() as HttpURLConnection
+        return try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 20000
+            connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
+            connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.doOutput = true
+
+            val payload = JSONObject()
+                .put("method", method)
+                .put("path", path)
+                .put("preferRepresentation", true)
+            if (body != null) {
+                payload.put("body", body)
+            }
+
+            connection.outputStream.use {
+                it.write(payload.toString().toByteArray(StandardCharsets.UTF_8))
+            }
+
+            val code = connection.responseCode
+            val stream = if (code in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            }
+            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) {
+                throw IllegalStateException("Serverfel $code: $text")
+            }
+            text.ifBlank { "[]" }
         } finally {
             connection.disconnect()
         }
