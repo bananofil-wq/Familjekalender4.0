@@ -632,32 +632,43 @@ private fun CleanCalendarCard(
                         ) {
                             if (isSelected) {
                                 Surface(
-                                    color = Color.White.copy(alpha = .08f),
+                                    color = Color.White.copy(alpha = .11f),
                                     shape = CircleShape,
-                                    border = BorderStroke(1.5.dp, CleanPurpleBright.copy(alpha = .90f)),
-                                    shadowElevation = 7.dp,
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = .34f)),
+                                    shadowElevation = 13.dp,
                                     tonalElevation = 0.dp,
-                                    modifier = Modifier.size(42.dp)
+                                    modifier = Modifier.size(44.dp)
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {
-                                        Text(
-                                            date.dayOfMonth.toString(),
-                                            color = Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold
+                                    Box(Modifier.fillMaxSize()) {
+                                        Box(
+                                            Modifier
+                                                .align(Alignment.TopCenter)
+                                                .padding(top = 4.dp)
+                                                .width(24.dp)
+                                                .height(8.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.White.copy(alpha = .13f))
                                         )
-                                        Spacer(Modifier.height(2.dp))
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                            modifier = Modifier.height(5.dp)
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                            modifier = Modifier.fillMaxSize()
                                         ) {
-                                            dayEvents.take(3).forEach { event ->
-                                                val color = memberById[event.memberId]?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
-                                                Box(Modifier.size(4.dp).clip(CircleShape).background(color))
+                                            Text(
+                                                date.dayOfMonth.toString(),
+                                                color = Color.White,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                modifier = Modifier.height(5.dp)
+                                            ) {
+                                                dayEvents.take(3).forEach { event ->
+                                                    val color = memberById[event.memberId]?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
+                                                    Box(Modifier.size(4.dp).clip(CircleShape).background(color))
+                                                }
                                             }
                                         }
                                     }
