@@ -56,37 +56,42 @@ class FamilyCalendarWidget : AppWidgetProvider() {
         private const val IMMEDIATE_WORK_NAME = "family_calendar_widget_refresh"
         private const val PERIODIC_WORK_NAME = "family_calendar_widget_periodic_refresh"
 
-        private fun networkConstraints() = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        private fun networkConstraints() =
+            Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         fun enqueueRefresh(context: Context) {
-            val request = OneTimeWorkRequestBuilder<FamilyCalendarWidgetWorker>()
-                .setConstraints(networkConstraints())
-                .build()
-            WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
-                IMMEDIATE_WORK_NAME,
-                ExistingWorkPolicy.REPLACE,
-                request
-            )
+            val request =
+                OneTimeWorkRequestBuilder<FamilyCalendarWidgetWorker>()
+                    .setConstraints(networkConstraints())
+                    .build()
+            WorkManager.getInstance(context.applicationContext)
+                .enqueueUniqueWork(
+                    IMMEDIATE_WORK_NAME,
+                    ExistingWorkPolicy.REPLACE,
+                    request,
+                )
         }
 
         fun schedulePeriodicRefresh(context: Context) {
-            val request = PeriodicWorkRequestBuilder<FamilyCalendarWidgetWorker>(30, TimeUnit.MINUTES)
-                .setConstraints(networkConstraints())
-                .build()
-            WorkManager.getInstance(context.applicationContext).enqueueUniquePeriodicWork(
-                PERIODIC_WORK_NAME,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                request
-            )
+            val request =
+                PeriodicWorkRequestBuilder<FamilyCalendarWidgetWorker>(30, TimeUnit.MINUTES)
+                    .setConstraints(networkConstraints())
+                    .build()
+            WorkManager.getInstance(context.applicationContext)
+                .enqueueUniquePeriodicWork(
+                    PERIODIC_WORK_NAME,
+                    ExistingPeriodicWorkPolicy.UPDATE,
+                    request,
+                )
         }
 
         fun baseViews(context: Context, appWidgetId: Int): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_family_calendar)
             val today = LocalDate.now()
-            val dateText = today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE")))
-                .replaceFirstChar { it.uppercase() }
+            val dateText =
+                today
+                    .format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE")))
+                    .replaceFirstChar { it.uppercase() }
             views.setTextViewText(R.id.widget_date, dateText)
             clearRows(views)
             bindActions(context, views, appWidgetId)
@@ -105,25 +110,28 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         private fun bindActions(context: Context, views: RemoteViews, appWidgetId: Int) {
             val openIntent = Intent(context, MainActivity::class.java)
-            val openPending = PendingIntent.getActivity(
-                context,
-                appWidgetId,
-                openIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+            val openPending =
+                PendingIntent.getActivity(
+                    context,
+                    appWidgetId,
+                    openIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
             views.setOnClickPendingIntent(R.id.widget_root, openPending)
             views.setOnClickPendingIntent(R.id.widget_todo, openPending)
             views.setOnClickPendingIntent(R.id.widget_shopping, openPending)
 
-            val refreshIntent = Intent(context, FamilyCalendarWidget::class.java).apply {
-                action = ACTION_REFRESH
-            }
-            val refreshPending = PendingIntent.getBroadcast(
-                context,
-                appWidgetId + 10_000,
-                refreshIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+            val refreshIntent =
+                Intent(context, FamilyCalendarWidget::class.java).apply {
+                    action = ACTION_REFRESH
+                }
+            val refreshPending =
+                PendingIntent.getBroadcast(
+                    context,
+                    appWidgetId + 10_000,
+                    refreshIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
             views.setOnClickPendingIntent(R.id.widget_refresh, refreshPending)
         }
 
@@ -134,8 +142,9 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 R.id.widget_event_3,
                 R.id.widget_event_4,
                 R.id.widget_tomorrow_1,
-                R.id.widget_tomorrow_2
-            ).forEach { views.setViewVisibility(it, View.GONE) }
+                R.id.widget_tomorrow_2,
+            )
+                .forEach { views.setViewVisibility(it, View.GONE) }
             views.setViewVisibility(R.id.widget_tomorrow_header, View.GONE)
 
             intArrayOf(
@@ -156,8 +165,9 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 R.id.widget_tomorrow_1_time,
                 R.id.widget_tomorrow_2_who,
                 R.id.widget_tomorrow_2_activity,
-                R.id.widget_tomorrow_2_time
-            ).forEach { views.setTextViewText(it, "") }
+                R.id.widget_tomorrow_2_time,
+            )
+                .forEach { views.setTextViewText(it, "") }
         }
     }
 }

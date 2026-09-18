@@ -3,11 +3,11 @@ package se.familjekalender.app
 import android.app.Application
 import android.content.SharedPreferences
 import com.onesignal.OneSignal
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class FamilyCalendarApplication : Application() {
     private lateinit var prefs: SharedPreferences
@@ -41,7 +41,7 @@ class FamilyCalendarApplication : Application() {
                 OneSignal.User.addTags(
                     mapOf(
                         "family_id" to familyId,
-                        "platform" to "android"
+                        "platform" to "android",
                     )
                 )
             }

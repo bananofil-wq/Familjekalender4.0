@@ -15,17 +15,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun RunRecorderPanel(
     session: FamilySession,
     memberId: String,
-    onChanged: suspend () -> Unit
+    onChanged: suspend () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -46,43 +46,65 @@ fun RunRecorderPanel(
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val locationGranted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true || hasRunLocationPermission(context)
-        if (locationGranted) {
-            errorText = null
-            RunRecordingService.start(context, memberId)
-        } else {
-            errorText = "Platsbehörighet krävs för att spela in rundan."
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val locationGranted =
+                result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                        result[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
+                        hasRunLocationPermission(context)
+            if (locationGranted) {
+                errorText = null
+                RunRecordingService.start(context, memberId)
+            } else {
+                errorText = "Platsbehörighet krävs för att spela in rundan."
+            }
         }
-    }
 
     val isThisMemberRecording = snapshot.active && snapshot.memberId == memberId
-    val anotherMemberRecording = snapshot.active && snapshot.memberId != null && snapshot.memberId != memberId
+    val anotherMemberRecording =
+        snapshot.active && snapshot.memberId != null && snapshot.memberId != memberId
     val distanceKm = if (isThisMemberRecording) runDistanceKm(snapshot.points) else 0.0
-    val elapsedSeconds = if (isThisMemberRecording) ((now - snapshot.startedAtMillis).coerceAtLeast(0L) / 1000L) else 0L
+    val elapsedSeconds =
+        if (isThisMemberRecording) ((now - snapshot.startedAtMillis).coerceAtLeast(0L) / 1000L)
+        else 0L
     val averagePace = paceSecondsPerKm(distanceKm, elapsedSeconds)
     val currentPace = currentPaceSecondsPerKm(snapshot.points)
 
     Surface(
         color = SoftPurple,
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("GPS-runda", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
             when {
                 isThisMemberRecording -> {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        RecorderStat("Distans", "%.2f km".format(Locale.US, distanceKm), Modifier.weight(1f))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        RecorderStat(
+                            "Distans",
+                            "%.2f km".format(Locale.US, distanceKm),
+                            Modifier.weight(1f),
+                        )
                         RecorderStat("Tid", formatDuration(elapsedSeconds), Modifier.weight(1f))
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        RecorderStat("Tempo nu", currentPace?.let(::formatPace) ?: "–", Modifier.weight(1f))
-                        RecorderStat("Snittempo", averagePace?.let(::formatPace) ?: "–", Modifier.weight(1f))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        RecorderStat(
+                            "Tempo nu",
+                            currentPace?.let(::formatPace) ?: "–",
+                            Modifier.weight(1f),
+                        )
+                        RecorderStat(
+                            "Snittempo",
+                            averagePace?.let(::formatPace) ?: "–",
+                            Modifier.weight(1f),
+                        )
                     }
                     if (snapshot.points.isNotEmpty()) {
                         LiveRunMap(snapshot.points, Modifier.fillMaxWidth().height(260.dp))
@@ -110,31 +132,59 @@ fun RunRecorderPanel(
                                 completed?.let { run ->
                                     latestRun = run
                                     val km = runDistanceKm(run.points)
-                                    val mins = maxOf(1, ((run.durationMillis + 30_000L) / 60_000L).toInt())
+                                    val mins =
+                                        maxOf(1, ((run.durationMillis + 30_000L) / 60_000L).toInt())
                                     runCatching {
                                         SupabaseSync.addEvent(
                                             session = session,
-                                            title = "🏃 Löpning · ${"%.2f".format(Locale.US, km)} km · $mins min",
-                                            date = Instant.ofEpochMilli(run.startedAtMillis).atZone(ZoneId.systemDefault()).toLocalDate(),
-                                            startTime = Instant.ofEpochMilli(run.startedAtMillis).atZone(ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0).toString(),
+                                            title =
+                                                "🏃 Löpning · ${
+                                                    "%.2f".format(
+                                                        Locale.US,
+                                                        km
+                                                    )
+                                                } km · $mins min",
+                                            date =
+                                                Instant.ofEpochMilli(run.startedAtMillis)
+                                                    .atZone(ZoneId.systemDefault())
+                                                    .toLocalDate(),
+                                            startTime =
+                                                Instant.ofEpochMilli(run.startedAtMillis)
+                                                    .atZone(ZoneId.systemDefault())
+                                                    .toLocalTime()
+                                                    .withSecond(0)
+                                                    .withNano(0)
+                                                    .toString(),
                                             endTime = null,
-                                            memberId = memberId
+                                            memberId = memberId,
                                         )
                                         onChanged()
                                         FamilyCalendarWidget.enqueueRefresh(context)
-                                    }.onFailure { errorText = "Rundan sparades lokalt men kunde inte synkas till kalendern." }
-                                } ?: run {
-                                    errorText = "Rundan stoppades, men sparningen kunde inte bekräftas."
+                                    }
+                                        .onFailure {
+                                            errorText =
+                                                "Rundan sparades lokalt men kunde inte synkas till kalendern."
+                                        }
                                 }
+                                    ?: run {
+                                        errorText =
+                                            "Rundan stoppades, men sparningen kunde inte bekräftas."
+                                    }
                                 snapshot = RunRecordingService.snapshot(context)
                                 busyFinishing = false
                             }
-                        }
-                    ) { Text(if (busyFinishing) "Sparar…" else "✓ Klar") }
+                        },
+                    ) {
+                        Text(if (busyFinishing) "Sparar…" else "✓ Klar")
+                    }
                 }
 
                 anotherMemberRecording -> {
-                    Text("En annan persons löprunda spelas redan in på den här enheten.", color = Muted, fontSize = 12.sp)
+                    Text(
+                        "En annan persons löprunda spelas redan in på den här enheten.",
+                        color = Muted,
+                        fontSize = 12.sp,
+                    )
                 }
 
                 else -> {
@@ -148,12 +198,16 @@ fun RunRecorderPanel(
                                 val permissions = buildList {
                                     add(Manifest.permission.ACCESS_FINE_LOCATION)
                                     add(Manifest.permission.ACCESS_COARSE_LOCATION)
-                                    if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
-                                }.toTypedArray()
+                                    if (Build.VERSION.SDK_INT >= 33)
+                                        add(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                                    .toTypedArray()
                                 permissionLauncher.launch(permissions)
                             }
-                        }
-                    ) { Text("▶ Spela in rundan") }
+                        },
+                    ) {
+                        Text("▶ Spela in rundan")
+                    }
                 }
             }
 
@@ -164,39 +218,56 @@ fun RunRecorderPanel(
                 if (savedRuns.isNotEmpty()) {
                     HorizontalDivider()
                     Text("Inspelade rundor", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text("Öppna valfri GPS-runda och spela upp den på kartan.", color = Muted, fontSize = 11.sp)
+                    Text(
+                        "Öppna valfri GPS-runda och spela upp den på kartan.",
+                        color = Muted,
+                        fontSize = 11.sp,
+                    )
                     savedRuns.take(12).forEach { run ->
                         val km = runDistanceKm(run.points)
                         val seconds = run.durationMillis / 1000L
-                        val date = Instant.ofEpochMilli(run.startedAtMillis)
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
+                        val date =
+                            Instant.ofEpochMilli(run.startedAtMillis)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
                         val expanded = replayRunId == run.id
                         Surface(
                             color = CardBg,
                             shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(
+                                Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 Row(
                                     Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                    verticalAlignment =
+                                        androidx.compose.ui.Alignment.CenterVertically,
                                 ) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(date.toString(), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         Text(
-                                            "%.2f km · %s · %s".format(
-                                                Locale.US,
-                                                km,
-                                                formatDuration(seconds),
-                                                paceSecondsPerKm(km, seconds)?.let(::formatPace) ?: "–"
-                                            ),
+                                            date.toString(),
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.sp,
+                                        )
+                                        Text(
+                                            "%.2f km · %s · %s"
+                                                .format(
+                                                    Locale.US,
+                                                    km,
+                                                    formatDuration(seconds),
+                                                    paceSecondsPerKm(km, seconds)?.let(::formatPace)
+                                                        ?: "–",
+                                                ),
                                             color = Muted,
-                                            fontSize = 11.sp
+                                            fontSize = 11.sp,
                                         )
                                     }
-                                    TextButton(onClick = { replayRunId = if (expanded) null else run.id }) {
+                                    TextButton(
+                                        onClick = { replayRunId = if (expanded) null else run.id }
+                                    ) {
                                         Text(if (expanded) "Stäng" else "Visa / spela upp")
                                     }
                                 }
@@ -212,7 +283,7 @@ fun RunRecorderPanel(
                 Text("Extern löpdata", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 HealthConnectSettingsCard(
                     session = session,
-                    onSynced = onChanged
+                    onSynced = onChanged,
                 )
             }
         }
@@ -230,20 +301,29 @@ private fun RecorderStat(label: String, value: String, modifier: Modifier = Modi
 }
 
 private fun hasRunLocationPermission(context: android.content.Context): Boolean =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) ==
+            PackageManager.PERMISSION_GRANTED
 
 private fun paceSecondsPerKm(distanceKm: Double, elapsedSeconds: Long): Int? =
-    if (distanceKm >= 0.05 && elapsedSeconds > 0L) (elapsedSeconds / distanceKm).toInt().takeIf { it in 120..1800 } else null
+    if (distanceKm >= 0.05 && elapsedSeconds > 0L)
+        (elapsedSeconds / distanceKm).toInt().takeIf { it in 120..1800 }
+    else null
 
 private fun currentPaceSecondsPerKm(points: List<RecordedRoutePoint>): Int? {
     if (points.size < 3) return null
     val recent = points.takeLast(12)
     val km = runDistanceKm(recent)
-    val seconds = ((recent.last().timestampMillis - recent.first().timestampMillis).coerceAtLeast(0L) / 1000L)
+    val seconds =
+        ((recent.last().timestampMillis - recent.first().timestampMillis).coerceAtLeast(0L) / 1000L)
     return paceSecondsPerKm(km, seconds)
 }
 
 private fun formatPace(seconds: Int): String = "%d:%02d /km".format(seconds / 60, seconds % 60)
 
-private fun formatDuration(seconds: Long): String = "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60)
+private fun formatDuration(seconds: Long): String =
+    "%02d:%02d:%02d".format(seconds / 3600, (seconds % 3600) / 60, seconds % 60)

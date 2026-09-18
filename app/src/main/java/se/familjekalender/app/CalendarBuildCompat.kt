@@ -1,16 +1,14 @@
 package se.familjekalender.app
 
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 
 internal data class WorkMonthEventInput(
     val title: String,
     val date: LocalDate,
     val startTime: String,
     val endTime: String,
-    val memberId: String?
+    val memberId: String?,
 )
 
 internal fun isBirthdayEvent(event: SyncEvent): Boolean =
@@ -22,7 +20,7 @@ internal suspend fun saveWorkMonthDirect(
     title: String,
     memberId: String?,
     rows: List<WorkMonthEventInput>,
-    replaceExisting: Boolean
+    replaceExisting: Boolean,
 ): Int {
     if (replaceExisting) {
         deleteWorkMonth(session, month, memberId)
@@ -39,7 +37,7 @@ internal suspend fun saveWorkMonthDirect(
             row.startTime,
             row.endTime,
             row.memberId,
-            seriesId
+            seriesId,
         )
     }
     return rows.size

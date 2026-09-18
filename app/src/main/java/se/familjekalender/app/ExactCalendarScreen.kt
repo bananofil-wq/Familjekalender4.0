@@ -2,13 +2,10 @@ package se.familjekalender.app
 
 import android.app.Activity
 import android.app.DatePickerDialog
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -28,47 +25,45 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Image
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
-import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 private data class WorkRuleDraft(
     val weekdays: Set<Int>,
     val startTime: String,
-    val endTime: String
+    val endTime: String,
 )
 
 private data class WorkRotationWeekDraft(
     val weekdays: Set<Int>,
     val startTime: String,
     val endTime: String,
-    val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime }
+    val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime },
 )
 
 private enum class SeriesEditScope {
     THIS,
     THIS_AND_FUTURE,
-    WHOLE_SERIES
+    WHOLE_SERIES,
 }
 
 private data class MaterialTimePickerRequest(
     val initialHour: Int,
     val initialMinute: Int,
-    val onPicked: (Int, Int) -> Unit
+    val onPicked: (Int, Int) -> Unit,
 )
 
 private fun isLaundryEvent(event: SyncEvent): Boolean {
@@ -85,13 +80,14 @@ private fun MyTimePickerDialog(
     initialHour: Int,
     initialMinute: Int,
     onDismiss: () -> Unit,
-    onPicked: (hour: Int, minute: Int) -> Unit
+    onPicked: (hour: Int, minute: Int) -> Unit,
 ) {
-    val state = rememberTimePickerState(
-        initialHour = initialHour,
-        initialMinute = initialMinute,
-        is24Hour = true
-    )
+    val state =
+        rememberTimePickerState(
+            initialHour = initialHour,
+            initialMinute = initialMinute,
+            is24Hour = true,
+        )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -107,7 +103,7 @@ private fun MyTimePickerDialog(
         },
         text = {
             TimePicker(state = state)
-        }
+        },
     )
 }
 
@@ -121,7 +117,7 @@ internal fun ExactCalendarScreen(
     themeMode: ThemeMode = palette.mode,
     onAdd: () -> Unit,
     onAddLaundry: () -> Unit,
-    addMenuRequest: Int = 0
+    addMenuRequest: Int = 0,
 ) {
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var showAddMenu by remember { mutableStateOf(false) }
@@ -162,13 +158,18 @@ internal fun ExactCalendarScreen(
         val seasonalHeroMin = 72.dp
         val hasSeasonalHero = mode != ThemeMode.CLASSIC
         val availableForHero = maxHeight - calendarMinHeight - outerVerticalPadding - sectionSpacing
-        val heroHeight = if (hasSeasonalHero) {
-            availableForHero.coerceIn(0.dp, seasonalHeroMax).let {
-                if (it in 1.dp..<seasonalHeroMin) 0.dp else it
-            }
-        } else 0.dp
-        val calendarHeight = (maxHeight - outerVerticalPadding - heroHeight -
-            if (heroHeight > 0.dp) sectionSpacing else 0.dp).coerceAtLeast(calendarMinHeight)
+        val heroHeight =
+            if (hasSeasonalHero) {
+                availableForHero.coerceIn(0.dp, seasonalHeroMax).let {
+                    if (it in 1.dp..<seasonalHeroMin) 0.dp else it
+                }
+            } else 0.dp
+        val calendarHeight =
+            (maxHeight -
+                    outerVerticalPadding -
+                    heroHeight -
+                    if (heroHeight > 0.dp) sectionSpacing else 0.dp)
+                .coerceAtLeast(calendarMinHeight)
         SeasonalPhoto(mode, Modifier.matchParentSize())
 
         fun settleMonth(delta: Long, widthPx: Float) {
@@ -184,25 +185,27 @@ internal fun ExactCalendarScreen(
         }
 
         Column(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 6.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (heroHeight > 0.dp) {
                 Spacer(Modifier.height(heroHeight))
             }
             BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(calendarHeight)
-                    .clipToBounds()
-                    .pointerInput(month) {
+                modifier =
+                    Modifier.fillMaxWidth().height(calendarHeight).clipToBounds().pointerInput(
+                        month
+                    ) {
                         detectHorizontalDragGestures(
                             onHorizontalDrag = { change, amount ->
                                 change.consume()
                                 scope.launch {
-                                    dragOffset.snapTo((dragOffset.value + amount).coerceIn(-size.width.toFloat(), size.width.toFloat()))
+                                    dragOffset.snapTo(
+                                        (dragOffset.value + amount).coerceIn(
+                                            -size.width.toFloat(),
+                                            size.width.toFloat(),
+                                        )
+                                    )
                                 }
                             },
                             onDragEnd = {
@@ -211,10 +214,17 @@ internal fun ExactCalendarScreen(
                                 when {
                                     dragOffset.value <= -threshold -> settleMonth(1, widthPx)
                                     dragOffset.value >= threshold -> settleMonth(-1, widthPx)
-                                    else -> scope.launch { dragOffset.animateTo(0f, animationSpec = tween(180)) }
+                                    else ->
+                                        scope.launch {
+                                            dragOffset.animateTo(0f, animationSpec = tween(180))
+                                        }
                                 }
                             },
-                            onDragCancel = { scope.launch { dragOffset.animateTo(0f, animationSpec = tween(180)) } }
+                            onDragCancel = {
+                                scope.launch {
+                                    dragOffset.animateTo(0f, animationSpec = tween(180))
+                                }
+                            },
                         )
                     }
             ) {
@@ -231,7 +241,10 @@ internal fun ExactCalendarScreen(
                     accent = displayedPalette.accent,
                     onPreviousMonth = {},
                     onNextMonth = {},
-                    modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value - widthPx }
+                    modifier =
+                        Modifier.fillMaxSize().graphicsLayer {
+                            translationX = dragOffset.value - widthPx
+                        },
                 )
                 MonthPanel(
                     month = nextMonth,
@@ -242,11 +255,15 @@ internal fun ExactCalendarScreen(
                     accent = displayedPalette.accent,
                     onPreviousMonth = {},
                     onNextMonth = {},
-                    modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value + widthPx }
+                    modifier =
+                        Modifier.fillMaxSize().graphicsLayer {
+                            translationX = dragOffset.value + widthPx
+                        },
                 )
                 MonthPanel(
                     month = month,
-                    selected = if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1),
+                    selected =
+                        if (YearMonth.from(selectedDate) == month) selectedDate else month.atDay(1),
                     onSelect = { picked ->
                         onSelect(picked)
                         dayPopupDate = picked
@@ -256,7 +273,8 @@ internal fun ExactCalendarScreen(
                     accent = displayedPalette.accent,
                     onPreviousMonth = { settleMonth(-1, widthPx) },
                     onNextMonth = { settleMonth(1, widthPx) },
-                    modifier = Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value }
+                    modifier =
+                        Modifier.fillMaxSize().graphicsLayer { translationX = dragOffset.value },
                 )
             }
         }
@@ -273,53 +291,68 @@ internal fun ExactCalendarScreen(
                             showAddMenu = false
                             onAdd()
                         },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Enstaka aktivitet / egna datum") }
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Enstaka aktivitet / egna datum")
+                    }
                     Button(
                         onClick = {
                             showAddMenu = false
                             showWorkMonth = true
                         },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Arbetsmånad") }
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Arbetsmånad")
+                    }
                     Button(
                         onClick = {
                             showAddMenu = false
                             showWorkRotation = true
                         },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Lägg till arbetsvecka") }
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Lägg till arbetsvecka")
+                    }
                     Button(
                         onClick = {
                             showAddMenu = false
                             showSchoolSchedule = true
                         },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Förskola / skola") }
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Förskola / skola")
+                    }
                     Button(
                         onClick = {
                             showAddMenu = false
                             onAddLaundry()
                         },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("🧺 Tvätt") }
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("🧺 Tvätt")
+                    }
                     OutlinedButton(
                         onClick = {
                             showAddMenu = false
                             showManageMonth = true
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text("Hantera / rensa kalender") }
+                        colors =
+                            ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                    ) {
+                        Text("Hantera / rensa kalender")
+                    }
                     Text(
                         "Arbetsmånad och förskola/skola låter dig lägga återkommande tider utan att mata in varje dag för hand.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
                     )
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { showAddMenu = false }) { Text("Avbryt") } }
+            dismissButton = { TextButton(onClick = { showAddMenu = false }) { Text("Avbryt") } },
         )
     }
 
@@ -331,7 +364,7 @@ internal fun ExactCalendarScreen(
             onChanged = {
                 showWorkMonth = false
                 refreshActivity()
-            }
+            },
         )
     }
 
@@ -343,7 +376,7 @@ internal fun ExactCalendarScreen(
             onChanged = {
                 showWorkRotation = false
                 refreshActivity()
-            }
+            },
         )
     }
 
@@ -355,7 +388,7 @@ internal fun ExactCalendarScreen(
             onChanged = {
                 showSchoolSchedule = false
                 refreshActivity()
-            }
+            },
         )
     }
 
@@ -391,33 +424,36 @@ internal fun ExactCalendarScreen(
                 val session = currentFamilySession(context)
                 if (session != null) {
                     scope.launch {
-                        runCatching { deleteCalendarEventsDirect(session, eventsToDelete.map { it.id }) }
+                        runCatching {
+                            deleteCalendarEventsDirect(session, eventsToDelete.map { it.id })
+                        }
                             .onSuccess {
                                 dayPopupDate = null
                                 refreshActivity()
                             }
                     }
                 }
-            }
+            },
         )
     }
 
     editEvent?.let { event ->
-        val matchingSeries = events
-            .filter { candidate ->
-                candidate.source != "sportadmin" &&
-                    if (event.seriesId != null) {
-                        candidate.seriesId == event.seriesId
-                    } else {
-                        candidate.seriesId == null &&
-                            candidate.source == event.source &&
-                            candidate.memberId == event.memberId &&
-                            candidate.title == event.title &&
-                            candidate.time == event.time &&
-                            candidate.endTime == event.endTime
-                    }
-            }
-            .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+        val matchingSeries =
+            events
+                .filter { candidate ->
+                    candidate.source != "sportadmin" &&
+                            if (event.seriesId != null) {
+                                candidate.seriesId == event.seriesId
+                            } else {
+                                candidate.seriesId == null &&
+                                        candidate.source == event.source &&
+                                        candidate.memberId == event.memberId &&
+                                        candidate.title == event.title &&
+                                        candidate.time == event.time &&
+                                        candidate.endTime == event.endTime
+                            }
+                }
+                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
         EditEventDialog(
             event = event,
             members = members,
@@ -428,42 +464,68 @@ internal fun ExactCalendarScreen(
                 if (session != null) {
                     scope.launch {
                         val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
-                        val targets = when (editScope) {
-                            SeriesEditScope.THIS -> listOf(event)
-                            SeriesEditScope.THIS_AND_FUTURE -> matchingSeries.filter { !it.date.isBefore(event.date) }
-                            SeriesEditScope.WHOLE_SERIES -> matchingSeries
-                        }
-                        runCatching {
-                            val splitSeriesId = when {
-                                event.seriesId == null -> null
-                                editScope == SeriesEditScope.THIS_AND_FUTURE -> java.util.UUID.randomUUID().toString()
-                                else -> event.seriesId
+                        val targets =
+                            when (editScope) {
+                                SeriesEditScope.THIS -> listOf(event)
+                                SeriesEditScope.THIS_AND_FUTURE ->
+                                    matchingSeries.filter { !it.date.isBefore(event.date) }
+
+                                SeriesEditScope.WHOLE_SERIES -> matchingSeries
                             }
+                        runCatching {
+                            val splitSeriesId =
+                                when {
+                                    event.seriesId == null -> null
+                                    editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                                        java.util.UUID.randomUUID().toString()
+
+                                    else -> event.seriesId
+                                }
                             targets.forEach { target ->
-                                val targetDate = if (editScope == SeriesEditScope.THIS) date else target.date.plusDays(dayShift)
-                                SupabaseSync.updateEvent(session, target.id, title, targetDate, time, endTime, memberId)
+                                val targetDate =
+                                    if (editScope == SeriesEditScope.THIS) date
+                                    else target.date.plusDays(dayShift)
+                                SupabaseSync.updateEvent(
+                                    session,
+                                    target.id,
+                                    title,
+                                    targetDate,
+                                    time,
+                                    endTime,
+                                    memberId,
+                                )
                                 when {
                                     event.seriesId == null -> Unit
-                                    editScope == SeriesEditScope.THIS -> SupabaseSync.updateEventSeriesId(session, target.id, null)
-                                    editScope == SeriesEditScope.THIS_AND_FUTURE -> SupabaseSync.updateEventSeriesId(session, target.id, splitSeriesId)
+                                    editScope == SeriesEditScope.THIS ->
+                                        SupabaseSync.updateEventSeriesId(session, target.id, null)
+
+                                    editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                                        SupabaseSync.updateEventSeriesId(
+                                            session,
+                                            target.id,
+                                            splitSeriesId,
+                                        )
+
                                     editScope == SeriesEditScope.WHOLE_SERIES -> Unit
                                 }
                             }
-                        }.onSuccess {
-                            editEvent = null
-                            onSelect(date)
-                            refreshActivity()
                         }
+                            .onSuccess {
+                                editEvent = null
+                                onSelect(date)
+                                refreshActivity()
+                            }
                     }
                 }
-            }
+            },
         )
     }
 
     if (showManageMonth) {
         ManageMonthEventsDialog(
             month = month,
-            events = events.filter { YearMonth.from(it.date) == month && it.source != "sportadmin" },
+            events =
+                events.filter { YearMonth.from(it.date) == month && it.source != "sportadmin" },
             members = members,
             onDismiss = { showManageMonth = false },
             onDelete = { ids ->
@@ -479,7 +541,7 @@ internal fun ExactCalendarScreen(
                             }
                     }
                 }
-            }
+            },
         )
     }
 }
@@ -494,9 +556,12 @@ private fun DayOverviewPopup(
     onAdd: () -> Unit,
     onEdit: (SyncEvent) -> Unit,
     onDelete: (SyncEvent) -> Unit,
-    onDeleteMany: (List<SyncEvent>) -> Unit
+    onDeleteMany: (List<SyncEvent>) -> Unit,
 ) {
-    val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+    val dayName =
+        date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar {
+            it.uppercase()
+        }
     val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
     var deleteChoiceEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
@@ -510,14 +575,16 @@ private fun DayOverviewPopup(
                 Text(
                     "${events.size} ${if (events.size == 1) "aktivitet" else "aktiviteter"}",
                     color = Color.White.copy(alpha = .60f),
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
                 )
             }
         },
         text = {
             Column(
-                Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                Modifier.fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (events.isEmpty()) {
                     Text("Inget inlagt den här dagen.", color = Color.White.copy(alpha = .62f))
@@ -526,124 +593,165 @@ private fun DayOverviewPopup(
                     val groupedEvents = events.groupBy { it.memberId }
                     groupedEvents.forEach { (memberId, personEvents) ->
                         val groupMember = members.find { it.id == memberId }
-                        val groupName = groupMember?.name
-                            ?: if (memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else "Familjen"
-                        val groupColor = if (memberId == ALL_FAMILY_MEMBER_ID) {
-                            Color(0xFFFFD75E)
-                        } else {
-                            groupMember?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-                        }
+                        val groupName =
+                            groupMember?.name
+                                ?: if (memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen"
+                                else "Familjen"
+                        val groupColor =
+                            if (memberId == ALL_FAMILY_MEMBER_ID) {
+                                Color(0xFFFFD75E)
+                            } else {
+                                groupMember?.let { Color(it.colorArgb.toInt()) }
+                                    ?: Color(0xFF8D95A5)
+                            }
                         val groupKey = "member:${memberId ?: "unassigned"}"
                         val expanded = groupKey in expandedGroupKeys
 
                         Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        expandedGroupKeys = if (groupKey in expandedGroupKeys) {
+                            modifier =
+                                Modifier.fillMaxWidth().clickable {
+                                    expandedGroupKeys =
+                                        if (groupKey in expandedGroupKeys) {
                                             expandedGroupKeys - groupKey
                                         } else {
                                             expandedGroupKeys + groupKey
                                         }
-                                    },
-                                shape = RoundedCornerShape(16.dp),
-                                color = Color(0xFF20242B),
-                                border = BorderStroke(1.dp, groupColor.copy(alpha = .34f))
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 13.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        Modifier
-                                            .size(13.dp)
-                                            .clip(CircleShape)
-                                            .background(groupColor)
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            groupName,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 16.sp
-                                        )
-                                        Text(
-                                            "${personEvents.size} aktiviteter",
-                                            color = Color.White.copy(alpha = .62f),
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    Text(
-                                        if (expanded) "Dölj" else "Visa",
-                                        color = groupColor,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-
-                        if (expanded) {
-                            personEvents.sortedBy { it.time }.forEach { event ->
-                        val member = members.find { it.id == event.memberId }
-                        val allFamily = event.memberId == ALL_FAMILY_MEMBER_ID
-                        val birthday = isBirthdayEvent(event)
-                        val laundry = isLaundryEvent(event)
-                        val dotColor = if (allFamily) Color(0xFFFFD75E) else member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-
-                        Surface(
+                                },
+                            shape = RoundedCornerShape(16.dp),
                             color = Color(0xFF20242B),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            border = BorderStroke(1.dp, groupColor.copy(alpha = .34f)),
                         ) {
                             Row(
-                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 13.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                when {
-                                    birthday -> BirthdayRainbowIcon(Modifier.size(width = 26.dp, height = 20.dp))
-                                    laundry -> Text("🧺", fontSize = 20.sp, lineHeight = 22.sp)
-                                    allFamily -> Text("★", color = Color(0xFFFFD75E), fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                                    else -> Box(Modifier.size(13.dp).clip(CircleShape).background(dotColor))
-                                }
+                                Box(Modifier.size(13.dp).clip(CircleShape).background(groupColor))
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        displayEventTitle(event),
+                                        groupName,
                                         color = Color.White,
                                         fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp
+                                        fontSize = 16.sp,
                                     )
-                                    if (event.time.isNotBlank()) {
-                                        Text(event.time, color = Color.White.copy(alpha = .62f), fontSize = 12.sp)
-                                    }
-                                }
-                                Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        if (allFamily) "Hela familjen" else member?.name ?: "Familjen",
-                                        color = Color.White.copy(alpha = .64f),
-                                        fontSize = 11.sp
+                                        "${personEvents.size} aktiviteter",
+                                        color = Color.White.copy(alpha = .62f),
+                                        fontSize = 12.sp,
                                     )
-                                    if (event.source != "sportadmin") {
-                                        TextButton(
-                                            onClick = { onEdit(event) },
-                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
-                                        ) {
-                                            Text("Redigera", fontSize = 10.sp)
-                                        }
-                                        TextButton(
-                                            onClick = { deleteChoiceEvent = event },
-                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
-                                        ) {
-                                            Text("Ta bort", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
-                                        }
-                                    }
                                 }
+                                Text(
+                                    if (expanded) "Dölj" else "Visa",
+                                    color = groupColor,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                )
                             }
                         }
-                            }
+
+                        if (expanded) {
+                            personEvents
+                                .sortedBy { it.time }
+                                .forEach { event ->
+                                    val member = members.find { it.id == event.memberId }
+                                    val allFamily = event.memberId == ALL_FAMILY_MEMBER_ID
+                                    val birthday = isBirthdayEvent(event)
+                                    val laundry = isLaundryEvent(event)
+                                    val dotColor =
+                                        if (allFamily) Color(0xFFFFD75E)
+                                        else
+                                            member?.let { Color(it.colorArgb.toInt()) }
+                                                ?: Color(0xFF8D95A5)
+
+                                    Surface(
+                                        color = Color(0xFF20242B),
+                                        shape = RoundedCornerShape(14.dp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Row(
+                                            Modifier.fillMaxWidth()
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            when {
+                                                birthday ->
+                                                    BirthdayRainbowIcon(
+                                                        Modifier.size(width = 26.dp, height = 20.dp)
+                                                    )
+
+                                                laundry ->
+                                                    Text("🧺", fontSize = 20.sp, lineHeight = 22.sp)
+
+                                                allFamily ->
+                                                    Text(
+                                                        "★",
+                                                        color = Color(0xFFFFD75E),
+                                                        fontSize = 22.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+
+                                                else ->
+                                                    Box(
+                                                        Modifier.size(13.dp)
+                                                            .clip(CircleShape)
+                                                            .background(dotColor)
+                                                    )
+                                            }
+                                            Spacer(Modifier.width(10.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text(
+                                                    displayEventTitle(event),
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 14.sp,
+                                                )
+                                                if (event.time.isNotBlank()) {
+                                                    Text(
+                                                        event.time,
+                                                        color = Color.White.copy(alpha = .62f),
+                                                        fontSize = 12.sp,
+                                                    )
+                                                }
+                                            }
+                                            Column(horizontalAlignment = Alignment.End) {
+                                                Text(
+                                                    if (allFamily) "Hela familjen"
+                                                    else member?.name ?: "Familjen",
+                                                    color = Color.White.copy(alpha = .64f),
+                                                    fontSize = 11.sp,
+                                                )
+                                                if (event.source != "sportadmin") {
+                                                    TextButton(
+                                                        onClick = { onEdit(event) },
+                                                        contentPadding =
+                                                            PaddingValues(
+                                                                horizontal = 6.dp,
+                                                                vertical = 0.dp,
+                                                            ),
+                                                    ) {
+                                                        Text("Redigera", fontSize = 10.sp)
+                                                    }
+                                                    TextButton(
+                                                        onClick = { deleteChoiceEvent = event },
+                                                        contentPadding =
+                                                            PaddingValues(
+                                                                horizontal = 6.dp,
+                                                                vertical = 0.dp,
+                                                            ),
+                                                    ) {
+                                                        Text(
+                                                            "Ta bort",
+                                                            fontSize = 10.sp,
+                                                            color = MaterialTheme.colorScheme.error,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                         }
                     }
                 }
@@ -656,26 +764,29 @@ private fun DayOverviewPopup(
                 Text("Lägg till")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } },
     )
 
     deleteChoiceEvent?.let { event ->
-        val series = allEvents.filter { candidate ->
-            candidate.source != "sportadmin" &&
-                if (event.seriesId != null) {
-                    candidate.seriesId == event.seriesId
-                } else {
-                    candidate.seriesId == null &&
-                        candidate.source == event.source &&
-                        candidate.memberId == event.memberId &&
-                        candidate.title == event.title &&
-                        candidate.time == event.time &&
-                        candidate.endTime == event.endTime
+        val series =
+            allEvents
+                .filter { candidate ->
+                    candidate.source != "sportadmin" &&
+                            if (event.seriesId != null) {
+                                candidate.seriesId == event.seriesId
+                            } else {
+                                candidate.seriesId == null &&
+                                        candidate.source == event.source &&
+                                        candidate.memberId == event.memberId &&
+                                        candidate.title == event.title &&
+                                        candidate.time == event.time &&
+                                        candidate.endTime == event.endTime
+                            }
                 }
-        }.sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
         val futureSeries = series.filter { candidate ->
             candidate.date.isAfter(event.date) ||
-                (candidate.date == event.date && candidate.time >= event.time)
+                    (candidate.date == event.date && candidate.time >= event.time)
         }
 
         AlertDialog(
@@ -685,29 +796,42 @@ private fun DayOverviewPopup(
                 Text(
                     if (series.size > 1)
                         "Välj om bara denna förekomst, denna och framåt eller hela serien ska tas bort."
-                    else
-                        "Ta bort denna aktivitet?"
+                    else "Ta bort denna aktivitet?"
                 )
             },
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
                     if (series.size > 1) {
-                        TextButton(onClick = {
-                            onDeleteMany(series)
-                            deleteChoiceEvent = null
-                        }) { Text("Hela serien", color = MaterialTheme.colorScheme.error) }
-                        TextButton(onClick = {
-                            onDeleteMany(futureSeries)
-                            deleteChoiceEvent = null
-                        }) { Text("Denna och framåt", color = MaterialTheme.colorScheme.error) }
+                        TextButton(
+                            onClick = {
+                                onDeleteMany(series)
+                                deleteChoiceEvent = null
+                            }
+                        ) {
+                            Text("Hela serien", color = MaterialTheme.colorScheme.error)
+                        }
+                        TextButton(
+                            onClick = {
+                                onDeleteMany(futureSeries)
+                                deleteChoiceEvent = null
+                            }
+                        ) {
+                            Text("Denna och framåt", color = MaterialTheme.colorScheme.error)
+                        }
                     }
-                    Button(onClick = {
-                        onDelete(event)
-                        deleteChoiceEvent = null
-                    }) { Text("Bara denna") }
+                    Button(
+                        onClick = {
+                            onDelete(event)
+                            deleteChoiceEvent = null
+                        }
+                    ) {
+                        Text("Bara denna")
+                    }
                 }
             },
-            dismissButton = { TextButton(onClick = { deleteChoiceEvent = null }) { Text("Avbryt") } }
+            dismissButton = {
+                TextButton(onClick = { deleteChoiceEvent = null }) { Text("Avbryt") }
+            },
         )
     }
 }
@@ -718,7 +842,7 @@ private fun EditEventDialog(
     members: List<SyncMember>,
     hasSeries: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, LocalDate, String, String?, String?, SeriesEditScope) -> Unit
+    onSave: (String, LocalDate, String, String?, String?, SeriesEditScope) -> Unit,
 ) {
     val context = LocalContext.current
     val birthday = isBirthdayEvent(event)
@@ -731,36 +855,57 @@ private fun EditEventDialog(
     var timePickerRequest by remember(event.id) { mutableStateOf<MaterialTimePickerRequest?>(null) }
 
     fun chooseDate() {
-        DatePickerDialog(context, { _, year, month, day ->
-            date = LocalDate.of(year, month + 1, day)
-        }, date.year, date.monthValue - 1, date.dayOfMonth).show()
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                date = LocalDate.of(year, month + 1, day)
+            },
+            date.year,
+            date.monthValue - 1,
+            date.dayOfMonth,
+        )
+            .show()
     }
 
     fun chooseTime() {
         val parsed = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
-        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { hour, minute ->
-            time = "%02d:%02d".format(hour, minute)
-        }
+        timePickerRequest =
+            MaterialTimePickerRequest(parsed.hour, parsed.minute) { hour, minute ->
+                time = "%02d:%02d".format(hour, minute)
+            }
     }
 
     fun chooseEndTime() {
-        val fallback = runCatching { LocalTime.parse(time).plusHours(1) }.getOrElse { LocalTime.of(19, 0) }
+        val fallback = runCatching {
+            LocalTime.parse(time).plusHours(1)
+        }.getOrElse { LocalTime.of(19, 0) }
         val parsed = runCatching { LocalTime.parse(endTime) }.getOrDefault(fallback)
-        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { hour, minute ->
-            endTime = "%02d:%02d".format(hour, minute)
-        }
+        timePickerRequest =
+            MaterialTimePickerRequest(parsed.hour, parsed.minute) { hour, minute ->
+                endTime = "%02d:%02d".format(hour, minute)
+            }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Redigera aktivitet") },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(title, { title = it }, label = { Text(if (birthday) "Namn" else "Aktivitet") }, modifier = Modifier.fillMaxWidth())
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedTextField(
+                    title,
+                    { title = it },
+                    label = { Text(if (birthday) "Namn" else "Aktivitet") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 OutlinedButton(onClick = ::chooseDate, modifier = Modifier.fillMaxWidth()) {
                     Text("Datum: ${date.dayOfMonth}/${date.monthValue} ${date.year}")
                 }
-                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) { Text("Starttid: $time") }
+                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) {
+                    Text("Starttid: $time")
+                }
                 OutlinedButton(onClick = ::chooseEndTime, modifier = Modifier.fillMaxWidth()) {
                     Text(if (endTime.isBlank()) "Sluttid: inte angiven" else "Sluttid: $endTime")
                 }
@@ -771,10 +916,15 @@ private fun EditEventDialog(
                 members.forEach { member ->
                     Row(
                         Modifier.fillMaxWidth().clickable { memberId = member.id },
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = memberId == member.id, onClick = { memberId = member.id })
-                        Text(if (member.id == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member.name)
+                        RadioButton(
+                            selected = memberId == member.id,
+                            onClick = { memberId = member.id },
+                        )
+                        Text(
+                            if (member.id == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member.name
+                        )
                     }
                 }
                 if (hasSeries) {
@@ -783,23 +933,24 @@ private fun EditEventDialog(
                     listOf(
                         SeriesEditScope.THIS to "Bara denna",
                         SeriesEditScope.THIS_AND_FUTURE to "Denna och framåt",
-                        SeriesEditScope.WHOLE_SERIES to "Hela serien"
-                    ).forEach { (scopeOption, label) ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable { editScope = scopeOption },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = editScope == scopeOption,
-                                onClick = { editScope = scopeOption }
-                            )
-                            Text(label)
+                        SeriesEditScope.WHOLE_SERIES to "Hela serien",
+                    )
+                        .forEach { (scopeOption, label) ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable { editScope = scopeOption },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(
+                                    selected = editScope == scopeOption,
+                                    onClick = { editScope = scopeOption },
+                                )
+                                Text(label)
+                            }
                         }
-                    }
                     Text(
                         "Datumändringar flyttar motsvarande förekomster lika många dagar. Övriga ändringar används på vald del av serien.",
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
                     )
                 }
             }
@@ -807,10 +958,21 @@ private fun EditEventDialog(
         confirmButton = {
             Button(
                 enabled = title.isNotBlank(),
-                onClick = { onSave((if (birthday) "🌈 " else "") + title.trim(), date, time, endTime.ifBlank { null }, memberId, editScope) }
-            ) { Text("Spara") }
+                onClick = {
+                    onSave(
+                        (if (birthday) "🌈 " else "") + title.trim(),
+                        date,
+                        time,
+                        endTime.ifBlank { null },
+                        memberId,
+                        editScope,
+                    )
+                },
+            ) {
+                Text("Spara")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } },
     )
 
     timePickerRequest?.let { request ->
@@ -821,20 +983,22 @@ private fun EditEventDialog(
             onPicked = { hour, minute ->
                 request.onPicked(hour, minute)
                 timePickerRequest = null
-            }
+            },
         )
     }
 }
 
 @Composable
 private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
-    val imageRes = when (mode) {
-        ThemeMode.WINTER -> R.drawable.season_winter
-        ThemeMode.SPRING -> R.drawable.season_spring
-        ThemeMode.SUMMER -> R.drawable.season_summer
-        ThemeMode.AUTUMN -> R.drawable.season_autumn
-        ThemeMode.CLASSIC, ThemeMode.AUTO -> null
-    }
+    val imageRes =
+        when (mode) {
+            ThemeMode.WINTER -> R.drawable.season_winter
+            ThemeMode.SPRING -> R.drawable.season_spring
+            ThemeMode.SUMMER -> R.drawable.season_summer
+            ThemeMode.AUTUMN -> R.drawable.season_autumn
+            ThemeMode.CLASSIC,
+            ThemeMode.AUTO -> null
+        }
 
     if (imageRes == null) return
 
@@ -843,7 +1007,7 @@ private fun SeasonalPhoto(mode: ThemeMode, modifier: Modifier) {
         contentDescription = null,
         modifier = modifier,
         contentScale = ContentScale.Crop,
-        alignment = Alignment.TopCenter
+        alignment = Alignment.TopCenter,
     )
 }
 
@@ -857,13 +1021,20 @@ private fun MonthPanel(
     accent: Color,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
-    modifier: Modifier
+    modifier: Modifier,
 ) {
     val offset = month.atDay(1).dayOfWeek.value - 1
-    val monthName = month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+    val monthName =
+        month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar {
+            it.uppercase()
+        }
     val weekFields = WeekFields.of(Locale("sv", "SE"))
 
-    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xBF131820))) {
+    Card(
+        modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xBF131820)),
+    ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -871,17 +1042,30 @@ private fun MonthPanel(
                     color = Color.White,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp, bottom = 8.dp)
+                    modifier = Modifier.weight(1f).padding(start = 4.dp, bottom = 8.dp),
                 )
-                TextButton(onClick = onPreviousMonth, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
+                TextButton(
+                    onClick = onPreviousMonth,
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                ) {
                     Text("‹", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
-                TextButton(onClick = onNextMonth, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
+                TextButton(
+                    onClick = onNextMonth,
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                ) {
                     Text("›", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Row(Modifier.fillMaxWidth()) {
-                Text("v", color = Color.White.copy(alpha = .55f), fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.width(18.dp))
+                Text(
+                    "v",
+                    color = Color.White.copy(alpha = .55f),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(18.dp),
+                )
                 listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön").forEach {
                     Text(
                         it,
@@ -889,7 +1073,7 @@ private fun MonthPanel(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -904,9 +1088,7 @@ private fun MonthPanel(
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .width(18.dp)
-                            .align(Alignment.CenterVertically)
+                        modifier = Modifier.width(18.dp).align(Alignment.CenterVertically),
                     )
                     repeat(7) { column ->
                         val number = week * 7 + column - offset + 1
@@ -914,55 +1096,76 @@ private fun MonthPanel(
                         val day = if (validDay) month.atDay(number) else null
                         val selectedDay = day == selected
                         val todayDay = day == LocalDate.now()
-                        val dayEvents = if (day == null) {
-                            emptyList()
-                        } else {
-                            val allDayEvents = events.filter { it.date == day }
-                            val firstBirthday = allDayEvents.firstOrNull { isBirthdayEvent(it) }
-                            val firstLaundry = allDayEvents.firstOrNull { isLaundryEvent(it) }
-                            val firstAllFamily = allDayEvents.firstOrNull { !isBirthdayEvent(it) && !isLaundryEvent(it) && it.memberId == ALL_FAMILY_MEMBER_ID }
-                            val uniqueMembers = allDayEvents
-                                .filter { !isBirthdayEvent(it) && !isLaundryEvent(it) && it.memberId != ALL_FAMILY_MEMBER_ID }
-                                .distinctBy { it.memberId }
-                            buildList {
-                                if (firstBirthday != null) add(firstBirthday)
-                                if (firstLaundry != null) add(firstLaundry)
-                                if (firstAllFamily != null) add(firstAllFamily)
-                                addAll(uniqueMembers)
-                            }.take(3)
-                        }
+                        val dayEvents =
+                            if (day == null) {
+                                emptyList()
+                            } else {
+                                val allDayEvents = events.filter { it.date == day }
+                                val firstBirthday = allDayEvents.firstOrNull { isBirthdayEvent(it) }
+                                val firstLaundry = allDayEvents.firstOrNull { isLaundryEvent(it) }
+                                val firstAllFamily = allDayEvents.firstOrNull {
+                                    !isBirthdayEvent(it) &&
+                                            !isLaundryEvent(it) &&
+                                            it.memberId == ALL_FAMILY_MEMBER_ID
+                                }
+                                val uniqueMembers =
+                                    allDayEvents
+                                        .filter {
+                                            !isBirthdayEvent(it) &&
+                                                    !isLaundryEvent(it) &&
+                                                    it.memberId != ALL_FAMILY_MEMBER_ID
+                                        }
+                                        .distinctBy { it.memberId }
+                                buildList {
+                                    if (firstBirthday != null) add(firstBirthday)
+                                    if (firstLaundry != null) add(firstLaundry)
+                                    if (firstAllFamily != null) add(firstAllFamily)
+                                    addAll(uniqueMembers)
+                                }
+                                    .take(3)
+                            }
 
                         Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = when {
-                                    day == null -> Color.Transparent
-                                    selectedDay -> accent.copy(alpha = .88f)
-                                    todayDay -> accent.copy(alpha = .42f)
-                                    else -> Color(0x991B2028)
-                                }
-                            ),
-                            border = if (day == null) null else BorderStroke(
-                                if (todayDay && !selectedDay) 2.dp else 1.dp,
-                                when {
-                                    selectedDay -> accent.copy(alpha = .95f)
-                                    todayDay -> accent
-                                    else -> Color.White.copy(alpha = .18f)
-                                }
-                            ),
-                            elevation = CardDefaults.cardElevation(
-                                defaultElevation = if (day == null) 0.dp else if (selectedDay) 6.dp else 3.dp
-                            ),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor =
+                                        when {
+                                            day == null -> Color.Transparent
+                                            selectedDay -> accent.copy(alpha = .88f)
+                                            todayDay -> accent.copy(alpha = .42f)
+                                            else -> Color(0x991B2028)
+                                        }
+                                ),
+                            border =
+                                if (day == null) null
+                                else
+                                    BorderStroke(
+                                        if (todayDay && !selectedDay) 2.dp else 1.dp,
+                                        when {
+                                            selectedDay -> accent.copy(alpha = .95f)
+                                            todayDay -> accent
+                                            else -> Color.White.copy(alpha = .18f)
+                                        },
+                                    ),
+                            elevation =
+                                CardDefaults.cardElevation(
+                                    defaultElevation =
+                                        if (day == null) 0.dp else if (selectedDay) 6.dp else 3.dp
+                                ),
                             shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .padding(horizontal = 1.dp, vertical = 2.dp)
-                                .then(if (day != null) Modifier.clickable { onSelect(day) } else Modifier)
+                            modifier =
+                                Modifier.weight(1f)
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 1.dp, vertical = 2.dp)
+                                    .then(
+                                        if (day != null) Modifier.clickable { onSelect(day) }
+                                        else Modifier
+                                    ),
                         ) {
                             Column(
                                 Modifier.fillMaxSize().padding(vertical = 3.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                verticalArrangement = Arrangement.Center,
                             ) {
                                 if (day != null) {
                                     Text(
@@ -970,28 +1173,44 @@ private fun MonthPanel(
                                         color = Color.White,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        lineHeight = 15.sp
+                                        lineHeight = 15.sp,
                                     )
                                     Spacer(Modifier.height(2.dp))
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         dayEvents.forEach { event ->
                                             when {
-                                                isBirthdayEvent(event) -> BirthdayRainbowIcon(Modifier.size(width = 20.dp, height = 16.dp))
-                                                isLaundryEvent(event) -> Text("🧺", fontSize = 14.sp, lineHeight = 16.sp)
-                                                event.memberId == ALL_FAMILY_MEMBER_ID -> Text(
-                                                    "★",
-                                                    color = Color(0xFFFFD75E),
-                                                    fontSize = 15.sp,
-                                                    lineHeight = 18.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
+                                                isBirthdayEvent(event) ->
+                                                    BirthdayRainbowIcon(
+                                                        Modifier.size(width = 20.dp, height = 16.dp)
+                                                    )
+
+                                                isLaundryEvent(event) ->
+                                                    Text("🧺", fontSize = 14.sp, lineHeight = 16.sp)
+
+                                                event.memberId == ALL_FAMILY_MEMBER_ID ->
+                                                    Text(
+                                                        "★",
+                                                        color = Color(0xFFFFD75E),
+                                                        fontSize = 15.sp,
+                                                        lineHeight = 18.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+
                                                 else -> {
-                                                    val member = members.find { it.id == event.memberId }
-                                                    val dotColor = member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
-                                                    Box(Modifier.size(9.dp).clip(CircleShape).background(dotColor))
+                                                    val member = members.find {
+                                                        it.id == event.memberId
+                                                    }
+                                                    val dotColor =
+                                                        member?.let { Color(it.colorArgb.toInt()) }
+                                                            ?: Color(0xFF8D95A5)
+                                                    Box(
+                                                        Modifier.size(9.dp)
+                                                            .clip(CircleShape)
+                                                            .background(dotColor)
+                                                    )
                                                 }
                                             }
                                         }
@@ -1016,13 +1235,20 @@ private fun DayPanel(
     onAdd: () -> Unit,
     onManageMany: () -> Unit,
     onDelete: (SyncEvent) -> Unit,
-    onChangePerson: (SyncEvent, String?) -> Unit
+    onChangePerson: (SyncEvent, String?) -> Unit,
 ) {
     var selectedEvent by remember { mutableStateOf<SyncEvent?>(null) }
 
-    Card(modifier, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xBF131820))) {
+    Card(
+        modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xBF131820)),
+    ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 11.dp)) {
-            val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }
+            val dayName =
+                date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar {
+                    it.uppercase()
+                }
             val monthName = date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -1030,16 +1256,19 @@ private fun DayPanel(
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 Text(
                     "${events.size} ${if (events.size == 1) "aktivitet" else "aktiviteter"}",
                     color = Color.White.copy(alpha = .68f),
                     fontSize = 11.sp,
-                    modifier = Modifier.padding(end = 12.dp)
+                    modifier = Modifier.padding(end = 12.dp),
                 )
                 if (events.any { it.source != "sportadmin" }) {
-                    TextButton(onClick = onManageMany, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) {
+                    TextButton(
+                        onClick = onManageMany,
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                    ) {
                         Text("Hantera", fontSize = 9.sp)
                     }
                 }
@@ -1047,35 +1276,55 @@ private fun DayPanel(
                     onClick = onAdd,
                     containerColor = Color(0xFF8B21FF),
                     contentColor = Color.White,
-                    modifier = Modifier.size(44.dp)
-                ) { Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(26.dp)) }
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Icon(Icons.Default.Add, "Lägg till", modifier = Modifier.size(26.dp))
+                }
             }
             Spacer(Modifier.height(6.dp))
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+                verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 events.forEach { event ->
                     val member = members.find { it.id == event.memberId }
                     val allFamily = event.memberId == ALL_FAMILY_MEMBER_ID
                     val birthday = isBirthdayEvent(event)
                     val laundry = isLaundryEvent(event)
-                    val dotColor = if (allFamily) Color(0xFFFFD75E) else member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
+                    val dotColor =
+                        if (allFamily) Color(0xFFFFD75E)
+                        else member?.let { Color(it.colorArgb.toInt()) } ?: Color(0xFF8D95A5)
                     Surface(
                         color = Color(0xD9191D24),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().clickable { selectedEvent = event }
+                        modifier = Modifier.fillMaxWidth().clickable { selectedEvent = event },
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (birthday) {
-                                Text("🌈", fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.width(32.dp))
+                                Text(
+                                    "🌈",
+                                    fontSize = 20.sp,
+                                    lineHeight = 24.sp,
+                                    modifier = Modifier.width(32.dp),
+                                )
                             } else if (laundry) {
-                                Text("🧺", fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.width(32.dp))
+                                Text(
+                                    "🧺",
+                                    fontSize = 20.sp,
+                                    lineHeight = 24.sp,
+                                    modifier = Modifier.width(32.dp),
+                                )
                             } else if (allFamily) {
-                                Text("★", color = Color(0xFFFFD75E), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(32.dp))
+                                Text(
+                                    "★",
+                                    color = Color(0xFFFFD75E),
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.width(32.dp),
+                                )
                             } else {
                                 Box(Modifier.size(14.dp).clip(CircleShape).background(dotColor))
                                 Spacer(Modifier.width(12.dp))
@@ -1087,14 +1336,19 @@ private fun DayPanel(
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 13.sp,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
                                 )
-                                if (event.time.isNotBlank()) Text(event.time, color = Color.White.copy(alpha = .62f), fontSize = 11.sp)
+                                if (event.time.isNotBlank())
+                                    Text(
+                                        event.time,
+                                        color = Color.White.copy(alpha = .62f),
+                                        fontSize = 11.sp,
+                                    )
                             }
                             Text(
                                 if (allFamily) "Hela familjen" else member?.name ?: "Familjen",
                                 color = Color.White.copy(alpha = .72f),
-                                fontSize = 10.sp
+                                fontSize = 10.sp,
                             )
                         }
                     }
@@ -1111,14 +1365,20 @@ private fun DayPanel(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Tid: ${event.time.ifBlank { "Ingen tid" }}")
-                    Text("Gäller: ${if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else currentMember?.name ?: "Familjen"}")
+                    Text(
+                        "Gäller: ${if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else currentMember?.name ?: "Familjen"}"
+                    )
                     if (event.source != "sportadmin") {
                         Text("Ändra person", fontWeight = FontWeight.SemiBold)
                         members.forEach { member ->
-                            TextButton(onClick = {
-                                onChangePerson(event, member.id)
-                                selectedEvent = null
-                            }) { Text(member.name) }
+                            TextButton(
+                                onClick = {
+                                    onChangePerson(event, member.id)
+                                    selectedEvent = null
+                                }
+                            ) {
+                                Text(member.name)
+                            }
                         }
                     }
                 }
@@ -1126,23 +1386,26 @@ private fun DayPanel(
             confirmButton = { TextButton(onClick = { selectedEvent = null }) { Text("Stäng") } },
             dismissButton = {
                 if (event.source != "sportadmin") {
-                    TextButton(onClick = {
-                        onDelete(event)
-                        selectedEvent = null
-                    }) { Text("Ta bort") }
+                    TextButton(
+                        onClick = {
+                            onDelete(event)
+                            selectedEvent = null
+                        }
+                    ) {
+                        Text("Ta bort")
+                    }
                 }
-            }
+            },
         )
     }
 }
-
 
 @Composable
 private fun WorkRotationDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
     onDismiss: () -> Unit,
-    onChanged: () -> Unit
+    onChanged: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1151,7 +1414,9 @@ private fun WorkRotationDialog(
     var rotationWeeks by remember { mutableStateOf(4) }
     var selectedMemberId by remember { mutableStateOf(members.firstOrNull()?.id.orEmpty()) }
     var startDate by remember {
-        mutableStateOf(selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong()).plusWeeks(1))
+        mutableStateOf(
+            selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong()).plusWeeks(1)
+        )
     }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -1163,7 +1428,7 @@ private fun WorkRotationDialog(
                 WorkRotationWeekDraft(setOf(1, 2, 3, 4, 5), "06:00", "14:00"),
                 WorkRotationWeekDraft(setOf(1, 2, 3, 4, 5), "14:00", "22:00"),
                 WorkRotationWeekDraft(setOf(1, 2, 3, 4, 5), "08:00", "16:00"),
-                WorkRotationWeekDraft(emptySet(), "06:00", "14:00")
+                WorkRotationWeekDraft(emptySet(), "06:00", "14:00"),
             )
         )
     }
@@ -1173,15 +1438,18 @@ private fun WorkRotationDialog(
         val currentTimes = week.dayTimes[day] ?: (week.startTime to week.endTime)
         val current = if (start) currentTimes.first else currentTimes.second
         val parsed = runCatching { LocalTime.parse(current) }.getOrDefault(LocalTime.of(6, 0))
-        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { h, m ->
-            val value = "%02d:%02d".format(h, m)
-            weeks = weeks.toMutableList().also { list ->
-                val old = list[index]
-                val oldTimes = old.dayTimes[day] ?: (old.startTime to old.endTime)
-                val updatedTimes = if (start) value to oldTimes.second else oldTimes.first to value
-                list[index] = old.copy(dayTimes = old.dayTimes + (day to updatedTimes))
+        timePickerRequest =
+            MaterialTimePickerRequest(parsed.hour, parsed.minute) { h, m ->
+                val value = "%02d:%02d".format(h, m)
+                weeks =
+                    weeks.toMutableList().also { list ->
+                        val old = list[index]
+                        val oldTimes = old.dayTimes[day] ?: (old.startTime to old.endTime)
+                        val updatedTimes =
+                            if (start) value to oldTimes.second else oldTimes.first to value
+                        list[index] = old.copy(dayTimes = old.dayTimes + (day to updatedTimes))
+                    }
             }
-        }
     }
 
     AlertDialog(
@@ -1193,25 +1461,27 @@ private fun WorkRotationDialog(
         textContentColor = Color.White,
         title = {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { if (!saving) onDismiss() }, contentPadding = PaddingValues(0.dp)) {
+                TextButton(
+                    onClick = { if (!saving) onDismiss() },
+                    contentPadding = PaddingValues(0.dp),
+                ) {
                     Text("‹", fontSize = 28.sp)
                 }
                 Text(
                     "Lägg till arbetsvecka",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
         },
         text = {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(
-                    Modifier
-                        .fillMaxWidth()
+                    Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(9.dp))
                         .background(Color(0xFF21182B))
                 ) {
@@ -1220,64 +1490,102 @@ private fun WorkRotationDialog(
                             rotating = false
                             rotationWeeks = 1
                         },
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(if (!rotating) Color(0xFF9C4DFF) else Color.Transparent)
+                        modifier =
+                            Modifier.weight(1f)
+                                .background(
+                                    if (!rotating) Color(0xFF9C4DFF) else Color.Transparent
+                                ),
                     ) {
-                        Text("Fast schema", color = if (!rotating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "Fast schema",
+                            color =
+                                if (!rotating) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                     TextButton(
                         onClick = {
                             rotating = true
                             rotationWeeks = 4
                         },
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(if (rotating) Color(0xFF9C4DFF) else Color.Transparent)
+                        modifier =
+                            Modifier.weight(1f)
+                                .background(if (rotating) Color(0xFF9C4DFF) else Color.Transparent),
                     ) {
-                        Text("Roterande schema", color = if (rotating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "Roterande schema",
+                            color =
+                                if (rotating) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
 
                 if (members.isNotEmpty()) {
-                    Text("Person", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Person",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f),
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         members.take(4).forEach { member ->
                             FilterChip(
                                 selected = selectedMemberId == member.id,
                                 onClick = { selectedMemberId = member.id },
-                                label = { Text(member.name, maxLines = 1) }
+                                label = { Text(member.name, maxLines = 1) },
                             )
                         }
                     }
                 }
 
                 if (rotating) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         Column(Modifier.weight(1f)) {
-                            Text("Antal veckor i rotation", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f))
-                            OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "Antal veckor i rotation",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f),
+                            )
+                            OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
                                 Text("4 veckor")
                             }
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("Startdatum för rotation", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f))
+                            Text(
+                                "Startdatum för rotation",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .7f),
+                            )
                             OutlinedButton(
                                 onClick = {
-                                    android.app.DatePickerDialog(
-                                        context,
-                                        { _, y, m, d ->
-                                            val picked = LocalDate.of(y, m + 1, d)
-                                            startDate = picked.minusDays((picked.dayOfWeek.value - 1).toLong())
-                                        },
-                                        startDate.year,
-                                        startDate.monthValue - 1,
-                                        startDate.dayOfMonth
-                                    ).show()
+                                    android.app
+                                        .DatePickerDialog(
+                                            context,
+                                            { _, y, m, d ->
+                                                val picked = LocalDate.of(y, m + 1, d)
+                                                startDate =
+                                                    picked.minusDays(
+                                                        (picked.dayOfWeek.value - 1).toLong()
+                                                    )
+                                            },
+                                            startDate.year,
+                                            startDate.monthValue - 1,
+                                            startDate.dayOfMonth,
+                                        )
+                                        .show()
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("${startDate.dayOfMonth}/${startDate.monthValue} ${startDate.year}", fontSize = 12.sp)
+                                Text(
+                                    "${startDate.dayOfMonth}/${startDate.monthValue} ${startDate.year}",
+                                    fontSize = 12.sp,
+                                )
                             }
                         }
                     }
@@ -1291,27 +1599,47 @@ private fun WorkRotationDialog(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
                             color = Color(0xFF201925),
-                            border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .38f))
+                            border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .38f)),
                         ) {
-                            Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Text("Vecka ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Column(
+                                Modifier.padding(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
+                                Text(
+                                    "Vecka ${index + 1}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                )
                                 Text(
                                     when {
                                         week.weekdays.isEmpty() -> "Ledig"
-                                        week.dayTimes.filterKeys { it in week.weekdays }.values.distinct().size <= 1 -> {
-                                            val t = week.dayTimes[week.weekdays.first()] ?: (week.startTime to week.endTime)
+                                        week.dayTimes
+                                            .filterKeys { it in week.weekdays }
+                                            .values
+                                            .distinct()
+                                            .size <= 1 -> {
+                                            val t =
+                                                week.dayTimes[week.weekdays.first()]
+                                                    ?: (week.startTime to week.endTime)
                                             "${t.first} – ${t.second}"
                                         }
+
                                         else -> "${week.weekdays.size} pass · olika tider"
                                     },
                                     fontSize = 10.sp,
-                                    maxLines = 1
+                                    maxLines = 1,
                                 )
                                 Button(
                                     onClick = { editingWeek = index },
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White),
-                                    modifier = Modifier.fillMaxWidth().height(32.dp)
+                                    contentPadding =
+                                        PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                    colors =
+                                        ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF9C4DFF),
+                                            contentColor = Color.White,
+                                        ),
+                                    modifier = Modifier.fillMaxWidth().height(32.dp),
                                 ) {
                                     Text("Redigera", fontSize = 9.sp, maxLines = 1)
                                 }
@@ -1325,13 +1653,13 @@ private fun WorkRotationDialog(
                         shape = RoundedCornerShape(9.dp),
                         color = Color(0xFF21182B),
                         border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .38f)),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
                             "↻   Schemat upprepas automatiskt: Vecka 1 → 2 → 3 → 4 → 1 …",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = .72f),
-                            modifier = Modifier.padding(10.dp)
+                            modifier = Modifier.padding(10.dp),
                         )
                     }
                 }
@@ -1340,8 +1668,16 @@ private fun WorkRotationDialog(
         },
         confirmButton = {
             Button(
-                enabled = !saving && session != null && selectedMemberId.isNotBlank() && weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White),
+                enabled =
+                    !saving &&
+                            session != null &&
+                            selectedMemberId.isNotBlank() &&
+                            weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF9C4DFF),
+                        contentColor = Color.White,
+                    ),
                 onClick = {
                     val activeSession = session ?: return@Button
                     saving = true
@@ -1354,21 +1690,32 @@ private fun WorkRotationDialog(
                                 val monday = startDate.plusWeeks(weekIndex.toLong())
                                 template.weekdays.sorted().forEach { day ->
                                     val date = monday.plusDays((day - 1).toLong())
-                                    val times = template.dayTimes[day] ?: (template.startTime to template.endTime)
+                                    val times =
+                                        template.dayTimes[day]
+                                            ?: (template.startTime to template.endTime)
                                     val eventTitle = "Jobb · ${times.first}–${times.second}"
-                                    SupabaseSync.addEvent(activeSession, eventTitle, date, times.first, times.second, selectedMemberId, seriesId)
+                                    SupabaseSync.addEvent(
+                                        activeSession,
+                                        eventTitle,
+                                        date,
+                                        times.first,
+                                        times.second,
+                                        selectedMemberId,
+                                        seriesId,
+                                    )
                                 }
                             }
-                        }.onSuccess { onChanged() }
+                        }
+                            .onSuccess { onChanged() }
                             .onFailure { error = it.message ?: "Kunde inte spara arbetsveckan" }
                         saving = false
                     }
-                }
+                },
             ) {
                 Text(if (saving) "Sparar…" else "Spara")
             }
         },
-        dismissButton = {}
+        dismissButton = {},
     )
 
     editingWeek?.let { index ->
@@ -1382,9 +1729,16 @@ private fun WorkRotationDialog(
             textContentColor = Color.White,
             title = { Text("Redigera vecka ${index + 1}", fontWeight = FontWeight.Bold) },
             text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     Text("Arbetsdagar och tider", fontWeight = FontWeight.SemiBold)
-                    Text("Varje dag kan ha sin egen arbetstid.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f))
+                    Text(
+                        "Varje dag kan ha sin egen arbetstid.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
+                    )
                     val dayLabels = listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön")
                     dayLabels.forEachIndexed { dayIndex, label ->
                         val day = dayIndex + 1
@@ -1394,32 +1748,66 @@ private fun WorkRotationDialog(
                             shape = RoundedCornerShape(10.dp),
                             color = Color(0xFF21182B),
                             border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .28f)),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Column(
+                                Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Checkbox(
                                         checked = enabled,
                                         onCheckedChange = { checked ->
-                                            weeks = weeks.toMutableList().also { list ->
-                                                val old = list[index]
-                                                val newDays = if (checked) old.weekdays + day else old.weekdays - day
-                                                val newTimes = if (checked && day !in old.dayTimes) {
-                                                    old.dayTimes + (day to (old.startTime to old.endTime))
-                                                } else old.dayTimes
-                                                list[index] = old.copy(weekdays = newDays, dayTimes = newTimes)
-                                            }
-                                        }
+                                            weeks =
+                                                weeks.toMutableList().also { list ->
+                                                    val old = list[index]
+                                                    val newDays =
+                                                        if (checked) old.weekdays + day
+                                                        else old.weekdays - day
+                                                    val newTimes =
+                                                        if (checked && day !in old.dayTimes) {
+                                                            old.dayTimes +
+                                                                    (day to
+                                                                            (old.startTime to old.endTime))
+                                                        } else old.dayTimes
+                                                    list[index] =
+                                                        old.copy(
+                                                            weekdays = newDays,
+                                                            dayTimes = newTimes,
+                                                        )
+                                                }
+                                        },
                                     )
-                                    Text(label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                    if (!enabled) Text("Ledig", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), fontSize = 12.sp)
+                                    Text(
+                                        label,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (!enabled)
+                                        Text(
+                                            "Ledig",
+                                            color =
+                                                MaterialTheme.colorScheme.onSurface.copy(
+                                                    alpha = .55f
+                                                ),
+                                            fontSize = 12.sp,
+                                        )
                                 }
                                 if (enabled) {
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedButton(onClick = { pickTime(index, day, true) }, modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { pickTime(index, day, true) },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
                                             Text("Från ${times.first}", fontSize = 12.sp)
                                         }
-                                        OutlinedButton(onClick = { pickTime(index, day, false) }, modifier = Modifier.weight(1f)) {
+                                        OutlinedButton(
+                                            onClick = { pickTime(index, day, false) },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
                                             Text("Till ${times.second}", fontSize = 12.sp)
                                         }
                                     }
@@ -1432,15 +1820,16 @@ private fun WorkRotationDialog(
             confirmButton = {
                 Button(
                     onClick = { editingWeek = null },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF9C4DFF),
-                        contentColor = Color.White
-                    )
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF9C4DFF),
+                            contentColor = Color.White,
+                        ),
                 ) {
                     Text("Klar")
                 }
             },
-            dismissButton = {}
+            dismissButton = {},
         )
     }
 
@@ -1452,7 +1841,7 @@ private fun WorkRotationDialog(
             onPicked = { hour, minute ->
                 request.onPicked(hour, minute)
                 timePickerRequest = null
-            }
+            },
         )
     }
 }
@@ -1462,7 +1851,7 @@ private fun WorkMonthDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
     onDismiss: () -> Unit,
-    onChanged: () -> Unit
+    onChanged: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1475,18 +1864,15 @@ private fun WorkMonthDialog(
     var error by remember { mutableStateOf<String?>(null) }
     var timePickerRequest by remember { mutableStateOf<MaterialTimePickerRequest?>(null) }
     var rules by remember {
-        mutableStateOf(
-            listOf(
-                WorkRuleDraft(setOf(1, 2, 3, 4, 5), "06:00", "14:18")
-            )
-        )
+        mutableStateOf(listOf(WorkRuleDraft(setOf(1, 2, 3, 4, 5), "06:00", "14:18")))
     }
 
     fun pickTime(current: String, onPicked: (String) -> Unit) {
         val parsed = runCatching { LocalTime.parse(current) }.getOrDefault(LocalTime.of(6, 0))
-        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { h, m ->
-            onPicked("%02d:%02d".format(h, m))
-        }
+        timePickerRequest =
+            MaterialTimePickerRequest(parsed.hour, parsed.minute) { h, m ->
+                onPicked("%02d:%02d".format(h, m))
+            }
     }
 
     AlertDialog(
@@ -1498,21 +1884,35 @@ private fun WorkMonthDialog(
         textContentColor = Color.White,
         title = { Text("Arbetsmånad") },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹") }
                     Text(
-                        "${month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${month.year}",
+                        "${
+                            month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
+                                .replaceFirstChar { it.uppercase() }
+                        } ${month.year}",
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                     TextButton(onClick = { month = month.plusMonths(1) }) { Text("›") }
                 }
-                OutlinedTextField(title, { title = it }, label = { Text("Rubrik") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    title,
+                    { title = it },
+                    label = { Text("Rubrik") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Text("Person", fontWeight = FontWeight.SemiBold)
                 members.forEach { member ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = selectedMemberId == member.id, onClick = { selectedMemberId = member.id })
+                        RadioButton(
+                            selected = selectedMemberId == member.id,
+                            onClick = { selectedMemberId = member.id },
+                        )
                         Text(member.name)
                     }
                 }
@@ -1521,29 +1921,50 @@ private fun WorkMonthDialog(
                     Text("Ersätt befintliga '$title'-pass för personen denna månad")
                 }
                 rules.forEachIndexed { index, rule ->
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .5f), shape = RoundedCornerShape(12.dp)) {
-                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .5f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Column(
+                            Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             Text("Regel ${index + 1}", fontWeight = FontWeight.SemiBold)
                             Row {
-                                listOf("M" to 1, "T" to 2, "O" to 3, "T" to 4, "F" to 5, "L" to 6, "S" to 7).forEach { (label, day) ->
-                                    FilterChip(
-                                        selected = day in rule.weekdays,
-                                        onClick = {
-                                            val nextDays = if (day in rule.weekdays) rule.weekdays - day else rule.weekdays + day
-                                            rules = rules.toMutableList().also { it[index] = rule.copy(weekdays = nextDays) }
-                                        },
-                                        label = { Text(label, fontSize = 10.sp) },
-                                        modifier = Modifier.padding(end = 2.dp)
-                                    )
-                                }
+                                listOf(
+                                    "M" to 1,
+                                    "T" to 2,
+                                    "O" to 3,
+                                    "T" to 4,
+                                    "F" to 5,
+                                    "L" to 6,
+                                    "S" to 7,
+                                )
+                                    .forEach { (label, day) ->
+                                        FilterChip(
+                                            selected = day in rule.weekdays,
+                                            onClick = {
+                                                val nextDays =
+                                                    if (day in rule.weekdays) rule.weekdays - day
+                                                    else rule.weekdays + day
+                                                rules =
+                                                    rules.toMutableList().also {
+                                                        it[index] = rule.copy(weekdays = nextDays)
+                                                    }
+                                            },
+                                            label = { Text(label, fontSize = 10.sp) },
+                                            modifier = Modifier.padding(end = 2.dp),
+                                        )
+                                    }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(
                                     onClick = {
                                         pickTime(rule.startTime) { value ->
-                                            rules = rules.toMutableList().also {
-                                                it[index] = rule.copy(startTime = value)
-                                            }
+                                            rules =
+                                                rules.toMutableList().also {
+                                                    it[index] = rule.copy(startTime = value)
+                                                }
                                         }
                                     }
                                 ) {
@@ -1552,26 +1973,42 @@ private fun WorkMonthDialog(
                                 OutlinedButton(
                                     onClick = {
                                         pickTime(rule.endTime) { value ->
-                                            rules = rules.toMutableList().also {
-                                                it[index] = rule.copy(endTime = value)
-                                            }
+                                            rules =
+                                                rules.toMutableList().also {
+                                                    it[index] = rule.copy(endTime = value)
+                                                }
                                         }
                                     }
                                 ) {
                                     Text("Till ${rule.endTime}")
                                 }
                             }
-                            if (rules.size > 1) TextButton(onClick = { rules = rules.toMutableList().also { it.removeAt(index) } }) { Text("Ta bort regel") }
+                            if (rules.size > 1)
+                                TextButton(
+                                    onClick = {
+                                        rules = rules.toMutableList().also { it.removeAt(index) }
+                                    }
+                                ) {
+                                    Text("Ta bort regel")
+                                }
                         }
                     }
                 }
-                TextButton(onClick = { rules = rules + WorkRuleDraft(emptySet(), "14:00", "22:00") }) { Text("+ Lägg till regel") }
+                TextButton(
+                    onClick = { rules = rules + WorkRuleDraft(emptySet(), "14:00", "22:00") }
+                ) {
+                    Text("+ Lägg till regel")
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = {
             Button(
-                enabled = !saving && session != null && selectedMemberId.isNotBlank() && rules.any { it.weekdays.isNotEmpty() },
+                enabled =
+                    !saving &&
+                            session != null &&
+                            selectedMemberId.isNotBlank() &&
+                            rules.any { it.weekdays.isNotEmpty() },
                 onClick = {
                     val activeSession = session ?: return@Button
                     saving = true
@@ -1581,18 +2018,38 @@ private fun WorkMonthDialog(
                             val rows = mutableListOf<WorkMonthEventInput>()
                             for (day in 1..month.lengthOfMonth()) {
                                 val date = month.atDay(day)
-                                rules.filter { date.dayOfWeek.value in it.weekdays }.forEach { rule ->
-                                    rows += WorkMonthEventInput(title.trim().ifBlank { "Jobb" }, date, rule.startTime, rule.endTime, selectedMemberId)
-                                }
+                                rules
+                                    .filter { date.dayOfWeek.value in it.weekdays }
+                                    .forEach { rule ->
+                                        rows +=
+                                            WorkMonthEventInput(
+                                                title.trim().ifBlank { "Jobb" },
+                                                date,
+                                                rule.startTime,
+                                                rule.endTime,
+                                                selectedMemberId,
+                                            )
+                                    }
                             }
-                            saveWorkMonthDirect(activeSession, month, title.trim().ifBlank { "Jobb" }, selectedMemberId, rows, replaceExisting)
-                        }.onSuccess { onChanged() }.onFailure { error = it.message ?: "Kunde inte spara arbetsmånaden" }
+                            saveWorkMonthDirect(
+                                activeSession,
+                                month,
+                                title.trim().ifBlank { "Jobb" },
+                                selectedMemberId,
+                                rows,
+                                replaceExisting,
+                            )
+                        }
+                            .onSuccess { onChanged() }
+                            .onFailure { error = it.message ?: "Kunde inte spara arbetsmånaden" }
                         saving = false
                     }
-                }
-            ) { Text(if (saving) "Sparar…" else "Spara månaden") }
+                },
+            ) {
+                Text(if (saving) "Sparar…" else "Spara månaden")
+            }
         },
-        dismissButton = { TextButton(enabled = !saving, onClick = onDismiss) { Text("Avbryt") } }
+        dismissButton = { TextButton(enabled = !saving, onClick = onDismiss) { Text("Avbryt") } },
     )
 
     timePickerRequest?.let { request ->
@@ -1603,7 +2060,7 @@ private fun WorkMonthDialog(
             onPicked = { hour, minute ->
                 request.onPicked(hour, minute)
                 timePickerRequest = null
-            }
+            },
         )
     }
 }
@@ -1614,39 +2071,59 @@ private fun ManageMonthEventsDialog(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     onDismiss: () -> Unit,
-    onDelete: (List<String>) -> Unit
+    onDelete: (List<String>) -> Unit,
 ) {
     var selectedIds by remember(events) { mutableStateOf(events.map { it.id }.toSet()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Hantera månadens aktiviteter") },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 Text("Markera aktiviteterna du vill ta bort. SportAdmin-poster lämnas orörda.")
                 Row {
-                    TextButton(onClick = { selectedIds = events.map { it.id }.toSet() }) { Text("Markera alla") }
+                    TextButton(onClick = { selectedIds = events.map { it.id }.toSet() }) {
+                        Text("Markera alla")
+                    }
                     TextButton(onClick = { selectedIds = emptySet() }) { Text("Avmarkera") }
                 }
                 events.forEach { event ->
-                    val memberName = members.find { it.id == event.memberId }?.name ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else "Familjen"
+                    val memberName =
+                        members.find { it.id == event.memberId }?.name
+                            ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen"
+                            else "Familjen"
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = event.id in selectedIds,
-                            onCheckedChange = { checked -> selectedIds = if (checked) selectedIds + event.id else selectedIds - event.id }
+                            onCheckedChange = { checked ->
+                                selectedIds =
+                                    if (checked) selectedIds + event.id else selectedIds - event.id
+                            },
                         )
                         Column {
-                            Text("${event.date.dayOfMonth}/${event.date.monthValue} ${event.time} ${event.title}")
-                            Text(memberName, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f))
+                            Text(
+                                "${event.date.dayOfMonth}/${event.date.monthValue} ${event.time} ${event.title}"
+                            )
+                            Text(
+                                memberName,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f),
+                            )
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            Button(enabled = selectedIds.isNotEmpty(), onClick = { onDelete(selectedIds.toList()) }) {
+            Button(
+                enabled = selectedIds.isNotEmpty(),
+                onClick = { onDelete(selectedIds.toList()) },
+            ) {
                 Text("Ta bort ${selectedIds.size}")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Stäng") } },
     )
 }

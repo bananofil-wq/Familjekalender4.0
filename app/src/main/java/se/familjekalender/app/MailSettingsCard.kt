@@ -1,6 +1,5 @@
 package se.familjekalender.app
 
-import androidx.compose.material3.MaterialTheme
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -41,11 +41,16 @@ import kotlinx.coroutines.launch
 
 private data class MailProviderPreset(val name: String, val host: String, val hint: String)
 
-private val MAIL_PRESETS = listOf(
-    MailProviderPreset("iCloud", "imap.mail.me.com", "Använd ett appspecifikt lösenord från Apple-ID."),
-    MailProviderPreset("Yahoo", "imap.mail.yahoo.com", "Använd ett app-lösenord från Yahoo."),
-    MailProviderPreset("Annan IMAP", "", "Ange IMAP-server och lösenord/app-lösenord.")
-)
+private val MAIL_PRESETS =
+    listOf(
+        MailProviderPreset(
+            "iCloud",
+            "imap.mail.me.com",
+            "Använd ett appspecifikt lösenord från Apple-ID.",
+        ),
+        MailProviderPreset("Yahoo", "imap.mail.yahoo.com", "Använd ett app-lösenord från Yahoo."),
+        MailProviderPreset("Annan IMAP", "", "Ange IMAP-server och lösenord/app-lösenord."),
+    )
 
 @Composable
 internal fun MailSettingsCard(session: FamilySession) {
@@ -58,9 +63,14 @@ internal fun MailSettingsCard(session: FamilySession) {
     var pendingGmailEmail by remember { mutableStateOf<String?>(null) }
     var showGmailFallback by remember { mutableStateOf(false) }
 
-    fun finishGmailAuthorization(result: AuthorizationResult, preferredEmail: String? = pendingGmailEmail) {
-        val email = preferredEmail?.trim().orEmpty()
-            .ifBlank { result.toGoogleSignInAccount()?.email.orEmpty().trim() }
+    fun finishGmailAuthorization(
+        result: AuthorizationResult,
+        preferredEmail: String? = pendingGmailEmail,
+    ) {
+        val email =
+            preferredEmail?.trim().orEmpty().ifBlank {
+                result.toGoogleSignInAccount()?.email.orEmpty().trim()
+            }
         val accessToken = result.accessToken.orEmpty()
         val gmailGranted = result.grantedScopes.any { it == GMAIL_AUTH_SCOPE }
         if (email.isBlank()) {
@@ -72,81 +82,98 @@ internal fun MailSettingsCard(session: FamilySession) {
         if (!gmailGranted || accessToken.isBlank()) {
             syncing = false
             pendingGmailEmail = null
-            status = "Gmail-behörigheten blev inte godkänd. Tryck på Koppla Gmail och godkänn åtkomst till Gmail."
+            status =
+                "Gmail-behörigheten blev inte godkänd. Tryck på Koppla Gmail och godkänn åtkomst till Gmail."
             return
         }
-        val account = MailAccount(
-            label = "Gmail",
-            email = email,
-            host = "imap.gmail.com",
-            port = 993,
-            username = email,
-            password = ""
-        )
+        val account =
+            MailAccount(
+                label = "Gmail",
+                email = email,
+                host = "imap.gmail.com",
+                port = 993,
+                username = email,
+                password = "",
+            )
         scope.launch {
             syncing = true
             status = "Kontrollerar Gmail…"
             runCatching { MailSyncEngine.testAccount(context, account, accessToken) }
                 .onSuccess {
-                    accounts = accounts.filterNot {
-                        it.host.equals("imap.gmail.com", ignoreCase = true) && it.email.equals(email, ignoreCase = true)
-                    } + account
+                    accounts =
+                        accounts.filterNot {
+                            it.host.equals("imap.gmail.com", ignoreCase = true) &&
+                                    it.email.equals(email, ignoreCase = true)
+                        } + account
                     MailAccountStore.save(context, accounts)
                     MailSyncScheduler.schedule(context)
                     val summary = MailSyncEngine.syncAll(context, session)
-                    status = "Gmail är kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
+                    status =
+                        "Gmail är kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
                 }
                 .onFailure {
-                    status = "Kunde inte koppla Gmail: ${it.message ?: "Google-behörigheten misslyckades"}"
+                    status =
+                        "Kunde inte koppla Gmail: ${it.message ?: "Google-behörigheten misslyckades"}"
                 }
             pendingGmailEmail = null
             syncing = false
         }
     }
 
-    val gmailAuthorizationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { activityResult ->
-        val preferredEmail = pendingGmailEmail
-        val data = activityResult.data
+    val gmailAuthorizationLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { activityResult ->
+            val preferredEmail = pendingGmailEmail
+            val data = activityResult.data
 
-        fun recheckAuthorization() {
-            scope.launch {
-                syncing = true
-                status = "Kontrollerar Gmail-behörigheten…"
-                runCatching { requestGmailAuthorization(context, preferredEmail, selectAccount = false) }
-                    .onSuccess { authorization ->
-                        if (authorization.hasResolution()) {
+            fun recheckAuthorization() {
+                scope.launch {
+                    syncing = true
+                    status = "Kontrollerar Gmail-behörigheten…"
+                    runCatching {
+                        requestGmailAuthorization(
+                            context,
+                            preferredEmail,
+                            selectAccount = false,
+                        )
+                    }
+                        .onSuccess { authorization ->
+                            if (authorization.hasResolution()) {
+                                syncing = false
+                                pendingGmailEmail = null
+                                showGmailFallback = true
+                                status =
+                                    "Google godkände inte Gmail-behörigheten för den signerade appen. Du kan koppla Gmail direkt med ett Google app-lösenord."
+                            } else {
+                                finishGmailAuthorization(authorization, preferredEmail)
+                            }
+                        }
+                        .onFailure { error ->
                             syncing = false
                             pendingGmailEmail = null
-                            showGmailFallback = true
-                            status = "Google godkände inte Gmail-behörigheten för den signerade appen. Du kan koppla Gmail direkt med ett Google app-lösenord."
-                        } else {
-                            finishGmailAuthorization(authorization, preferredEmail)
+                            val code = (error as? ApiException)?.statusCode
+                            status =
+                                if (code != null) {
+                                    "Kunde inte kontrollera Gmail-behörigheten (Google-kod $code): ${error.message ?: "okänt fel"}"
+                                } else {
+                                    "Kunde inte kontrollera Gmail-behörigheten: ${error.message ?: "okänt fel"}"
+                                }
                         }
-                    }
-                    .onFailure { error ->
-                        syncing = false
-                        pendingGmailEmail = null
-                        val code = (error as? ApiException)?.statusCode
-                        status = if (code != null) {
-                            "Kunde inte kontrollera Gmail-behörigheten (Google-kod $code): ${error.message ?: "okänt fel"}"
-                        } else {
-                            "Kunde inte kontrollera Gmail-behörigheten: ${error.message ?: "okänt fel"}"
-                        }
-                    }
+                }
+            }
+
+            if (data != null) {
+                runCatching {
+                    Identity.getAuthorizationClient(context)
+                        .getAuthorizationResultFromIntent(data)
+                }
+                    .onSuccess { finishGmailAuthorization(it, preferredEmail) }
+                    .onFailure { recheckAuthorization() }
+            } else {
+                // Kontrollera grant-statusen igen i stället för att tolka tom result-data som
+                // avbruten.
+                recheckAuthorization()
             }
         }
-
-        if (data != null) {
-            runCatching { Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data) }
-                .onSuccess { finishGmailAuthorization(it, preferredEmail) }
-                .onFailure { recheckAuthorization() }
-        } else {
-            // Kontrollera grant-statusen igen i stället för att tolka tom result-data som avbruten.
-            recheckAuthorization()
-        }
-    }
 
     fun launchGmailResolution(authorization: AuthorizationResult) {
         val pendingIntent = authorization.pendingIntent
@@ -179,11 +206,12 @@ internal fun MailSettingsCard(session: FamilySession) {
                     syncing = false
                     pendingGmailEmail = null
                     val code = (error as? ApiException)?.statusCode
-                    status = if (code != null) {
-                        "Kunde inte starta Google-inloggningen (Google-kod $code): ${error.message ?: "okänt fel"}"
-                    } else {
-                        "Kunde inte starta Google-inloggningen: ${error.message ?: "okänt fel"}"
-                    }
+                    status =
+                        if (code != null) {
+                            "Kunde inte starta Google-inloggningen (Google-kod $code): ${error.message ?: "okänt fel"}"
+                        } else {
+                            "Kunde inte starta Google-inloggningen: ${error.message ?: "okänt fel"}"
+                        }
                 }
         }
     }
@@ -192,15 +220,29 @@ internal fun MailSettingsCard(session: FamilySession) {
         colors = CardDefaults.cardColors(containerColor = LuxurySurface),
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("E-post", fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = LuxuryText)
-                    Text("Kalenderinbjudningar och erbjudanden kan läggas in automatiskt.", color = LuxuryTextMuted, fontSize = 12.sp)
+                    Text(
+                        "E-post",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp,
+                        color = LuxuryText,
+                    )
+                    Text(
+                        "Kalenderinbjudningar och erbjudanden kan läggas in automatiskt.",
+                        color = LuxuryTextMuted,
+                        fontSize = 12.sp,
+                    )
                 }
-                Text("AUTO", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "AUTO",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
             Spacer(Modifier.height(8.dp))
             if (accounts.isEmpty()) {
@@ -210,29 +252,43 @@ internal fun MailSettingsCard(session: FamilySession) {
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Column(Modifier.fillMaxWidth(0.58f)) {
-                            Text(account.label.ifBlank { account.email }, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                account.label.ifBlank { account.email },
+                                fontWeight = FontWeight.SemiBold,
+                            )
                             Text(account.email, color = Muted, fontSize = 12.sp)
                         }
                         Switch(
                             checked = account.enabled,
                             onCheckedChange = { enabled ->
-                                accounts = accounts.map { if (it.id == account.id) it.copy(enabled = enabled) else it }
+                                accounts = accounts.map {
+                                    if (it.id == account.id) it.copy(enabled = enabled) else it
+                                }
                                 MailAccountStore.save(context, accounts)
                                 MailSyncScheduler.schedule(context)
-                            }
+                            },
                         )
-                        TextButton(onClick = {
-                            scope.launch {
-                                val googleOauth = account.host.equals("imap.gmail.com", ignoreCase = true) && account.password.isBlank()
-                                if (googleOauth) runCatching { revokeGmailAuthorization(context, account.email) }
-                                accounts = accounts.filterNot { it.id == account.id }
-                                MailAccountStore.save(context, accounts)
-                                status = "Mailkontot är bortkopplat."
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    val googleOauth =
+                                        account.host.equals("imap.gmail.com", ignoreCase = true) &&
+                                                account.password.isBlank()
+                                    if (googleOauth)
+                                        runCatching {
+                                            revokeGmailAuthorization(context, account.email)
+                                        }
+                                    accounts = accounts.filterNot { it.id == account.id }
+                                    MailAccountStore.save(context, accounts)
+                                    status = "Mailkontot är bortkopplat."
+                                }
                             }
-                        }) { Text("Ta bort") }
+                        ) {
+                            Text("Ta bort")
+                        }
                     }
                 }
             }
@@ -242,22 +298,28 @@ internal fun MailSettingsCard(session: FamilySession) {
                 enabled = !syncing,
                 onClick = ::startGmailAuthorization,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = MaterialTheme.shapes.medium
-            ) { Text(if (syncing) "Arbetar…" else "Koppla Gmail") }
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Text(if (syncing) "Arbetar…" else "Koppla Gmail")
+            }
 
             OutlinedButton(
                 enabled = !syncing,
                 onClick = { showGmailFallback = true },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.medium
-            ) { Text("Gmail med app-lösenord") }
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Text("Gmail med app-lösenord")
+            }
 
             OutlinedButton(
                 enabled = !syncing,
                 onClick = { showAddOther = true },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = MaterialTheme.shapes.medium
-            ) { Text("Annan e-post (IMAP)") }
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Text("Annan e-post (IMAP)")
+            }
 
             if (accounts.any { it.enabled }) {
                 OutlinedButton(
@@ -268,14 +330,19 @@ internal fun MailSettingsCard(session: FamilySession) {
                             status = "Synkar mail…"
                             val summary = MailSyncEngine.syncAll(context, session)
                             status = buildString {
-                                append("${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades")
-                                if (summary.errors.isNotEmpty()) append(". ${summary.errors.joinToString(" · ")}")
+                                append(
+                                    "${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades"
+                                )
+                                if (summary.errors.isNotEmpty())
+                                    append(". ${summary.errors.joinToString(" · ")}")
                             }
                             syncing = false
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(if (syncing) "Synkar…" else "Synka mail nu") }
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (syncing) "Synkar…" else "Synka mail nu")
+                }
             }
 
             if (status.isNotBlank()) {
@@ -283,19 +350,29 @@ internal fun MailSettingsCard(session: FamilySession) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
                     shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(status, modifier = Modifier.padding(12.dp), color = LuxuryTextMuted, fontSize = 12.sp)
+                    Text(
+                        status,
+                        modifier = Modifier.padding(12.dp),
+                        color = LuxuryTextMuted,
+                        fontSize = 12.sp,
+                    )
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Text("Privat och säkert", color = LuxuryText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Privat och säkert",
+                color = LuxuryText,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
             Spacer(Modifier.height(3.dp))
             Text(
                 "Google-inloggning används för Gmail och inget Gmail-lösenord sparas. Övriga IMAP-konton skyddas med Android Keystore på den här telefonen.",
                 color = LuxuryTextMuted,
                 fontSize = 11.sp,
-                lineHeight = 16.sp
+                lineHeight = 16.sp,
             )
         }
     }
@@ -309,22 +386,25 @@ internal fun MailSettingsCard(session: FamilySession) {
                     status = "Kontrollerar Gmail…"
                     runCatching { MailSyncEngine.testAccount(context, account) }
                         .onSuccess {
-                            accounts = accounts.filterNot {
-                                it.host.equals("imap.gmail.com", ignoreCase = true) &&
-                                    it.email.equals(account.email, ignoreCase = true)
-                            } + account
+                            accounts =
+                                accounts.filterNot {
+                                    it.host.equals("imap.gmail.com", ignoreCase = true) &&
+                                            it.email.equals(account.email, ignoreCase = true)
+                                } + account
                             MailAccountStore.save(context, accounts)
                             MailSyncScheduler.schedule(context)
                             val summary = MailSyncEngine.syncAll(context, session)
-                            status = "Gmail är kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
+                            status =
+                                "Gmail är kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
                             showGmailFallback = false
                         }
                         .onFailure { error ->
-                            status = "Kunde inte koppla Gmail med app-lösenord: ${error.message ?: "kontrollera Gmail-adress och app-lösenord"}"
+                            status =
+                                "Kunde inte koppla Gmail med app-lösenord: ${error.message ?: "kontrollera Gmail-adress och app-lösenord"}"
                         }
                     syncing = false
                 }
-            }
+            },
         )
     }
 
@@ -341,13 +421,17 @@ internal fun MailSettingsCard(session: FamilySession) {
                             MailAccountStore.save(context, accounts)
                             MailSyncScheduler.schedule(context)
                             val summary = MailSyncEngine.syncAll(context, session)
-                            status = "Kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
+                            status =
+                                "Kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
                             showAddOther = false
                         }
-                        .onFailure { status = "Kunde inte ansluta: ${it.message ?: "kontrollera IMAP och app-lösenord"}" }
+                        .onFailure {
+                            status =
+                                "Kunde inte ansluta: ${it.message ?: "kontrollera IMAP och app-lösenord"}"
+                        }
                     syncing = false
                 }
-            }
+            },
         )
     }
 }
@@ -355,7 +439,7 @@ internal fun MailSettingsCard(session: FamilySession) {
 @Composable
 private fun GmailAppPasswordDialog(
     onDismiss: () -> Unit,
-    onSaved: (MailAccount) -> Unit
+    onSaved: (MailAccount) -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
     var appPassword by remember { mutableStateOf("") }
@@ -369,20 +453,20 @@ private fun GmailAppPasswordDialog(
                     "Använd ett Google app-lösenord. Det fungerar utan den Google OAuth-koppling som blockerar knappen ovan.",
                     color = LuxuryTextMuted,
                     fontSize = 12.sp,
-                    lineHeight = 17.sp
+                    lineHeight = 17.sp,
                 )
                 Text(
                     "App-lösenord kräver att 2-stegsverifiering är aktiverad på Google-kontot.",
                     color = LuxuryTextMuted,
                     fontSize = 11.sp,
-                    lineHeight = 16.sp
+                    lineHeight = 16.sp,
                 )
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
                     label = { Text("Gmail-adress") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = appPassword,
@@ -390,7 +474,7 @@ private fun GmailAppPasswordDialog(
                     label = { Text("Google app-lösenord") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
@@ -405,16 +489,17 @@ private fun GmailAppPasswordDialog(
                             host = "imap.gmail.com",
                             port = 993,
                             username = normalizedEmail,
-                            password = appPassword.trim()
+                            password = appPassword.trim(),
                         )
                     )
                 },
-                enabled = email.contains("@") && appPassword.filterNot(Char::isWhitespace).length >= 16
+                enabled =
+                    email.contains("@") && appPassword.filterNot(Char::isWhitespace).length >= 16,
             ) {
                 Text("Testa och koppla")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } },
     )
 }
 
@@ -437,18 +522,54 @@ private fun AddMailAccountDialog(onDismiss: () -> Unit, onSaved: (MailAccount) -
                     MAIL_PRESETS.forEach { item ->
                         FilterChip(
                             selected = preset == item,
-                            onClick = { preset = item; host = item.host },
-                            label = { Text(item.name) }
+                            onClick = {
+                                preset = item
+                                host = item.host
+                            },
+                            label = { Text(item.name) },
                         )
                     }
                 }
                 Text(preset.hint, color = Muted, fontSize = 11.sp)
-                OutlinedTextField(label, { label = it }, label = { Text("Namn, t.ex. Privat") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(email, { email = it; if (username.isBlank()) username = it }, label = { Text("Mailadress") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    label,
+                    { label = it },
+                    label = { Text("Namn, t.ex. Privat") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    email,
+                    {
+                        email = it
+                        if (username.isBlank()) username = it
+                    },
+                    label = { Text("Mailadress") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 if (preset.name == "Annan IMAP") {
-                    OutlinedTextField(host, { host = it }, label = { Text("IMAP-server") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(port, { port = it.filter(Char::isDigit) }, label = { Text("Port") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(username, { username = it }, label = { Text("Användarnamn") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        host,
+                        { host = it },
+                        label = { Text("IMAP-server") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        port,
+                        { port = it.filter(Char::isDigit) },
+                        label = { Text("Port") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        username,
+                        { username = it },
+                        label = { Text("Användarnamn") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 OutlinedTextField(
                     password,
@@ -456,7 +577,7 @@ private fun AddMailAccountDialog(onDismiss: () -> Unit, onSaved: (MailAccount) -
                     label = { Text("App-lösenord / IMAP-lösenord") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
@@ -470,13 +591,15 @@ private fun AddMailAccountDialog(onDismiss: () -> Unit, onSaved: (MailAccount) -
                             host = host.trim(),
                             port = port.toIntOrNull() ?: 993,
                             username = username.trim().ifBlank { email.trim() },
-                            password = password
+                            password = password,
                         )
                     )
                 },
-                enabled = email.isNotBlank() && host.isNotBlank() && password.isNotBlank()
-            ) { Text("Testa och koppla") }
+                enabled = email.isNotBlank() && host.isNotBlank() && password.isNotBlank(),
+            ) {
+                Text("Testa och koppla")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } },
     )
 }

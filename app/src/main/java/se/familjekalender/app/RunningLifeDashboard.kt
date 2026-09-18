@@ -14,15 +14,13 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.EventNote
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,14 +47,14 @@ private val LifeDivider = PremiumBorder
 
 private enum class LifeFocus {
     EVERYDAY,
-    RUNNING
+    RUNNING,
 }
 
 private data class RunningSnapshot(
     val monthKm: Double,
     val monthPasses: Int,
     val latestKm: Double?,
-    val nextPlan: SyncEvent?
+    val nextPlan: SyncEvent?,
 )
 
 private fun completedRunDistanceKm(event: SyncEvent): Double? {
@@ -66,7 +64,8 @@ private fun completedRunDistanceKm(event: SyncEvent): Double? {
             title.removePrefix("🏃 RUN|").substringBefore('|').toDoubleOrNull()
 
         title.startsWith("🏃 Löpning · ") ->
-            title.removePrefix("🏃 Löpning · ")
+            title
+                .removePrefix("🏃 Löpning · ")
                 .substringBefore(" · ")
                 .removeSuffix(" km")
                 .replace(',', '.')
@@ -84,19 +83,24 @@ private fun runningSnapshot(events: List<SyncEvent>): RunningSnapshot {
     val monthRuns = completed.filter { (event, _) ->
         event.date.year == today.year && event.date.month == today.month
     }
-    val latest = completed
-        .filter { (event, _) -> !event.date.isAfter(today) }
-        .maxWithOrNull(compareBy<Pair<SyncEvent, Double>> { it.first.date }.thenBy { it.first.time })
-    val nextPlan = events.asSequence()
-        .filter { it.title.startsWith("🏃 Plan: ") && !it.date.isBefore(today) }
-        .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
-        .firstOrNull()
+    val latest =
+        completed
+            .filter { (event, _) -> !event.date.isAfter(today) }
+            .maxWithOrNull(
+                compareBy<Pair<SyncEvent, Double>> { it.first.date }.thenBy { it.first.time }
+            )
+    val nextPlan =
+        events
+            .asSequence()
+            .filter { it.title.startsWith("🏃 Plan: ") && !it.date.isBefore(today) }
+            .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+            .firstOrNull()
 
     return RunningSnapshot(
         monthKm = monthRuns.sumOf { it.second },
         monthPasses = monthRuns.size,
         latestKm = latest?.second,
-        nextPlan = nextPlan
+        nextPlan = nextPlan,
     )
 }
 
@@ -109,29 +113,31 @@ internal fun RunningLifeDashboard(
     members: List<SyncMember>,
     onAdd: () -> Unit,
     onOpenSettings: () -> Unit,
-    onRefresh: suspend () -> Unit
+    onRefresh: suspend () -> Unit,
 ) {
     val locale = remember { Locale("sv", "SE") }
     val motionEnabled = appMotionEnabled()
     var focus by rememberSaveable { mutableStateOf(LifeFocus.EVERYDAY) }
-    val weekStart = remember(selectedDate) {
-        selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())
-    }
+    val weekStart =
+        remember(selectedDate) {
+            selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())
+        }
     val memberById = remember(members) { members.associateBy { it.id } }
     val runSnapshot = remember(events) { runningSnapshot(events) }
 
     Column(
-        Modifier
-            .fillMaxSize()
+        Modifier.fillMaxSize()
             .background(LifeBg)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp, vertical = 12.dp)
     ) {
         PremiumModeHeader(
             title = "Sportläge",
-            subtitle = if (focus == LifeFocus.EVERYDAY) "Löpning och vardag i balans" else "Träning, utveckling och historik",
+            subtitle =
+                if (focus == LifeFocus.EVERYDAY) "Löpning och vardag i balans"
+                else "Träning, utveckling och historik",
             onAdd = onAdd,
-            onSettings = onOpenSettings
+            onSettings = onOpenSettings,
         )
 
         Spacer(Modifier.height(14.dp))
@@ -139,7 +145,7 @@ internal fun RunningLifeDashboard(
         LifeFocusSelector(
             focus = focus,
             onFocusChanged = { focus = it },
-            motionEnabled = motionEnabled
+            motionEnabled = motionEnabled,
         )
 
         Spacer(Modifier.height(14.dp))
@@ -151,108 +157,145 @@ internal fun RunningLifeDashboard(
                 val outMs = motionDuration(180, motionEnabled)
                 if (targetState == LifeFocus.RUNNING) {
                     (fadeIn(tween(inMs)) + slideInHorizontally(tween(inMs)) { it / 8 }) togetherWith
-                        (fadeOut(tween(outMs)) + slideOutHorizontally(tween(outMs)) { -it / 10 })
+                            (fadeOut(tween(outMs)) + slideOutHorizontally(tween(outMs)) { -it / 10 })
                 } else {
-                    (fadeIn(tween(inMs)) + slideInHorizontally(tween(inMs)) { -it / 8 }) togetherWith
-                        (fadeOut(tween(outMs)) + slideOutHorizontally(tween(outMs)) { it / 10 })
+                    (fadeIn(tween(inMs)) +
+                            slideInHorizontally(tween(inMs)) { -it / 8 }) togetherWith
+                            (fadeOut(tween(outMs)) + slideOutHorizontally(tween(outMs)) { it / 10 })
                 }
             },
-            label = "life-focus-content"
+            label = "life-focus-content",
         ) { currentFocus ->
             when (currentFocus) {
-                LifeFocus.EVERYDAY -> Column {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = LifeSurface),
-                        shape = RoundedCornerShape(22.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Den här veckan", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                                Text(
-                                    "${weekStart.month.getDisplayName(TextStyle.SHORT, locale)} ${weekStart.year}",
-                                    color = LifeMuted,
-                                    fontSize = 11.sp
-                                )
-                            }
-                            Spacer(Modifier.height(12.dp))
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                repeat(7) { index ->
-                                    val date = weekStart.plusDays(index.toLong())
-                                    val dayEvents = remember(events, date) { events.filter { it.date == date } }
-                                    LifeDayCell(
-                                        date = date,
-                                        selected = date == selectedDate,
-                                        hasEvents = dayEvents.isNotEmpty(),
-                                        hasRun = dayEvents.any { it.title.startsWith("🏃") },
-                                        locale = locale,
-                                        motionEnabled = motionEnabled,
-                                        modifier = Modifier.weight(1f),
-                                        onClick = { onSelectDate(date) }
+                LifeFocus.EVERYDAY ->
+                    Column {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = LifeSurface),
+                            shape = RoundedCornerShape(22.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "Den här veckan",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 16.sp,
                                     )
+                                    Text(
+                                        "${
+                                            weekStart.month.getDisplayName(
+                                                TextStyle.SHORT,
+                                                locale
+                                            )
+                                        } ${weekStart.year}",
+                                        color = LifeMuted,
+                                        fontSize = 11.sp,
+                                    )
+                                }
+                                Spacer(Modifier.height(12.dp))
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    repeat(7) { index ->
+                                        val date = weekStart.plusDays(index.toLong())
+                                        val dayEvents =
+                                            remember(events, date) {
+                                                events.filter { it.date == date }
+                                            }
+                                        LifeDayCell(
+                                            date = date,
+                                            selected = date == selectedDate,
+                                            hasEvents = dayEvents.isNotEmpty(),
+                                            hasRun = dayEvents.any { it.title.startsWith("🏃") },
+                                            locale = locale,
+                                            motionEnabled = motionEnabled,
+                                            modifier = Modifier.weight(1f),
+                                            onClick = { onSelectDate(date) },
+                                        )
+                                    }
                                 }
                             }
                         }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        AnimatedContent(
+                            targetState = selectedDate,
+                            transitionSpec = {
+                                (fadeIn(tween(motionDuration(180, motionEnabled))) +
+                                        slideInVertically(
+                                            tween(
+                                                motionDuration(
+                                                    220,
+                                                    motionEnabled
+                                                )
+                                            )
+                                        ) {
+                                            it / 8
+                                        }) togetherWith
+                                        (fadeOut(tween(motionDuration(140, motionEnabled))) +
+                                                slideOutVertically(
+                                                    tween(motionDuration(180, motionEnabled))
+                                                ) {
+                                                    -it / 10
+                                                })
+                            },
+                            label = "life-day-agenda",
+                        ) { date ->
+                            LifeAgendaCard(
+                                date = date,
+                                events =
+                                    events
+                                        .filter { it.date == date }
+                                        .sortedWith(
+                                            compareBy<SyncEvent> { it.time }.thenBy { it.title }
+                                        ),
+                                memberById = memberById,
+                                locale = locale,
+                                motionEnabled = motionEnabled,
+                            )
+                        }
                     }
 
-                    Spacer(Modifier.height(12.dp))
-
-                    AnimatedContent(
-                        targetState = selectedDate,
-                        transitionSpec = {
-                            (fadeIn(tween(motionDuration(180, motionEnabled))) +
-                                slideInVertically(tween(motionDuration(220, motionEnabled))) { it / 8 }) togetherWith
-                                (fadeOut(tween(motionDuration(140, motionEnabled))) +
-                                    slideOutVertically(tween(motionDuration(180, motionEnabled))) { -it / 10 })
-                        },
-                        label = "life-day-agenda"
-                    ) { date ->
-                        LifeAgendaCard(
-                            date = date,
-                            events = events.filter { it.date == date }.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title }),
-                            memberById = memberById,
+                LifeFocus.RUNNING ->
+                    Column {
+                        RunningOverviewHero(
+                            snapshot = runSnapshot,
                             locale = locale,
-                            motionEnabled = motionEnabled
+                            motionEnabled = motionEnabled,
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Text(
+                            "Progression & pass",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                        Text(
+                            "Öppna kortet för detaljer, historik, mål och registrering.",
+                            color = LifeMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        RunningProgressCard(
+                            session = session,
+                            members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
+                            events = events,
+                            onChanged = onRefresh,
                         )
                     }
-                }
-
-                LifeFocus.RUNNING -> Column {
-                    RunningOverviewHero(
-                        snapshot = runSnapshot,
-                        locale = locale,
-                        motionEnabled = motionEnabled
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        "Progression & pass",
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                    Text(
-                        "Öppna kortet för detaljer, historik, mål och registrering.",
-                        color = LifeMuted,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    RunningProgressCard(
-                        session = session,
-                        members = members.filter { it.id != ALL_FAMILY_MEMBER_ID },
-                        events = events,
-                        onChanged = onRefresh
-                    )
-                }
             }
         }
 
@@ -264,28 +307,27 @@ internal fun RunningLifeDashboard(
 private fun RunningOverviewHero(
     snapshot: RunningSnapshot,
     locale: Locale,
-    motionEnabled: Boolean
+    motionEnabled: Boolean,
 ) {
     val monthKmText = "%.1f".format(Locale.US, snapshot.monthKm)
     val nextPlan = snapshot.nextPlan
-    val nextDateText = remember(nextPlan?.id, locale) {
-        nextPlan?.date?.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
-            ?.replaceFirstChar { it.uppercase(locale) }
-    }
-    val nextType = nextPlan?.title
-        ?.removePrefix("🏃 Plan: ")
-        ?.substringBefore(" · ")
-        ?.trim()
-        ?.ifBlank { null }
+    val nextDateText =
+        remember(nextPlan?.id, locale) {
+            nextPlan
+                ?.date
+                ?.format(DateTimeFormatter.ofPattern("EEE d MMM", locale))
+                ?.replaceFirstChar { it.uppercase(locale) }
+        }
+    val nextType =
+        nextPlan?.title?.removePrefix("🏃 Plan: ")?.substringBefore(" · ")?.trim()?.ifBlank { null }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         shape = RoundedCornerShape(26.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            Modifier
-                .fillMaxWidth()
+            Modifier.fillMaxWidth()
                 .background(
                     Brush.linearGradient(
                         listOf(Color(0xFF573A8E), Color(0xFF24192F), Color(0xFF17171F))
@@ -296,7 +338,7 @@ private fun RunningOverviewHero(
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -304,7 +346,7 @@ private fun RunningOverviewHero(
                         color = Color.White.copy(alpha = .64f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = .8.sp
+                        letterSpacing = .8.sp,
                     )
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.Bottom) {
@@ -312,15 +354,15 @@ private fun RunningOverviewHero(
                             targetState = monthKmText,
                             transitionSpec = {
                                 fadeIn(tween(motionDuration(180, motionEnabled))) togetherWith
-                                    fadeOut(tween(motionDuration(120, motionEnabled)))
+                                        fadeOut(tween(motionDuration(120, motionEnabled)))
                             },
-                            label = "running-month-km"
+                            label = "running-month-km",
                         ) { value ->
                             Text(
                                 value,
                                 color = Color.White,
                                 fontSize = 34.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                         Spacer(Modifier.width(5.dp))
@@ -328,7 +370,7 @@ private fun RunningOverviewHero(
                             "km",
                             color = Color.White.copy(alpha = .72f),
                             fontSize = 14.sp,
-                            modifier = Modifier.padding(bottom = 5.dp)
+                            modifier = Modifier.padding(bottom = 5.dp),
                         )
                     }
                 }
@@ -336,14 +378,14 @@ private fun RunningOverviewHero(
                 Surface(
                     color = Color.White.copy(alpha = .10f),
                     shape = CircleShape,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(52.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.Default.DirectionsRun,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(28.dp),
                         )
                     }
                 }
@@ -353,17 +395,17 @@ private fun RunningOverviewHero(
 
             Row(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 RunningHeroStat(
                     label = "Pass",
                     value = snapshot.monthPasses.toString(),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 RunningHeroStat(
                     label = "Senaste",
                     value = snapshot.latestKm?.let { "%.1f km".format(Locale.US, it) } ?: "–",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
 
@@ -372,28 +414,33 @@ private fun RunningOverviewHero(
             Surface(
                 color = Color.White.copy(alpha = .07f),
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
                     Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        Modifier
-                            .size(7.dp)
+                        Modifier.size(7.dp)
                             .clip(CircleShape)
-                            .background(if (nextPlan != null) LifePurple else Color.White.copy(alpha = .32f))
+                            .background(
+                                if (nextPlan != null) LifePurple else Color.White.copy(alpha = .32f)
+                            )
                     )
                     Spacer(Modifier.width(9.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
                             if (nextPlan != null) "Nästa pass" else "Planering",
                             color = Color.White.copy(alpha = .58f),
-                            fontSize = 10.sp
+                            fontSize = 10.sp,
                         )
                         Text(
                             if (nextPlan != null) {
-                                listOfNotNull(nextDateText, nextPlan.time.takeIf { it.isNotBlank() }, nextType)
+                                listOfNotNull(
+                                    nextDateText,
+                                    nextPlan.time.takeIf { it.isNotBlank() },
+                                    nextType,
+                                )
                                     .joinToString(" · ")
                             } else {
                                 "Inget kommande pass planerat"
@@ -402,7 +449,7 @@ private fun RunningOverviewHero(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -415,12 +462,12 @@ private fun RunningOverviewHero(
 private fun RunningHeroStat(
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         color = Color.White.copy(alpha = .07f),
         shape = RoundedCornerShape(16.dp),
-        modifier = modifier
+        modifier = modifier,
     ) {
         Column(Modifier.padding(horizontal = 13.dp, vertical = 10.dp)) {
             Text(label, color = Color.White.copy(alpha = .56f), fontSize = 10.sp)
@@ -434,32 +481,44 @@ private fun RunningHeroStat(
 private fun LifeFocusSelector(
     focus: LifeFocus,
     onFocusChanged: (LifeFocus) -> Unit,
-    motionEnabled: Boolean
+    motionEnabled: Boolean,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = LifeSurface),
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(5.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             LifeFocusButton(
                 label = "Vardag",
                 selected = focus == LifeFocus.EVERYDAY,
-                icon = { Icon(Icons.Default.EventNote, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                icon = {
+                    Icon(
+                        Icons.Default.EventNote,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
                 motionEnabled = motionEnabled,
                 modifier = Modifier.weight(1f),
-                onClick = { onFocusChanged(LifeFocus.EVERYDAY) }
+                onClick = { onFocusChanged(LifeFocus.EVERYDAY) },
             )
             LifeFocusButton(
                 label = "Löpning",
                 selected = focus == LifeFocus.RUNNING,
-                icon = { Icon(Icons.Default.DirectionsRun, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                icon = {
+                    Icon(
+                        Icons.Default.DirectionsRun,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
                 motionEnabled = motionEnabled,
                 modifier = Modifier.weight(1f),
-                onClick = { onFocusChanged(LifeFocus.RUNNING) }
+                onClick = { onFocusChanged(LifeFocus.RUNNING) },
             )
         }
     }
@@ -472,23 +531,30 @@ private fun LifeFocusButton(
     icon: @Composable () -> Unit,
     motionEnabled: Boolean,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
-    val scale by animateFloatAsState(
+    val scale by
+    animateFloatAsState(
         targetValue = if (selected) 1f else .985f,
         animationSpec = tween(motionDuration(180, motionEnabled)),
-        label = "life-focus-scale"
+        label = "life-focus-scale",
     )
     Surface(
         color = if (selected) LifePurple else Color.Transparent,
         contentColor = if (selected) Color.White else LifeMuted,
         shape = RoundedCornerShape(14.dp),
-        modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale }.clickable(onClick = onClick)
+        modifier =
+            modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clickable(onClick = onClick),
     ) {
         Row(
             Modifier.padding(vertical = 11.dp),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             icon()
             Spacer(Modifier.width(7.dp))
@@ -506,52 +572,69 @@ private fun LifeDayCell(
     locale: Locale,
     motionEnabled: Boolean,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
-    val scale by animateFloatAsState(
+    val scale by
+    animateFloatAsState(
         targetValue = if (selected) 1.04f else 1f,
         animationSpec = tween(motionDuration(180, motionEnabled)),
-        label = "life-day-scale"
+        label = "life-day-scale",
     )
-    val backgroundAlpha by animateFloatAsState(
+    val backgroundAlpha by
+    animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
         animationSpec = tween(motionDuration(180, motionEnabled)),
-        label = "life-day-background"
+        label = "life-day-background",
     )
 
-    Box(modifier.graphicsLayer { scaleX = scale; scaleY = scale }) {
+    Box(
+        modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+    ) {
         Box(
-            Modifier
-                .matchParentSize()
+            Modifier.matchParentSize()
                 .graphicsLayer { alpha = backgroundAlpha }
                 .clip(RoundedCornerShape(16.dp))
                 .background(LifePurple)
         )
         Column(
-            Modifier
-                .fillMaxWidth()
+            Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .clickable(onClick = onClick)
                 .padding(vertical = 9.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale).take(2).uppercase(locale),
                 color = if (selected) Color.White.copy(alpha = .82f) else LifeMuted,
                 fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 date.dayOfMonth.toString(),
                 color = Color.White,
                 fontSize = 15.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             )
             Spacer(Modifier.height(6.dp))
             when {
-                hasRun -> Text("●", color = if (selected) Color.White else MaterialTheme.colorScheme.primary, fontSize = 10.sp)
-                hasEvents -> Box(Modifier.size(5.dp).clip(CircleShape).background(if (selected) Color.White else LifeMuted))
+                hasRun ->
+                    Text(
+                        "●",
+                        color = if (selected) Color.White else MaterialTheme.colorScheme.primary,
+                        fontSize = 10.sp,
+                    )
+
+                hasEvents ->
+                    Box(
+                        Modifier.size(5.dp)
+                            .clip(CircleShape)
+                            .background(if (selected) Color.White else LifeMuted)
+                    )
+
                 else -> Spacer(Modifier.height(7.dp))
             }
         }
@@ -564,99 +647,148 @@ private fun LifeAgendaCard(
     events: List<SyncEvent>,
     memberById: Map<String, SyncMember>,
     locale: Locale,
-    motionEnabled: Boolean
+    motionEnabled: Boolean,
 ) {
     val formatter = remember(locale) { DateTimeFormatter.ofPattern("EEEE d MMMM", locale) }
     val header = date.format(formatter).replaceFirstChar { it.uppercase(locale) }
-    val groups = remember(events) {
-        events.groupBy { it.memberId }
-            .entries
-            .sortedBy { group -> group.value.minOfOrNull { it.time } ?: "" }
-    }
+    val groups =
+        remember(events) {
+            events
+                .groupBy { it.memberId }
+                .entries
+                .sortedBy { group -> group.value.minOfOrNull { it.time } ?: "" }
+        }
     var expandedGroups by remember(date) { mutableStateOf(emptySet<String>()) }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = LifeSurfaceRaised),
         shape = RoundedCornerShape(22.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(tween(motionDuration(220, motionEnabled)))
+        modifier =
+            Modifier.fillMaxWidth().animateContentSize(tween(motionDuration(220, motionEnabled))),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(header, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
                     Text(
-                        if (events.isEmpty()) "Lugn dag" else if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
+                        header,
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        if (events.isEmpty()) "Lugn dag"
+                        else if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
                         color = LifeMuted,
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
                     )
                 }
             }
 
             if (events.isEmpty()) {
                 Spacer(Modifier.height(14.dp))
-                Text("Inget planerat. Kalendern håller sig ur vägen.", color = LifeMuted, fontSize = 13.sp)
+                Text(
+                    "Inget planerat. Kalendern håller sig ur vägen.",
+                    color = LifeMuted,
+                    fontSize = 13.sp,
+                )
             } else {
                 Spacer(Modifier.height(9.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     groups.forEach { group ->
                         val memberId = group.key
-                        val personEvents = group.value.sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
+                        val personEvents =
+                            group.value.sortedWith(
+                                compareBy<SyncEvent> { it.time }.thenBy { it.title }
+                            )
                         val member = memberId?.let { memberById[it] }
-                        val accent = when {
-                            memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFFFD75E)
-                            member != null -> Color(member.colorArgb.toInt())
-                            else -> LifePurple
-                        }
-                        val memberName = when {
-                            memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
-                            member != null -> member.name
-                            else -> "Familjen"
-                        }
+                        val accent =
+                            when {
+                                memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFFFD75E)
+                                member != null -> Color(member.colorArgb.toInt())
+                                else -> LifePurple
+                            }
+                        val memberName =
+                            when {
+                                memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
+                                member != null -> member.name
+                                else -> "Familjen"
+                            }
                         val groupKey = memberId ?: "__unassigned__"
                         val expanded = groupKey in expandedGroups
 
                         Surface(
                             color = LifeSurface,
                             shape = RoundedCornerShape(16.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = .28f)),
-                            modifier = Modifier.fillMaxWidth().clickable {
-                                expandedGroups = if (expanded) expandedGroups - groupKey else expandedGroups + groupKey
-                            }
+                            border =
+                                androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    accent.copy(alpha = .28f),
+                                ),
+                            modifier =
+                                Modifier.fillMaxWidth().clickable {
+                                    expandedGroups =
+                                        if (expanded) expandedGroups - groupKey
+                                        else expandedGroups + groupKey
+                                },
                         ) {
                             Row(
-                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                Modifier.fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Box(Modifier.width(3.dp).height(36.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+                                Box(
+                                    Modifier.width(3.dp)
+                                        .height(36.dp)
+                                        .clip(RoundedCornerShape(99.dp))
+                                        .background(accent)
+                                )
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(memberName, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                     Text(
-                                        if (personEvents.size == 1) "1 aktivitet" else "${personEvents.size} aktiviteter",
+                                        memberName,
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        if (personEvents.size == 1) "1 aktivitet"
+                                        else "${personEvents.size} aktiviteter",
                                         color = LifeMuted,
-                                        fontSize = 10.sp
+                                        fontSize = 10.sp,
                                     )
                                 }
-                                Text(if (expanded) "Dölj" else "Visa", color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    if (expanded) "Dölj" else "Visa",
+                                    color = accent,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
                             }
                         }
 
                         if (expanded) {
                             personEvents.forEachIndexed { index, event ->
                                 val title = event.title.removePrefix("🌈").removePrefix("🧺").trim()
-                                val timeText = event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" }
-                                    ?: event.time.ifBlank { "Hela dagen" }
+                                val timeText =
+                                    event.endTime
+                                        ?.takeIf { it.isNotBlank() }
+                                        ?.let { "${event.time}–$it" }
+                                        ?: event.time.ifBlank { "Hela dagen" }
                                 Row(
-                                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    Modifier.fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 7.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(timeText, color = LifeMuted, fontSize = 11.sp, modifier = Modifier.width(78.dp))
+                                    Text(
+                                        timeText,
+                                        color = LifeMuted,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.width(78.dp),
+                                    )
                                     Text(
                                         title,
                                         color = Color.White,
@@ -664,10 +796,11 @@ private fun LifeAgendaCard(
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.weight(1f),
                                     )
                                 }
-                                if (index < personEvents.lastIndex) HorizontalDivider(color = LifeDivider, thickness = 1.dp)
+                                if (index < personEvents.lastIndex)
+                                    HorizontalDivider(color = LifeDivider, thickness = 1.dp)
                             }
                         }
                     }

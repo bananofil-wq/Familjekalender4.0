@@ -18,11 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 private const val UPDATE_INFO_PREFS = "familjekalender_update_info"
 private const val LAST_SHOWN_VERSION = "last_shown_version"
@@ -31,63 +31,76 @@ private const val RELEASE_BY_TAG_API =
 
 private data class PostUpdateNotes(
     val summary: String,
-    val details: String
+    val details: String,
 )
 
-private fun localFallbackNotes(version: String): PostUpdateNotes = when (version) {
-    "4.3.20260917.5" -> PostUpdateNotes(
-        summary = "Nu får du en tydlig sammanfattning efter varje uppdatering.",
-        details = "• En liten informationsruta visas första gången du öppnar appen efter en uppdatering.\n\n" +
-            "• Rutan visar en kort sammanfattning av vad som är nytt.\n\n" +
-            "• Tryck på Mer för att läsa en mer ingående ändringslista.\n\n" +
-            "• Informationen visas bara en gång per installerad version."
-    )
-    else -> PostUpdateNotes(
-        summary = "Familjekalendern har uppdaterats med förbättringar och korrigeringar.",
-        details = "Den här versionen innehåller förbättringar, korrigeringar och mindre justeringar i appen."
-    )
-}
+private fun localFallbackNotes(version: String): PostUpdateNotes =
+    when (version) {
+        "4.3.20260917.5" ->
+            PostUpdateNotes(
+                summary = "Nu får du en tydlig sammanfattning efter varje uppdatering.",
+                details =
+                    "• En liten informationsruta visas första gången du öppnar appen efter en uppdatering.\n\n" +
+                            "• Rutan visar en kort sammanfattning av vad som är nytt.\n\n" +
+                            "• Tryck på Mer för att läsa en mer ingående ändringslista.\n\n" +
+                            "• Informationen visas bara en gång per installerad version.",
+            )
 
-private suspend fun fetchPostUpdateNotes(version: String): PostUpdateNotes? = withContext(Dispatchers.IO) {
-    val connection = (URL("$RELEASE_BY_TAG_API$version").openConnection() as HttpURLConnection).apply {
-        connectTimeout = 10_000
-        readTimeout = 10_000
-        requestMethod = "GET"
-        setRequestProperty("Accept", "application/vnd.github+json")
-        setRequestProperty("User-Agent", "Familjekalender-Android/$version")
+        else ->
+            PostUpdateNotes(
+                summary = "Familjekalendern har uppdaterats med förbättringar och korrigeringar.",
+                details =
+                    "Den här versionen innehåller förbättringar, korrigeringar och mindre justeringar i appen.",
+            )
     }
 
-    try {
-        if (connection.responseCode !in 200..299) return@withContext null
-        val json = connection.inputStream.bufferedReader().use { it.readText() }
-        val body = JSONObject(json).optString("body").trim()
-        if (body.isBlank()) return@withContext null
+private suspend fun fetchPostUpdateNotes(version: String): PostUpdateNotes? =
+    withContext(Dispatchers.IO) {
+        val connection =
+            (URL("$RELEASE_BY_TAG_API$version").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/vnd.github+json")
+                setRequestProperty("User-Agent", "Familjekalender-Android/$version")
+            }
 
-        val summary = body.lineSequence()
-            .map { it.trim() }
-            .firstOrNull { it.isNotBlank() && !it.startsWith("#") }
-            ?.removePrefix("-")
-            ?.removePrefix("*")
-            ?.trim()
-            ?.take(180)
-            .orEmpty()
+        try {
+            if (connection.responseCode !in 200..299) return@withContext null
+            val json = connection.inputStream.bufferedReader().use { it.readText() }
+            val body = JSONObject(json).optString("body").trim()
+            if (body.isBlank()) return@withContext null
 
-        PostUpdateNotes(
-            summary = summary.ifBlank { "Familjekalendern har uppdaterats." },
-            details = body
-        )
-    } finally {
-        connection.disconnect()
+            val summary =
+                body
+                    .lineSequence()
+                    .map { it.trim() }
+                    .firstOrNull { it.isNotBlank() && !it.startsWith("#") }
+                    ?.removePrefix("-")
+                    ?.removePrefix("*")
+                    ?.trim()
+                    ?.take(180)
+                    .orEmpty()
+
+            PostUpdateNotes(
+                summary = summary.ifBlank { "Familjekalendern har uppdaterats." },
+                details = body,
+            )
+        } finally {
+            connection.disconnect()
+        }
     }
-}
 
-private fun packageInfo(context: Context): PackageInfo? =
-    runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
+private fun packageInfo(context: Context): PackageInfo? = runCatching {
+    context.packageManager.getPackageInfo(context.packageName, 0)
+}.getOrNull()
 
 @Composable
 internal fun PostUpdateInfoNotice() {
     val context = LocalContext.current
-    val infoPrefs = remember { context.getSharedPreferences(UPDATE_INFO_PREFS, Context.MODE_PRIVATE) }
+    val infoPrefs = remember {
+        context.getSharedPreferences(UPDATE_INFO_PREFS, Context.MODE_PRIVATE)
+    }
     val installedPackage = remember(context) { packageInfo(context) }
     val currentVersion = installedPackage?.versionName?.takeIf { it.isNotBlank() } ?: return
 
@@ -105,16 +118,15 @@ internal fun PostUpdateInfoNotice() {
         val lastShownVersion = infoPrefs.getString(LAST_SHOWN_VERSION, null)
         if (lastShownVersion == currentVersion) return@LaunchedEffect
 
-        val isUpdatedInstall = installedPackage.lastUpdateTime > installedPackage.firstInstallTime + 2_000L
+        val isUpdatedInstall =
+            installedPackage.lastUpdateTime > installedPackage.firstInstallTime + 2_000L
         if (lastShownVersion == null && !isUpdatedInstall) {
             infoPrefs.edit().putString(LAST_SHOWN_VERSION, currentVersion).apply()
             return@LaunchedEffect
         }
 
         visible = true
-        runCatching { fetchPostUpdateNotes(currentVersion) }
-            .getOrNull()
-            ?.let { notes = it }
+        runCatching { fetchPostUpdateNotes(currentVersion) }.getOrNull()?.let { notes = it }
     }
 
     if (!visible) return
@@ -133,7 +145,7 @@ internal fun PostUpdateInfoNotice() {
                 TextButton(onClick = { markSeen() }) {
                     Text("Klart")
                 }
-            }
+            },
         )
     } else {
         AlertDialog(
@@ -155,7 +167,7 @@ internal fun PostUpdateInfoNotice() {
                 TextButton(onClick = { markSeen() }) {
                     Text("Stäng")
                 }
-            }
+            },
         )
     }
 }

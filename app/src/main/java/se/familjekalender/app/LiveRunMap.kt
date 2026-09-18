@@ -23,21 +23,25 @@ fun LiveRunMap(points: List<RecordedRoutePoint>, modifier: Modifier = Modifier) 
             if (points.isNotEmpty()) {
                 val geo = points.map { GeoPoint(it.latitude, it.longitude) }
                 if (geo.size > 1) {
-                    map.overlays.add(Polyline().apply {
-                        setPoints(geo)
-                        outlinePaint.color = android.graphics.Color.rgb(180, 124, 255)
-                        outlinePaint.strokeWidth = 10f
-                    })
+                    map.overlays.add(
+                        Polyline().apply {
+                            setPoints(geo)
+                            outlinePaint.color = android.graphics.Color.rgb(180, 124, 255)
+                            outlinePaint.strokeWidth = 10f
+                        }
+                    )
                 }
                 val current = geo.last()
-                map.overlays.add(Marker(map).apply {
-                    position = current
-                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                    title = "Nu"
-                })
+                map.overlays.add(
+                    Marker(map).apply {
+                        position = current
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        title = "Nu"
+                    }
+                )
                 map.controller.setCenter(current)
             }
             map.invalidate()
-        }
+        },
     )
 }
