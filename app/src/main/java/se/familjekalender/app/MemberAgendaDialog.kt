@@ -1,7 +1,6 @@
 package se.familjekalender.app
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -218,6 +217,7 @@ private fun MemberAgendaEditDialog(
     var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").removePrefix("🧺").trim()) }
     var date by remember(event.id) { mutableStateOf(event.date) }
     var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
+    var showTimePicker by remember(event.id) { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -232,10 +232,7 @@ private fun MemberAgendaEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Datum: ${date.dayOfMonth}/${date.monthValue} ${date.year}") }
                 OutlinedButton(
-                    onClick = {
-                        val parsed = runCatching { LocalTime.parse(time) }.getOrDefault(LocalTime.of(18, 0))
-                        TimePickerDialog(context, { _, h, m -> time = "%02d:%02d".format(h, m) }, parsed.hour, parsed.minute, true).show()
-                    },
+                    onClick = { showTimePicker = true },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Tid: $time") }
             }
@@ -254,5 +251,54 @@ private fun MemberAgendaEditDialog(
             ) { Text("Spara") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+    )
+
+    if (showTimePicker) {
+        val parsed = runCatching { LocalTime.parse(time) }.getOrDefault(LocalTime.of(18, 0))
+        MemberAgendaTimePickerDialog(
+            initialTime = parsed,
+            onDismiss = { showTimePicker = false },
+            onConfirm = { picked ->
+                time = "%02d:%02d".format(picked.hour, picked.minute)
+                showTimePicker = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MemberAgendaTimePickerDialog(
+    initialTime: LocalTime,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalTime) -> Unit
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialTime.hour,
+        initialMinute = initialTime.minute,
+        is24Hour = true
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Välj tid") },
+        text = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                TimePicker(state = state)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) {
+                Text("Klar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Avbryt")
+            }
+        }
     )
 }

@@ -1,7 +1,6 @@
 package se.familjekalender.app
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,6 +54,7 @@ internal fun SchoolScheduleDialog(
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var editingWeek by remember { mutableStateOf<Int?>(null) }
+    var timePickerTarget by remember { mutableStateOf<Triple<Int, Int, Boolean>?>(null) }
     var weeks by remember {
         mutableStateOf(
             List(4) {
@@ -67,18 +67,7 @@ internal fun SchoolScheduleDialog(
     }
 
     fun pickTime(index: Int, day: Int, start: Boolean) {
-        val current = weeks[index].dayTimes[day] ?: ("07:30" to "16:00")
-        val value = if (start) current.first else current.second
-        val parsed = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.of(7, 30))
-        TimePickerDialog(context, { _, h, m ->
-            val picked = "%02d:%02d".format(h, m)
-            weeks = weeks.toMutableList().also { list ->
-                val old = list[index]
-                val oldTimes = old.dayTimes[day] ?: ("07:30" to "16:00")
-                val newTimes = if (start) picked to oldTimes.second else oldTimes.first to picked
-                list[index] = old.copy(dayTimes = old.dayTimes + (day to newTimes))
-            }
-        }, parsed.hour, parsed.minute, true).show()
+        timePickerTarget = Triple(index, day, start)
     }
 
     val invalidTimeRange = weeks.take(rotationWeeks).any { week ->
@@ -227,6 +216,28 @@ internal fun SchoolScheduleDialog(
         dismissButton = { TextButton(onClick = onDismiss, enabled = !saving) { Text("Avbryt") } }
     )
 
+    timePickerTarget?.let { (index, day, start) ->
+        val current = weeks[index].dayTimes[day] ?: ("07:30" to "16:00")
+        val value = if (start) current.first else current.second
+        val initialTime = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.of(7, 30))
+
+        SchoolScheduleTimePickerDialog(
+            title = if (start) "Välj starttid" else "Välj sluttid",
+            initialTime = initialTime,
+            onDismiss = { timePickerTarget = null },
+            onConfirm = { pickedTime ->
+                val picked = "%02d:%02d".format(pickedTime.hour, pickedTime.minute)
+                weeks = weeks.toMutableList().also { list ->
+                    val old = list[index]
+                    val oldTimes = old.dayTimes[day] ?: ("07:30" to "16:00")
+                    val newTimes = if (start) picked to oldTimes.second else oldTimes.first to picked
+                    list[index] = old.copy(dayTimes = old.dayTimes + (day to newTimes))
+                }
+                timePickerTarget = null
+            }
+        )
+    }
+
     editingWeek?.let { index ->
         val week = weeks[index]
         AlertDialog(
@@ -274,4 +285,42 @@ internal fun SchoolScheduleDialog(
             dismissButton = {}
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SchoolScheduleTimePickerDialog(
+    title: String,
+    initialTime: LocalTime,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalTime) -> Unit
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialTime.hour,
+        initialMinute = initialTime.minute,
+        is24Hour = true
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                TimePicker(state = state)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) {
+                Text("Klar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Avbryt")
+            }
+        }
+    )
 }
