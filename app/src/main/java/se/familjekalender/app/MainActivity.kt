@@ -54,9 +54,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -318,19 +322,22 @@ private fun SyncedApp(
         }
     }
 
-    LaunchedEffect(session.id, sportUrl, sportMemberId) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(session.id, sportUrl, sportMemberId, lifecycle) {
         MailSyncScheduler.schedule(context)
+
         suspend fun syncExternalCalendars() {
             if (sportUrl.isNotBlank()) {
                 runCatching { SupabaseSync.importSportAdmin(session, sportUrl, sportMemberId) }
             }
         }
-        syncExternalCalendars()
-        refresh()
-        while (true) {
-            delay(30L * 60L * 1000L)
-            syncExternalCalendars()
-            refresh()
+
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                syncExternalCalendars()
+                refresh()
+                delay(30L * 60L * 1000L)
+            }
         }
     }
 
