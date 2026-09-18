@@ -212,7 +212,6 @@ internal fun MinimalCalendarScreen(
             }
         )
     }
-}
 
     openedEvent?.let { event ->
         val memberName = if (event.memberId == ALL_FAMILY_MEMBER_ID) {
