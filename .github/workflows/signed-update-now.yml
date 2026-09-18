@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091709'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260917.9'
+      FAMILJEKALENDER_VERSION_CODE: '2026091801'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.1'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -69,13 +69,13 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Prepare update APK
-        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260917.9.apk
+        run: cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.1.apk
 
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-signed-update-4.3.20260917.9
-          path: Familjekalender-4.3.20260917.9.apk
+          name: Familjekalender-signed-update-4.3.20260918.1
+          path: Familjekalender-4.3.20260918.1.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -86,10 +86,11 @@ jobs:
         run: |
           set -euo pipefail
           cat > release-notes.txt <<'EOF'
-          Widgetfix för morgondagens aktiviteter.
+          Interaktionsfix för Clean-läget.
 
-          • Widgeten visar nu upp till två aktiviteter under Imorgon i stället för att alltid kapa listan efter den första.
-          • Behåller premiumdesignen och funktionerna från 4.3.20260917.8.
+          • Aktivitetsraderna i dagens agenda går nu att trycka på och visar aktivitetens detaljer.
+          • Hela väderkortet använder en explicit klickbar yta och öppnar Inställningar.
+          • Behåller premiumdesignen och widgetfixarna från föregående version.
           EOF
           gh release create "v${FAMILJEKALENDER_VERSION_NAME}" \
             "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" \
