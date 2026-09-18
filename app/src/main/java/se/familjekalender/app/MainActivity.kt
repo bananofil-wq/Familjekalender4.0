@@ -340,6 +340,28 @@ private fun SyncedApp(
         }
     }
 
+    // Shopping is shared family data and should feel live between phones.
+    // Keep the general app sync at 30 minutes, but refresh only the shopping
+    // list frequently while the Shopping tab is visible. Opening the tab also
+    // causes an immediate refresh.
+    LaunchedEffect(session.id, selectedTab, lifecycle) {
+        if (selectedTab != 1) return@LaunchedEffect
+
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                runCatching { SupabaseSync.loadShopping(session) }
+                    .onSuccess { latest ->
+                        if (latest != shopping) shopping = latest
+                        if (message.startsWith("Inköpssynkfel:")) message = ""
+                    }
+                    .onFailure {
+                        message = "Inköpssynkfel: ${it.message}"
+                    }
+                delay(3_000L)
+            }
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
