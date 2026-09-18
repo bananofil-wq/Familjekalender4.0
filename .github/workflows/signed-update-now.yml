@@ -116,13 +116,34 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p build-triggers
-          MARKER="build-triggers/signed-verified-${FAMILJEKALENDER_VERSION_NAME}.txt"
-          printf 'Signed APK verified and release published: %s\n' "${FAMILJEKALENDER_VERSION_NAME}" > "$MARKER"
-          git add "$MARKER"
+          SUCCESS_MARKER="build-triggers/signed-verified-${FAMILJEKALENDER_VERSION_NAME}.txt"
+          FAILURE_MARKER="build-triggers/signed-failed-${FAMILJEKALENDER_VERSION_NAME}.txt"
+          rm -f "$FAILURE_MARKER"
+          printf 'Signed APK verified and release published: %s\n' "${FAMILJEKALENDER_VERSION_NAME}" > "$SUCCESS_MARKER"
+          git add -A build-triggers
           if git diff --cached --quiet; then
             exit 0
           fi
           git commit -m "Verify signed APK ${FAMILJEKALENDER_VERSION_NAME}"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+
+      - name: Mark signed APK build failed
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p build-triggers
+          FAILURE_MARKER="build-triggers/signed-failed-${FAMILJEKALENDER_VERSION_NAME}.txt"
+          printf 'Signed APK build failed: %s\n' "${FAMILJEKALENDER_VERSION_NAME}" > "$FAILURE_MARKER"
+          git add "$FAILURE_MARKER"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Signed APK failed ${FAMILJEKALENDER_VERSION_NAME}"
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
