@@ -85,6 +85,7 @@ dependencies {
     implementation("com.sun.mail:android-mail:1.6.8")
     implementation("com.sun.mail:android-activation:1.6.8")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("net.sf.biweekly:biweekly:0.6.8")
     implementation("com.onesignal:OneSignal:[5.6.1, 5.9.99]")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
