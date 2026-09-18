@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
 
 private data class MailProviderPreset(val name: String, val host: String, val hint: String)
@@ -112,7 +113,7 @@ internal fun MailSettingsCard(session: FamilySession) {
             scope.launch {
                 syncing = true
                 status = "Kontrollerar Gmail-behörigheten…"
-                runCatching { requestGmailAuthorization(context, preferredEmail) }
+                runCatching { requestGmailAuthorization(context, preferredEmail, selectAccount = false) }
                     .onSuccess { authorization ->
                         if (authorization.hasResolution()) {
                             syncing = false
@@ -122,10 +123,15 @@ internal fun MailSettingsCard(session: FamilySession) {
                             finishGmailAuthorization(authorization, preferredEmail)
                         }
                     }
-                    .onFailure {
+                    .onFailure { error ->
                         syncing = false
                         pendingGmailEmail = null
-                        status = "Kunde inte kontrollera Gmail-behörigheten: ${it.message ?: "okänt fel"}"
+                        val code = (error as? ApiException)?.statusCode
+                        status = if (code != null) {
+                            "Kunde inte kontrollera Gmail-behörigheten (Google-kod $code): ${error.message ?: "okänt fel"}"
+                        } else {
+                            "Kunde inte kontrollera Gmail-behörigheten: ${error.message ?: "okänt fel"}"
+                        }
                     }
             }
         }
@@ -159,7 +165,7 @@ internal fun MailSettingsCard(session: FamilySession) {
             syncing = true
             pendingGmailEmail = null
             status = "Öppnar Google…"
-            runCatching { requestGmailAuthorization(context) }
+            runCatching { requestGmailAuthorization(context, selectAccount = true) }
                 .onSuccess { authorization ->
                     if (authorization.hasResolution()) {
                         launchGmailResolution(authorization)
@@ -167,10 +173,15 @@ internal fun MailSettingsCard(session: FamilySession) {
                         finishGmailAuthorization(authorization)
                     }
                 }
-                .onFailure {
+                .onFailure { error ->
                     syncing = false
                     pendingGmailEmail = null
-                    status = "Kunde inte starta Google-inloggningen: ${it.message ?: "okänt fel"}"
+                    val code = (error as? ApiException)?.statusCode
+                    status = if (code != null) {
+                        "Kunde inte starta Google-inloggningen (Google-kod $code): ${error.message ?: "okänt fel"}"
+                    } else {
+                        "Kunde inte starta Google-inloggningen: ${error.message ?: "okänt fel"}"
+                    }
                 }
         }
     }
