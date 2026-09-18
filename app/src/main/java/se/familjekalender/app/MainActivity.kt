@@ -962,6 +962,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
             Triple(3, Icons.Default.People, "Familj"),
+            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
             Triple(2, Icons.Default.CheckCircle, "Att göra"),
             Triple(4, Icons.Default.Settings, "Inställningar")
         ).forEach { (tab, icon, label) ->
@@ -970,7 +971,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                 selected = isSelected,
                 onClick = { onSelect(tab) },
                 icon = { AnimatedNavIcon(icon, label, isSelected) },
-                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 10.sp) },
+                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 9.sp) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = accent, selectedTextColor = accent,
                     unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
