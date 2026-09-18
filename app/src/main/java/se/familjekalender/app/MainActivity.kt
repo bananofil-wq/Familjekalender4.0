@@ -569,7 +569,7 @@ private fun SyncedApp(
                                 scope.launch {
                                     message = "Importerar SportAdmin…"
                                     runCatching { SupabaseSync.importSportAdmin(session, url, memberId) }
-                                        .onSuccess { message = "$it SportAdmin-aktiviteter synkade" }
+                                        .onSuccess { result -> message = result.message }
                                         .onFailure { message = "SportAdmin-fel: ${it.message}" }
                                     refresh()
                                 }

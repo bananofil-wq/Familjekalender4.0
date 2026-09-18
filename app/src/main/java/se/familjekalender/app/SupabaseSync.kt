@@ -1,5 +1,6 @@
 package se.familjekalender.app
 
+import biweekly.Biweekly
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -7,11 +8,14 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.Date
+import java.util.TimeZone
 
 private const val SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
 private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
@@ -21,6 +25,19 @@ internal const val ALL_FAMILY_MEMBER_ID = "__all_family__"
 data class FamilySession(val id: String, val name: String, val code: String)
 data class SyncMember(val id: String, val name: String, val role: String, val colorArgb: Long)
 data class SyncShoppingItem(val id: String, val name: String, val checked: Boolean)
+
+data class SportAdminImportResult(
+    val imported: Int,
+    val failed: Int,
+    val firstError: String?
+) {
+    val message: String
+        get() = if (failed == 0) {
+            "$imported importerade"
+        } else {
+            "$imported importerade, $failed misslyckades: ${firstError ?: "okänt fel"}"
+        }
+}
 
 data class MailOffer(
     val id: String,
@@ -265,36 +282,141 @@ object SupabaseSync {
         )
     }
 
-    suspend fun importSportAdmin(session: FamilySession, webcalUrl: String, memberId: String?): Int = withContext(Dispatchers.IO) {
+    suspend fun importSportAdmin(
+        session: FamilySession,
+        webcalUrl: String,
+        memberId: String?
+    ): SportAdminImportResult = withContext(Dispatchers.IO) {
         val text = fetchText(webcalUrl.trim())
-        val unfolded = text.replace("\r\n ", "").replace("\n ", "")
-        val blocks = unfolded.split("BEGIN:VEVENT").drop(1).mapNotNull { it.substringBefore("END:VEVENT", "").takeIf(String::isNotBlank) }
+        val calendar = Biweekly.parse(text).first()
+            ?: throw IllegalStateException("Kunde inte läsa SportAdmin-kalendern")
+
+        val now = ZonedDateTime.now(STOCKHOLM)
+        val recurrenceWindowStart = Date.from(now.minusMonths(1).toInstant())
+        val recurrenceHorizon = Date.from(now.plusMonths(12).toInstant())
         var imported = 0
-        for (block in blocks) {
-            val lines = block.lines()
-            val uid = valueFor(lines, "UID") ?: continue
-            val title = valueFor(lines, "SUMMARY")?.ifBlank { "SportAdmin" } ?: "SportAdmin"
-            val rawStart = lines.firstOrNull { it.startsWith("DTSTART") }?.substringAfter(':') ?: continue
-            val start = parseIcsDateTime(rawStart) ?: continue
-            val rawEnd = lines.firstOrNull { it.startsWith("DTEND") }?.substringAfter(':')
-            val end = rawEnd?.let(::parseIcsDateTime)
-            val body = JSONObject()
-                .put("family_id", session.id)
-                .put("title", unescapeIcs(title))
-                .put("starts_at", start.toOffsetDateTime().toString())
-                .put("source", "sportadmin")
-                .put("external_id", uid)
-            if (end != null && end.isAfter(start)) body.put("ends_at", end.toOffsetDateTime().toString())
-            if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) body.put("member_id", JSONObject.NULL) else body.put("member_id", memberId)
-            val location = valueFor(lines, "LOCATION")
-            if (!location.isNullOrBlank()) body.put("location", unescapeIcs(location))
-            try {
-                request("POST", "/rest/v1/calendar_events?on_conflict=family_id,source,external_id", body, session.code, preferRepresentation = false, preferExtra = "resolution=merge-duplicates")
-                imported++
-            } catch (_: Exception) {
+        var failed = 0
+        var firstError: String? = null
+
+        fun recordFailure(message: String) {
+            failed++
+            if (firstError == null) {
+                firstError = message.take(240)
             }
         }
-        imported
+
+        for (event in calendar.getEvents()) {
+            val uid = event.getUid()?.getValue()
+            if (uid.isNullOrBlank()) {
+                recordFailure("SportAdmin-händelse saknar UID")
+                continue
+            }
+
+            val dateStart = event.getDateStart()
+            val startValue = dateStart?.getValue()
+            if (dateStart == null || startValue == null) {
+                recordFailure("$uid saknar DTSTART")
+                continue
+            }
+
+            val sourceTimeZone = calendar.getTimezoneInfo()
+                .getTimezone(dateStart)
+                ?.getTimeZone()
+                ?: if (calendar.getTimezoneInfo().isFloating(dateStart)) {
+                    TimeZone.getTimeZone(STOCKHOLM.id)
+                } else {
+                    TimeZone.getTimeZone("UTC")
+                }
+
+            val title = event.getSummary()?.getValue()?.ifBlank { "SportAdmin" } ?: "SportAdmin"
+            val location = event.getLocation()?.getValue()?.takeIf { it.isNotBlank() }
+            val endValue = event.getDateEnd()?.getValue()
+            val durationMillis = endValue
+                ?.time
+                ?.minus(startValue.time)
+                ?.takeIf { it > 0L }
+            val recurrenceRule = event.getRecurrenceRule()
+
+            val occurrences = mutableListOf<Date>()
+            try {
+                if (recurrenceRule == null) {
+                    occurrences += startValue
+                } else {
+                    val iterator = recurrenceRule.getDateIterator(startValue, sourceTimeZone)
+                    iterator.advanceTo(recurrenceWindowStart)
+                    var generated = 0
+                    while (iterator.hasNext()) {
+                        val occurrence = iterator.next()
+                        if (occurrence.after(recurrenceHorizon)) {
+                            break
+                        }
+                        occurrences += occurrence
+                        generated++
+                        if (generated >= 10000) {
+                            throw IllegalStateException("$uid har fler än 10000 återkommande tillfällen")
+                        }
+                    }
+                }
+            } catch (error: Exception) {
+                recordFailure(error.message ?: "$uid kunde inte expandera RRULE")
+                continue
+            }
+
+            for (occurrence in occurrences) {
+                val start = sportAdminDateTime(
+                    occurrence,
+                    startValue.hasTime(),
+                    sourceTimeZone
+                )
+                val end = durationMillis?.let { millis ->
+                    start.plusNanos(millis * 1_000_000L)
+                }
+                val externalId = if (recurrenceRule == null) {
+                    uid
+                } else {
+                    "$uid:${occurrence.time}"
+                }.take(200)
+
+                val body = JSONObject()
+                    .put("family_id", session.id)
+                    .put("title", title)
+                    .put("starts_at", start.toOffsetDateTime().toString())
+                    .put("source", "sportadmin")
+                    .put("external_id", externalId)
+
+                if (end != null && end.isAfter(start)) {
+                    body.put("ends_at", end.toOffsetDateTime().toString())
+                }
+                if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID) {
+                    body.put("member_id", JSONObject.NULL)
+                } else {
+                    body.put("member_id", memberId)
+                }
+                if (location != null) {
+                    body.put("location", location)
+                }
+
+                try {
+                    request(
+                        "POST",
+                        "/rest/v1/calendar_events?on_conflict=family_id,source,external_id",
+                        body,
+                        session.code,
+                        preferRepresentation = false,
+                        preferExtra = "resolution=merge-duplicates"
+                    )
+                    imported++
+                } catch (error: Exception) {
+                    recordFailure(error.message ?: "$externalId kunde inte importeras")
+                }
+            }
+        }
+
+        SportAdminImportResult(
+            imported = imported,
+            failed = failed,
+            firstError = firstError
+        )
     }
 
 
@@ -420,29 +542,20 @@ object SupabaseSync {
         .replace(Regex("[^a-z0-9åäö]+"), " ")
         .trim()
 
-    private fun valueFor(lines: List<String>, key: String): String? =
-        lines.firstOrNull { it.startsWith("$key:") || it.startsWith("$key;") }?.substringAfter(':')
-
-    private fun unescapeIcs(value: String): String = value
-        .replace("\\n", " ")
-        .replace("\\,", ",")
-        .replace("\\;", ";")
-        .replace("\\\\", "\\")
-
-    private fun parseIcsDateTime(raw: String): ZonedDateTime? = runCatching {
-        when {
-            raw.endsWith("Z") && raw.length >= 16 -> ZonedDateTime.parse(
-                raw,
-                java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssX")
-            ).withZoneSameInstant(STOCKHOLM)
-            raw.length >= 15 -> ZonedDateTime.of(
-                java.time.LocalDateTime.parse(raw.take(15), java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")),
-                STOCKHOLM
-            )
-            raw.length == 8 -> ZonedDateTime.of(LocalDate.parse(raw, java.time.format.DateTimeFormatter.BASIC_ISO_DATE), LocalTime.NOON, STOCKHOLM)
-            else -> return null
+    private fun sportAdminDateTime(
+        date: Date,
+        hasTime: Boolean,
+        sourceTimeZone: TimeZone
+    ): ZonedDateTime {
+        if (hasTime) {
+            return Instant.ofEpochMilli(date.time).atZone(STOCKHOLM)
         }
-    }.getOrNull()
+
+        val sourceDate = Instant.ofEpochMilli(date.time)
+            .atZone(sourceTimeZone.toZoneId())
+            .toLocalDate()
+        return ZonedDateTime.of(sourceDate, LocalTime.NOON, STOCKHOLM)
+    }
 
     private fun fetchText(url: String): String {
         val connection = URL(url).openConnection() as HttpURLConnection
