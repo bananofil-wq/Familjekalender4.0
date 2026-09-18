@@ -848,7 +848,16 @@ private fun MonthPanel(
                 val rowMonday = month.atDay(1).minusDays(offset.toLong()).plusWeeks(week.toLong())
                 val weekNumber = rowMonday.get(weekFields.weekOfWeekBasedYear())
                 Row(Modifier.fillMaxWidth().weight(1f)) {
-                    Text("$weekNumber", color = Color.White.copy(alpha = .58f), fontSize = 8.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.width(18.dp).align(Alignment.CenterVertically))
+                    Text(
+                        "$weekNumber",
+                        color = Color.White.copy(alpha = .58f),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .width(18.dp)
+                            .align(Alignment.CenterVertically)
+                    )
                     repeat(7) { column ->
                         val number = week * 7 + column - offset + 1
                         val validDay = number in 1..month.lengthOfMonth()
@@ -875,11 +884,20 @@ private fun MonthPanel(
 
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = when { day == null -> Color.Transparent; selectedDay -> accent.copy(alpha = .88f); todayDay -> accent.copy(alpha = .42f); else -> Color(0x991B2028) }
+                                containerColor = when {
+                                    day == null -> Color.Transparent
+                                    selectedDay -> accent.copy(alpha = .88f)
+                                    todayDay -> accent.copy(alpha = .42f)
+                                    else -> Color(0x991B2028)
+                                }
                             ),
                             border = if (day == null) null else BorderStroke(
                                 if (todayDay && !selectedDay) 2.dp else 1.dp,
-                                when { selectedDay -> accent.copy(alpha = .95f); todayDay -> accent; else -> Color.White.copy(alpha = .18f) }
+                                when {
+                                    selectedDay -> accent.copy(alpha = .95f)
+                                    todayDay -> accent
+                                    else -> Color.White.copy(alpha = .18f)
+                                }
                             ),
                             elevation = CardDefaults.cardElevation(
                                 defaultElevation = if (day == null) 0.dp else if (selectedDay) 6.dp else 3.dp
@@ -1147,7 +1165,10 @@ private fun WorkRotationDialog(
                         .background(Color(0xFF21182B))
                 ) {
                     TextButton(
-                        onClick = { rotating = false; rotationWeeks = 1 },
+                        onClick = {
+                            rotating = false
+                            rotationWeeks = 1
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .background(if (!rotating) Color(0xFF9C4DFF) else Color.Transparent)
@@ -1155,7 +1176,10 @@ private fun WorkRotationDialog(
                         Text("Fast schema", color = if (!rotating) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                     }
                     TextButton(
-                        onClick = { rotating = true; rotationWeeks = 4 },
+                        onClick = {
+                            rotating = true
+                            rotationWeeks = 4
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .background(if (rotating) Color(0xFF9C4DFF) else Color.Transparent)
@@ -1354,7 +1378,17 @@ private fun WorkRotationDialog(
                     }
                 }
             },
-            confirmButton = { Button(onClick = { editingWeek = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C4DFF), contentColor = Color.White)) { Text("Klar") } },
+            confirmButton = {
+                Button(
+                    onClick = { editingWeek = null },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF9C4DFF),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Klar")
+                }
+            },
             dismissButton = {}
         )
     }
@@ -1401,7 +1435,11 @@ private fun WorkMonthDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹") }
-                    Text("${month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${month.year}", modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    Text(
+                        "${month.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${month.year}",
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
                     TextButton(onClick = { month = month.plusMonths(1) }) { Text("›") }
                 }
                 OutlinedTextField(title, { title = it }, label = { Text("Rubrik") }, modifier = Modifier.fillMaxWidth())
@@ -1434,8 +1472,28 @@ private fun WorkMonthDialog(
                                 }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { pickTime(rule.startTime) { value -> rules = rules.toMutableList().also { it[index] = rule.copy(startTime = value) } } }) { Text("Från ${rule.startTime}") }
-                                OutlinedButton(onClick = { pickTime(rule.endTime) { value -> rules = rules.toMutableList().also { it[index] = rule.copy(endTime = value) } } }) { Text("Till ${rule.endTime}") }
+                                OutlinedButton(
+                                    onClick = {
+                                        pickTime(rule.startTime) { value ->
+                                            rules = rules.toMutableList().also {
+                                                it[index] = rule.copy(startTime = value)
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text("Från ${rule.startTime}")
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        pickTime(rule.endTime) { value ->
+                                            rules = rules.toMutableList().also {
+                                                it[index] = rule.copy(endTime = value)
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text("Till ${rule.endTime}")
+                                }
                             }
                             if (rules.size > 1) TextButton(onClick = { rules = rules.toMutableList().also { it.removeAt(index) } }) { Text("Ta bort regel") }
                         }

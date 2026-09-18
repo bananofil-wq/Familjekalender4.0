@@ -446,9 +446,24 @@ private fun SyncedApp(
                                 session,
                                 shopping,
                                 mailOffers,
-                                { name -> scope.launch { SupabaseSync.addShopping(session, name); refresh() } },
-                                { item -> scope.launch { SupabaseSync.toggleShopping(session, item); refresh() } },
-                                { scope.launch { SupabaseSync.clearChecked(session); refresh() } }
+                                { name ->
+                                    scope.launch {
+                                        SupabaseSync.addShopping(session, name)
+                                        refresh()
+                                    }
+                                },
+                                { item ->
+                                    scope.launch {
+                                        SupabaseSync.toggleShopping(session, item)
+                                        refresh()
+                                    }
+                                },
+                                {
+                                    scope.launch {
+                                        SupabaseSync.clearChecked(session)
+                                        refresh()
+                                    }
+                                }
                             )
                             2 -> ToDoScreen(session)
                             3 -> {
@@ -620,11 +635,29 @@ private fun ShoppingScreen(
     }
     Spacer(Modifier.height(14.dp))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text("Lägg till vara") }, placeholder = { Text("t.ex. mjölk, bananer, kaffe") }, singleLine = true, modifier = Modifier.weight(1f))
-        FilledIconButton(onClick = {
-            text.split(',', ';', '\n').map { it.trim() }.filter { it.isNotBlank() }.forEach(onAdd)
-            text = ""
-        }, enabled = text.isNotBlank(), modifier = Modifier.size(56.dp), shape = RoundedCornerShape(14.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text("Lägg till vara") },
+            placeholder = { Text("t.ex. mjölk, bananer, kaffe") },
+            singleLine = true,
+            modifier = Modifier.weight(1f)
+        )
+        FilledIconButton(
+            onClick = {
+                text.split(',', ';', '\n')
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .forEach(onAdd)
+                text = ""
+            },
+            enabled = text.isNotBlank(),
+            modifier = Modifier.size(56.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
             Icon(Icons.Default.Add, contentDescription = "Lägg till", tint = Color.Black)
         }
     }
@@ -709,7 +742,30 @@ private fun ShoppingScreen(
     }
 
     if (showClearConfirmation) {
-        AlertDialog(onDismissRequest = { showClearConfirmation = false }, title = { Text("Rensa avbockade?") }, text = { Text("${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan.") }, confirmButton = { TextButton(onClick = { showClearConfirmation = false; onClear() }) { Text("Ta bort") } }, dismissButton = { TextButton(onClick = { showClearConfirmation = false }) { Text("Avbryt") } })
+        AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            title = { Text("Rensa avbockade?") },
+            text = {
+                Text(
+                    "${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearConfirmation = false
+                        onClear()
+                    }
+                ) {
+                    Text("Ta bort")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmation = false }) {
+                    Text("Avbryt")
+                }
+            }
+        )
     }
 }
 
@@ -889,7 +945,10 @@ private fun SettingsScreen(
         }
         Spacer(Modifier.height(10.dp))
         Button(
-            onClick = { onSaveSportSettings(url.trim(), memberId); onImport(url.trim(), memberId) },
+            onClick = {
+                onSaveSportSettings(url.trim(), memberId)
+                onImport(url.trim(), memberId)
+            },
             enabled = url.isNotBlank() && memberId != null,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = MaterialTheme.shapes.medium,
