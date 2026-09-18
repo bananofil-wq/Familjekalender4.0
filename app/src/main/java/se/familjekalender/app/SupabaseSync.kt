@@ -76,9 +76,9 @@ object SupabaseSync {
 
     suspend fun joinFamily(code: String): FamilySession = withContext(Dispatchers.IO) {
         val clean = code.trim().uppercase()
-        val result = request(
-            "GET",
-            "/rest/v1/families?select=id,name,join_code&limit=1",
+        val result = familyApiRequest(
+            method = "GET",
+            path = "/rest/v1/families?select=id,name,join_code&limit=1",
             familyCode = clean
         )
         val array = JSONArray(result)
@@ -576,7 +576,8 @@ object SupabaseSync {
     private fun familyApiRequest(
         method: String,
         path: String,
-        body: JSONObject? = null
+        body: JSONObject? = null,
+        familyCode: String? = null
     ): String {
         val connection = URL("$SUPABASE_URL/functions/v1/family-api").openConnection() as HttpURLConnection
         return try {
@@ -594,6 +595,9 @@ object SupabaseSync {
                 .put("preferRepresentation", true)
             if (body != null) {
                 payload.put("body", body)
+            }
+            if (!familyCode.isNullOrBlank()) {
+                payload.put("familyCode", familyCode.uppercase())
             }
 
             connection.outputStream.use {
