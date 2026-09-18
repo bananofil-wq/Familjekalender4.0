@@ -92,9 +92,37 @@ jobs:
           • Hela väderkortet använder en explicit klickbar yta och öppnar Inställningar.
           • Behåller premiumdesignen och widgetfixarna från föregående version.
           EOF
-          gh release create "v${FAMILJEKALENDER_VERSION_NAME}" \
-            "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" \
-            --target main \
-            --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
-            --notes-file release-notes.txt \
-            --latest
+          TAG="v${FAMILJEKALENDER_VERSION_NAME}"
+          APK="Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" --clobber
+            gh release edit "$TAG" \
+              --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
+              --notes-file release-notes.txt \
+              --latest
+          else
+            gh release create "$TAG" \
+              "$APK#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" \
+              --target main \
+              --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
+              --notes-file release-notes.txt \
+              --latest
+          fi
+
+      - name: Mark signed APK verified
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p build-triggers
+          MARKER="build-triggers/signed-verified-${FAMILJEKALENDER_VERSION_NAME}.txt"
+          printf 'Signed APK verified and release published: %s\n' "${FAMILJEKALENDER_VERSION_NAME}" > "$MARKER"
+          git add "$MARKER"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Verify signed APK ${FAMILJEKALENDER_VERSION_NAME}"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
