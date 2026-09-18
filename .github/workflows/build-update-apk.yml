@@ -21,7 +21,12 @@ jobs:
       - name: Set update version
         shell: bash
         run: |
-          echo "FAMILJEKALENDER_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          VERSION_CODE=$((2090000000 + GITHUB_RUN_NUMBER))
+          if [ "$VERSION_CODE" -le 2026091810 ] || [ "$VERSION_CODE" -gt 2100000000 ]; then
+            echo "Invalid Android versionCode: $VERSION_CODE" >&2
+            exit 1
+          fi
+          echo "FAMILJEKALENDER_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "FAMILJEKALENDER_VERSION_NAME=4.3.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
 
       - name: Restore signing configuration
