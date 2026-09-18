@@ -6,3 +6,4 @@ verify-pipeline 4.3.20260918.2
 diagnostic-retry 4.3.20260918.2
 compiler-diagnostic-retry 4.3.20260918.2
 fix-dialog-scope 4.3.20260918.2
+post-fix-clean-retry 4.3.20260918.2
