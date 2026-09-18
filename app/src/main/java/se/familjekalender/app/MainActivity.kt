@@ -653,14 +653,28 @@ private fun ShoppingScreen(
     val categoryOrder = listOf("Frukt & grönt", "Mejeri & ägg", "Kött & fisk", "Skafferi", "Frys", "Hygien", "Hushåll", "Övrigt")
     val grouped = openItems.groupBy { categoryFor(it.name) }
 
-    Text("Inköp", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Inköp", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Surface(
+            shape = RoundedCornerShape(99.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .55f))
+        ) {
+            Text("♛  Premium", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+        }
+    }
     Text("Familjens gemensamma inköpslista", color = Muted)
     Spacer(Modifier.height(16.dp))
-    Card(colors = CardDefaults.cardColors(containerColor = SoftPurple), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = SoftPurple.copy(alpha = .82f)),
+        shape = RoundedCornerShape(24.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .42f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(20.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
-                    Text(if (total == 0) "Listan är tom" else "$done av $total klara", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(if (total == 0) "Listan är tom" else "$done av $total klara", fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Text(if (openItems.isEmpty() && total > 0) "Allt är fixat" else "${openItems.size} kvar att handla", color = Muted, fontSize = 13.sp)
                 }
                 if (total > 0) Text("${(animatedProgress * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -690,8 +704,8 @@ private fun ShoppingScreen(
                 text = ""
             },
             enabled = text.isNotBlank(),
-            modifier = Modifier.size(56.dp),
-            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.size(64.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary
             )
@@ -700,7 +714,13 @@ private fun ShoppingScreen(
         }
     }
     Text("Tips: skriv flera varor separerade med kommatecken", color = Muted, fontSize = 11.sp)
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(12.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PremiumShoppingAction("🏷", "Prisjämför", true, Modifier.weight(1f))
+        PremiumShoppingAction("▣", "Recept", false, Modifier.weight(1f))
+        PremiumShoppingAction("☷", "Planera", false, Modifier.weight(1f))
+    }
+    Spacer(Modifier.height(10.dp))
 
     AnimatedContent(
         targetState = items,
@@ -765,7 +785,7 @@ private fun ShoppingScreen(
                 Spacer(Modifier.height(14.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Klara (${visibleChecked.size})", color = Muted, fontWeight = FontWeight.SemiBold)
-                    TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa avbockade") }
+                    TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa bockade") }
                 }
                 visibleChecked.forEach { item ->
                     Card(colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .62f)), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
@@ -782,7 +802,7 @@ private fun ShoppingScreen(
     if (showClearConfirmation) {
         AlertDialog(
             onDismissRequest = { showClearConfirmation = false },
-            title = { Text("Rensa avbockade?") },
+            title = { Text("Rensa bockade?") },
             text = {
                 Text(
                     "${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan."
@@ -804,6 +824,30 @@ private fun ShoppingScreen(
                 }
             }
         )
+    }
+}
+
+
+@Composable
+private fun PremiumShoppingAction(icon: String, label: String, selected: Boolean, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.height(52.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .15f) else CardBg.copy(alpha = .72f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .75f) else Color.White.copy(alpha = .08f)
+        )
+    ) {
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(icon, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
+            Spacer(Modifier.width(6.dp))
+            Text(label, color = if (selected) MaterialTheme.colorScheme.primary else Muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        }
     }
 }
 
