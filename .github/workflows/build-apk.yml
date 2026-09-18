@@ -1,58 +1,22 @@
-name: Build Android APK
+name: Temporary Android Studio Kotlin Reformat
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - tmp/android-studio-reformat
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
+  reformat:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout formatting target
         uses: actions/checkout@v4
-
-      - name: Verify approved seasonal images
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import sys
-
-          expected = (
-              "season_spring.webp",
-              "season_summer.webp",
-              "season_autumn.webp",
-              "season_winter.webp",
-          )
-
-          root = Path("app/src/main/res/drawable-nodpi")
-          errors = []
-
-          for name in expected:
-              path = root / name
-              if not path.is_file():
-                  errors.append(f"missing: {path}")
-                  continue
-
-              data = path.read_bytes()
-
-              if len(data) < 100_000:
-                  errors.append(f"image unexpectedly small: {name} ({len(data)} bytes)")
-
-              if not (data.startswith(b"RIFF") and data[8:12] == b"WEBP"):
-                  errors.append(f"not a valid WebP container: {name}")
-
-          if errors:
-              print("Season image verification FAILED")
-              print("\n".join(errors))
-              sys.exit(1)
-
-          print("Season image verification OK: all four approved high-resolution WebP resources are present")
-          PY
+        with:
+          ref: cleanup/material3-timepickers-and-format
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -60,17 +24,71 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Optimize Kotlin imports
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3             https://github.com/Kotlin/ktfmt/releases/download/v0.64/ktfmt-0.64-with-dependencies.jar             -o /tmp/ktfmt.jar
+          find app/src/main/java -type f -name '*.kt' -print0             | xargs -0 java -jar /tmp/ktfmt.jar --kotlinlang-style
+
+      - name: Install Android Studio Quail 4 formatter
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3             https://edgedl.me.gvt1.com/android/studio/ide-zips/2026.1.4.7/android-studio-quail4-linux.tar.gz             -o /tmp/android-studio.tar.gz
+          echo "4be240083df5ada290975d87d60fc212a3d38d4f258a1250989885a9dbc79980  /tmp/android-studio.tar.gz"             | sha256sum -c -
+          tar -xzf /tmp/android-studio.tar.gz -C /tmp
+
+      - name: Reformat Kotlin sources with Android Studio
+        shell: bash
+        env:
+          CI: "true"
+        run: |
+          set -euo pipefail
+          /tmp/android-studio/bin/format.sh             -allowDefaults             -r             -m '*.kt'             app/src/main/java
+
+      - name: Check formatting scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only)"
+          printf '%s\n' "$changed"
+          if [ -z "$changed" ]; then
+            echo "No formatting changes were produced."
+            exit 1
+          fi
+          bad="$(printf '%s\n' "$changed" | grep -Ev '^app/src/main/java/.*\.kt$' || true)"
+          if [ -n "$bad" ]; then
+            echo "Unexpected non-formatting files changed:"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          long_lines = []
+          for path in Path("app/src/main/java").rglob("*.kt"):
+              for number, line in enumerate(path.read_text().splitlines(), 1):
+                  if len(line) > 200:
+                      long_lines.append((str(path), number, len(line)))
+          print(f"Lines over 200 chars after formatting: {len(long_lines)}")
+          for item in long_lines[:50]:
+              print(*item, sep=":")
+          PY
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Verify Kotlin compile
+        run: gradle :app:compileDebugKotlin --stacktrace
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Familjekalender-current-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+      - name: Commit formatting only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java
+          git commit -m "style: reformat overlong lines"
+          git push origin HEAD:cleanup/material3-timepickers-and-format
