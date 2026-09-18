@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091809'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.9'
+      FAMILJEKALENDER_VERSION_CODE: '2026091810'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.10'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           printf 'prepare-update-apk\n' > /tmp/familjekalender-build-stage
-          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.9.apk
+          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.10.apk
 
       - name: Mark artifact upload stage
         shell: bash
@@ -95,8 +95,8 @@ jobs:
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-signed-update-4.3.20260918.9
-          path: Familjekalender-4.3.20260918.9.apk
+          name: Familjekalender-signed-update-4.3.20260918.10
+          path: Familjekalender-4.3.20260918.10.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -108,13 +108,14 @@ jobs:
           set -euo pipefail
           printf 'publish-github-release\n' > /tmp/familjekalender-build-stage
           cat > release-notes.txt <<'EOF'
-          Förfinad 3D-glasmarkering i Clean-läget.
+          Förfinad Clean-kalender och stabilare synk.
 
-          • Den lila ringen runt valt datum är helt borttagen.
-          • Valt datum visas som en neutral transparent glasbubbla med vit glaskant.
-          • Bubblan är mer utåtbuktad med starkare djupskugga och diskret ljusreflex upptill.
-          • Aktivitetsprickarna ligger kvar inne i glasbubblan.
-          • Övriga 3D-glaselement från föregående version behålls.
+          • Den lila ringen runt valt datum är borttagen; dagens datum visas som en neutral transparent 3D-glasbubbla.
+          • Glasbubblan har tydligare djup, ljusreflex och aktivitetsprickarna ligger kvar inuti.
+          • Kalenderns 30-minuterssynk pausas i bakgrunden och återupptas när appen används.
+          • Notisbehörighet hanteras efter familjeinställningen och kan återställas via inställningar efter nekad behörighet.
+          • SportAdmin-importen hanterar TZID, återkommande aktiviteter och sluttider robustare.
+          • HTTP-anslutningar stängs korrekt efter Supabase- och SportAdmin-anrop.
           EOF
           TAG="v${FAMILJEKALENDER_VERSION_NAME}"
           APK="Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk"
