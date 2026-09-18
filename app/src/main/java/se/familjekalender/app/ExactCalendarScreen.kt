@@ -2,7 +2,6 @@ package se.familjekalender.app
 
 import android.app.Activity
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -66,6 +65,12 @@ private enum class SeriesEditScope {
     WHOLE_SERIES
 }
 
+private data class MaterialTimePickerRequest(
+    val initialHour: Int,
+    val initialMinute: Int,
+    val onPicked: (Int, Int) -> Unit
+)
+
 private fun isLaundryEvent(event: SyncEvent): Boolean {
     val title = event.title.trim()
     return title.startsWith("🧺") || title.equals("Tvätt", ignoreCase = true)
@@ -73,6 +78,38 @@ private fun isLaundryEvent(event: SyncEvent): Boolean {
 
 private fun displayEventTitle(event: SyncEvent): String =
     event.title.removePrefix("🌈").removePrefix("🧺").trim()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MyTimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    onDismiss: () -> Unit,
+    onPicked: (hour: Int, minute: Int) -> Unit
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = true
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onPicked(state.hour, state.minute) }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Avbryt")
+            }
+        },
+        text = {
+            TimePicker(state = state)
+        }
+    )
+}
 
 @Composable
 internal fun ExactCalendarScreen(
@@ -691,6 +728,7 @@ private fun EditEventDialog(
     var endTime by remember(event.id) { mutableStateOf(event.endTime ?: "") }
     var memberId by remember(event.id) { mutableStateOf(event.memberId ?: ALL_FAMILY_MEMBER_ID) }
     var editScope by remember(event.id) { mutableStateOf(SeriesEditScope.THIS) }
+    var timePickerRequest by remember(event.id) { mutableStateOf<MaterialTimePickerRequest?>(null) }
 
     fun chooseDate() {
         DatePickerDialog(context, { _, year, month, day ->
@@ -700,17 +738,17 @@ private fun EditEventDialog(
 
     fun chooseTime() {
         val parsed = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
-        TimePickerDialog(context, { _, hour, minute ->
+        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { hour, minute ->
             time = "%02d:%02d".format(hour, minute)
-        }, parsed.hour, parsed.minute, true).show()
+        }
     }
 
     fun chooseEndTime() {
         val fallback = runCatching { LocalTime.parse(time).plusHours(1) }.getOrElse { LocalTime.of(19, 0) }
         val parsed = runCatching { LocalTime.parse(endTime) }.getOrDefault(fallback)
-        TimePickerDialog(context, { _, hour, minute ->
+        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { hour, minute ->
             endTime = "%02d:%02d".format(hour, minute)
-        }, parsed.hour, parsed.minute, true).show()
+        }
     }
 
     AlertDialog(
@@ -774,6 +812,18 @@ private fun EditEventDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
     )
+
+    timePickerRequest?.let { request ->
+        MyTimePickerDialog(
+            initialHour = request.initialHour,
+            initialMinute = request.initialMinute,
+            onDismiss = { timePickerRequest = null },
+            onPicked = { hour, minute ->
+                request.onPicked(hour, minute)
+                timePickerRequest = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -1106,6 +1156,7 @@ private fun WorkRotationDialog(
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var editingWeek by remember { mutableStateOf<Int?>(null) }
+    var timePickerRequest by remember { mutableStateOf<MaterialTimePickerRequest?>(null) }
     var weeks by remember {
         mutableStateOf(
             listOf(
@@ -1122,7 +1173,7 @@ private fun WorkRotationDialog(
         val currentTimes = week.dayTimes[day] ?: (week.startTime to week.endTime)
         val current = if (start) currentTimes.first else currentTimes.second
         val parsed = runCatching { LocalTime.parse(current) }.getOrDefault(LocalTime.of(6, 0))
-        TimePickerDialog(context, { _, h, m ->
+        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { h, m ->
             val value = "%02d:%02d".format(h, m)
             weeks = weeks.toMutableList().also { list ->
                 val old = list[index]
@@ -1130,7 +1181,7 @@ private fun WorkRotationDialog(
                 val updatedTimes = if (start) value to oldTimes.second else oldTimes.first to value
                 list[index] = old.copy(dayTimes = old.dayTimes + (day to updatedTimes))
             }
-        }, parsed.hour, parsed.minute, true).show()
+        }
     }
 
     AlertDialog(
@@ -1392,6 +1443,18 @@ private fun WorkRotationDialog(
             dismissButton = {}
         )
     }
+
+    timePickerRequest?.let { request ->
+        MyTimePickerDialog(
+            initialHour = request.initialHour,
+            initialMinute = request.initialMinute,
+            onDismiss = { timePickerRequest = null },
+            onPicked = { hour, minute ->
+                request.onPicked(hour, minute)
+                timePickerRequest = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -1410,6 +1473,7 @@ private fun WorkMonthDialog(
     var replaceExisting by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var timePickerRequest by remember { mutableStateOf<MaterialTimePickerRequest?>(null) }
     var rules by remember {
         mutableStateOf(
             listOf(
@@ -1420,7 +1484,9 @@ private fun WorkMonthDialog(
 
     fun pickTime(current: String, onPicked: (String) -> Unit) {
         val parsed = runCatching { LocalTime.parse(current) }.getOrDefault(LocalTime.of(6, 0))
-        TimePickerDialog(context, { _, h, m -> onPicked("%02d:%02d".format(h, m)) }, parsed.hour, parsed.minute, true).show()
+        timePickerRequest = MaterialTimePickerRequest(parsed.hour, parsed.minute) { h, m ->
+            onPicked("%02d:%02d".format(h, m))
+        }
     }
 
     AlertDialog(
@@ -1528,6 +1594,18 @@ private fun WorkMonthDialog(
         },
         dismissButton = { TextButton(enabled = !saving, onClick = onDismiss) { Text("Avbryt") } }
     )
+
+    timePickerRequest?.let { request ->
+        MyTimePickerDialog(
+            initialHour = request.initialHour,
+            initialMinute = request.initialMinute,
+            onDismiss = { timePickerRequest = null },
+            onPicked = { hour, minute ->
+                request.onPicked(hour, minute)
+                timePickerRequest = null
+            }
+        )
+    }
 }
 
 @Composable
