@@ -56,6 +56,7 @@ internal fun MailSettingsCard(session: FamilySession) {
     var status by remember { mutableStateOf("") }
     var syncing by remember { mutableStateOf(false) }
     var pendingGmailEmail by remember { mutableStateOf<String?>(null) }
+    var showGmailFallback by remember { mutableStateOf(false) }
 
     fun finishGmailAuthorization(result: AuthorizationResult, preferredEmail: String? = pendingGmailEmail) {
         val email = preferredEmail?.trim().orEmpty()
@@ -118,7 +119,8 @@ internal fun MailSettingsCard(session: FamilySession) {
                         if (authorization.hasResolution()) {
                             syncing = false
                             pendingGmailEmail = null
-                            status = "Gmail kopplades inte. Tryck på Koppla Gmail och godkänn åtkomsten i Google-rutan."
+                            showGmailFallback = true
+                            status = "Google godkände inte Gmail-behörigheten för den signerade appen. Du kan koppla Gmail direkt med ett Google app-lösenord."
                         } else {
                             finishGmailAuthorization(authorization, preferredEmail)
                         }
@@ -245,6 +247,13 @@ internal fun MailSettingsCard(session: FamilySession) {
 
             OutlinedButton(
                 enabled = !syncing,
+                onClick = { showGmailFallback = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = MaterialTheme.shapes.medium
+            ) { Text("Gmail med app-lösenord") }
+
+            OutlinedButton(
+                enabled = !syncing,
                 onClick = { showAddOther = true },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = MaterialTheme.shapes.medium
@@ -291,6 +300,34 @@ internal fun MailSettingsCard(session: FamilySession) {
         }
     }
 
+    if (showGmailFallback) {
+        GmailAppPasswordDialog(
+            onDismiss = { showGmailFallback = false },
+            onSaved = { account ->
+                scope.launch {
+                    syncing = true
+                    status = "Kontrollerar Gmail…"
+                    runCatching { MailSyncEngine.testAccount(context, account) }
+                        .onSuccess {
+                            accounts = accounts.filterNot {
+                                it.host.equals("imap.gmail.com", ignoreCase = true) &&
+                                    it.email.equals(account.email, ignoreCase = true)
+                            } + account
+                            MailAccountStore.save(context, accounts)
+                            MailSyncScheduler.schedule(context)
+                            val summary = MailSyncEngine.syncAll(context, session)
+                            status = "Gmail är kopplad. ${summary.events} kalenderinbjudningar och ${summary.offers} erbjudanden hittades."
+                            showGmailFallback = false
+                        }
+                        .onFailure { error ->
+                            status = "Kunde inte koppla Gmail med app-lösenord: ${error.message ?: "kontrollera Gmail-adress och app-lösenord"}"
+                        }
+                    syncing = false
+                }
+            }
+        )
+    }
+
     if (showAddOther) {
         AddMailAccountDialog(
             onDismiss = { showAddOther = false },
@@ -313,6 +350,72 @@ internal fun MailSettingsCard(session: FamilySession) {
             }
         )
     }
+}
+
+@Composable
+private fun GmailAppPasswordDialog(
+    onDismiss: () -> Unit,
+    onSaved: (MailAccount) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var appPassword by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Koppla Gmail") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Använd ett Google app-lösenord. Det fungerar utan den Google OAuth-koppling som blockerar knappen ovan.",
+                    color = LuxuryTextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+                Text(
+                    "App-lösenord kräver att 2-stegsverifiering är aktiverad på Google-kontot.",
+                    color = LuxuryTextMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Gmail-adress") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = appPassword,
+                    onValueChange = { appPassword = it.filterNot(Char::isWhitespace) },
+                    label = { Text("Google app-lösenord") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val normalizedEmail = email.trim()
+                    onSaved(
+                        MailAccount(
+                            label = "Gmail",
+                            email = normalizedEmail,
+                            host = "imap.gmail.com",
+                            port = 993,
+                            username = normalizedEmail,
+                            password = appPassword.trim()
+                        )
+                    )
+                },
+                enabled = email.contains("@") && appPassword.filterNot(Char::isWhitespace).length >= 16
+            ) {
+                Text("Testa och koppla")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+    )
 }
 
 @Composable
