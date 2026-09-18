@@ -57,6 +57,7 @@ internal fun MinimalCalendarScreen(
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var openedEvent by remember { mutableStateOf<SyncEvent?>(null) }
     val memberById = remember(members) { members.associateBy { it.id } }
     val eventsByDate = remember(events) { events.groupBy { it.date } }
     val selectedEvents = remember(events, selectedDate) {
@@ -137,7 +138,8 @@ internal fun MinimalCalendarScreen(
                 today = today,
                 events = selectedEvents,
                 memberById = memberById,
-                locale = locale
+                locale = locale,
+                onEventClick = { openedEvent = it }
             )
 
             Spacer(Modifier.height(12.dp))
@@ -207,6 +209,43 @@ internal fun MinimalCalendarScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showSearch = false }) { Text("Stäng") }
+            }
+        )
+    }
+}
+
+    openedEvent?.let { event ->
+        val memberName = if (event.memberId == ALL_FAMILY_MEMBER_ID) {
+            "Hela familjen"
+        } else {
+            memberById[event.memberId]?.name ?: "Övrigt"
+        }
+        val dateText = event.date
+            .format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+            .replaceFirstChar { it.uppercase(locale) }
+        val timeText = event.endTime?.let { "${event.time}–$it" } ?: event.time
+
+        AlertDialog(
+            onDismissRequest = { openedEvent = null },
+            title = {
+                Text(
+                    event.title,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(dateText)
+                    Text("Tid: $timeText")
+                    Text("Gäller för: $memberName")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { openedEvent = null }) {
+                    Text("Stäng")
+                }
             }
         )
     }
@@ -402,7 +441,8 @@ private fun CleanAgendaCard(
     today: LocalDate,
     events: List<SyncEvent>,
     memberById: Map<String, SyncMember>,
-    locale: Locale
+    locale: Locale,
+    onEventClick: (SyncEvent) -> Unit
 ) {
     val formatted = date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)).replaceFirstChar { it.uppercase(locale) }
     Surface(
@@ -445,6 +485,7 @@ private fun CleanAgendaCard(
                     Row(
                         Modifier
                             .fillMaxWidth()
+                            .clickable { onEventClick(event) }
                             .padding(vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -513,12 +554,11 @@ private fun CleanAssistantCard(eventCount: Int, modifier: Modifier = Modifier) {
 @Composable
 private fun CleanWeatherCard(onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
+        onClick = onOpenSettings,
         color = CleanGlassSoft,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, CleanBorder),
-        modifier = modifier
-            .heightIn(min = 100.dp)
-            .clickable(onClick = onOpenSettings)
+        modifier = modifier.heightIn(min = 100.dp)
     ) {
         Column(
             Modifier.padding(13.dp),
