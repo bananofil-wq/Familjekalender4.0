@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091807'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.7'
+      FAMILJEKALENDER_VERSION_CODE: '2026091808'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.8'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           printf 'prepare-update-apk\n' > /tmp/familjekalender-build-stage
-          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.7.apk
+          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.8.apk
 
       - name: Mark artifact upload stage
         shell: bash
@@ -95,8 +95,8 @@ jobs:
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-signed-update-4.3.20260918.7
-          path: Familjekalender-4.3.20260918.7.apk
+          name: Familjekalender-signed-update-4.3.20260918.8
+          path: Familjekalender-4.3.20260918.8.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -108,13 +108,14 @@ jobs:
           set -euo pipefail
           printf 'publish-github-release\n' > /tmp/familjekalender-build-stage
           cat > release-notes.txt <<'EOF'
-          Gmail-koppling med fungerande reservväg.
+          3D-glasskalender i Clean-läget.
 
-          • Google OAuth-knappen finns kvar för konton där Google-behörigheten fungerar.
-          • Om Google fortfarande inte godkänner Gmail-behörigheten öppnas en tydlig reservväg med Google app-lösenord.
-          • Gmail med app-lösenord använder IMAP över SSL och lösenordet lagras krypterat med Android Keystore.
-          • Appen testar anslutningen innan kontot sparas och startar därefter mailsynk direkt.
-          • Clean-assistenten, väderdata och Inköp i Clean-menyn ingår.
+          • Vald dag använder nu en transparent glasbubbla i stället för en solid lila cirkel.
+          • Aktivitetsprickarna ligger inne i den valda glasbubblan.
+          • Övriga datum har subtila transparenta glass-rutor med rundade hörn och lätt djup.
+          • Idag- och månadsknapparna har fått samma 3D-glass-stil.
+          • Kalenderpanelen har tydligare glasdjup, mjukare kant och diskret skugga.
+          • Gmail-reservvägen, väderdata och Clean-assistenten från föregående version ingår.
           EOF
           TAG="v${FAMILJEKALENDER_VERSION_NAME}"
           APK="Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk"
