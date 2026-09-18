@@ -1,2 +1,0 @@
-Trigger signed update build after source commit e6a084e83ecb7abcd38d4a31851289c1b3583b67.
-Clickable week details are verified in FamilyAssistantScreen.kt after recurrence workflow cleanup.
