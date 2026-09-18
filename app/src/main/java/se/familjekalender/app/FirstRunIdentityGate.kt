@@ -29,24 +29,28 @@ private fun identityConfirmationKey(sessionId: String) =
 @Composable
 fun FirstRunIdentityGate(
     session: FamilySession,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val mainPrefs = remember { context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE) }
-    val locationPrefs = remember { context.getSharedPreferences(LOCATION_PREFS_IDENTITY, Context.MODE_PRIVATE) }
+    val locationPrefs = remember {
+        context.getSharedPreferences(LOCATION_PREFS_IDENTITY, Context.MODE_PRIVATE)
+    }
     val confirmationKey = remember(session.id) { identityConfirmationKey(session.id) }
 
     var members by remember(session.id) { mutableStateOf<List<SyncMember>>(emptyList()) }
     var loading by remember(session.id) { mutableStateOf(true) }
     var error by remember(session.id) { mutableStateOf("") }
-    var selectedMemberId by remember(session.id) {
+    var selectedMemberId by
+    remember(session.id) {
         mutableStateOf(
             mainPrefs.getString(DEVICE_MEMBER_KEY, null)
                 ?: locationPrefs.getString(DEVICE_MEMBER_KEY, null)
         )
     }
-    var identityConfirmed by remember(session.id) {
+    var identityConfirmed by
+    remember(session.id) {
         mutableStateOf(mainPrefs.getBoolean(confirmationKey, false))
     }
 
@@ -82,7 +86,8 @@ fun FirstRunIdentityGate(
 
     LaunchedEffect(session.id) { reloadMembers() }
 
-    val chosenIsValid = identityConfirmed && selectedMemberId != null && members.any { it.id == selectedMemberId }
+    val chosenIsValid =
+        identityConfirmed && selectedMemberId != null && members.any { it.id == selectedMemberId }
     if (chosenIsValid) {
         content()
         return
@@ -96,46 +101,63 @@ fun FirstRunIdentityGate(
     Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier.fillMaxSize().padding(20.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBg)
+                colors = CardDefaults.cardColors(containerColor = CardBg),
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(22.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(22.dp)
+                            .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text("Vem är du?", fontSize = 28.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "Välj vem som använder den här telefonen. Valet sparas för hela appen, även platsdelning.",
-                        color = Muted
+                        color = Muted,
                     )
 
                     when {
                         loading -> {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                )
                                 Spacer(Modifier.width(12.dp))
                                 Text("Hämtar familjen…", color = Muted)
                             }
                         }
+
                         members.isNotEmpty() -> {
                             members.forEach { member ->
                                 Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { persistIdentity(member.id, confirmedByUser = true) },
+                                    modifier =
+                                        Modifier.fillMaxWidth().clickable {
+                                            persistIdentity(member.id, confirmedByUser = true)
+                                        },
                                     shape = RoundedCornerShape(18.dp),
-                                    border = BorderStroke(1.dp, Color(member.colorArgb).copy(alpha = .75f)),
-                                    colors = CardDefaults.cardColors(containerColor = Color(member.colorArgb).copy(alpha = .12f))
+                                    border =
+                                        BorderStroke(
+                                            1.dp,
+                                            Color(member.colorArgb).copy(alpha = .75f),
+                                        ),
+                                    colors =
+                                        CardDefaults.cardColors(
+                                            containerColor =
+                                                Color(member.colorArgb).copy(alpha = .12f)
+                                        ),
                                 ) {
                                     Column(Modifier.padding(16.dp)) {
-                                        Text(member.name, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                                        Text(
+                                            member.name,
+                                            fontSize = 19.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
                                         if (member.role.isNotBlank()) {
                                             Text(member.role, color = Muted, fontSize = 13.sp)
                                         }
@@ -160,22 +182,23 @@ fun FirstRunIdentityGate(
 
                     if (showCreate || (!loading && members.isEmpty())) {
                         Text(
-                            if (members.isEmpty()) "Skapa den första personen" else "Skapa min person",
-                            fontWeight = FontWeight.SemiBold
+                            if (members.isEmpty()) "Skapa den första personen"
+                            else "Skapa min person",
+                            fontWeight = FontWeight.SemiBold,
                         )
                         OutlinedTextField(
                             value = newName,
                             onValueChange = { newName = it },
                             label = { Text("Namn") },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
                         OutlinedTextField(
                             value = newRole,
                             onValueChange = { newRole = it },
                             label = { Text("Roll, t.ex. mamma, pappa, barn") },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
                         Button(
                             onClick = {
@@ -187,25 +210,38 @@ fun FirstRunIdentityGate(
                                             session,
                                             newName.trim(),
                                             newRole.trim(),
-                                            0xFFB47CFF
+                                            0xFFB47CFF,
                                         )
-                                        val loaded = SupabaseSync.loadMembers(session)
-                                            .filter { it.id != ALL_FAMILY_MEMBER_ID }
+                                        val loaded =
+                                            SupabaseSync.loadMembers(session).filter {
+                                                it.id != ALL_FAMILY_MEMBER_ID
+                                            }
                                         members = loaded
-                                        val created = loaded.lastOrNull {
-                                            it.name.equals(newName.trim(), ignoreCase = true) &&
-                                                it.role.equals(newRole.trim(), ignoreCase = true)
-                                        } ?: loaded.lastOrNull { it.name.equals(newName.trim(), ignoreCase = true) }
-                                            ?: error("Kunde inte hitta den skapade personen")
+                                        val created =
+                                            loaded.lastOrNull {
+                                                it.name.equals(newName.trim(), ignoreCase = true) &&
+                                                        it.role.equals(
+                                                            newRole.trim(),
+                                                            ignoreCase = true,
+                                                        )
+                                            }
+                                                ?: loaded.lastOrNull {
+                                                    it.name.equals(
+                                                        newName.trim(),
+                                                        ignoreCase = true,
+                                                    )
+                                                }
+                                                ?: error("Kunde inte hitta den skapade personen")
                                         persistIdentity(created.id, confirmedByUser = true)
-                                    }.onFailure {
-                                        error = it.message ?: "Kunde inte skapa personen"
                                     }
+                                        .onFailure {
+                                            error = it.message ?: "Kunde inte skapa personen"
+                                        }
                                     saving = false
                                 }
                             },
                             enabled = !saving && newName.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(if (saving) "Sparar…" else "Skapa och välj mig")
                         }

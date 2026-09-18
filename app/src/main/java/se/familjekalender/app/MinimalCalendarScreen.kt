@@ -68,7 +68,7 @@ internal fun MinimalCalendarScreen(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     onAdd: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
 ) {
     val context = LocalContext.current
     val locale = remember { Locale("sv", "SE") }
@@ -86,28 +86,33 @@ internal fun MinimalCalendarScreen(
     var forceWeatherRefresh by remember { mutableStateOf(false) }
 
     fun hasWeatherLocationPermission(): Boolean =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ) == PackageManager.PERMISSION_GRANTED
 
-    val weatherPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { grants ->
-        showWeatherDetails = true
-        if (grants.values.any { it }) {
-            weatherError = null
-            forceWeatherRefresh = true
-            weatherRefreshRequest++
-        } else {
-            weatherError = "Platsbehörighet behövs för att visa väder där du befinner dig."
+    val weatherPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            showWeatherDetails = true
+            if (grants.values.any { it }) {
+                weatherError = null
+                forceWeatherRefresh = true
+                weatherRefreshRequest++
+            } else {
+                weatherError = "Platsbehörighet behövs för att visa väder där du befinner dig."
+            }
         }
-    }
 
     val memberById = remember(members) { members.associateBy { it.id } }
     val eventsByDate = remember(events) { events.groupBy { it.date } }
-    val selectedEvents = remember(events, selectedDate) {
-        events.filter { it.date == selectedDate }
-            .sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
-    }
+    val selectedEvents =
+        remember(events, selectedDate) {
+            events
+                .filter { it.date == selectedDate }
+                .sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
+        }
 
     LaunchedEffect(selectedDate) {
         val target = YearMonth.from(selectedDate)
@@ -131,31 +136,29 @@ internal fun MinimalCalendarScreen(
             painter = painterResource(R.drawable.season_autumn),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
         )
         Box(
-            Modifier
-                .fillMaxSize()
+            Modifier.fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         listOf(
                             Color(0x44120B16),
                             Color(0x66120C19),
-                            Color(0x99110D18)
+                            Color(0x99110D18),
                         )
                     )
                 )
         )
 
         Column(
-            Modifier
-                .fillMaxSize()
+            Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             CleanHeader(
                 onSearch = { showSearch = true },
-                onAdd = onAdd
+                onAdd = onAdd,
             )
 
             Spacer(Modifier.height(12.dp))
@@ -184,7 +187,7 @@ internal fun MinimalCalendarScreen(
                 onToday = {
                     month = YearMonth.from(today)
                     onSelect(today)
-                }
+                },
             )
 
             Spacer(Modifier.height(12.dp))
@@ -195,19 +198,19 @@ internal fun MinimalCalendarScreen(
                 events = selectedEvents,
                 memberById = memberById,
                 locale = locale,
-                onEventClick = { openedEvent = it }
+                onEventClick = { openedEvent = it },
             )
 
             Spacer(Modifier.height(12.dp))
 
             Row(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 CleanAssistantCard(
                     eventCount = selectedEvents.size,
                     onClick = { showAssistantDetails = true },
-                    modifier = Modifier.weight(1.65f)
+                    modifier = Modifier.weight(1.65f),
                 )
                 CleanWeatherCard(
                     weather = weather,
@@ -222,12 +225,12 @@ internal fun MinimalCalendarScreen(
                             weatherPermissionLauncher.launch(
                                 arrayOf(
                                     Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
                                 )
                             )
                         }
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
 
@@ -237,12 +240,15 @@ internal fun MinimalCalendarScreen(
 
     if (showSearch) {
         val normalized = searchQuery.trim()
-        val matches = remember(events, normalized) {
-            if (normalized.isBlank()) emptyList()
-            else events.filter { it.title.contains(normalized, ignoreCase = true) }
-                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
-                .take(6)
-        }
+        val matches =
+            remember(events, normalized) {
+                if (normalized.isBlank()) emptyList()
+                else
+                    events
+                        .filter { it.title.contains(normalized, ignoreCase = true) }
+                        .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+                        .take(6)
+            }
         AlertDialog(
             onDismissRequest = { showSearch = false },
             title = { Text("Sök i kalendern") },
@@ -254,24 +260,31 @@ internal fun MinimalCalendarScreen(
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         placeholder = { Text("Aktivitet") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     matches.forEach { event ->
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
+                            modifier =
+                                Modifier.fillMaxWidth().clickable {
                                     onSelect(event.date)
                                     month = YearMonth.from(event.date)
                                     showSearch = false
                                     searchQuery = ""
-                                }
+                                },
                         ) {
                             Column(Modifier.padding(12.dp)) {
-                                Text(event.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${event.date} • ${event.time}", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    event.title,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    "${event.date} • ${event.time}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
                             }
                         }
                     }
@@ -282,19 +295,21 @@ internal fun MinimalCalendarScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showSearch = false }) { Text("Stäng") }
-            }
+            },
         )
     }
 
     openedEvent?.let { event ->
-        val memberName = if (event.memberId == ALL_FAMILY_MEMBER_ID) {
-            "Hela familjen"
-        } else {
-            memberById[event.memberId]?.name ?: "Övrigt"
-        }
-        val dateText = event.date
-            .format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
-            .replaceFirstChar { it.uppercase(locale) }
+        val memberName =
+            if (event.memberId == ALL_FAMILY_MEMBER_ID) {
+                "Hela familjen"
+            } else {
+                memberById[event.memberId]?.name ?: "Övrigt"
+            }
+        val dateText =
+            event.date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)).replaceFirstChar {
+                it.uppercase(locale)
+            }
         val timeText = event.endTime?.let { "${event.time}–$it" } ?: event.time
 
         AlertDialog(
@@ -304,7 +319,7 @@ internal fun MinimalCalendarScreen(
                     cleanEventTitle(event),
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             },
             text = {
@@ -318,7 +333,7 @@ internal fun MinimalCalendarScreen(
                 TextButton(onClick = { openedEvent = null }) {
                     Text("Stäng")
                 }
-            }
+            },
         )
     }
 
@@ -331,16 +346,20 @@ internal fun MinimalCalendarScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        Modifier
-                            .size(46.dp)
+                        Modifier.size(46.dp)
                             .clip(CircleShape)
                             .background(CleanPurple.copy(alpha = .24f)),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text("✦", color = CleanPurpleBright, fontSize = 24.sp)
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text("Assistenten", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Assistenten",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             },
             text = {
@@ -349,37 +368,40 @@ internal fun MinimalCalendarScreen(
                         if (selectedEvents.isEmpty()) "Allt ser lugnt ut för den valda dagen."
                         else "Du har ${selectedEvents.size} aktiviteter den valda dagen.",
                         color = Color.White.copy(alpha = .76f),
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
                     )
                     selectedEvents.take(6).forEach { event ->
-                        val memberName = if (event.memberId == ALL_FAMILY_MEMBER_ID) {
-                            "Hela familjen"
-                        } else {
-                            memberById[event.memberId]?.name ?: "Övrigt"
-                        }
+                        val memberName =
+                            if (event.memberId == ALL_FAMILY_MEMBER_ID) {
+                                "Hela familjen"
+                            } else {
+                                memberById[event.memberId]?.name ?: "Övrigt"
+                            }
                         Surface(
                             color = Color.White.copy(alpha = .045f),
                             shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
+                            modifier =
+                                Modifier.fillMaxWidth().clickable {
                                     showAssistantDetails = false
                                     openedEvent = event
-                                }
+                                },
                         ) {
                             Row(
                                 Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Box(
-                                    Modifier
-                                        .size(34.dp)
+                                    Modifier.size(34.dp)
                                         .clip(CircleShape)
                                         .background(CleanPurple.copy(alpha = .20f)),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Box(Modifier.size(7.dp).clip(CircleShape).background(CleanPurpleBright))
+                                    Box(
+                                        Modifier.size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(CleanPurpleBright)
+                                    )
                                 }
                                 Spacer(Modifier.width(10.dp))
                                 Text(
@@ -388,13 +410,13 @@ internal fun MinimalCalendarScreen(
                                     fontSize = 13.sp,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
                                 )
                                 Icon(
                                     Icons.Default.ChevronRight,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = .38f),
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(18.dp),
                                 )
                             }
                         }
@@ -405,7 +427,7 @@ internal fun MinimalCalendarScreen(
                 TextButton(onClick = { showAssistantDetails = false }) {
                     Text("Stäng", color = CleanPurpleBright, fontWeight = FontWeight.SemiBold)
                 }
-            }
+            },
         )
     }
 
@@ -418,51 +440,69 @@ internal fun MinimalCalendarScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        Modifier
-                            .size(46.dp)
+                        Modifier.size(46.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = .07f)),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.White.copy(alpha = .88f))
+                        Icon(
+                            Icons.Default.Cloud,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = .88f),
+                        )
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text("Väder", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Väder",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             },
             text = {
                 when {
                     weatherLoading -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.dp,
+                            )
                             Spacer(Modifier.width(12.dp))
                             Text("Hämtar aktuellt väder…", color = Color.White.copy(alpha = .76f))
                         }
                     }
+
                     weather != null -> {
                         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Text(
                                 "${weather!!.temperatureC}°",
                                 color = Color.White,
                                 fontSize = 40.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
                             )
-                            Text(weather!!.description, color = Color.White.copy(alpha = .76f), fontSize = 16.sp)
+                            Text(
+                                weather!!.description,
+                                color = Color.White.copy(alpha = .76f),
+                                fontSize = 16.sp,
+                            )
                             Text(
                                 "Aktuellt väder för din nuvarande plats.",
                                 color = Color.White.copy(alpha = .52f),
-                                fontSize = 11.sp
+                                fontSize = 11.sp,
                             )
                         }
                     }
+
                     else -> {
                         Text(
-                            weatherError ?: if (hasWeatherLocationPermission()) {
-                                "Kunde inte hämta vädret just nu."
-                            } else {
-                                "Tillåt platsåtkomst för att visa aktuellt väder."
-                            },
-                            color = Color.White.copy(alpha = .76f)
+                            weatherError
+                                ?: if (hasWeatherLocationPermission()) {
+                                    "Kunde inte hämta vädret just nu."
+                                } else {
+                                    "Tillåt platsåtkomst för att visa aktuellt väder."
+                                },
+                            color = Color.White.copy(alpha = .76f),
                         )
                     }
                 }
@@ -479,12 +519,12 @@ internal fun MinimalCalendarScreen(
                         onClick = {
                             forceWeatherRefresh = true
                             weatherRefreshRequest++
-                        }
+                        },
                     ) {
                         Text("Uppdatera", color = CleanPurpleBright)
                     }
                 }
-            }
+            },
         )
     }
 }
@@ -494,7 +534,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -503,7 +543,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     color = Color.White,
                     fontFamily = FontFamily.Cursive,
                     fontSize = 31.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.width(6.dp))
                 Text("♡", color = CleanPurpleBright, fontSize = 27.sp, fontWeight = FontWeight.Bold)
@@ -513,29 +553,40 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                 color = Color.White.copy(alpha = .67f),
                 fontSize = 9.sp,
                 letterSpacing = 1.8.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(
-                Modifier
-                    .size(43.dp)
+                Modifier.size(43.dp)
                     .clip(CircleShape)
                     .background(Color(0x661C1726))
                     .clickable(onClick = onSearch),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Search, contentDescription = "Sök", tint = Color.White, modifier = Modifier.size(21.dp))
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Sök",
+                    tint = Color.White,
+                    modifier = Modifier.size(21.dp),
+                )
             }
             Box(
-                Modifier
-                    .size(50.dp)
+                Modifier.size(50.dp)
                     .clip(CircleShape)
                     .background(Brush.linearGradient(listOf(CleanPurpleBright, CleanPurple)))
                     .clickable(onClick = onAdd),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Lägg till aktivitet", tint = Color.White, modifier = Modifier.size(27.dp))
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Lägg till aktivitet",
+                    tint = Color.White,
+                    modifier = Modifier.size(27.dp),
+                )
             }
         }
     }
@@ -552,7 +603,7 @@ private fun CleanCalendarCard(
     onSelect: (LocalDate) -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onToday: () -> Unit
+    onToday: () -> Unit,
 ) {
     Surface(
         color = Color(0xB31A1424),
@@ -560,34 +611,39 @@ private fun CleanCalendarCard(
         border = BorderStroke(1.2.dp, Color.White.copy(alpha = .17f)),
         shadowElevation = 8.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
+                    month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar {
+                        it.uppercase(locale)
+                    } + " ${month.year}",
                     color = Color.White,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Surface(
                         color = Color.White.copy(alpha = .075f),
                         shape = RoundedCornerShape(99.dp),
                         border = BorderStroke(1.dp, Color.White.copy(alpha = .20f)),
                         shadowElevation = 4.dp,
                         tonalElevation = 0.dp,
-                        modifier = Modifier.clickable(onClick = onToday)
+                        modifier = Modifier.clickable(onClick = onToday),
                     ) {
                         Text(
                             "Idag",
                             color = Color.White,
                             fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp)
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
                         )
                     }
                     SmallGlassIconButton(Icons.Default.ChevronLeft, "Föregående månad", onPrevious)
@@ -606,7 +662,7 @@ private fun CleanCalendarCard(
                         fontSize = 9.sp,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -623,12 +679,11 @@ private fun CleanCalendarCard(
                         val isSelected = date == selectedDate
                         val dayEvents = eventsByDate[date].orEmpty()
                         Box(
-                            Modifier
-                                .weight(1f)
+                            Modifier.weight(1f)
                                 .height(48.dp)
                                 .padding(horizontal = 2.dp, vertical = 2.dp)
                                 .clickable { onSelect(date) },
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             if (isSelected) {
                                 Surface(
@@ -637,12 +692,11 @@ private fun CleanCalendarCard(
                                     border = BorderStroke(1.dp, Color.White.copy(alpha = .34f)),
                                     shadowElevation = 13.dp,
                                     tonalElevation = 0.dp,
-                                    modifier = Modifier.size(44.dp)
+                                    modifier = Modifier.size(44.dp),
                                 ) {
                                     Box(Modifier.fillMaxSize()) {
                                         Box(
-                                            Modifier
-                                                .align(Alignment.TopCenter)
+                                            Modifier.align(Alignment.TopCenter)
                                                 .padding(top = 4.dp)
                                                 .width(24.dp)
                                                 .height(8.dp)
@@ -652,22 +706,29 @@ private fun CleanCalendarCard(
                                         Column(
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                             verticalArrangement = Arrangement.Center,
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier.fillMaxSize(),
                                         ) {
                                             Text(
                                                 date.dayOfMonth.toString(),
                                                 color = Color.White,
                                                 fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
                                             )
                                             Spacer(Modifier.height(2.dp))
                                             Row(
                                                 horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                modifier = Modifier.height(5.dp)
+                                                modifier = Modifier.height(5.dp),
                                             ) {
                                                 dayEvents.take(3).forEach { event ->
-                                                    val color = memberById[event.memberId]?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
-                                                    Box(Modifier.size(4.dp).clip(CircleShape).background(color))
+                                                    val color =
+                                                        memberById[event.memberId]?.let {
+                                                            Color(it.colorArgb.toInt())
+                                                        } ?: CleanPurpleBright
+                                                    Box(
+                                                        Modifier.size(4.dp)
+                                                            .clip(CircleShape)
+                                                            .background(color)
+                                                    )
                                                 }
                                             }
                                         }
@@ -675,38 +736,51 @@ private fun CleanCalendarCard(
                                 }
                             } else {
                                 Surface(
-                                    color = if (inMonth) Color.White.copy(alpha = .035f) else Color.White.copy(alpha = .015f),
+                                    color =
+                                        if (inMonth) Color.White.copy(alpha = .035f)
+                                        else Color.White.copy(alpha = .015f),
                                     shape = RoundedCornerShape(11.dp),
-                                    border = BorderStroke(
-                                        .6.dp,
-                                        Color.White.copy(alpha = if (inMonth) .09f else .045f)
-                                    ),
+                                    border =
+                                        BorderStroke(
+                                            .6.dp,
+                                            Color.White.copy(alpha = if (inMonth) .09f else .045f),
+                                        ),
                                     shadowElevation = if (inMonth) 1.dp else 0.dp,
                                     tonalElevation = 0.dp,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier.fillMaxSize(),
                                     ) {
                                         Text(
                                             date.dayOfMonth.toString(),
-                                            color = when {
-                                                inMonth -> Color.White.copy(alpha = .92f)
-                                                else -> Color.White.copy(alpha = .30f)
-                                            },
+                                            color =
+                                                when {
+                                                    inMonth -> Color.White.copy(alpha = .92f)
+                                                    else -> Color.White.copy(alpha = .30f)
+                                                },
                                             fontSize = 13.sp,
-                                            fontWeight = if (date == today) FontWeight.Bold else FontWeight.Normal
+                                            fontWeight =
+                                                if (date == today) FontWeight.Bold
+                                                else FontWeight.Normal,
                                         )
                                         Spacer(Modifier.height(2.dp))
                                         Row(
                                             horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                            modifier = Modifier.height(5.dp)
+                                            modifier = Modifier.height(5.dp),
                                         ) {
                                             dayEvents.take(3).forEach { event ->
-                                                val color = memberById[event.memberId]?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
-                                                Box(Modifier.size(4.dp).clip(CircleShape).background(color))
+                                                val color =
+                                                    memberById[event.memberId]?.let {
+                                                        Color(it.colorArgb.toInt())
+                                                    } ?: CleanPurpleBright
+                                                Box(
+                                                    Modifier.size(4.dp)
+                                                        .clip(CircleShape)
+                                                        .background(color)
+                                                )
                                             }
                                         }
                                     }
@@ -724,7 +798,7 @@ private fun CleanCalendarCard(
 private fun SmallGlassIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     description: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Surface(
         color = Color.White.copy(alpha = .07f),
@@ -732,16 +806,14 @@ private fun SmallGlassIconButton(
         border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
         shadowElevation = 4.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier
-            .size(35.dp)
-            .clickable(onClick = onClick)
+        modifier = Modifier.size(35.dp).clickable(onClick = onClick),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 icon,
                 contentDescription = description,
                 tint = Color.White.copy(alpha = .90f),
-                modifier = Modifier.size(19.dp)
+                modifier = Modifier.size(19.dp),
             )
         }
     }
@@ -754,20 +826,23 @@ private fun CleanAgendaCard(
     events: List<SyncEvent>,
     memberById: Map<String, SyncMember>,
     locale: Locale,
-    onEventClick: (SyncEvent) -> Unit
+    onEventClick: (SyncEvent) -> Unit,
 ) {
-    val formatted = date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)).replaceFirstChar { it.uppercase(locale) }
+    val formatted =
+        date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)).replaceFirstChar {
+            it.uppercase(locale)
+        }
     Surface(
         color = CleanGlassSoft,
         shape = RoundedCornerShape(25.dp),
         border = BorderStroke(1.dp, CleanBorder),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     if (date == today) "Idag • $formatted" else formatted,
@@ -776,13 +851,13 @@ private fun CleanAgendaCard(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
                     color = CleanMuted,
-                    fontSize = 10.sp
+                    fontSize = 10.sp,
                 )
             }
 
@@ -795,30 +870,57 @@ private fun CleanAgendaCard(
                     val member = memberById[event.memberId]
                     val accent = member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
                     Row(
-                        Modifier
-                            .fillMaxWidth()
+                        Modifier.fillMaxWidth()
                             .clickable { onEventClick(event) }
                             .padding(vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.width(3.dp).height(35.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+                        Box(
+                            Modifier.width(3.dp)
+                                .height(35.dp)
+                                .clip(RoundedCornerShape(99.dp))
+                                .background(accent)
+                        )
                         Spacer(Modifier.width(10.dp))
-                        Text(event.time, color = Color.White.copy(alpha = .67f), fontSize = 11.sp, modifier = Modifier.width(42.dp))
-                        Box(Modifier.size(24.dp).clip(CircleShape).background(accent.copy(alpha = .20f)), contentAlignment = Alignment.Center) {
+                        Text(
+                            event.time,
+                            color = Color.White.copy(alpha = .67f),
+                            fontSize = 11.sp,
+                            modifier = Modifier.width(42.dp),
+                        )
+                        Box(
+                            Modifier.size(24.dp)
+                                .clip(CircleShape)
+                                .background(accent.copy(alpha = .20f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
                         }
                         Spacer(Modifier.width(9.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(cleanEventTitle(event), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(
-                                if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member?.name ?: "Övrigt",
+                                cleanEventTitle(event),
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen"
+                                else member?.name ?: "Övrigt",
                                 color = Color.White.copy(alpha = .52f),
                                 fontSize = 10.sp,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .36f), modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = .36f),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     if (index < events.take(3).lastIndex) {
                         HorizontalDivider(color = Color.White.copy(alpha = .07f), thickness = .5.dp)
@@ -833,38 +935,44 @@ private fun CleanAgendaCard(
 private fun CleanAssistantCard(
     eventCount: Int,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         color = CleanGlassSoft,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, CleanBorder),
-        modifier = modifier
-            .heightIn(min = 100.dp)
-            .clickable(onClick = onClick)
+        modifier = modifier.heightIn(min = 100.dp).clickable(onClick = onClick),
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(CleanPurple.copy(alpha = .22f)),
-                contentAlignment = Alignment.Center
+                Modifier.size(38.dp).clip(CircleShape).background(CleanPurple.copy(alpha = .22f)),
+                contentAlignment = Alignment.Center,
             ) {
                 Text("✦", color = CleanPurpleBright, fontSize = 20.sp)
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("Assistenten", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Assistenten",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    if (eventCount == 0) "Allt ser bra ut idag! 🎉" else "Du har $eventCount aktiviteter idag.",
+                    if (eventCount == 0) "Allt ser bra ut idag! 🎉"
+                    else "Du har $eventCount aktiviteter idag.",
                     color = Color.White.copy(alpha = .67f),
                     fontSize = 11.sp,
-                    lineHeight = 15.sp
+                    lineHeight = 15.sp,
                 )
             }
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .32f), modifier = Modifier.size(17.dp))
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = .32f),
+                modifier = Modifier.size(17.dp),
+            )
         }
     }
 }
@@ -875,22 +983,25 @@ private fun CleanWeatherCard(
     loading: Boolean,
     hasLocationPermission: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         color = CleanGlassSoft,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, CleanBorder),
-        modifier = modifier
-            .heightIn(min = 100.dp)
-            .clickable(onClick = onClick)
+        modifier = modifier.heightIn(min = 100.dp).clickable(onClick = onClick),
     ) {
         Column(
             Modifier.padding(13.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
         ) {
-            Icon(Icons.Default.Cloud, contentDescription = null, tint = Color.White.copy(alpha = .80f), modifier = Modifier.size(25.dp))
+            Icon(
+                Icons.Default.Cloud,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = .80f),
+                modifier = Modifier.size(25.dp),
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 when {
@@ -900,7 +1011,7 @@ private fun CleanWeatherCard(
                 },
                 color = Color.White,
                 fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
             Text("Väder", color = Color.White.copy(alpha = .70f), fontSize = 10.sp)
             Text(
@@ -913,7 +1024,7 @@ private fun CleanWeatherCard(
                 color = Color.White.copy(alpha = .48f),
                 fontSize = 9.sp,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

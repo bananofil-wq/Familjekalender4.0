@@ -20,9 +20,9 @@ import androidx.compose.ui.unit.sp
 /**
  * Familjeappens gemensamma visuella språk.
  *
- * Varumärkesaccenten är stabil genom hela appen. Säsongsteman får fortfarande
- * ge kalenderbilder och sekundära detaljer personlighet, men knappar, navigation,
- * val och primära kontroller använder samma identitet överallt.
+ * Varumärkesaccenten är stabil genom hela appen. Säsongsteman får fortfarande ge kalenderbilder och
+ * sekundära detaljer personlighet, men knappar, navigation, val och primära kontroller använder
+ * samma identitet överallt.
  */
 internal val LuxuryBackground = Color(0xFF09080D)
 internal val LuxurySurface = Color(0xFF111016)
@@ -49,86 +49,92 @@ private fun luxuryStyle(
     size: Int,
     lineHeight: Int,
     weight: FontWeight = FontWeight.Normal,
-    letterSpacing: Float = 0f
-) = TextStyle(
-    fontFamily = FontFamily.SansSerif,
-    fontSize = size.sp,
-    lineHeight = lineHeight.sp,
-    fontWeight = weight,
-    letterSpacing = letterSpacing.sp
-)
+    letterSpacing: Float = 0f,
+) =
+    TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = size.sp,
+        lineHeight = lineHeight.sp,
+        fontWeight = weight,
+        letterSpacing = letterSpacing.sp,
+    )
 
-internal val LuxuryTypography = Typography(
-    displayLarge = luxuryStyle(50, 56, FontWeight.SemiBold, -1.0f),
-    displayMedium = luxuryStyle(42, 48, FontWeight.SemiBold, -0.8f),
-    displaySmall = luxuryStyle(34, 40, FontWeight.SemiBold, -0.5f),
-    headlineLarge = luxuryStyle(31, 37, FontWeight.SemiBold, -0.4f),
-    headlineMedium = luxuryStyle(27, 33, FontWeight.SemiBold, -0.3f),
-    headlineSmall = luxuryStyle(23, 29, FontWeight.SemiBold, -0.2f),
-    titleLarge = luxuryStyle(21, 27, FontWeight.SemiBold, -0.15f),
-    titleMedium = luxuryStyle(16, 22, FontWeight.SemiBold, 0f),
-    titleSmall = luxuryStyle(14, 20, FontWeight.SemiBold, 0.05f),
-    bodyLarge = luxuryStyle(16, 24, FontWeight.Normal, 0.03f),
-    bodyMedium = luxuryStyle(14, 21, FontWeight.Normal, 0.06f),
-    bodySmall = luxuryStyle(12, 18, FontWeight.Normal, 0.08f),
-    labelLarge = luxuryStyle(14, 20, FontWeight.SemiBold, 0.08f),
-    labelMedium = luxuryStyle(12, 17, FontWeight.SemiBold, 0.12f),
-    labelSmall = luxuryStyle(11, 16, FontWeight.Medium, 0.16f)
-)
+internal val LuxuryTypography =
+    Typography(
+        displayLarge = luxuryStyle(50, 56, FontWeight.SemiBold, -1.0f),
+        displayMedium = luxuryStyle(42, 48, FontWeight.SemiBold, -0.8f),
+        displaySmall = luxuryStyle(34, 40, FontWeight.SemiBold, -0.5f),
+        headlineLarge = luxuryStyle(31, 37, FontWeight.SemiBold, -0.4f),
+        headlineMedium = luxuryStyle(27, 33, FontWeight.SemiBold, -0.3f),
+        headlineSmall = luxuryStyle(23, 29, FontWeight.SemiBold, -0.2f),
+        titleLarge = luxuryStyle(21, 27, FontWeight.SemiBold, -0.15f),
+        titleMedium = luxuryStyle(16, 22, FontWeight.SemiBold, 0f),
+        titleSmall = luxuryStyle(14, 20, FontWeight.SemiBold, 0.05f),
+        bodyLarge = luxuryStyle(16, 24, FontWeight.Normal, 0.03f),
+        bodyMedium = luxuryStyle(14, 21, FontWeight.Normal, 0.06f),
+        bodySmall = luxuryStyle(12, 18, FontWeight.Normal, 0.08f),
+        labelLarge = luxuryStyle(14, 20, FontWeight.SemiBold, 0.08f),
+        labelMedium = luxuryStyle(12, 17, FontWeight.SemiBold, 0.12f),
+        labelSmall = luxuryStyle(11, 16, FontWeight.Medium, 0.16f),
+    )
 
-internal val LuxuryShapes = Shapes(
-    extraSmall = RoundedCornerShape(10.dp),
-    small = RoundedCornerShape(14.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(26.dp),
-    extraLarge = RoundedCornerShape(32.dp)
-)
+internal val LuxuryShapes =
+    Shapes(
+        extraSmall = RoundedCornerShape(10.dp),
+        small = RoundedCornerShape(14.dp),
+        medium = RoundedCornerShape(20.dp),
+        large = RoundedCornerShape(26.dp),
+        extraLarge = RoundedCornerShape(32.dp),
+    )
 
 @Composable
 internal fun FamiljekalenderLuxuryTheme(
     palette: SeasonPalette,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val motionEnabled = appMotionEnabled()
-    val accent by animateColorAsState(
+    val accent by
+    animateColorAsState(
         targetValue = LuxuryAccent,
-        animationSpec = tween(
-            durationMillis = motionDuration(LuxuryMotion.Slow, motionEnabled),
-            easing = FastOutSlowInEasing
-        ),
-        label = "luxury-theme-accent"
+        animationSpec =
+            tween(
+                durationMillis = motionDuration(LuxuryMotion.Slow, motionEnabled),
+                easing = FastOutSlowInEasing,
+            ),
+        label = "luxury-theme-accent",
     )
 
     MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = accent,
-            onPrimary = Color(0xFF130F18),
-            primaryContainer = LuxuryAccentSoft,
-            onPrimaryContainer = LuxuryText,
-            secondary = accent,
-            onSecondary = Color(0xFF130F18),
-            secondaryContainer = LuxurySurfaceHigh,
-            onSecondaryContainer = LuxuryText,
-            tertiary = palette.accent,
-            onTertiary = Color(0xFF171019),
-            tertiaryContainer = palette.soft,
-            onTertiaryContainer = LuxuryText,
-            background = LuxuryBackground,
-            onBackground = LuxuryText,
-            surface = LuxurySurface,
-            onSurface = LuxuryText,
-            surfaceVariant = LuxurySurfaceElevated,
-            onSurfaceVariant = LuxuryTextMuted,
-            surfaceTint = Color.Transparent,
-            inverseSurface = LuxuryText,
-            inverseOnSurface = LuxuryBackground,
-            outline = LuxuryOutline,
-            outlineVariant = LuxuryOutlineSoft,
-            error = LuxuryError,
-            onError = Color(0xFF24070C)
-        ),
+        colorScheme =
+            darkColorScheme(
+                primary = accent,
+                onPrimary = Color(0xFF130F18),
+                primaryContainer = LuxuryAccentSoft,
+                onPrimaryContainer = LuxuryText,
+                secondary = accent,
+                onSecondary = Color(0xFF130F18),
+                secondaryContainer = LuxurySurfaceHigh,
+                onSecondaryContainer = LuxuryText,
+                tertiary = palette.accent,
+                onTertiary = Color(0xFF171019),
+                tertiaryContainer = palette.soft,
+                onTertiaryContainer = LuxuryText,
+                background = LuxuryBackground,
+                onBackground = LuxuryText,
+                surface = LuxurySurface,
+                onSurface = LuxuryText,
+                surfaceVariant = LuxurySurfaceElevated,
+                onSurfaceVariant = LuxuryTextMuted,
+                surfaceTint = Color.Transparent,
+                inverseSurface = LuxuryText,
+                inverseOnSurface = LuxuryBackground,
+                outline = LuxuryOutline,
+                outlineVariant = LuxuryOutlineSoft,
+                error = LuxuryError,
+                onError = Color(0xFF24070C),
+            ),
         typography = LuxuryTypography,
         shapes = LuxuryShapes,
-        content = content
+        content = content,
     )
 }

@@ -43,16 +43,23 @@ internal fun Text(
     maxLines: Int = Int.MAX_VALUE,
     minLines: Int = 1,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
-    style: TextStyle = LocalTextStyle.current
+    style: TextStyle = LocalTextStyle.current,
 ) {
     when (text) {
         "★" -> {
-            val iconSize = if (fontSize != TextUnit.Unspecified && fontSize.value >= 18f) 18.dp else 14.dp
-            StarMarker(modifier = modifier.offset(y = (-4).dp), size = iconSize, tint = if (color == Color.Unspecified) Color(0xFFFFD75E) else color)
+            val iconSize =
+                if (fontSize != TextUnit.Unspecified && fontSize.value >= 18f) 18.dp else 14.dp
+            StarMarker(
+                modifier = modifier.offset(y = (-4).dp),
+                size = iconSize,
+                tint = if (color == Color.Unspecified) Color(0xFFFFD75E) else color,
+            )
             return
         }
+
         "🌈" -> {
-            val iconSize = if (fontSize != TextUnit.Unspecified && fontSize.value >= 17f) 20.dp else 16.dp
+            val iconSize =
+                if (fontSize != TextUnit.Unspecified && fontSize.value >= 17f) 20.dp else 16.dp
             RainbowMarker(modifier = modifier.offset(y = (-4).dp), size = iconSize)
             return
         }
@@ -75,7 +82,7 @@ internal fun Text(
         maxLines = maxLines,
         minLines = minLines,
         onTextLayout = onTextLayout,
-        style = style
+        style = style,
     )
 }
 
@@ -102,15 +109,16 @@ private fun StarMarker(modifier: Modifier, size: androidx.compose.ui.unit.Dp, ti
 @Composable
 private fun RainbowMarker(modifier: Modifier, size: androidx.compose.ui.unit.Dp) {
     Canvas(modifier = modifier.size(size)) {
-        val colors = listOf(
-            Color(0xFFFF1744),
-            Color(0xFFFF7A00),
-            Color(0xFFFFD600),
-            Color(0xFF32D74B),
-            Color(0xFF00A8FF),
-            Color(0xFF6C5CE7),
-            Color(0xFFC44DFF)
-        )
+        val colors =
+            listOf(
+                Color(0xFFFF1744),
+                Color(0xFFFF7A00),
+                Color(0xFFFFD600),
+                Color(0xFF32D74B),
+                Color(0xFF00A8FF),
+                Color(0xFF6C5CE7),
+                Color(0xFFC44DFF),
+            )
         val band = this.size.minDimension * 0.085f
         val baseWidth = this.size.width - band
         val baseHeight = this.size.height * 1.75f
@@ -122,11 +130,12 @@ private fun RainbowMarker(modifier: Modifier, size: androidx.compose.ui.unit.Dp)
                 sweepAngle = 180f,
                 useCenter = false,
                 topLeft = Offset(band / 2f + inset, band / 2f + inset),
-                size = Size(
-                    width = (baseWidth - inset * 2f).coerceAtLeast(band),
-                    height = (baseHeight - inset * 1.65f).coerceAtLeast(band)
-                ),
-                style = Stroke(width = band)
+                size =
+                    Size(
+                        width = (baseWidth - inset * 2f).coerceAtLeast(band),
+                        height = (baseHeight - inset * 1.65f).coerceAtLeast(band),
+                    ),
+                style = Stroke(width = band),
             )
         }
     }

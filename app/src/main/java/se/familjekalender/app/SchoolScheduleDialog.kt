@@ -2,7 +2,6 @@ package se.familjekalender.app
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,19 +11,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
+import kotlinx.coroutines.launch
 
 private data class SchoolWeekDraft(
     val weekdays: Set<Int>,
-    val dayTimes: Map<Int, Pair<String, String>>
+    val dayTimes: Map<Int, Pair<String, String>>,
 )
 
 @Composable
@@ -32,7 +30,7 @@ internal fun SchoolScheduleDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
     onDismiss: () -> Unit,
-    onChanged: () -> Unit
+    onChanged: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -43,13 +41,18 @@ internal fun SchoolScheduleDialog(
     var rotationWeeks by remember { mutableIntStateOf(1) }
     var selectedMemberId by remember {
         mutableStateOf(
-            eligibleMembers.firstOrNull { member ->
-                member.role.contains("barn", ignoreCase = true) || member.role.contains("child", ignoreCase = true)
-            }?.id ?: eligibleMembers.firstOrNull()?.id.orEmpty()
+            eligibleMembers
+                .firstOrNull { member ->
+                    member.role.contains("barn", ignoreCase = true) ||
+                            member.role.contains("child", ignoreCase = true)
+                }
+                ?.id ?: eligibleMembers.firstOrNull()?.id.orEmpty()
         )
     }
     var startDate by remember {
-        mutableStateOf(selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong()).plusWeeks(1))
+        mutableStateOf(
+            selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong()).plusWeeks(1)
+        )
     }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -60,7 +63,7 @@ internal fun SchoolScheduleDialog(
             List(4) {
                 SchoolWeekDraft(
                     weekdays = setOf(1, 2, 3, 4, 5),
-                    dayTimes = (1..5).associateWith { "07:30" to "16:00" }
+                    dayTimes = (1..5).associateWith { "07:30" to "16:00" },
                 )
             }
         )
@@ -70,14 +73,15 @@ internal fun SchoolScheduleDialog(
         timePickerTarget = Triple(index, day, start)
     }
 
-    val invalidTimeRange = weeks.take(rotationWeeks).any { week ->
-        week.weekdays.any { day ->
-            val times = week.dayTimes[day] ?: ("07:30" to "16:00")
-            val start = runCatching { LocalTime.parse(times.first) }.getOrNull()
-            val end = runCatching { LocalTime.parse(times.second) }.getOrNull()
-            start == null || end == null || !end.isAfter(start)
+    val invalidTimeRange =
+        weeks.take(rotationWeeks).any { week ->
+            week.weekdays.any { day ->
+                val times = week.dayTimes[day] ?: ("07:30" to "16:00")
+                val start = runCatching { LocalTime.parse(times.first) }.getOrNull()
+                val end = runCatching { LocalTime.parse(times.second) }.getOrNull()
+                start == null || end == null || !end.isAfter(start)
+            }
         }
-    }
 
     AlertDialog(
         onDismissRequest = { if (!saving) onDismiss() },
@@ -90,7 +94,7 @@ internal fun SchoolScheduleDialog(
         text = {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("Typ", fontSize = 12.sp, color = Color.White.copy(alpha = .7f))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -98,7 +102,7 @@ internal fun SchoolScheduleDialog(
                         FilterChip(
                             selected = type == option,
                             onClick = { type = option },
-                            label = { Text(option, maxLines = 1) }
+                            label = { Text(option, maxLines = 1) },
                         )
                     }
                 }
@@ -107,9 +111,12 @@ internal fun SchoolScheduleDialog(
                 eligibleMembers.forEach { member ->
                     Row(
                         Modifier.fillMaxWidth().clickable { selectedMemberId = member.id },
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = selectedMemberId == member.id, onClick = { selectedMemberId = member.id })
+                        RadioButton(
+                            selected = selectedMemberId == member.id,
+                            onClick = { selectedMemberId = member.id },
+                        )
                         Text(member.name)
                     }
                 }
@@ -120,7 +127,7 @@ internal fun SchoolScheduleDialog(
                         FilterChip(
                             selected = rotationWeeks == count,
                             onClick = { rotationWeeks = count },
-                            label = { Text(if (count == 1) "Fast" else "$count v") }
+                            label = { Text(if (count == 1) "Fast" else "$count v") },
                         )
                     }
                 }
@@ -131,16 +138,20 @@ internal fun SchoolScheduleDialog(
                             context,
                             { _, y, m, d ->
                                 val picked = LocalDate.of(y, m + 1, d)
-                                startDate = picked.minusDays((picked.dayOfWeek.value - 1).toLong())
+                                startDate =
+                                    picked.minusDays((picked.dayOfWeek.value - 1).toLong())
                             },
                             startDate.year,
                             startDate.monthValue - 1,
-                            startDate.dayOfMonth
-                        ).show()
+                            startDate.dayOfMonth,
+                        )
+                            .show()
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Startvecka: ${startDate.dayOfMonth}/${startDate.monthValue} ${startDate.year}")
+                    Text(
+                        "Startvecka: ${startDate.dayOfMonth}/${startDate.monthValue} ${startDate.year}"
+                    )
                 }
 
                 repeat(rotationWeeks) { index ->
@@ -149,18 +160,22 @@ internal fun SchoolScheduleDialog(
                         shape = RoundedCornerShape(10.dp),
                         color = Color(0xFF21182B),
                         border = BorderStroke(1.dp, Color(0xFF9C4DFF).copy(alpha = .35f)),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
                             Modifier.fillMaxWidth().padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text(if (rotationWeeks == 1) "Veckoschema" else "Vecka ${index + 1}", fontWeight = FontWeight.SemiBold)
                                 Text(
-                                    if (week.weekdays.isEmpty()) "Ledig" else "${week.weekdays.size} dagar",
+                                    if (rotationWeeks == 1) "Veckoschema" else "Vecka ${index + 1}",
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    if (week.weekdays.isEmpty()) "Ledig"
+                                    else "${week.weekdays.size} dagar",
                                     fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = .65f)
+                                    color = Color.White.copy(alpha = .65f),
                                 )
                             }
                             Button(onClick = { editingWeek = index }) { Text("Redigera") }
@@ -169,19 +184,30 @@ internal fun SchoolScheduleDialog(
                 }
 
                 Text(
-                    if (rotationWeeks == 1) "Schemat upprepas varje vecka, måndag till fredag." else "Schemat upprepas automatiskt var $rotationWeeks:e vecka, måndag till fredag.",
+                    if (rotationWeeks == 1) "Schemat upprepas varje vecka, måndag till fredag."
+                    else
+                        "Schemat upprepas automatiskt var $rotationWeeks:e vecka, måndag till fredag.",
                     fontSize = 11.sp,
-                    color = Color.White.copy(alpha = .65f)
+                    color = Color.White.copy(alpha = .65f),
                 )
                 if (invalidTimeRange) {
-                    Text("Sluttiden måste vara senare än starttiden för varje vald dag.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    Text(
+                        "Sluttiden måste vara senare än starttiden för varje vald dag.",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                    )
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
             }
         },
         confirmButton = {
             Button(
-                enabled = !saving && session != null && selectedMemberId.isNotBlank() && !invalidTimeRange && weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
+                enabled =
+                    !saving &&
+                            session != null &&
+                            selectedMemberId.isNotBlank() &&
+                            !invalidTimeRange &&
+                            weeks.take(rotationWeeks).any { it.weekdays.isNotEmpty() },
                 onClick = {
                     val activeSession = session ?: return@Button
                     saving = true
@@ -202,18 +228,21 @@ internal fun SchoolScheduleDialog(
                                         times.first,
                                         times.second,
                                         selectedMemberId,
-                                        seriesId
+                                        seriesId,
                                     )
                                 }
                             }
-                        }.onSuccess { onChanged() }
+                        }
+                            .onSuccess { onChanged() }
                             .onFailure { error = it.message ?: "Kunde inte spara schemat" }
                         saving = false
                     }
-                }
-            ) { Text(if (saving) "Sparar…" else "Spara") }
+                },
+            ) {
+                Text(if (saving) "Sparar…" else "Spara")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !saving) { Text("Avbryt") } }
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !saving) { Text("Avbryt") } },
     )
 
     timePickerTarget?.let { (index, day, start) ->
@@ -227,14 +256,16 @@ internal fun SchoolScheduleDialog(
             onDismiss = { timePickerTarget = null },
             onConfirm = { pickedTime ->
                 val picked = "%02d:%02d".format(pickedTime.hour, pickedTime.minute)
-                weeks = weeks.toMutableList().also { list ->
-                    val old = list[index]
-                    val oldTimes = old.dayTimes[day] ?: ("07:30" to "16:00")
-                    val newTimes = if (start) picked to oldTimes.second else oldTimes.first to picked
-                    list[index] = old.copy(dayTimes = old.dayTimes + (day to newTimes))
-                }
+                weeks =
+                    weeks.toMutableList().also { list ->
+                        val old = list[index]
+                        val oldTimes = old.dayTimes[day] ?: ("07:30" to "16:00")
+                        val newTimes =
+                            if (start) picked to oldTimes.second else oldTimes.first to picked
+                        list[index] = old.copy(dayTimes = old.dayTimes + (day to newTimes))
+                    }
                 timePickerTarget = null
-            }
+            },
         )
     }
 
@@ -242,9 +273,17 @@ internal fun SchoolScheduleDialog(
         val week = weeks[index]
         AlertDialog(
             onDismissRequest = { editingWeek = null },
-            title = { Text(if (rotationWeeks == 1) "Redigera veckoschema" else "Redigera vecka ${index + 1}") },
+            title = {
+                Text(
+                    if (rotationWeeks == 1) "Redigera veckoschema"
+                    else "Redigera vecka ${index + 1}"
+                )
+            },
             text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     val labels = listOf("Mån", "Tis", "Ons", "Tor", "Fre")
                     labels.forEachIndexed { dayIndex, label ->
                         val day = dayIndex + 1
@@ -253,27 +292,51 @@ internal fun SchoolScheduleDialog(
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = Color(0xFF21182B),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(Modifier.padding(8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Checkbox(
                                         checked = enabled,
                                         onCheckedChange = { checked ->
-                                            weeks = weeks.toMutableList().also { list ->
-                                                val old = list[index]
-                                                val newDays = if (checked) old.weekdays + day else old.weekdays - day
-                                                val newTimes = if (checked && day !in old.dayTimes) old.dayTimes + (day to ("07:30" to "16:00")) else old.dayTimes
-                                                list[index] = old.copy(weekdays = newDays, dayTimes = newTimes)
-                                            }
-                                        }
+                                            weeks =
+                                                weeks.toMutableList().also { list ->
+                                                    val old = list[index]
+                                                    val newDays =
+                                                        if (checked) old.weekdays + day
+                                                        else old.weekdays - day
+                                                    val newTimes =
+                                                        if (checked && day !in old.dayTimes)
+                                                            old.dayTimes +
+                                                                    (day to ("07:30" to "16:00"))
+                                                        else old.dayTimes
+                                                    list[index] =
+                                                        old.copy(
+                                                            weekdays = newDays,
+                                                            dayTimes = newTimes,
+                                                        )
+                                                }
+                                        },
                                     )
                                     Text(label, fontWeight = FontWeight.SemiBold)
                                 }
                                 if (enabled) {
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedButton(onClick = { pickTime(index, day, true) }, modifier = Modifier.weight(1f)) { Text("Från ${times.first}") }
-                                        OutlinedButton(onClick = { pickTime(index, day, false) }, modifier = Modifier.weight(1f)) { Text("Till ${times.second}") }
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { pickTime(index, day, true) },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Text("Från ${times.first}")
+                                        }
+                                        OutlinedButton(
+                                            onClick = { pickTime(index, day, false) },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Text("Till ${times.second}")
+                                        }
                                     }
                                 }
                             }
@@ -282,7 +345,7 @@ internal fun SchoolScheduleDialog(
                 }
             },
             confirmButton = { Button(onClick = { editingWeek = null }) { Text("Godkänd") } },
-            dismissButton = {}
+            dismissButton = {},
         )
     }
 }
@@ -293,13 +356,14 @@ private fun SchoolScheduleTimePickerDialog(
     title: String,
     initialTime: LocalTime,
     onDismiss: () -> Unit,
-    onConfirm: (LocalTime) -> Unit
+    onConfirm: (LocalTime) -> Unit,
 ) {
-    val state = rememberTimePickerState(
-        initialHour = initialTime.hour,
-        initialMinute = initialTime.minute,
-        is24Hour = true
-    )
+    val state =
+        rememberTimePickerState(
+            initialHour = initialTime.hour,
+            initialMinute = initialTime.minute,
+            is24Hour = true,
+        )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -307,7 +371,7 @@ private fun SchoolScheduleTimePickerDialog(
         text = {
             Box(
                 modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 TimePicker(state = state)
             }
@@ -321,6 +385,6 @@ private fun SchoolScheduleTimePickerDialog(
             TextButton(onClick = onDismiss) {
                 Text("Avbryt")
             }
-        }
+        },
     )
 }

@@ -22,29 +22,35 @@ class JoinFamilyActivity : ComponentActivity() {
         val code = intent?.data?.getQueryParameter("code")?.trim()?.uppercase().orEmpty()
         setContent {
             MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = Color(0xFFB47CFF),
-                    background = LuxuryBackground,
-                    surface = LuxurySurface,
-                    onBackground = Color.White,
-                    onSurface = Color.White
-                )
+                colorScheme =
+                    darkColorScheme(
+                        primary = Color(0xFFB47CFF),
+                        background = LuxuryBackground,
+                        surface = LuxurySurface,
+                        onBackground = Color.White,
+                        onSurface = Color.White,
+                    )
             ) {
                 Surface(Modifier.fillMaxSize(), color = LuxuryBackground) {
                     JoinFamilyScreen(
                         code = code,
                         onJoined = { session ->
-                            getSharedPreferences("family_calendar", 0).edit()
+                            getSharedPreferences("family_calendar", 0)
+                                .edit()
                                 .putString("family_id", session.id)
                                 .putString("family_name", session.name)
                                 .putString("family_code", session.code)
                                 .apply()
-                            startActivity(Intent(this, MainActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-                            })
+                            startActivity(
+                                Intent(this, MainActivity::class.java).apply {
+                                    flags =
+                                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                                Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                            )
                             finish()
                         },
-                        onCancel = { finish() }
+                        onCancel = { finish() },
                     )
                 }
             }
@@ -56,7 +62,7 @@ class JoinFamilyActivity : ComponentActivity() {
 private fun JoinFamilyScreen(
     code: String,
     onJoined: (FamilySession) -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
@@ -70,13 +76,19 @@ private fun JoinFamilyScreen(
                 Text("Gå med i familjen?", fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    if (code.isBlank()) "Inbjudningslänken saknar familjekod." else "Du har fått en inbjudan till Familjekalendern.",
-                    color = LuxuryTextMuted
+                    if (code.isBlank()) "Inbjudningslänken saknar familjekod."
+                    else "Du har fått en inbjudan till Familjekalendern.",
+                    color = LuxuryTextMuted,
                 )
                 if (code.isNotBlank()) {
                     Spacer(Modifier.height(14.dp))
                     Text("Familjekod", color = LuxuryTextMuted, fontSize = 12.sp)
-                    Text(code, color = MaterialTheme.colorScheme.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        code,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
                 if (error.isNotBlank()) {
                     Spacer(Modifier.height(12.dp))
@@ -95,8 +107,10 @@ private fun JoinFamilyScreen(
                         }
                     },
                     enabled = !busy && code.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(if (busy) "Ansluter…" else "Gå med i familjen") }
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (busy) "Ansluter…" else "Gå med i familjen")
+                }
                 OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
                     Text("Inte nu")
                 }

@@ -17,11 +17,8 @@ class HealthConnectRationaleActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Column(
-                        Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         Text("Health Connect", style = MaterialTheme.typography.headlineMedium)
                         Text(

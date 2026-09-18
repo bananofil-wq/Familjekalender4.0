@@ -6,7 +6,7 @@ data class RecordedRoutePoint(
     val longitude: Double,
     val timestampMillis: Long,
     val accuracyMeters: Float? = null,
-    val altitudeMeters: Double? = null
+    val altitudeMeters: Double? = null,
 )
 
 data class RecordedRun(
@@ -14,9 +14,14 @@ data class RecordedRun(
     val memberId: String,
     val startedAtMillis: Long,
     val finishedAtMillis: Long,
-    val points: List<RecordedRoutePoint>
+    val points: List<RecordedRoutePoint>,
 ) {
-    val durationMillis: Long get() = (finishedAtMillis - startedAtMillis).coerceAtLeast(0L)
+    val durationMillis: Long
+        get() = (finishedAtMillis - startedAtMillis).coerceAtLeast(0L)
 }
 
-enum class RunRecordingState { IDLE, RECORDING, FINISHED }
+enum class RunRecordingState {
+    IDLE,
+    RECORDING,
+    FINISHED,
+}

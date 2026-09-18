@@ -13,11 +13,11 @@ internal fun appMotionEnabled(): Boolean {
             Settings.Global.getFloat(
                 context.contentResolver,
                 Settings.Global.ANIMATOR_DURATION_SCALE,
-                1f
+                1f,
             ) > 0f
-        }.getOrDefault(true)
+        }
+            .getOrDefault(true)
     }
 }
 
-internal fun motionDuration(baseMillis: Int, enabled: Boolean): Int =
-    if (enabled) baseMillis else 0
+internal fun motionDuration(baseMillis: Int, enabled: Boolean): Int = if (enabled) baseMillis else 0

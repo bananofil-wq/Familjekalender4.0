@@ -20,7 +20,7 @@ private data class TodayRow(
     val event: SyncEvent,
     val member: SyncMember?,
     val startMinute: Int,
-    val endMinute: Int?
+    val endMinute: Int?,
 )
 
 private fun todayMinute(value: String?): Int? {
@@ -41,9 +41,10 @@ private fun todayRows(events: List<SyncEvent>, members: List<SyncMember>): List<
 }
 
 private fun todayConflictText(rows: List<TodayRow>): String? {
-    val byMember = rows
-        .filter { it.event.memberId != null && it.event.memberId != ALL_FAMILY_MEMBER_ID }
-        .groupBy { it.event.memberId }
+    val byMember =
+        rows
+            .filter { it.event.memberId != null && it.event.memberId != ALL_FAMILY_MEMBER_ID }
+            .groupBy { it.event.memberId }
 
     byMember.values.forEach { ownRows ->
         val sorted = ownRows.sortedBy { it.startMinute }
@@ -78,27 +79,30 @@ fun FamilyTodayCard(events: List<SyncEvent>, members: List<SyncMember>) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(18.dp),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column {
                     Text("Familjen idag", fontWeight = FontWeight.Bold, fontSize = 19.sp)
                     Text(
-                        if (rows.isEmpty()) "Inget tidsatt idag" else "${rows.size} tidsatta aktiviteter",
+                        if (rows.isEmpty()) "Inget tidsatt idag"
+                        else "${rows.size} tidsatta aktiviteter",
                         color = Muted,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
                     )
                 }
                 Text(
                     if (conflict == null) "Ingen konflikt" else "Konflikt",
-                    color = if (conflict == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    color =
+                        if (conflict == null) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
 
@@ -110,7 +114,7 @@ fun FamilyTodayCard(events: List<SyncEvent>, members: List<SyncMember>) {
                 Text(
                     "Nästa: ${formatMinute(item.startMinute)}$end · $who · ${item.event.title}",
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
                 )
             }
 
@@ -118,7 +122,9 @@ fun FamilyTodayCard(events: List<SyncEvent>, members: List<SyncMember>) {
                 val own = eventsByMember[member.id].orEmpty()
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        Modifier.size(10.dp).clip(CircleShape).background(Color(member.colorArgb.toInt()))
+                        Modifier.size(10.dp)
+                            .clip(CircleShape)
+                            .background(Color(member.colorArgb.toInt()))
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(member.name, modifier = Modifier.weight(1f), fontSize = 13.sp)
@@ -129,7 +135,7 @@ fun FamilyTodayCard(events: List<SyncEvent>, members: List<SyncMember>) {
                             else -> "${own.size} aktiviteter"
                         },
                         color = Muted,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
                     )
                 }
             }
@@ -140,7 +146,7 @@ fun FamilyTodayCard(events: List<SyncEvent>, members: List<SyncMember>) {
                     "★ ${allFamily.size} gemensamma ${if (allFamily.size == 1) "aktivitet" else "aktiviteter"}",
                     color = Color(0xFFFFD75E),
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }

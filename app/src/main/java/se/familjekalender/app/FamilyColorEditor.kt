@@ -16,16 +16,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val EditableMemberColors = listOf(
-    0xFFB47CFF,
-    0xFFFF77A8,
-    0xFF62A9FF,
-    0xFF6DD6A7,
-    0xFFFFB86B,
-    0xFFFF5C5C,
-    0xFF2ED9C3,
-    0xFFFFD166
-)
+private val EditableMemberColors =
+    listOf(
+        0xFFB47CFF,
+        0xFFFF77A8,
+        0xFF62A9FF,
+        0xFF6DD6A7,
+        0xFFFFB86B,
+        0xFFFF5C5C,
+        0xFF2ED9C3,
+        0xFFFFD166,
+    )
 
 @Composable
 internal fun EditableFamilyScreen(
@@ -35,7 +36,9 @@ internal fun EditableFamilyScreen(
     onColorChange: (SyncMember, Long) -> Unit,
     onEventEdit: (SyncEvent, String, java.time.LocalDate, String) -> Unit,
     onEventDelete: (SyncEvent) -> Unit,
-    onEventsDelete: (List<SyncEvent>) -> Unit = { eventsToDelete -> eventsToDelete.forEach(onEventDelete) }
+    onEventsDelete: (List<SyncEvent>) -> Unit = { eventsToDelete ->
+        eventsToDelete.forEach(onEventDelete)
+    },
 ) {
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
@@ -49,14 +52,18 @@ internal fun EditableFamilyScreen(
     members.forEach { member ->
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBg),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { agendaMember = member }
+            modifier =
+                Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
+                    agendaMember = member
+                },
         ) {
             Row(
                 Modifier.fillMaxWidth().padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    Modifier.size(16.dp).clip(CircleShape)
+                    Modifier.size(16.dp)
+                        .clip(CircleShape)
                         .background(Color(member.colorArgb.toInt()))
                 )
                 Spacer(Modifier.width(10.dp))
@@ -70,8 +77,18 @@ internal fun EditableFamilyScreen(
     }
 
     Spacer(Modifier.height(12.dp))
-    OutlinedTextField(name, { name = it }, label = { Text("Namn") }, modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(role, { role = it }, label = { Text("Valfri roll") }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(
+        name,
+        { name = it },
+        label = { Text("Namn") },
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        role,
+        { role = it },
+        label = { Text("Valfri roll") },
+        modifier = Modifier.fillMaxWidth(),
+    )
     Button(
         onClick = {
             if (name.isNotBlank()) {
@@ -80,8 +97,10 @@ internal fun EditableFamilyScreen(
                 role = ""
             }
         },
-        modifier = Modifier.fillMaxWidth()
-    ) { Text("Lägg till person") }
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Lägg till person")
+    }
 
     agendaMember?.let { member ->
         MemberAgendaDialog(
@@ -90,7 +109,7 @@ internal fun EditableFamilyScreen(
             onDismiss = { agendaMember = null },
             onEdit = onEventEdit,
             onDelete = onEventDelete,
-            onDeleteAll = onEventsDelete
+            onDeleteAll = onEventsDelete,
         )
     }
 
@@ -100,10 +119,12 @@ internal fun EditableFamilyScreen(
             title = { Text("Färg för ${member.name}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Välj ny färg. Kalenderprickar och dagens aktiviteter uppdateras efter synk.")
+                    Text(
+                        "Välj ny färg. Kalenderprickar och dagens aktiviteter uppdateras efter synk."
+                    )
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         EditableMemberColors.take(4).forEach { color ->
                             ColorChoice(color, member.colorArgb == color) {
@@ -114,7 +135,7 @@ internal fun EditableFamilyScreen(
                     }
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         EditableMemberColors.drop(4).forEach { color ->
                             ColorChoice(color, member.colorArgb == color) {
@@ -127,7 +148,7 @@ internal fun EditableFamilyScreen(
             },
             confirmButton = {
                 TextButton(onClick = { editingMember = null }) { Text("Avbryt") }
-            }
+            },
         )
     }
 }
@@ -138,6 +159,7 @@ private fun ColorChoice(colorArgb: Long, selected: Boolean, onClick: () -> Unit)
         modifier = Modifier.size(46.dp).clickable(onClick = onClick),
         shape = CircleShape,
         color = Color(colorArgb.toInt()),
-        border = if (selected) androidx.compose.foundation.BorderStroke(3.dp, Color.White) else null
+        border =
+            if (selected) androidx.compose.foundation.BorderStroke(3.dp, Color.White) else null,
     ) {}
 }

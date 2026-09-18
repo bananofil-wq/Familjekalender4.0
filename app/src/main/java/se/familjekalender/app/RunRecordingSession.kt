@@ -4,19 +4,23 @@ import android.location.Location
 import java.util.UUID
 
 /**
- * In-memory recording session. Android location/foreground-service code feeds Location samples
- * into this class; UI can observe the immutable snapshot and persist the finished run.
+ * In-memory recording session. Android location/foreground-service code feeds Location samples into
+ * this class; UI can observe the immutable snapshot and persist the finished run.
  */
 class RunRecordingSession {
     var state: RunRecordingState = RunRecordingState.IDLE
         private set
+
     var memberId: String? = null
         private set
+
     var startedAtMillis: Long = 0L
         private set
+
     private val route = mutableListOf<RecordedRoutePoint>()
 
-    val points: List<RecordedRoutePoint> get() = route.toList()
+    val points: List<RecordedRoutePoint>
+        get() = route.toList()
 
     fun start(memberId: String, nowMillis: Long = System.currentTimeMillis()) {
         require(memberId.isNotBlank())
@@ -30,13 +34,14 @@ class RunRecordingSession {
         if (state != RunRecordingState.RECORDING) return
         // Reject very poor fixes so a single GPS jump does not destroy the displayed route.
         if (location.hasAccuracy() && location.accuracy > 50f) return
-        route += RecordedRoutePoint(
-            latitude = location.latitude,
-            longitude = location.longitude,
-            timestampMillis = location.time.takeIf { it > 0 } ?: System.currentTimeMillis(),
-            accuracyMeters = location.accuracy.takeIf { location.hasAccuracy() },
-            altitudeMeters = location.altitude.takeIf { location.hasAltitude() }
-        )
+        route +=
+            RecordedRoutePoint(
+                latitude = location.latitude,
+                longitude = location.longitude,
+                timestampMillis = location.time.takeIf { it > 0 } ?: System.currentTimeMillis(),
+                accuracyMeters = location.accuracy.takeIf { location.hasAccuracy() },
+                altitudeMeters = location.altitude.takeIf { location.hasAltitude() },
+            )
     }
 
     fun finish(nowMillis: Long = System.currentTimeMillis()): RecordedRun? {
@@ -48,7 +53,7 @@ class RunRecordingSession {
             memberId = owner,
             startedAtMillis = startedAtMillis,
             finishedAtMillis = nowMillis,
-            points = route.toList()
+            points = route.toList(),
         )
     }
 

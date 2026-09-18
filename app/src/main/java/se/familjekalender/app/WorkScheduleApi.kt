@@ -1,21 +1,22 @@
 package se.familjekalender.app
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.time.YearMonth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
-private const val CALENDAR_BATCH_URL = "https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/calendar-batch"
+private const val CALENDAR_BATCH_URL =
+    "https://zigychfkpgypjuovgyqq.supabase.co/functions/v1/calendar-batch"
 
 data class WorkRule(
     val weekdays: Set<Int>,
     val startTime: String,
-    val endTime: String
+    val endTime: String,
 )
 
 fun currentFamilySession(context: Context): FamilySession? {
@@ -32,56 +33,67 @@ suspend fun saveWorkMonth(
     month: YearMonth,
     title: String,
     memberId: String?,
-    rules: List<WorkRule>
-): Int = withContext(Dispatchers.IO) {
-    val body = JSONObject()
-        .put("action", "save_work_month")
-        .put("familyId", session.id)
-        .put("familyCode", session.code)
-        .put("year", month.year)
-        .put("month", month.monthValue)
-        .put("title", title.ifBlank { "Jobb" })
-        .put("memberId", memberId ?: JSONObject.NULL)
-        .put("rules", JSONArray().apply {
-            rules.forEach { rule ->
-                put(JSONObject()
-                    .put("weekdays", JSONArray(rule.weekdays.sorted()))
-                    .put("start", rule.startTime)
-                    .put("end", rule.endTime))
-            }
-        })
-    val response = calendarBatchRequest(body)
-    JSONObject(response).optInt("created", 0)
-}
+    rules: List<WorkRule>,
+): Int =
+    withContext(Dispatchers.IO) {
+        val body =
+            JSONObject()
+                .put("action", "save_work_month")
+                .put("familyId", session.id)
+                .put("familyCode", session.code)
+                .put("year", month.year)
+                .put("month", month.monthValue)
+                .put("title", title.ifBlank { "Jobb" })
+                .put("memberId", memberId ?: JSONObject.NULL)
+                .put(
+                    "rules",
+                    JSONArray().apply {
+                        rules.forEach { rule ->
+                            put(
+                                JSONObject()
+                                    .put("weekdays", JSONArray(rule.weekdays.sorted()))
+                                    .put("start", rule.startTime)
+                                    .put("end", rule.endTime)
+                            )
+                        }
+                    },
+                )
+        val response = calendarBatchRequest(body)
+        JSONObject(response).optInt("created", 0)
+    }
 
 suspend fun deleteWorkMonth(
     session: FamilySession,
     month: YearMonth,
-    memberId: String?
-): Int = withContext(Dispatchers.IO) {
-    val body = JSONObject()
-        .put("action", "delete_work_month")
-        .put("familyId", session.id)
-        .put("familyCode", session.code)
-        .put("year", month.year)
-        .put("month", month.monthValue)
-        .put("memberId", memberId ?: JSONObject.NULL)
-    val response = calendarBatchRequest(body)
-    JSONObject(response).optInt("deleted", 0)
-}
+    memberId: String?,
+): Int =
+    withContext(Dispatchers.IO) {
+        val body =
+            JSONObject()
+                .put("action", "delete_work_month")
+                .put("familyId", session.id)
+                .put("familyCode", session.code)
+                .put("year", month.year)
+                .put("month", month.monthValue)
+                .put("memberId", memberId ?: JSONObject.NULL)
+        val response = calendarBatchRequest(body)
+        JSONObject(response).optInt("deleted", 0)
+    }
 
 suspend fun deleteCalendarEvent(
     session: FamilySession,
-    eventId: String
-): Int = withContext(Dispatchers.IO) {
-    val body = JSONObject()
-        .put("action", "delete_event")
-        .put("familyId", session.id)
-        .put("familyCode", session.code)
-        .put("eventId", eventId)
-    val response = calendarBatchRequest(body)
-    JSONObject(response).optInt("deleted", 0)
-}
+    eventId: String,
+): Int =
+    withContext(Dispatchers.IO) {
+        val body =
+            JSONObject()
+                .put("action", "delete_event")
+                .put("familyId", session.id)
+                .put("familyCode", session.code)
+                .put("eventId", eventId)
+        val response = calendarBatchRequest(body)
+        JSONObject(response).optInt("deleted", 0)
+    }
 
 private fun calendarBatchRequest(body: JSONObject): String {
     val connection = URL(CALENDAR_BATCH_URL).openConnection() as HttpURLConnection

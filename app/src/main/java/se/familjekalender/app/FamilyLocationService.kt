@@ -67,27 +67,40 @@ class FamilyLocationService : Service() {
         }
     }
 
-    private enum class TrackingMode { LIVE, MOVING, STILL, NEAR_PLACE }
+    private enum class TrackingMode {
+        LIVE,
+        MOVING,
+        STILL,
+        NEAR_PLACE,
+    }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationManager: LocationManager
 
-    @Volatile private var publishing = false
-    @Volatile private var lastPublishedAt = 0L
-    @Volatile private var lastPublishedLocation: Location? = null
-    @Volatile private var cachedPlaces: List<SyncFamilyPlace> = emptyList()
+    @Volatile
+    private var publishing = false
+    @Volatile
+    private var lastPublishedAt = 0L
+    @Volatile
+    private var lastPublishedLocation: Location? = null
+    @Volatile
+    private var cachedPlaces: List<SyncFamilyPlace> = emptyList()
 
     private var trackingMode: TrackingMode? = null
     private var lastObservedLocation: Location? = null
     private var lastMeaningfulMovementAt = System.currentTimeMillis()
 
-    private val listener = object : LocationListener {
-        override fun onLocationChanged(location: Location) = handleLocation(location)
-        override fun onProviderEnabled(provider: String) = Unit
-        override fun onProviderDisabled(provider: String) = Unit
-        @Deprecated("Deprecated in Android")
-        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
-    }
+    private val listener =
+        object : LocationListener {
+            override fun onLocationChanged(location: Location) = handleLocation(location)
+
+            override fun onProviderEnabled(provider: String) = Unit
+
+            override fun onProviderDisabled(provider: String) = Unit
+
+            @Deprecated("Deprecated in Android")
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
+        }
 
     override fun onCreate() {
         super.onCreate()
@@ -102,7 +115,10 @@ class FamilyLocationService : Service() {
             return START_NOT_STICKY
         }
 
-        configureTracking(if (liveViewActive()) TrackingMode.LIVE else TrackingMode.MOVING, force = true)
+        configureTracking(
+            if (liveViewActive()) TrackingMode.LIVE else TrackingMode.MOVING,
+            force = true,
+        )
         refreshPlaces()
         publishRecentCachedLocation()
         return START_STICKY
@@ -117,13 +133,18 @@ class FamilyLocationService : Service() {
     }
 
     private fun hasLocationPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) ==
+                PackageManager.PERMISSION_GRANTED
 
     private fun sharingEnabled(): Boolean {
         val prefs = getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
         return prefs.getBoolean("sharing_enabled", false) &&
-            !prefs.getString("device_member_id", null).isNullOrBlank()
+                !prefs.getString("device_member_id", null).isNullOrBlank()
     }
 
     private fun liveViewActive(): Boolean =
@@ -137,24 +158,36 @@ class FamilyLocationService : Service() {
         runCatching { locationManager.removeUpdates(listener) }
         trackingMode = mode
 
-        val requests = when (mode) {
-            TrackingMode.LIVE -> listOf(
-                Triple(LocationManager.NETWORK_PROVIDER, LIVE_INTERVAL_MS, LIVE_MIN_DISTANCE_M),
-                Triple(LocationManager.GPS_PROVIDER, LIVE_INTERVAL_MS, LIVE_MIN_DISTANCE_M)
-            )
-            TrackingMode.MOVING -> listOf(
-                Triple(LocationManager.NETWORK_PROVIDER, MOVING_NETWORK_INTERVAL_MS, 15f),
-                Triple(LocationManager.GPS_PROVIDER, MOVING_GPS_INTERVAL_MS, 20f)
-            )
-            TrackingMode.STILL -> listOf(
-                Triple(LocationManager.NETWORK_PROVIDER, STILL_NETWORK_INTERVAL_MS, 30f),
-                Triple(LocationManager.GPS_PROVIDER, STILL_GPS_INTERVAL_MS, 50f)
-            )
-            TrackingMode.NEAR_PLACE -> listOf(
-                Triple(LocationManager.NETWORK_PROVIDER, NEAR_PLACE_INTERVAL_MS, 10f),
-                Triple(LocationManager.GPS_PROVIDER, NEAR_PLACE_INTERVAL_MS, 10f)
-            )
-        }
+        val requests =
+            when (mode) {
+                TrackingMode.LIVE ->
+                    listOf(
+                        Triple(
+                            LocationManager.NETWORK_PROVIDER,
+                            LIVE_INTERVAL_MS,
+                            LIVE_MIN_DISTANCE_M,
+                        ),
+                        Triple(LocationManager.GPS_PROVIDER, LIVE_INTERVAL_MS, LIVE_MIN_DISTANCE_M),
+                    )
+
+                TrackingMode.MOVING ->
+                    listOf(
+                        Triple(LocationManager.NETWORK_PROVIDER, MOVING_NETWORK_INTERVAL_MS, 15f),
+                        Triple(LocationManager.GPS_PROVIDER, MOVING_GPS_INTERVAL_MS, 20f),
+                    )
+
+                TrackingMode.STILL ->
+                    listOf(
+                        Triple(LocationManager.NETWORK_PROVIDER, STILL_NETWORK_INTERVAL_MS, 30f),
+                        Triple(LocationManager.GPS_PROVIDER, STILL_GPS_INTERVAL_MS, 50f),
+                    )
+
+                TrackingMode.NEAR_PLACE ->
+                    listOf(
+                        Triple(LocationManager.NETWORK_PROVIDER, NEAR_PLACE_INTERVAL_MS, 10f),
+                        Triple(LocationManager.GPS_PROVIDER, NEAR_PLACE_INTERVAL_MS, 10f),
+                    )
+            }
 
         requests.forEach { (provider, minTime, minDistance) ->
             runCatching {
@@ -168,16 +201,19 @@ class FamilyLocationService : Service() {
     private fun refreshPlaces() {
         serviceScope.launch {
             val session = currentSession() ?: return@launch
-            cachedPlaces = runCatching { FamilyLocationSync.loadPlaces(session) }.getOrDefault(cachedPlaces)
+            cachedPlaces =
+                runCatching { FamilyLocationSync.loadPlaces(session) }.getOrDefault(cachedPlaces)
         }
     }
 
     private fun publishRecentCachedLocation() {
         if (!hasLocationPermission()) return
-        val newest = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
-            .mapNotNull { provider -> runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull() }
-            .maxByOrNull { it.time }
-            ?: return
+        val newest =
+            listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
+                .mapNotNull { provider ->
+                    runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
+                }
+                .maxByOrNull { it.time } ?: return
         if (System.currentTimeMillis() - newest.time <= 2 * 60_000L) {
             handleLocation(newest)
         }
@@ -192,19 +228,21 @@ class FamilyLocationService : Service() {
         if (location.time > 0 && System.currentTimeMillis() - location.time > 2 * 60_000L) return
 
         val now = System.currentTimeMillis()
-        val desiredMode = if (liveViewActive()) TrackingMode.LIVE else desiredTrackingMode(location, now)
+        val desiredMode =
+            if (liveViewActive()) TrackingMode.LIVE else desiredTrackingMode(location, now)
         configureTracking(desiredMode)
 
         if (publishing) return
 
         val previous = lastPublishedLocation
-        val movementThreshold = if (desiredMode == TrackingMode.LIVE) {
-            LIVE_MIN_DISTANCE_M
-        } else if (location.hasAccuracy()) {
-            maxOf(MIN_PUBLISH_DISTANCE_M, (location.accuracy * 0.75f).coerceAtMost(80f))
-        } else {
-            MIN_PUBLISH_DISTANCE_M
-        }
+        val movementThreshold =
+            if (desiredMode == TrackingMode.LIVE) {
+                LIVE_MIN_DISTANCE_M
+            } else if (location.hasAccuracy()) {
+                maxOf(MIN_PUBLISH_DISTANCE_M, (location.accuracy * 0.75f).coerceAtMost(80f))
+            } else {
+                MIN_PUBLISH_DISTANCE_M
+            }
         val movedEnough = previous == null || previous.distanceTo(location) >= movementThreshold
         val dueForHeartbeat = now - lastPublishedAt >= heartbeatInterval(desiredMode)
         if (!movedEnough && !dueForHeartbeat) return
@@ -223,7 +261,7 @@ class FamilyLocationService : Service() {
                     latitude = location.latitude,
                     longitude = location.longitude,
                     accuracyM = location.accuracy.takeIf { location.hasAccuracy() && it > 0f },
-                    batteryPercent = if (showBattery) batteryPercent() else null
+                    batteryPercent = if (showBattery) batteryPercent() else null,
                 )
 
                 lastPublishedAt = System.currentTimeMillis()
@@ -233,8 +271,15 @@ class FamilyLocationService : Service() {
                     val locations = FamilyLocationSync.loadLocations(session)
                     val places = FamilyLocationSync.loadPlaces(session)
                     cachedPlaces = places
-                    val members = SupabaseSync.loadMembers(session).filter { it.id != ALL_FAMILY_MEMBER_ID }
-                    checkLocationTransitions(applicationContext, session.id, locations, places, members)
+                    val members =
+                        SupabaseSync.loadMembers(session).filter { it.id != ALL_FAMILY_MEMBER_ID }
+                    checkLocationTransitions(
+                        applicationContext,
+                        session.id,
+                        locations,
+                        places,
+                        members,
+                    )
                 }
             } finally {
                 publishing = false
@@ -244,11 +289,12 @@ class FamilyLocationService : Service() {
 
     private fun desiredTrackingMode(location: Location, now: Long): TrackingMode {
         val previousObserved = lastObservedLocation
-        val movementThreshold = if (location.hasAccuracy()) {
-            maxOf(25f, (location.accuracy * 0.5f).coerceAtMost(60f))
-        } else {
-            25f
-        }
+        val movementThreshold =
+            if (location.hasAccuracy()) {
+                maxOf(25f, (location.accuracy * 0.5f).coerceAtMost(60f))
+            } else {
+                25f
+            }
         val moved = previousObserved?.distanceTo(location) ?: Float.MAX_VALUE
         val speedShowsMovement = location.hasSpeed() && location.speed >= 0.8f
         if (moved >= movementThreshold || speedShowsMovement) {
@@ -271,12 +317,13 @@ class FamilyLocationService : Service() {
         }
     }
 
-    private fun heartbeatInterval(mode: TrackingMode): Long = when (mode) {
-        TrackingMode.LIVE -> LIVE_HEARTBEAT_MS
-        TrackingMode.MOVING -> MOVING_HEARTBEAT_MS
-        TrackingMode.STILL -> STILL_HEARTBEAT_MS
-        TrackingMode.NEAR_PLACE -> NEAR_PLACE_HEARTBEAT_MS
-    }
+    private fun heartbeatInterval(mode: TrackingMode): Long =
+        when (mode) {
+            TrackingMode.LIVE -> LIVE_HEARTBEAT_MS
+            TrackingMode.MOVING -> MOVING_HEARTBEAT_MS
+            TrackingMode.STILL -> STILL_HEARTBEAT_MS
+            TrackingMode.NEAR_PLACE -> NEAR_PLACE_HEARTBEAT_MS
+        }
 
     private fun distanceToPlace(location: Location, place: SyncFamilyPlace): Float {
         val result = FloatArray(1)
@@ -285,7 +332,7 @@ class FamilyLocationService : Service() {
             location.longitude,
             place.latitude,
             place.longitude,
-            result
+            result,
         )
         return result[0]
     }
@@ -311,20 +358,25 @@ class FamilyLocationService : Service() {
                 NotificationChannel(
                     CHANNEL_ID,
                     "Platsdelning i bakgrunden",
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "Håller familjens platsdelning uppdaterad även när appen inte är öppen."
-                }
+                    NotificationManager.IMPORTANCE_LOW,
+                )
+                    .apply {
+                        description =
+                            "Håller familjens platsdelning uppdaterad även när appen inte är öppen."
+                    }
             )
         }
     }
 
     private fun buildNotification(): Notification {
-        val openApp = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+        val openApp =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+        val pendingFlags =
+            PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE
+                    else 0
         val pendingIntent = PendingIntent.getActivity(this, 0, openApp, pendingFlags)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_calendar)

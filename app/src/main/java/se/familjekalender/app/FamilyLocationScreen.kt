@@ -12,7 +12,6 @@ import android.os.BatteryManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -35,38 +34,45 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.MapTileIndex
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import kotlin.math.*
 
 private const val LOCATION_PREFS = "family_calendar_location"
 private const val LOCATION_CHANNEL = "family_location_alerts"
 
-private val SATELLITE_TILES = object : OnlineTileSourceBase(
-    "EsriWorldImagery",
-    0,
-    19,
-    256,
-    "",
-    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"),
-    "Tiles © Esri"
-) {
-    override fun getTileURLString(pMapTileIndex: Long): String =
-        getBaseUrl() + MapTileIndex.getZoom(pMapTileIndex) + "/" +
-            MapTileIndex.getY(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex)
-}
+private val SATELLITE_TILES =
+    object :
+        OnlineTileSourceBase(
+            "EsriWorldImagery",
+            0,
+            19,
+            256,
+            "",
+            arrayOf(
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"
+            ),
+            "Tiles © Esri",
+        ) {
+        override fun getTileURLString(pMapTileIndex: Long): String =
+            getBaseUrl() +
+                    MapTileIndex.getZoom(pMapTileIndex) +
+                    "/" +
+                    MapTileIndex.getY(pMapTileIndex) +
+                    "/" +
+                    MapTileIndex.getX(pMapTileIndex)
+    }
 
 @Composable
 fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
@@ -79,7 +85,9 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     var selectedMapMember by remember { mutableStateOf<String?>(null) }
     var sharing by remember { mutableStateOf(prefs.getBoolean("sharing_enabled", false)) }
     var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
-    var locationAlertsEnabled by remember { mutableStateOf(prefs.getBoolean("location_alerts_enabled", false)) }
+    var locationAlertsEnabled by remember {
+        mutableStateOf(prefs.getBoolean("location_alerts_enabled", false))
+    }
     var alertPreferenceRevision by remember { mutableIntStateOf(0) }
     var locations by remember { mutableStateOf(emptyList<SyncFamilyLocation>()) }
     var places by remember { mutableStateOf(emptyList<SyncFamilyPlace>()) }
@@ -102,14 +110,20 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     }
 
     fun hasLocationPermission(): Boolean =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ) == PackageManager.PERMISSION_GRANTED
 
     fun readLocation(): Location? {
         if (!hasLocationPermission()) return null
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-            .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
+            .mapNotNull { provider ->
+                runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
+            }
             .maxByOrNull { it.time }
             ?.takeIf { last -> System.currentTimeMillis() - last.time <= 2 * 60_000L }
     }
@@ -126,20 +140,25 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             if (selectedMapMember == null) {
                 selectedMapMember = selectedMemberId ?: locations.firstOrNull()?.memberId
             }
-        }.onFailure {
-            status = it.message ?: "Kunde inte uppdatera platsdata"
         }
+            .onFailure {
+                status = it.message ?: "Kunde inte uppdatera platsdata"
+            }
     }
 
     suspend fun publishNow() {
-        val memberId = selectedMemberId ?: run {
-            status = "Välj vem den här telefonen tillhör"
-            return
-        }
-        val location = readLocation() ?: run {
-            status = "Ingen plats tillgänglig ännu"
-            return
-        }
+        val memberId =
+            selectedMemberId
+                ?: run {
+                    status = "Välj vem den här telefonen tillhör"
+                    return
+                }
+        val location =
+            readLocation()
+                ?: run {
+                    status = "Ingen plats tillgänglig ännu"
+                    return
+                }
         runCatching {
             FamilyLocationSync.publishLocation(
                 session = session,
@@ -147,25 +166,30 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                 latitude = location.latitude,
                 longitude = location.longitude,
                 accuracyM = location.accuracy.takeIf { it > 0 },
-                batteryPercent = if (batteryVisible) batteryPercent() else null
+                batteryPercent = if (batteryVisible) batteryPercent() else null,
             )
-        }.onSuccess {
-            status = "Platsen uppdaterades"
-            refresh()
-        }.onFailure {
-            status = it.message ?: "Kunde inte dela plats"
         }
+            .onSuccess {
+                status = "Platsen uppdaterades"
+                refresh()
+            }
+            .onFailure {
+                status = it.message ?: "Kunde inte dela plats"
+            }
     }
 
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        status = if (granted) "Platsnotiser aktiverade" else "Notisbehörighet nekades"
-    }
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            status = if (granted) "Platsnotiser aktiverade" else "Notisbehörighet nekades"
+        }
 
     fun ensureNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
@@ -173,23 +197,23 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         }
     }
 
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val granted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) {
-            sharing = true
-            prefs.edit().putBoolean("sharing_enabled", true).apply()
-            status = "Platsdelning aktiverad"
-            FamilyLocationService.start(context)
-            scope.launch { publishNow() }
-        } else {
-            sharing = false
-            prefs.edit().putBoolean("sharing_enabled", false).apply()
-            status = "Platsbehörighet krävs"
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val granted =
+                result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                        result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if (granted) {
+                sharing = true
+                prefs.edit().putBoolean("sharing_enabled", true).apply()
+                status = "Platsdelning aktiverad"
+                FamilyLocationService.start(context)
+                scope.launch { publishNow() }
+            } else {
+                sharing = false
+                prefs.edit().putBoolean("sharing_enabled", false).apply()
+                status = "Platsbehörighet krävs"
+            }
         }
-    }
 
     fun startSharing() {
         if (selectedMemberId == null) {
@@ -200,7 +224,10 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         }
         if (!hasLocationPermission()) {
             locationPermissionLauncher.launch(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                )
             )
             return
         }
@@ -235,10 +262,12 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             places.forEach { place ->
                 FamilyLocationSync.updatePlaceAlerts(session, place, enabled, place.departureAlerts)
             }
-        }.onSuccess {
-            status = if (enabled) "Ankomstnotiser aktiverade" else "Ankomstnotiser avstängda"
-            refresh()
-        }.onFailure { status = it.message ?: "Kunde inte ändra ankomstnotiser" }
+        }
+            .onSuccess {
+                status = if (enabled) "Ankomstnotiser aktiverade" else "Ankomstnotiser avstängda"
+                refresh()
+            }
+            .onFailure { status = it.message ?: "Kunde inte ändra ankomstnotiser" }
     }
 
     suspend fun setDepartureAlerts(enabled: Boolean) {
@@ -251,10 +280,12 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             places.forEach { place ->
                 FamilyLocationSync.updatePlaceAlerts(session, place, place.arrivalAlerts, enabled)
             }
-        }.onSuccess {
-            status = if (enabled) "Avresenotiser aktiverade" else "Avresenotiser avstängda"
-            refresh()
-        }.onFailure { status = it.message ?: "Kunde inte ändra avresenotiser" }
+        }
+            .onSuccess {
+                status = if (enabled) "Avresenotiser aktiverade" else "Avresenotiser avstängda"
+                refresh()
+            }
+            .onFailure { status = it.message ?: "Kunde inte ändra avresenotiser" }
     }
 
     LaunchedEffect(session.id, sharing, selectedMemberId) {
@@ -270,24 +301,24 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         LocationMemberStrip(
             members = familyMembers,
             selectedMemberId = selectedMapMember,
-            onSelect = { selectedMapMember = it }
+            onSelect = { selectedMapMember = it },
         )
 
         LocationMapCard(
             locations = locations,
             members = familyMembers,
             selectedMemberId = selectedMapMember,
-            batteryVisible = batteryVisible
+            batteryVisible = batteryVisible,
         )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LocationQuickAction(Icons.Default.LocationOn, "Dela plats", Modifier.weight(1f)) {
                 if (sharing) scope.launch { publishNow() } else startSharing()
@@ -304,15 +335,22 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBg)
+            colors = CardDefaults.cardColors(containerColor = CardBg),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Platsdelning", fontSize = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(
+                        "Platsdelning",
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
                     Switch(
                         checked = sharing,
-                        onCheckedChange = { enabled -> if (enabled) startSharing() else stopSharing() },
-                        enabled = familyMembers.isNotEmpty()
+                        onCheckedChange = { enabled ->
+                            if (enabled) startSharing() else stopSharing()
+                        },
+                        enabled = familyMembers.isNotEmpty(),
                     )
                 }
 
@@ -320,8 +358,12 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     LocationSettingRow(
                         icon = Icons.Default.PersonPinCircle,
                         title = "Den här telefonen",
-                        subtitle = familyMembers.firstOrNull { it.id == selectedMemberId }?.name ?: "Välj familjemedlem"
-                    ) { memberMenu = true }
+                        subtitle =
+                            familyMembers.firstOrNull { it.id == selectedMemberId }?.name
+                                ?: "Välj familjemedlem",
+                    ) {
+                        memberMenu = true
+                    }
 
                     DropdownMenu(expanded = memberMenu, onDismissRequest = { memberMenu = false }) {
                         familyMembers.forEach { member ->
@@ -335,8 +377,9 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                                     memberMenu = false
                                     pendingEnableSharing = false
                                     status = "Den här telefonen är kopplad till ${member.name}"
-                                    if (shouldEnable) startSharing() else if (sharing) FamilyLocationService.start(context)
-                                }
+                                    if (shouldEnable) startSharing()
+                                    else if (sharing) FamilyLocationService.start(context)
+                                },
                             )
                         }
                     }
@@ -345,23 +388,24 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                 LocationSettingRow(
                     Icons.Default.LocationOn,
                     "Dela min plats",
-                    if (sharing) "Aktiv även när appen ligger i bakgrunden" else "Avstängd"
+                    if (sharing) "Aktiv även när appen ligger i bakgrunden" else "Avstängd",
                 ) {
                     if (sharing) scope.launch { publishNow() } else startSharing()
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     LocationIcon(Icons.Default.Notifications)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Platsnotiser", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text(
-                            if (locationAlertsEnabled) "Aktiverat · välj personer nedan" else "Avstängt",
+                            if (locationAlertsEnabled) "Aktiverat · välj personer nedan"
+                            else "Avstängt",
                             color = Muted,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
                         )
                     }
                     Switch(
@@ -369,9 +413,10 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                         onCheckedChange = { enabled ->
                             locationAlertsEnabled = enabled
                             prefs.edit().putBoolean("location_alerts_enabled", enabled).apply()
-                            status = if (enabled) "Platsnotiser aktiverade" else "Platsnotiser avstängda"
+                            status =
+                                if (enabled) "Platsnotiser aktiverade" else "Platsnotiser avstängda"
                             if (enabled) ensureNotificationPermission()
-                        }
+                        },
                     )
                 }
 
@@ -380,38 +425,50 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                         "Välj vilka personer du vill få ankomst- och avresenotiser om",
                         color = Muted,
                         fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp),
                     )
                     familyMembers.forEach { member ->
-                        val memberAlerts = remember(member.id, alertPreferenceRevision) {
-                            prefs.getBoolean("location_alert_member_${member.id}", false)
-                        }
+                        val memberAlerts =
+                            remember(member.id, alertPreferenceRevision) {
+                                prefs.getBoolean("location_alert_member_${member.id}", false)
+                            }
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Box(
-                                Modifier
-                                    .size(10.dp)
+                                Modifier.size(10.dp)
                                     .clip(CircleShape)
                                     .background(Color(member.colorArgb.toInt()))
                             )
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(member.name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                                Text("Meddela när ${member.name} kommer eller lämnar", color = Muted, fontSize = 12.sp)
+                                Text(
+                                    member.name,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                )
+                                Text(
+                                    "Meddela när ${member.name} kommer eller lämnar",
+                                    color = Muted,
+                                    fontSize = 12.sp,
+                                )
                             }
                             Switch(
                                 checked = memberAlerts,
                                 onCheckedChange = { enabled ->
-                                    prefs.edit().putBoolean("location_alert_member_${member.id}", enabled).apply()
+                                    prefs
+                                        .edit()
+                                        .putBoolean("location_alert_member_${member.id}", enabled)
+                                        .apply()
                                     alertPreferenceRevision++
-                                    status = if (enabled) {
-                                        "Platsnotiser för ${member.name} aktiverade"
-                                    } else {
-                                        "Platsnotiser för ${member.name} avstängda"
-                                    }
-                                }
+                                    status =
+                                        if (enabled) {
+                                            "Platsnotiser för ${member.name} aktiverade"
+                                        } else {
+                                            "Platsnotiser för ${member.name} avstängda"
+                                        }
+                                },
                             )
                         }
                     }
@@ -425,7 +482,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                         places.isEmpty() -> "Lägg till en destination först"
                         arrivalEnabled -> "Aktiverat"
                         else -> "Avstängt"
-                    }
+                    },
                 ) {
                     ensureNotificationPermission()
                     scope.launch { setArrivalAlerts(!arrivalEnabled) }
@@ -439,7 +496,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                         places.isEmpty() -> "Lägg till en destination först"
                         departureEnabled -> "Aktiverat"
                         else -> "Avstängt"
-                    }
+                    },
                 ) {
                     ensureNotificationPermission()
                     scope.launch { setDepartureAlerts(!departureEnabled) }
@@ -447,7 +504,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     LocationIcon(Icons.Default.BatteryFull)
                     Spacer(Modifier.width(12.dp))
@@ -462,7 +519,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                             prefs.edit().putBoolean("battery_visible", it).apply()
                             status = if (it) "Batterinivå visas" else "Batterinivå dold"
                             if (sharing) scope.launch { publishNow() }
-                        }
+                        },
                     )
                 }
 
@@ -473,7 +530,12 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text("Destinationer", fontSize = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(
+                "Destinationer",
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
             Button(onClick = { showAddPlace = true }, shape = RoundedCornerShape(20.dp)) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
@@ -485,11 +547,15 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { showAddPlace = true },
                 colors = CardDefaults.cardColors(containerColor = CardBg),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(18.dp),
             ) {
                 Column(Modifier.padding(18.dp)) {
                     Text("Inga destinationer ännu", fontWeight = FontWeight.Bold)
-                    Text("Lägg till till exempel Hemma, Skola eller Jobb för ankomst- och avresenotiser.", color = Muted, fontSize = 13.sp)
+                    Text(
+                        "Lägg till till exempel Hemma, Skola eller Jobb för ankomst- och avresenotiser.",
+                        color = Muted,
+                        fontSize = 13.sp,
+                    )
                 }
             }
         } else {
@@ -499,20 +565,34 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     onToggleArrival = { enabled ->
                         ensureNotificationPermission()
                         scope.launch {
-                            runCatching { FamilyLocationSync.updatePlaceAlerts(session, place, enabled, place.departureAlerts) }
+                            runCatching {
+                                FamilyLocationSync.updatePlaceAlerts(
+                                    session,
+                                    place,
+                                    enabled,
+                                    place.departureAlerts,
+                                )
+                            }
                             refresh()
                         }
                     },
                     onToggleDeparture = { enabled ->
                         ensureNotificationPermission()
                         scope.launch {
-                            runCatching { FamilyLocationSync.updatePlaceAlerts(session, place, place.arrivalAlerts, enabled) }
+                            runCatching {
+                                FamilyLocationSync.updatePlaceAlerts(
+                                    session,
+                                    place,
+                                    place.arrivalAlerts,
+                                    enabled,
+                                )
+                            }
                             refresh()
                         }
                     },
                     onDelete = {
                         editingPlace = place
-                    }
+                    },
                 )
             }
         }
@@ -532,16 +612,26 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                         status = "Kunde inte hitta adressen"
                     } else {
                         runCatching {
-                            FamilyLocationSync.addPlace(session, name, coords.first, coords.second, radius)
-                        }.onSuccess {
-                            status = "$name tillagd"
-                            showAddPlace = false
-                            ensureNotificationPermission()
-                            refresh()
-                        }.onFailure { status = it.message ?: "Kunde inte lägga till destination" }
+                            FamilyLocationSync.addPlace(
+                                session,
+                                name,
+                                coords.first,
+                                coords.second,
+                                radius,
+                            )
+                        }
+                            .onSuccess {
+                                status = "$name tillagd"
+                                showAddPlace = false
+                                ensureNotificationPermission()
+                                refresh()
+                            }
+                            .onFailure {
+                                status = it.message ?: "Kunde inte lägga till destination"
+                            }
                     }
                 }
-            }
+            },
         )
     }
 
@@ -551,15 +641,19 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             title = { Text("Ta bort ${place.name}?") },
             text = { Text("Destinationen och dess ankomst-/avresenotiser tas bort.") },
             confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        runCatching { FamilyLocationSync.deletePlace(session, place.id) }
-                        editingPlace = null
-                        refresh()
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            runCatching { FamilyLocationSync.deletePlace(session, place.id) }
+                            editingPlace = null
+                            refresh()
+                        }
                     }
-                }) { Text("Ta bort") }
+                ) {
+                    Text("Ta bort")
+                }
             },
-            dismissButton = { TextButton(onClick = { editingPlace = null }) { Text("Avbryt") } }
+            dismissButton = { TextButton(onClick = { editingPlace = null }) { Text("Avbryt") } },
         )
     }
 
@@ -582,7 +676,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Stäng") } }
+            confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Stäng") } },
         )
     }
 
@@ -591,9 +685,11 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             onDismissRequest = { showSecurity = false },
             title = { Text("Tryggt & säkert") },
             text = {
-                Text("Du kan pausa platsdelningen när som helst. Ankomst- och avresenotiser styrs separat per destination, och batterivisning kan stängas av.")
+                Text(
+                    "Du kan pausa platsdelningen när som helst. Ankomst- och avresenotiser styrs separat per destination, och batterivisning kan stängas av."
+                )
             },
-            confirmButton = { TextButton(onClick = { showSecurity = false }) { Text("Stäng") } }
+            confirmButton = { TextButton(onClick = { showSecurity = false }) { Text("Stäng") } },
         )
     }
 }
@@ -602,26 +698,35 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
 private fun LocationMemberStrip(
     members: List<SyncMember>,
     selectedMemberId: String?,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         members.forEach { member ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(60.dp).clickable { onSelect(member.id) }
+                modifier = Modifier.width(60.dp).clickable { onSelect(member.id) },
             ) {
                 Box(
-                    modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(member.colorArgb)),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier.size(50.dp).clip(CircleShape).background(Color(member.colorArgb)),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Box(
-                        modifier = Modifier.size(if (selectedMemberId == member.id) 40.dp else 42.dp).clip(CircleShape).background(Color(0xFF262330)),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier.size(if (selectedMemberId == member.id) 40.dp else 42.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF262330)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(member.name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(
+                            member.name.take(1).uppercase(),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                        )
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -636,11 +741,12 @@ private fun LocationMapCard(
     locations: List<SyncFamilyLocation>,
     members: List<SyncMember>,
     selectedMemberId: String?,
-    batteryVisible: Boolean
+    batteryVisible: Boolean,
 ) {
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var userMovedMap by remember { mutableStateOf(false) }
-    val selected = locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
+    val selected =
+        locations.firstOrNull { it.memberId == selectedMemberId } ?: locations.firstOrNull()
 
     LaunchedEffect(selectedMemberId) {
         userMovedMap = false
@@ -649,7 +755,7 @@ private fun LocationMapCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = CardBg),
     ) {
         Box(Modifier.fillMaxWidth().height(300.dp)) {
             AndroidView(
@@ -671,6 +777,7 @@ private fun LocationMapCard(
                                     userMovedMap = true
                                     view.parent?.requestDisallowInterceptTouchEvent(true)
                                 }
+
                                 android.view.MotionEvent.ACTION_UP,
                                 android.view.MotionEvent.ACTION_CANCEL ->
                                     view.parent?.requestDisallowInterceptTouchEvent(false)
@@ -698,40 +805,40 @@ private fun LocationMapCard(
                         }
                     }
                     map.invalidate()
-                }
+                },
             )
 
             selected?.let { current ->
                 Surface(
                     modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xD917151F)
+                    color = Color(0xD917151F),
                 ) {
                     Text(
                         "Live · ${formatUpdated(current.updatedAt)}",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                         color = Color.White,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
 
             Column(
                 modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SmallFloatingActionButton(
                     onClick = { mapView?.controller?.zoomIn() },
                     containerColor = Color(0xEE17151F),
-                    contentColor = Color.White
+                    contentColor = Color.White,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Zooma in")
                 }
                 SmallFloatingActionButton(
                     onClick = { mapView?.controller?.zoomOut() },
                     containerColor = Color(0xEE17151F),
-                    contentColor = Color.White
+                    contentColor = Color.White,
                 ) {
                     Icon(Icons.Default.Remove, contentDescription = "Zooma ut")
                 }
@@ -742,29 +849,51 @@ private fun LocationMapCard(
                 Card(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp).fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xEE17151F)),
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(18.dp),
                 ) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier.size(46.dp).clip(CircleShape).background(member?.let { Color(it.colorArgb) } ?: MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center
+                            modifier =
+                                Modifier.size(46.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        member?.let { Color(it.colorArgb) }
+                                            ?: MaterialTheme.colorScheme.primary
+                                    ),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Text(member?.name?.take(1)?.uppercase() ?: "?", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(
+                                member?.name?.take(1)?.uppercase() ?: "?",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(member?.name ?: "Familjemedlem", fontWeight = FontWeight.Bold)
                             Text(formatUpdated(item.updatedAt), color = Muted, fontSize = 12.sp)
                             if (batteryVisible && item.batteryPercent != null) {
-                                Text("Batteri ${item.batteryPercent}%", color = Color(0xFF7EE2A8), fontSize = 12.sp)
+                                Text(
+                                    "Batteri ${item.batteryPercent}%",
+                                    color = Color(0xFF7EE2A8),
+                                    fontSize = 12.sp,
+                                )
                             }
                         }
-                        IconButton(onClick = {
-                            userMovedMap = false
-                            mapView?.controller?.setZoom(17.0)
-                            mapView?.controller?.animateTo(GeoPoint(item.latitude, item.longitude))
-                        }) {
-                            Icon(Icons.Default.MyLocation, contentDescription = "Centrera", tint = MaterialTheme.colorScheme.primary)
+                        IconButton(
+                            onClick = {
+                                userMovedMap = false
+                                mapView?.controller?.setZoom(17.0)
+                                mapView
+                                    ?.controller
+                                    ?.animateTo(GeoPoint(item.latitude, item.longitude))
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.MyLocation,
+                                contentDescription = "Centrera",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
                         }
                     }
                 }
@@ -778,11 +907,15 @@ private fun LocationQuickAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Column(
-        modifier = modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(onClick = onClick)
+                .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(icon, contentDescription = text, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(5.dp))
@@ -793,7 +926,12 @@ private fun LocationQuickAction(
 @Composable
 private fun LocationIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Surface(shape = CircleShape, color = Color(0xFF292634)) {
-        Icon(icon, contentDescription = null, modifier = Modifier.padding(9.dp), tint = MaterialTheme.colorScheme.primary)
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.padding(9.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 
@@ -802,11 +940,15 @@ private fun LocationSettingRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onClick)
+                .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         LocationIcon(icon)
         Spacer(Modifier.width(12.dp))
@@ -823,12 +965,12 @@ private fun DestinationCard(
     place: SyncFamilyPlace,
     onToggleArrival: (Boolean) -> Unit,
     onToggleDeparture: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = CardBg),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -857,7 +999,7 @@ private fun DestinationCard(
 @Composable
 private fun AddDestinationDialog(
     onDismiss: () -> Unit,
-    onSave: (String, String, Int) -> Unit
+    onSave: (String, String, Int) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
@@ -872,47 +1014,65 @@ private fun AddDestinationDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Namn, t.ex. Hemma") },
-                    singleLine = true
+                    singleLine = true,
                 )
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
                     label = { Text("Adress") },
-                    singleLine = true
+                    singleLine = true,
                 )
                 OutlinedTextField(
                     value = radiusText,
                     onValueChange = { radiusText = it.filter(Char::isDigit).take(4) },
                     label = { Text("Radie i meter") },
-                    singleLine = true
+                    singleLine = true,
                 )
-                Text("Platsnotiser är avstängda tills du själv aktiverar dem. Ankomst och avresa kan sedan styras per destination.", color = Muted, fontSize = 12.sp)
+                Text(
+                    "Platsnotiser är avstängda tills du själv aktiverar dem. Ankomst och avresa kan sedan styras per destination.",
+                    color = Muted,
+                    fontSize = 12.sp,
+                )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onSave(name.trim(), address.trim(), radiusText.toIntOrNull()?.coerceIn(50, 2000) ?: 150) },
-                enabled = name.isNotBlank() && address.isNotBlank()
-            ) { Text("Lägg till") }
+                onClick = {
+                    onSave(
+                        name.trim(),
+                        address.trim(),
+                        radiusText.toIntOrNull()?.coerceIn(50, 2000) ?: 150,
+                    )
+                },
+                enabled = name.isNotBlank() && address.isNotBlank(),
+            ) {
+                Text("Lägg till")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } },
     )
 }
 
-private suspend fun geocodeAddress(context: Context, query: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
-    runCatching {
-        @Suppress("DEPRECATION")
-        Geocoder(context, Locale("sv", "SE")).getFromLocationName(query, 1)?.firstOrNull()?.let {
-            it.latitude to it.longitude
+private suspend fun geocodeAddress(context: Context, query: String): Pair<Double, Double>? =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            @Suppress("DEPRECATION")
+            Geocoder(context, Locale("sv", "SE"))
+                .getFromLocationName(query, 1)
+                ?.firstOrNull()
+                ?.let {
+                    it.latitude to it.longitude
+                }
         }
-    }.getOrNull()
-}
+            .getOrNull()
+    }
 
 private fun formatUpdated(raw: String): String {
     return runCatching {
         val dt = OffsetDateTime.parse(raw)
         "Senast sedd · ${dt.format(DateTimeFormatter.ofPattern("HH:mm"))}"
-    }.getOrDefault("Senast sedd")
+    }
+        .getOrDefault("Senast sedd")
 }
 
 private fun distanceMeters(aLat: Double, aLon: Double, bLat: Double, bLon: Double): Double {
@@ -930,28 +1090,47 @@ internal fun checkLocationTransitions(
     familyId: String,
     locations: List<SyncFamilyLocation>,
     places: List<SyncFamilyPlace>,
-    members: List<SyncMember>
+    members: List<SyncMember>,
 ) {
     if (locations.isEmpty() || places.isEmpty()) return
     val alertPrefs = context.getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
     if (!alertPrefs.getBoolean("location_alerts_enabled", false)) return
 
-    val prefs = context.getSharedPreferences("location_geofence_state_$familyId", Context.MODE_PRIVATE)
+    val prefs =
+        context.getSharedPreferences("location_geofence_state_$familyId", Context.MODE_PRIVATE)
 
     locations.forEach { location ->
-        if (!alertPrefs.getBoolean("location_alert_member_${location.memberId}", false)) return@forEach
+        if (!alertPrefs.getBoolean("location_alert_member_${location.memberId}", false))
+            return@forEach
         places.forEach { place ->
-            val inside = distanceMeters(location.latitude, location.longitude, place.latitude, place.longitude) <= place.radiusM
+            val inside =
+                distanceMeters(
+                    location.latitude,
+                    location.longitude,
+                    place.latitude,
+                    place.longitude,
+                ) <= place.radiusM
             val key = "${location.memberId}_${place.id}"
             val hadState = prefs.contains(key)
             val previousInside = prefs.getBoolean(key, inside)
 
             if (hadState && previousInside != inside) {
-                val memberName = members.firstOrNull { it.id == location.memberId }?.name ?: "En familjemedlem"
+                val memberName =
+                    members.firstOrNull { it.id == location.memberId }?.name ?: "En familjemedlem"
                 if (inside && place.arrivalAlerts) {
-                    showLocationNotification(context, "$memberName har kommit fram", "$memberName har kommit till ${place.name}", key.hashCode())
+                    showLocationNotification(
+                        context,
+                        "$memberName har kommit fram",
+                        "$memberName har kommit till ${place.name}",
+                        key.hashCode(),
+                    )
                 } else if (!inside && place.departureAlerts) {
-                    showLocationNotification(context, "$memberName har lämnat", "$memberName har lämnat ${place.name}", key.hashCode())
+                    showLocationNotification(
+                        context,
+                        "$memberName har lämnat",
+                        "$memberName har lämnat ${place.name}",
+                        key.hashCode(),
+                    )
                 }
             }
             prefs.edit().putBoolean(key, inside).apply()
@@ -963,18 +1142,26 @@ private fun showLocationNotification(context: Context, title: String, text: Stri
     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         manager.createNotificationChannel(
-            NotificationChannel(LOCATION_CHANNEL, "Platsnotiser", NotificationManager.IMPORTANCE_DEFAULT)
+            NotificationChannel(
+                LOCATION_CHANNEL,
+                "Platsnotiser",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
         )
     }
-    if (Build.VERSION.SDK_INT >= 33 &&
-        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-    ) return
+    if (
+        Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+        PackageManager.PERMISSION_GRANTED
+    )
+        return
 
-    val notification = NotificationCompat.Builder(context, LOCATION_CHANNEL)
-        .setSmallIcon(R.drawable.ic_launcher_calendar)
-        .setContentTitle(title)
-        .setContentText(text)
-        .setAutoCancel(true)
-        .build()
+    val notification =
+        NotificationCompat.Builder(context, LOCATION_CHANNEL)
+            .setSmallIcon(R.drawable.ic_launcher_calendar)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setAutoCancel(true)
+            .build()
     manager.notify(id, notification)
 }

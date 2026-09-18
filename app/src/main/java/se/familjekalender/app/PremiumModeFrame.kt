@@ -37,24 +37,23 @@ internal val PremiumPurpleBright = Color(0xFFAA72FF)
 @Composable
 internal fun PremiumModeBackground(
     modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit
+    content: @Composable BoxScope.() -> Unit,
 ) {
     Box(modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.season_autumn),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
         )
         Box(
-            Modifier
-                .fillMaxSize()
+            Modifier.fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         listOf(
                             Color(0x44120B16),
                             Color(0x70120C19),
-                            Color(0xAA110D18)
+                            Color(0xAA110D18),
                         )
                     )
                 )
@@ -68,12 +67,12 @@ internal fun PremiumModeHeader(
     title: String,
     subtitle: String,
     onAdd: (() -> Unit)? = null,
-    onSettings: (() -> Unit)? = null
+    onSettings: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -82,52 +81,60 @@ internal fun PremiumModeHeader(
                     color = Color.White,
                     fontFamily = FontFamily.Cursive,
                     fontSize = 30.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("♡", color = PremiumPurpleBright, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "♡",
+                    color = PremiumPurpleBright,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
             Text(
                 text = subtitle.uppercase(),
                 color = PremiumMuted,
                 fontSize = 9.sp,
                 letterSpacing = 1.5.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (onSettings != null) {
                 Box(
-                    Modifier
-                        .size(43.dp)
+                    Modifier.size(43.dp)
                         .clip(CircleShape)
                         .background(Color(0x661C1726))
                         .clickable(onClick = onSettings),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = "Inställningar",
                         tint = Color.White,
-                        modifier = Modifier.size(21.dp)
+                        modifier = Modifier.size(21.dp),
                     )
                 }
             }
             if (onAdd != null) {
                 Box(
-                    Modifier
-                        .size(50.dp)
+                    Modifier.size(50.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(PremiumPurpleBright, PremiumPurple)))
+                        .background(
+                            Brush.linearGradient(listOf(PremiumPurpleBright, PremiumPurple))
+                        )
                         .clickable(onClick = onAdd),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "Lägg till aktivitet",
                         tint = Color.White,
-                        modifier = Modifier.size(27.dp)
+                        modifier = Modifier.size(27.dp),
                     )
                 }
             }
@@ -138,14 +145,14 @@ internal fun PremiumModeHeader(
 @Composable
 internal fun PremiumGlassPanel(
     modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         modifier = modifier,
         color = PremiumGlass,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, PremiumBorder),
-        shadowElevation = 0.dp
+        shadowElevation = 0.dp,
     ) {
         Column(content = content)
     }

@@ -21,11 +21,6 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.RevokeAccessRequest
 import com.google.android.gms.common.Scopes
 import com.google.android.gms.common.api.Scope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.tasks.await
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.InputStream
 import java.security.KeyStore
 import java.security.MessageDigest
@@ -34,7 +29,6 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -51,6 +45,11 @@ import javax.mail.Multipart
 import javax.mail.Part
 import javax.mail.Session
 import javax.mail.UIDFolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 private val MAIL_STOCKHOLM: ZoneId = ZoneId.of("Europe/Stockholm")
 internal const val GMAIL_AUTH_SCOPE = "https://mail.google.com/"
@@ -58,15 +57,16 @@ internal const val GOOGLE_ACCOUNT_TYPE = "com.google"
 
 internal fun gmailAuthorizationRequest(
     email: String? = null,
-    selectAccount: Boolean = false
+    selectAccount: Boolean = false,
 ): AuthorizationRequest {
-    val builder = AuthorizationRequest.builder()
-        .setRequestedScopes(
-            listOf(
-                Scope(GMAIL_AUTH_SCOPE),
-                Scope(Scopes.EMAIL)
+    val builder =
+        AuthorizationRequest.builder()
+            .setRequestedScopes(
+                listOf(
+                    Scope(GMAIL_AUTH_SCOPE),
+                    Scope(Scopes.EMAIL),
+                )
             )
-        )
 
     if (!email.isNullOrBlank()) {
         builder.setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
@@ -80,17 +80,18 @@ internal fun gmailAuthorizationRequest(
 internal suspend fun requestGmailAuthorization(
     context: Context,
     email: String? = null,
-    selectAccount: Boolean = false
+    selectAccount: Boolean = false,
 ): AuthorizationResult =
     Identity.getAuthorizationClient(context)
         .authorize(gmailAuthorizationRequest(email, selectAccount))
         .await()
 
 internal suspend fun revokeGmailAuthorization(context: Context, email: String) {
-    val request = RevokeAccessRequest.builder()
-        .setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
-        .setScopes(listOf(Scope(GMAIL_AUTH_SCOPE)))
-        .build()
+    val request =
+        RevokeAccessRequest.builder()
+            .setAccount(Account(email, GOOGLE_ACCOUNT_TYPE))
+            .setScopes(listOf(Scope(GMAIL_AUTH_SCOPE)))
+            .build()
     Identity.getAuthorizationClient(context).revokeAccess(request).await()
 }
 
@@ -102,14 +103,14 @@ data class MailAccount(
     val port: Int = 993,
     val username: String = email,
     val password: String,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
 )
 
 data class MailSyncSummary(
     val accounts: Int,
     val events: Int,
     val offers: Int,
-    val errors: List<String>
+    val errors: List<String>,
 )
 
 internal object MailAccountStore {
@@ -126,9 +127,10 @@ internal object MailAccountStore {
         cipher.init(
             Cipher.DECRYPT_MODE,
             getOrCreateKey(),
-            GCMParameterSpec(128, Base64.decode(encodedIv, Base64.NO_WRAP))
+            GCMParameterSpec(128, Base64.decode(encodedIv, Base64.NO_WRAP)),
         )
-        val json = String(cipher.doFinal(Base64.decode(encodedData, Base64.NO_WRAP)), Charsets.UTF_8)
+        val json =
+            String(cipher.doFinal(Base64.decode(encodedData, Base64.NO_WRAP)), Charsets.UTF_8)
         val array = JSONArray(json)
         buildList {
             repeat(array.length()) { index ->
@@ -142,12 +144,13 @@ internal object MailAccountStore {
                         port = row.optInt("port", 993),
                         username = row.optString("username").ifBlank { row.getString("email") },
                         password = row.getString("password"),
-                        enabled = row.optBoolean("enabled", true)
+                        enabled = row.optBoolean("enabled", true),
                     )
                 )
             }
         }
-    }.getOrDefault(emptyList())
+    }
+        .getOrDefault(emptyList())
 
     fun save(context: Context, accounts: List<MailAccount>) {
         val array = JSONArray()
@@ -167,7 +170,9 @@ internal object MailAccountStore {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         val encrypted = cipher.doFinal(array.toString().toByteArray(Charsets.UTF_8))
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        context
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
             .putString(KEY_DATA, Base64.encodeToString(encrypted, Base64.NO_WRAP))
             .putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
             .apply()
@@ -175,12 +180,14 @@ internal object MailAccountStore {
 
     private fun getOrCreateKey(): SecretKey {
         val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let {
+            return it
+        }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
         generator.init(
             KeyGenParameterSpec.Builder(
                 KEY_ALIAS,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
             )
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
@@ -196,25 +203,32 @@ internal object MailSyncScheduler {
     private const val NOW_NAME = "familjekalender_mail_sync_now"
 
     fun schedule(context: Context) {
-        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-        val request = PeriodicWorkRequestBuilder<MailSyncWorker>(30, TimeUnit.MINUTES)
-            .setConstraints(constraints)
-            .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            PERIODIC_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            request
-        )
+        val constraints =
+            Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        val request =
+            PeriodicWorkRequestBuilder<MailSyncWorker>(30, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .build()
+        WorkManager.getInstance(context)
+            .enqueueUniquePeriodicWork(
+                PERIODIC_NAME,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                request,
+            )
     }
 
     fun syncNow(context: Context) {
-        val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-        val request = OneTimeWorkRequestBuilder<MailSyncWorker>().setConstraints(constraints).build()
-        WorkManager.getInstance(context).enqueueUniqueWork(NOW_NAME, ExistingWorkPolicy.REPLACE, request)
+        val constraints =
+            Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        val request =
+            OneTimeWorkRequestBuilder<MailSyncWorker>().setConstraints(constraints).build()
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork(NOW_NAME, ExistingWorkPolicy.REPLACE, request)
     }
 }
 
-class MailSyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+class MailSyncWorker(appContext: Context, params: WorkerParameters) :
+    CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         val prefs = applicationContext.getSharedPreferences("family_calendar", Context.MODE_PRIVATE)
         val familyId = prefs.getString("family_id", null) ?: return Result.success()
@@ -222,8 +236,12 @@ class MailSyncWorker(appContext: Context, params: WorkerParameters) : CoroutineW
         val familyName = prefs.getString("family_name", "Min familj") ?: "Min familj"
         if (MailAccountStore.load(applicationContext).none { it.enabled }) return Result.success()
         val session = FamilySession(familyId, familyName, familyCode)
-        val summary = runCatching { MailSyncEngine.syncAll(applicationContext, session) }
-            .getOrElse { return Result.retry() }
+        val summary = runCatching {
+            MailSyncEngine.syncAll(applicationContext, session)
+        }
+            .getOrElse {
+                return Result.retry()
+            }
         return if (summary.errors.isEmpty()) Result.success() else Result.success()
     }
 }
@@ -232,41 +250,44 @@ internal object MailSyncEngine {
     suspend fun testAccount(
         context: Context,
         account: MailAccount,
-        accessTokenOverride: String? = null
-    ) = withContext(Dispatchers.IO) {
-        openStore(context, account, accessTokenOverride).use { connection ->
-            val folder = connection.store.getFolder("INBOX")
-            folder.open(Folder.READ_ONLY)
-            folder.close(false)
+        accessTokenOverride: String? = null,
+    ) =
+        withContext(Dispatchers.IO) {
+            openStore(context, account, accessTokenOverride).use { connection ->
+                val folder = connection.store.getFolder("INBOX")
+                folder.open(Folder.READ_ONLY)
+                folder.close(false)
+            }
         }
-    }
 
-    suspend fun syncAll(context: Context, family: FamilySession): MailSyncSummary = withContext(Dispatchers.IO) {
-        val accounts = MailAccountStore.load(context).filter { it.enabled }
-        val interests = SupabaseSync.loadShoppingInterestTerms(family)
-        var events = 0
-        var offers = 0
-        val errors = mutableListOf<String>()
-        for (account in accounts) {
-            runCatching { syncAccount(context, family, account, interests) }
-                .onSuccess {
-                    events += it.first
-                    offers += it.second
-                }
-                .onFailure { errors += "${account.label}: ${it.message ?: "synkfel"}" }
+    suspend fun syncAll(context: Context, family: FamilySession): MailSyncSummary =
+        withContext(Dispatchers.IO) {
+            val accounts = MailAccountStore.load(context).filter { it.enabled }
+            val interests = SupabaseSync.loadShoppingInterestTerms(family)
+            var events = 0
+            var offers = 0
+            val errors = mutableListOf<String>()
+            for (account in accounts) {
+                runCatching { syncAccount(context, family, account, interests) }
+                    .onSuccess {
+                        events += it.first
+                        offers += it.second
+                    }
+                    .onFailure { errors += "${account.label}: ${it.message ?: "synkfel"}" }
+            }
+            MailSyncSummary(accounts.size, events, offers, errors)
         }
-        MailSyncSummary(accounts.size, events, offers, errors)
-    }
 
     private suspend fun syncAccount(
         context: Context,
         family: FamilySession,
         account: MailAccount,
-        interests: List<String>
+        interests: List<String>,
     ): Pair<Int, Int> {
         var eventCount = 0
         var offerCount = 0
-        val statePrefs = context.getSharedPreferences("familjekalender_mail_sync_state", Context.MODE_PRIVATE)
+        val statePrefs =
+            context.getSharedPreferences("familjekalender_mail_sync_state", Context.MODE_PRIVATE)
         val lastUid = statePrefs.getLong("uid_${account.id}", 0L)
         var maxUid = lastUid
 
@@ -296,7 +317,7 @@ internal object MailSyncEngine {
                                 event.title,
                                 event.startsAt,
                                 event.endsAt,
-                                event.location
+                                event.location,
                             )
                             eventCount++
                         }
@@ -316,7 +337,7 @@ internal object MailSyncEngine {
                                 offer.unitText,
                                 offer.validUntil,
                                 subject,
-                                "$sourceKey:${offer.normalizedProduct}:${offer.price}"
+                                "$sourceKey:${offer.normalizedProduct}:${offer.price}",
                             )
                             offerCount++
                         }
@@ -330,36 +351,49 @@ internal object MailSyncEngine {
         return Pair(eventCount, offerCount)
     }
 
-    private suspend fun openStore(context: Context, account: MailAccount, accessTokenOverride: String? = null): StoreConnection {
-        val googleOauth = account.host.equals("imap.gmail.com", ignoreCase = true) && account.password.isBlank()
-        val props = Properties().apply {
-            put("mail.store.protocol", "imaps")
-            put("mail.imaps.host", account.host)
-            put("mail.imaps.port", account.port.toString())
-            put("mail.imaps.ssl.enable", "true")
-            put("mail.imaps.connectiontimeout", "15000")
-            put("mail.imaps.timeout", "25000")
-            put("mail.imaps.writetimeout", "25000")
-            if (googleOauth) {
-                put("mail.imaps.auth.mechanisms", "XOAUTH2")
-                put("mail.imaps.auth.login.disable", "true")
-                put("mail.imaps.auth.plain.disable", "true")
-            }
-        }
-        val credential = if (googleOauth) {
-            accessTokenOverride?.takeIf { it.isNotBlank() } ?: run {
-                val authorization = requestGmailAuthorization(context, account.email)
-                if (authorization.hasResolution()) {
-                    error("Gmail-behörigheten behöver förnyas under Inställningar > E-post")
+    private suspend fun openStore(
+        context: Context,
+        account: MailAccount,
+        accessTokenOverride: String? = null,
+    ): StoreConnection {
+        val googleOauth =
+            account.host.equals("imap.gmail.com", ignoreCase = true) && account.password.isBlank()
+        val props =
+            Properties().apply {
+                put("mail.store.protocol", "imaps")
+                put("mail.imaps.host", account.host)
+                put("mail.imaps.port", account.port.toString())
+                put("mail.imaps.ssl.enable", "true")
+                put("mail.imaps.connectiontimeout", "15000")
+                put("mail.imaps.timeout", "25000")
+                put("mail.imaps.writetimeout", "25000")
+                if (googleOauth) {
+                    put("mail.imaps.auth.mechanisms", "XOAUTH2")
+                    put("mail.imaps.auth.login.disable", "true")
+                    put("mail.imaps.auth.plain.disable", "true")
                 }
-                authorization.accessToken ?: error("Google returnerade ingen åtkomsttoken")
             }
-        } else {
-            account.password
-        }
+        val credential =
+            if (googleOauth) {
+                accessTokenOverride?.takeIf { it.isNotBlank() }
+                    ?: run {
+                        val authorization = requestGmailAuthorization(context, account.email)
+                        if (authorization.hasResolution()) {
+                            error("Gmail-behörigheten behöver förnyas under Inställningar > E-post")
+                        }
+                        authorization.accessToken ?: error("Google returnerade ingen åtkomsttoken")
+                    }
+            } else {
+                account.password
+            }
         val session = Session.getInstance(props)
         val store = session.getStore("imaps")
-        store.connect(account.host, account.port, account.username.ifBlank { account.email }, credential)
+        store.connect(
+            account.host,
+            account.port,
+            account.username.ifBlank { account.email },
+            credential,
+        )
         return StoreConnection(store)
     }
 
@@ -378,15 +412,26 @@ internal object MailSyncEngine {
         return ExtractedMessage(texts.joinToString("\n").take(250_000), calendars)
     }
 
-    private fun extractPart(part: Part, texts: MutableList<String>, calendars: MutableList<String>) {
+    private fun extractPart(
+        part: Part,
+        texts: MutableList<String>,
+        calendars: MutableList<String>,
+    ) {
         val fileName = part.fileName.orEmpty().lowercase(Locale.ROOT)
         val contentType = part.contentType.orEmpty().lowercase(Locale.ROOT)
-        if (part.isMimeType("text/calendar") || fileName.endsWith(".ics") || "calendar" in contentType) {
-            val value = when (val content = runCatching { part.content }.getOrNull()) {
-                is String -> content
-                is InputStream -> content.bufferedReader().use { it.readText() }
-                else -> runCatching { part.inputStream.bufferedReader().use { it.readText() } }.getOrDefault("")
-            }
+        if (
+            part.isMimeType("text/calendar") ||
+            fileName.endsWith(".ics") ||
+            "calendar" in contentType
+        ) {
+            val value =
+                when (val content = runCatching { part.content }.getOrNull()) {
+                    is String -> content
+                    is InputStream -> content.bufferedReader().use { it.readText() }
+                    else ->
+                        runCatching { part.inputStream.bufferedReader().use { it.readText() } }
+                            .getOrDefault("")
+                }
             if (value.isNotBlank()) calendars += value.take(200_000)
             return
         }
@@ -395,16 +440,26 @@ internal object MailSyncEngine {
                 val content = runCatching { part.content?.toString() }.getOrNull().orEmpty()
                 if (content.isNotBlank()) texts += content
             }
+
             part.isMimeType("text/html") -> {
                 val html = runCatching { part.content?.toString() }.getOrNull().orEmpty()
-                if (html.isNotBlank()) texts += Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString()
+                if (html.isNotBlank())
+                    texts += Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString()
             }
+
             part.isMimeType("multipart/*") -> {
                 val multipart = runCatching { part.content as? Multipart }.getOrNull() ?: return
-                for (index in 0 until multipart.count) extractPart(multipart.getBodyPart(index), texts, calendars)
+                for (index in 0 until multipart.count) extractPart(
+                    multipart.getBodyPart(index),
+                    texts,
+                    calendars,
+                )
             }
+
             part.isMimeType("message/rfc822") -> {
-                (runCatching { part.content }.getOrNull() as? Part)?.let { extractPart(it, texts, calendars) }
+                (runCatching { part.content }.getOrNull() as? Part)?.let {
+                    extractPart(it, texts, calendars)
+                }
             }
         }
     }
@@ -414,11 +469,12 @@ internal object MailSyncEngine {
         val title: String,
         val startsAt: OffsetDateTime,
         val endsAt: OffsetDateTime?,
-        val location: String?
+        val location: String?,
     )
 
     private fun parseCalendar(text: String): List<ParsedCalendarEvent> {
-        val unfolded = text.replace("\r\n ", "").replace("\r\n\t", "").replace("\n ", "").replace("\n\t", "")
+        val unfolded =
+            text.replace("\r\n ", "").replace("\r\n\t", "").replace("\n ", "").replace("\n\t", "")
         return unfolded.split("BEGIN:VEVENT").drop(1).mapNotNull { raw ->
             val block = raw.substringBefore("END:VEVENT", "")
             val lines = block.lines().map(String::trim)
@@ -430,7 +486,8 @@ internal object MailSyncEngine {
                 title = unescapeIcs(valueFor(lines, "SUMMARY") ?: "Mailinbjudan"),
                 startsAt = start,
                 endsAt = end,
-                location = valueFor(lines, "LOCATION")?.let(::unescapeIcs)?.takeIf(String::isNotBlank)
+                location =
+                    valueFor(lines, "LOCATION")?.let(::unescapeIcs)?.takeIf(String::isNotBlank),
             )
         }
     }
@@ -441,23 +498,39 @@ internal object MailSyncEngine {
     private fun parseIcsTime(raw: String): OffsetDateTime? = runCatching {
         when {
             raw.endsWith("Z") && raw.length >= 16 -> {
-                val formatter = if (raw.length >= 16) DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssX") else DateTimeFormatter.BASIC_ISO_DATE
-                ZonedDateTime.parse(raw, formatter).withZoneSameInstant(MAIL_STOCKHOLM).toOffsetDateTime()
+                val formatter =
+                    if (raw.length >= 16) DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssX")
+                    else DateTimeFormatter.BASIC_ISO_DATE
+                ZonedDateTime.parse(raw, formatter)
+                    .withZoneSameInstant(MAIL_STOCKHOLM)
+                    .toOffsetDateTime()
             }
-            raw.length >= 15 -> ZonedDateTime.of(
-                LocalDateTime.parse(raw.take(15), DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")),
-                MAIL_STOCKHOLM
-            ).toOffsetDateTime()
-            raw.length == 8 -> ZonedDateTime.of(LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE), LocalTime.NOON, MAIL_STOCKHOLM).toOffsetDateTime()
+
+            raw.length >= 15 ->
+                ZonedDateTime.of(
+                    LocalDateTime.parse(
+                        raw.take(15),
+                        DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"),
+                    ),
+                    MAIL_STOCKHOLM,
+                )
+                    .toOffsetDateTime()
+
+            raw.length == 8 ->
+                ZonedDateTime.of(
+                    LocalDate.parse(raw, DateTimeFormatter.BASIC_ISO_DATE),
+                    LocalTime.NOON,
+                    MAIL_STOCKHOLM,
+                )
+                    .toOffsetDateTime()
+
             else -> null
         }
-    }.getOrNull()
+    }
+        .getOrNull()
 
-    private fun unescapeIcs(value: String): String = value
-        .replace("\\n", " ")
-        .replace("\\,", ",")
-        .replace("\\;", ";")
-        .replace("\\\\", "\\")
+    private fun unescapeIcs(value: String): String =
+        value.replace("\\n", " ").replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\")
 
     private data class ParsedOffer(
         val store: String,
@@ -465,41 +538,58 @@ internal object MailSyncEngine {
         val normalizedProduct: String,
         val price: Double,
         val unitText: String?,
-        val validUntil: LocalDate?
+        val validUntil: LocalDate?,
     )
 
-    private fun parseOffers(sender: String, subject: String, text: String, interests: List<String>): List<ParsedOffer> {
+    private fun parseOffers(
+        sender: String,
+        subject: String,
+        text: String,
+        interests: List<String>,
+    ): List<ParsedOffer> {
         if (interests.isEmpty()) return emptyList()
         val store = detectStore(sender, subject)
-        val normalizedInterests = interests
-            .map { it.trim() to normalize(it) }
-            .filter { it.second.length >= 3 }
-            .distinctBy { it.second }
-        val priceRegex = Regex("(?i)(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*(?:kr|:-)(?:\\s*(?:/|per)\\s*([a-zåäö0-9]+))?")
+        val normalizedInterests =
+            interests
+                .map { it.trim() to normalize(it) }
+                .filter { it.second.length >= 3 }
+                .distinctBy { it.second }
+        val priceRegex =
+            Regex(
+                "(?i)(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*(?:kr|:-)(?:\\s*(?:/|per)\\s*([a-zåäö0-9]+))?"
+            )
         val result = linkedMapOf<String, ParsedOffer>()
-        val segments = text.replace('\u00a0', ' ')
-            .lines()
-            .flatMap { line -> line.split(" • ", " | ", "  ") }
-            .map { it.trim() }
-            .filter { it.length in 3..500 }
+        val segments =
+            text
+                .replace('\u00a0', ' ')
+                .lines()
+                .flatMap { line -> line.split(" • ", " | ", "  ") }
+                .map { it.trim() }
+                .filter { it.length in 3..500 }
         for (segment in segments) {
             val normalizedLine = normalize(segment)
-            val matchingInterest = normalizedInterests.firstOrNull { (_, needle) ->
-                normalizedLine.contains(needle) || needle.split(' ').filter { it.length >= 3 }.any { token -> normalizedLine.contains(token) }
-            } ?: continue
+            val matchingInterest =
+                normalizedInterests.firstOrNull { (_, needle) ->
+                    normalizedLine.contains(needle) ||
+                            needle
+                                .split(' ')
+                                .filter { it.length >= 3 }
+                                .any { token -> normalizedLine.contains(token) }
+                } ?: continue
             for (match in priceRegex.findAll(segment)) {
                 val price = match.groupValues[1].replace(',', '.').toDoubleOrNull() ?: continue
                 if (price <= 0.0 || price > 100_000.0) continue
                 val unit = match.groupValues.getOrNull(2)?.takeIf(String::isNotBlank)
                 val key = "${matchingInterest.second}|$price|${unit.orEmpty()}"
-                result[key] = ParsedOffer(
-                    store = store,
-                    productName = matchingInterest.first,
-                    normalizedProduct = matchingInterest.second,
-                    price = price,
-                    unitText = unit,
-                    validUntil = detectValidUntil(subject + " " + segment)
-                )
+                result[key] =
+                    ParsedOffer(
+                        store = store,
+                        productName = matchingInterest.first,
+                        normalizedProduct = matchingInterest.second,
+                        price = price,
+                        unitText = unit,
+                        validUntil = detectValidUntil(subject + " " + segment),
+                    )
             }
         }
         return result.values.take(40)
@@ -507,8 +597,28 @@ internal object MailSyncEngine {
 
     private fun looksLikePromotion(sender: String, subject: String, text: String): Boolean {
         val haystack = normalize("$sender $subject ${text.take(5000)}")
-        val knownStores = listOf("ica", "willys", "coop", "city gross", "citygross", "jula", "rusta", "dollarstore")
-        val promoWords = listOf("erbjud", "kampanj", "medlemspris", "veckans", "reklam", "rabatt", "rea", "kundklubb")
+        val knownStores =
+            listOf(
+                "ica",
+                "willys",
+                "coop",
+                "city gross",
+                "citygross",
+                "jula",
+                "rusta",
+                "dollarstore",
+            )
+        val promoWords =
+            listOf(
+                "erbjud",
+                "kampanj",
+                "medlemspris",
+                "veckans",
+                "reklam",
+                "rabatt",
+                "rea",
+                "kundklubb",
+            )
         return knownStores.any(haystack::contains) || promoWords.any(haystack::contains)
     }
 
@@ -522,40 +632,57 @@ internal object MailSyncEngine {
             "dollarstore" in haystack -> "Dollarstore"
             "jula" in haystack -> "Jula"
             "rusta" in haystack -> "Rusta"
-            else -> sender.substringAfter('@', sender).substringBefore('>').substringBefore(' ').take(80).ifBlank { "Mailerbjudande" }
+            else ->
+                sender
+                    .substringAfter('@', sender)
+                    .substringBefore('>')
+                    .substringBefore(' ')
+                    .take(80)
+                    .ifBlank { "Mailerbjudande" }
         }
     }
 
     private fun detectValidUntil(value: String): LocalDate? {
         val lower = value.lowercase(Locale("sv", "SE"))
-        if (!("t.o.m" in lower || "tom " in lower || "gäller till" in lower || "giltig till" in lower)) return null
-        val match = Regex("(\\d{1,2})[./-](\\d{1,2})(?:[./-](\\d{2,4}))?").find(lower) ?: return null
+        if (
+            !("t.o.m" in lower ||
+                    "tom " in lower ||
+                    "gäller till" in lower ||
+                    "giltig till" in lower)
+        )
+            return null
+        val match =
+            Regex("(\\d{1,2})[./-](\\d{1,2})(?:[./-](\\d{2,4}))?").find(lower) ?: return null
         val day = match.groupValues[1].toIntOrNull() ?: return null
         val month = match.groupValues[2].toIntOrNull() ?: return null
         val yearRaw = match.groupValues.getOrNull(3).orEmpty()
         val now = LocalDate.now(MAIL_STOCKHOLM)
-        var year = when {
-            yearRaw.length == 4 -> yearRaw.toIntOrNull() ?: now.year
-            yearRaw.length == 2 -> 2000 + (yearRaw.toIntOrNull() ?: (now.year % 100))
-            else -> now.year
-        }
+        var year =
+            when {
+                yearRaw.length == 4 -> yearRaw.toIntOrNull() ?: now.year
+                yearRaw.length == 2 -> 2000 + (yearRaw.toIntOrNull() ?: (now.year % 100))
+                else -> now.year
+            }
         var date = runCatching { LocalDate.of(year, month, day) }.getOrNull() ?: return null
         if (yearRaw.isBlank() && date.isBefore(now.minusMonths(2))) date = date.plusYears(1)
         return date
     }
 
-    private fun normalize(value: String): String = value
-        .lowercase(Locale("sv", "SE"))
-        .replace(Regex("[^a-z0-9åäö]+"), " ")
-        .trim()
+    private fun normalize(value: String): String =
+        value.lowercase(Locale("sv", "SE")).replace(Regex("[^a-z0-9åäö]+"), " ").trim()
 
-    private fun hash(value: String): String = MessageDigest.getInstance("SHA-256")
-        .digest(value.toByteArray(Charsets.UTF_8))
-        .joinToString("") { "%02x".format(it) }
+    private fun hash(value: String): String =
+        MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).joinToString(
+            ""
+        ) {
+            "%02x".format(it)
+        }
 }
 
 internal fun mailOfferMatchesItem(offer: MailOffer, itemName: String): Boolean {
-    fun normalize(value: String) = value.lowercase(Locale("sv", "SE")).replace(Regex("[^a-z0-9åäö]+"), " ").trim()
+    fun normalize(value: String) =
+        value.lowercase(Locale("sv", "SE")).replace(Regex("[^a-z0-9åäö]+"), " ").trim()
+
     val item = normalize(itemName)
     val product = offer.normalizedProduct.ifBlank { normalize(offer.productName) }
     if (item.isBlank() || product.isBlank()) return false
