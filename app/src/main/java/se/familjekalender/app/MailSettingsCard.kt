@@ -1,7 +1,6 @@
 package se.familjekalender.app
 
 import androidx.compose.material3.MaterialTheme
-import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -103,6 +102,44 @@ internal fun MailSettingsCard(session: FamilySession) {
         }
     }
 
+    val gmailAuthorizationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        val preferredEmail = pendingGmailEmail
+        val data = activityResult.data
+
+        fun recheckAuthorization() {
+            scope.launch {
+                syncing = true
+                status = "Kontrollerar Gmail-behörigheten…"
+                runCatching { requestGmailAuthorization(context, preferredEmail) }
+                    .onSuccess { authorization ->
+                        if (authorization.hasResolution()) {
+                            syncing = false
+                            pendingGmailEmail = null
+                            status = "Gmail kopplades inte. Tryck på Koppla Gmail och godkänn åtkomsten i Google-rutan."
+                        } else {
+                            finishGmailAuthorization(authorization, preferredEmail)
+                        }
+                    }
+                    .onFailure {
+                        syncing = false
+                        pendingGmailEmail = null
+                        status = "Kunde inte kontrollera Gmail-behörigheten: ${it.message ?: "okänt fel"}"
+                    }
+            }
+        }
+
+        if (data != null) {
+            runCatching { Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data) }
+                .onSuccess { finishGmailAuthorization(it, preferredEmail) }
+                .onFailure { recheckAuthorization() }
+        } else {
+            // Kontrollera grant-statusen igen i stället för att tolka tom result-data som avbruten.
+            recheckAuthorization()
+        }
+    }
+
     fun launchGmailResolution(authorization: AuthorizationResult) {
         val pendingIntent = authorization.pendingIntent
         if (pendingIntent == null) {
@@ -115,45 +152,6 @@ internal fun MailSettingsCard(session: FamilySession) {
         gmailAuthorizationLauncher.launch(
             IntentSenderRequest.Builder(pendingIntent.intentSender).build()
         )
-    }
-
-    fun recheckGmailAuthorization(preferredEmail: String? = pendingGmailEmail) {
-        scope.launch {
-            syncing = true
-            status = "Kontrollerar Gmail-behörigheten…"
-            runCatching { requestGmailAuthorization(context, preferredEmail) }
-                .onSuccess { authorization ->
-                    if (authorization.hasResolution()) {
-                        syncing = false
-                        pendingGmailEmail = null
-                        status = "Gmail kopplades inte. Tryck på Koppla Gmail och godkänn åtkomsten i Google-rutan."
-                    } else {
-                        finishGmailAuthorization(authorization, preferredEmail)
-                    }
-                }
-                .onFailure {
-                    syncing = false
-                    pendingGmailEmail = null
-                    status = "Kunde inte kontrollera Gmail-behörigheten: ${it.message ?: "okänt fel"}"
-                }
-        }
-    }
-
-    val gmailAuthorizationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { activityResult ->
-        val preferredEmail = pendingGmailEmail
-        val data = activityResult.data
-        if (data != null) {
-            runCatching { Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(data) }
-                .onSuccess { finishGmailAuthorization(it, preferredEmail) }
-                .onFailure { recheckGmailAuthorization(preferredEmail) }
-        } else {
-            // Vissa versioner av Google Play-tjänster kan återvända utan result-data
-            // trots att användaren nyss godkänt åtkomsten. Kontrollera då grant-statusen
-            // direkt i stället för att felaktigt visa att användaren avbröt.
-            recheckGmailAuthorization(preferredEmail)
-        }
     }
 
     fun startGmailAuthorization() {
