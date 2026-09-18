@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091808'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.8'
+      FAMILJEKALENDER_VERSION_CODE: '2026091809'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.9'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           printf 'prepare-update-apk\n' > /tmp/familjekalender-build-stage
-          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.8.apk
+          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.9.apk
 
       - name: Mark artifact upload stage
         shell: bash
@@ -95,8 +95,8 @@ jobs:
       - name: Upload verified signed update
         uses: actions/upload-artifact@v4
         with:
-          name: Familjekalender-signed-update-4.3.20260918.8
-          path: Familjekalender-4.3.20260918.8.apk
+          name: Familjekalender-signed-update-4.3.20260918.9
+          path: Familjekalender-4.3.20260918.9.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -108,14 +108,13 @@ jobs:
           set -euo pipefail
           printf 'publish-github-release\n' > /tmp/familjekalender-build-stage
           cat > release-notes.txt <<'EOF'
-          3D-glasskalender i Clean-läget.
+          Förfinad 3D-glasmarkering i Clean-läget.
 
-          • Vald dag använder nu en transparent glasbubbla i stället för en solid lila cirkel.
-          • Aktivitetsprickarna ligger inne i den valda glasbubblan.
-          • Övriga datum har subtila transparenta glass-rutor med rundade hörn och lätt djup.
-          • Idag- och månadsknapparna har fått samma 3D-glass-stil.
-          • Kalenderpanelen har tydligare glasdjup, mjukare kant och diskret skugga.
-          • Gmail-reservvägen, väderdata och Clean-assistenten från föregående version ingår.
+          • Den lila ringen runt valt datum är helt borttagen.
+          • Valt datum visas som en neutral transparent glasbubbla med vit glaskant.
+          • Bubblan är mer utåtbuktad med starkare djupskugga och diskret ljusreflex upptill.
+          • Aktivitetsprickarna ligger kvar inne i glasbubblan.
+          • Övriga 3D-glaselement från föregående version behålls.
           EOF
           TAG="v${FAMILJEKALENDER_VERSION_NAME}"
           APK="Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk"
