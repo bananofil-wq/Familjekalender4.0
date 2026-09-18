@@ -963,7 +963,7 @@ private fun SettingsScreen(
         title = "Utseende",
         subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen."
     ) {
-        UiLayoutMode.values().forEach { mode ->
+        UiLayoutMode.values().filter { it != UiLayoutMode.PERSONAL }.forEach { mode ->
             val selected = uiLayoutMode == mode
             Surface(
                 color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f) else LuxurySurfaceElevated,
