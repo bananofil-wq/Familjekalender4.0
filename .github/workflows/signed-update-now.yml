@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FAMILJEKALENDER_KEYSTORE_PATH: ${{ github.workspace }}/familjekalender-release.jks
-      FAMILJEKALENDER_VERSION_CODE: '2026091802'
-      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.2'
+      FAMILJEKALENDER_VERSION_CODE: '2026091803'
+      FAMILJEKALENDER_VERSION_NAME: '4.3.20260918.3'
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           printf 'prepare-update-apk\n' > /tmp/familjekalender-build-stage
-          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.2.apk
+          cp app/build/outputs/apk/release/app-release.apk Familjekalender-4.3.20260918.3.apk
 
       - name: Mark artifact upload stage
         shell: bash
@@ -96,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Familjekalender-signed-update-4.3.20260918.2
-          path: Familjekalender-4.3.20260918.2.apk
+          path: Familjekalender-4.3.20260918.3.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -108,11 +108,12 @@ jobs:
           set -euo pipefail
           printf 'publish-github-release\n' > /tmp/familjekalender-build-stage
           cat > release-notes.txt <<'EOF'
-          Interaktionsfix för Clean-läget.
+          Gmail-fix.
 
-          • Aktivitetsraderna i dagens agenda går nu att trycka på och visar aktivitetens detaljer.
-          • Hela väderkortet använder en explicit klickbar yta och öppnar Inställningar.
-          • Behåller premiumdesignen och widgetfixarna från föregående version.
+          • Koppla Gmail använder nu Googles egna konto- och behörighetsflöde direkt från en knapp.
+          • Tar bort det separata kontovalet som kunde göra att behörighetsflödet avbröts.
+          • Efter Google-dialogen kontrolleras behörigheten på nytt om Play-tjänster inte returnerar result-data.
+          • Behåller Clean-interaktionerna, premiumdesignen och widgetfixarna från föregående version.
           EOF
           TAG="v${FAMILJEKALENDER_VERSION_NAME}"
           APK="Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk"
