@@ -446,10 +446,14 @@ object SupabaseSync {
 
     private fun fetchText(url: String): String {
         val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 15000
-        connection.readTimeout = 20000
-        connection.instanceFollowRedirects = true
-        return connection.inputStream.bufferedReader().use { it.readText() }
+        return try {
+            connection.connectTimeout = 15000
+            connection.readTimeout = 20000
+            connection.instanceFollowRedirects = true
+            connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun request(
@@ -461,26 +465,46 @@ object SupabaseSync {
         preferExtra: String? = null
     ): String {
         val connection = URL("$SUPABASE_URL$path").openConnection() as HttpURLConnection
-        connection.requestMethod = method
-        connection.connectTimeout = 15000
-        connection.readTimeout = 20000
-        connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
-        connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
-        connection.setRequestProperty("Content-Type", "application/json")
-        if (!familyCode.isNullOrBlank()) connection.setRequestProperty("x-family-code", familyCode.uppercase())
-        val prefer = buildList {
-            if (preferRepresentation) add("return=representation") else add("return=minimal")
-            if (!preferExtra.isNullOrBlank()) add(preferExtra)
-        }.joinToString(",")
-        connection.setRequestProperty("Prefer", prefer)
-        if (body != null) {
-            connection.doOutput = true
-            connection.outputStream.use { it.write(body.toString().toByteArray(StandardCharsets.UTF_8)) }
+        return try {
+            connection.requestMethod = method
+            connection.connectTimeout = 15000
+            connection.readTimeout = 20000
+            connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
+            connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
+            connection.setRequestProperty("Content-Type", "application/json")
+            if (!familyCode.isNullOrBlank()) {
+                connection.setRequestProperty("x-family-code", familyCode.uppercase())
+            }
+            val prefer = buildList {
+                if (preferRepresentation) {
+                    add("return=representation")
+                } else {
+                    add("return=minimal")
+                }
+                if (!preferExtra.isNullOrBlank()) {
+                    add(preferExtra)
+                }
+            }.joinToString(",")
+            connection.setRequestProperty("Prefer", prefer)
+            if (body != null) {
+                connection.doOutput = true
+                connection.outputStream.use {
+                    it.write(body.toString().toByteArray(StandardCharsets.UTF_8))
+                }
+            }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            }
+            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) {
+                throw IllegalStateException("Serverfel $code: $text")
+            }
+            text.ifBlank { "[]" }
+        } finally {
+            connection.disconnect()
         }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        if (code !in 200..299) throw IllegalStateException("Serverfel $code: $text")
-        return text.ifBlank { "[]" }
     }
 }
