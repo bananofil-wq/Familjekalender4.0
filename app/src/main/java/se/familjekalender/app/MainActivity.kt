@@ -2,7 +2,6 @@ package se.familjekalender.app
 
 import android.Manifest
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -1146,6 +1145,7 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddEventDialog(
     members: List<SyncMember>,
@@ -1156,9 +1156,12 @@ private fun AddEventDialog(
 ) {
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
-    var startTime by remember { mutableStateOf("18:00") }
-    var endTime by remember { mutableStateOf("19:00") }
+    var startTime by remember { mutableStateOf<LocalTime?>(null) }
+    var endTime by remember { mutableStateOf<LocalTime?>(null) }
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
     var isBirthday by remember { mutableStateOf(false) }
     var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }
@@ -1209,17 +1212,6 @@ private fun AddEventDialog(
             base.year,
             base.monthValue - 1,
             base.dayOfMonth
-        ).show()
-    }
-
-    fun openTimePicker(current: String, onPicked: (String) -> Unit) {
-        val parsed = runCatching { LocalTime.parse(current) }.getOrElse { LocalTime.of(18, 0) }
-        TimePickerDialog(
-            context,
-            { _, hour, minute -> onPicked("%02d:%02d".format(hour, minute)) },
-            parsed.hour,
-            parsed.minute,
-            true
         ).show()
     }
 
@@ -1280,16 +1272,36 @@ private fun AddEventDialog(
                     Text("Tid", fontWeight = FontWeight.Bold)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
-                            onClick = { openTimePicker(startTime) { startTime = it } },
+                            onClick = { showStartTimePicker = true },
                             modifier = Modifier.weight(1f)
-                        ) { Text("Start $startTime") }
+                        ) {
+                            Text(
+                                startTime?.let { "Start ${it.format(timeFormatter)}" }
+                                    ?: "Välj starttid"
+                            )
+                        }
                         OutlinedButton(
-                            onClick = { openTimePicker(endTime) { endTime = it } },
+                            onClick = { showEndTimePicker = true },
                             modifier = Modifier.weight(1f)
-                        ) { Text("Slut $endTime") }
+                        ) {
+                            Text(
+                                endTime?.let { "Slut ${it.format(timeFormatter)}" }
+                                    ?: "Välj sluttid"
+                            )
+                        }
                     }
-                    if (endTime <= startTime) {
-                        Text("Sluttiden räknas som nästa dag.", color = Muted, fontSize = 12.sp)
+                    if (startTime == null || endTime == null) {
+                        Text(
+                            "Välj både start- och sluttid.",
+                            color = Muted,
+                            fontSize = 12.sp
+                        )
+                    } else if (!endTime!!.isAfter(startTime)) {
+                        Text(
+                            "Sluttiden räknas som nästa dag.",
+                            color = Muted,
+                            fontSize = 12.sp
+                        )
                     }
                 }
 
@@ -1346,13 +1358,104 @@ private fun AddEventDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onAdd(title.trim(), startTime, endTime, memberId, dates.toList(), isBirthday, recurrence) },
-                enabled = title.isNotBlank() && dates.isNotEmpty(),
+                onClick = {
+                    val selectedStartTime = startTime?.format(timeFormatter) ?: "09:00"
+                    val selectedEndTime = endTime?.format(timeFormatter) ?: "10:00"
+                    onAdd(
+                        title.trim(),
+                        selectedStartTime,
+                        selectedEndTime,
+                        memberId,
+                        dates.toList(),
+                        isBirthday,
+                        recurrence
+                    )
+                },
+                enabled = title.isNotBlank() &&
+                    dates.isNotEmpty() &&
+                    (isBirthday || (startTime != null && endTime != null)),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple, contentColor = Color.White)
             ) {
-                Text(if (isBirthday) "Lägg till födelsedag" else if (dates.size > 1) "Lägg till ${dates.size} dagar" else "Lägg till")
+                Text(
+                    if (isBirthday) {
+                        "Lägg till födelsedag"
+                    } else if (dates.size > 1) {
+                        "Lägg till ${dates.size} dagar"
+                    } else {
+                        "Lägg till"
+                    }
+                )
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } }
+    )
+
+    if (showStartTimePicker) {
+        EventTimePickerDialog(
+            title = "Välj starttid",
+            initialTime = startTime,
+            defaultHour = 18,
+            onDismiss = { showStartTimePicker = false },
+            onConfirm = {
+                startTime = it
+                showStartTimePicker = false
+            }
+        )
+    }
+
+    if (showEndTimePicker) {
+        EventTimePickerDialog(
+            title = "Välj sluttid",
+            initialTime = endTime,
+            defaultHour = 19,
+            onDismiss = { showEndTimePicker = false },
+            onConfirm = {
+                endTime = it
+                showEndTimePicker = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EventTimePickerDialog(
+    title: String,
+    initialTime: LocalTime?,
+    defaultHour: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalTime) -> Unit
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialTime?.hour ?: defaultHour,
+        initialMinute = initialTime?.minute ?: 0,
+        is24Hour = true
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                TimePicker(state = state)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(LocalTime.of(state.hour, state.minute))
+                }
+            ) {
+                Text("Klar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Avbryt")
+            }
+        }
     )
 }
