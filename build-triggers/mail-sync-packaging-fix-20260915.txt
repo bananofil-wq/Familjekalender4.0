@@ -1,1 +1,0 @@
-Build signed mail sync release after excluding duplicate JavaMail META-INF resources.

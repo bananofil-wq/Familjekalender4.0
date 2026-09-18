@@ -1,1 +1,0 @@
-Build and validate Personlig mode after integration: three persistent modular profiles, saved order, and remembered default UI selection.

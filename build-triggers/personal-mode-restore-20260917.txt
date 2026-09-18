@@ -1,1 +1,0 @@
-Restore Personligt as a selectable fully customizable layout. Keep the Personal home screen free of a mode-name heading. Trigger signed update build.

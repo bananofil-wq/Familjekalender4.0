@@ -1,1 +1,0 @@
-Apply and build persistent Personlig mode with three modular profiles, editable module order, and remembered default selection.

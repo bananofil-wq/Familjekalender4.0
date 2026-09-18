@@ -1,2 +1,0 @@
-Trigger signed build after source commit 6fed25d7e265cc97167d9447d200e6ee9af8f40f.
-Includes running monthly distance goal with local per-person/month progress.

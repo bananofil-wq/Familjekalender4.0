@@ -1,1 +1,0 @@
-Selectable minimalist UI integrated on 2026-09-15. Trigger full Android APK build and emulator validation.
