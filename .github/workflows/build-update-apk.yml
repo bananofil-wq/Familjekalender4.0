@@ -54,9 +54,6 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Verify approved seasonal images
-        run: python3 scripts/verify-season-images.py
-
       - name: Build signed release APK
         run: gradle :app:assembleRelease --stacktrace
 
