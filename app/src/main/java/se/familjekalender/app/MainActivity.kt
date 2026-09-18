@@ -1,15 +1,21 @@
 package se.familjekalender.app
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -128,6 +134,31 @@ class MainActivity : ComponentActivity() {
 fun FamilyCalendarApp() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("family_calendar", 0) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        prefs.edit()
+            .putBoolean("notification_permission_requested", true)
+            .putBoolean("notification_permission_granted", granted)
+            .apply()
+    }
+
+    fun requestNotificationPermissionAfterFamilySetup() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            prefs.edit()
+                .putBoolean("notification_permission_requested", true)
+                .putBoolean("notification_permission_granted", true)
+                .apply()
+            return
+        }
+
+        if (!prefs.getBoolean("notification_permission_requested", false)) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     var session by remember {
         mutableStateOf(
             prefs.getString("family_id", null)?.let {
@@ -169,6 +200,7 @@ fun FamilyCalendarApp() {
                         .putString("family_code", created.code)
                         .apply()
                     session = created
+                    requestNotificationPermissionAfterFamilySetup()
                 }
             } else {
                 FirstRunIdentityGate(session!!) {
@@ -789,6 +821,19 @@ private fun copyFamilyCode(context: Context, code: String) {
         .setPrimaryClip(ClipData.newPlainText("Familjekod", code))
 }
 
+private fun hasNotificationPermission(context: Context): Boolean {
+    return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+}
+
+private fun openNotificationSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+    )
+}
+
 @Composable
 private fun SettingsScreen(
     session: FamilySession,
@@ -957,6 +1002,28 @@ private fun SettingsScreen(
                 disabledContentColor = LuxuryTextMuted.copy(alpha = .55f)
             )
         ) { Text("Spara och synka") }
+    }
+
+    val notificationPrefs = context.getSharedPreferences("family_calendar", 0)
+    val notificationPermissionRequested = notificationPrefs.getBoolean("notification_permission_requested", false)
+    if (
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        notificationPermissionRequested &&
+        !hasNotificationPermission(context)
+    ) {
+        Spacer(Modifier.height(14.dp))
+        SettingsSectionCard(
+            title = "Aviseringar är avstängda",
+            subtitle = "Familjekalendern behöver Androids aviseringsbehörighet för att kunna visa påminnelser och familjenotiser."
+        ) {
+            Button(
+                onClick = { openNotificationSettings(context) },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text("Öppna aviseringsinställningar")
+            }
+        }
     }
 
     Spacer(Modifier.height(14.dp))
