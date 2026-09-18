@@ -166,8 +166,12 @@ jobs:
             printf 'Stage: %s\n' "$STAGE"
             printf 'Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\n'
             if [ -s /tmp/familjekalender-build.log ]; then
+              printf '\nCompiler errors:\n'
+              grep -E '(^|[[:space:]])(e:|error:)|Unresolved reference|Type mismatch|No parameter with name|None of the following candidates|Compilation error' /tmp/familjekalender-build.log | tail -n 120 || true
+              printf '\nRelevant source mentions:\n'
+              grep -E 'MinimalCalendarScreen|MainActivity|\.kt:' /tmp/familjekalender-build.log | tail -n 120 || true
               printf '\nLast Gradle output:\n'
-              tail -n 80 /tmp/familjekalender-build.log
+              tail -n 120 /tmp/familjekalender-build.log
             fi
           } > "$FAILURE_MARKER"
           git add "$FAILURE_MARKER"
