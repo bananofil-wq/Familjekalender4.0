@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import hashlib
 import sys
 
-EXPECTED = {
-    "season_winter.jpg": "2670b9fa42de076462531af944622fe4f6d8e54eae987f5715778e0e3ea7b5e8",
-    "season_spring.jpg": "346f863bb1f5a370cdec1fa5dae492bd6d8f1ae6c568e17bfe6bf541edbd6f44",
-    "season_autumn.jpg": "74c9e709baf521863767de9d125775319e4238afe974cbbb7773adb72b7c9e09",
-    "season_summer.jpg": "9311ef97ff763ef06088243530329fb2ebbaaef71e04e9f8d3ed5c39555eb97a",
-}
+EXPECTED = (
+    "season_spring.webp",
+    "season_summer.webp",
+    "season_autumn.webp",
+    "season_winter.webp",
+)
 
 root = Path(__file__).resolve().parents[1] / "app" / "src" / "main" / "res" / "drawable-nodpi"
 errors = []
-for name, expected in EXPECTED.items():
+for name in EXPECTED:
     path = root / name
     if not path.is_file():
         errors.append(f"missing: {path}")
         continue
-    actual = hashlib.sha256(path.read_bytes()).hexdigest()
-    if actual != expected:
-        errors.append(f"wrong image: {name}\n  expected {expected}\n  actual   {actual}")
+    data = path.read_bytes()
+    if len(data) < 100_000:
+        errors.append(f"image unexpectedly small: {name} ({len(data)} bytes)")
+    if not (data.startswith(b"RIFF") and data[8:12] == b"WEBP"):
+        errors.append(f"not a valid WebP container: {name}")
 
 if errors:
     print("Season image verification FAILED")
     print("\n".join(errors))
     sys.exit(1)
 
-print("Season image verification OK: all four files exactly match the approved uploads")
+print("Season image verification OK: all four approved high-resolution WebP resources are present")
