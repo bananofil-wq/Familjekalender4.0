@@ -11,6 +11,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Full-screen friendly Hugo home widget, compatible with Android 9 RemoteViews. */
 class HugoHomeWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         ids.forEach { id -> manager.updateAppWidget(id, buildViews(context, id)) }
