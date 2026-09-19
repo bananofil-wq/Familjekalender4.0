@@ -23,6 +23,9 @@ private data class ConflictInterval(
     val end: Int?,
 )
 
+private fun isBirthdayConflictExempt(event: SyncEvent): Boolean =
+    event.title.trimStart().startsWith("🌈")
+
 private fun conflictMinutes(value: String?): Int? {
     if (value.isNullOrBlank()) return null
     val parsed = runCatching { LocalTime.parse(value) }.getOrNull() ?: return null
@@ -69,7 +72,8 @@ internal fun analyzeCalendarConflicts(
     val seen = mutableSetOf<String>()
 
     dates.forEach { currentDate ->
-        val dayEvents = events.filter { it.date == currentDate }
+        val dayEvents =
+            events.filter { it.date == currentDate && !isBirthdayConflictExempt(it) }
         val memberContexts: List<Pair<String?, String>> =
             if (realMembers.isEmpty()) {
                 listOf(ALL_FAMILY_MEMBER_ID to "Hela familjen")
