@@ -518,6 +518,27 @@ internal fun ExactCalendarScreen(
                     }
                 }
             },
+            onDelete = { deleteScope ->
+                val session = currentFamilySession(context)
+                if (session != null) {
+                    scope.launch {
+                        val targets =
+                            when (deleteScope) {
+                                SeriesEditScope.THIS -> listOf(event)
+                                SeriesEditScope.THIS_AND_FUTURE ->
+                                    matchingSeries.filter { !it.date.isBefore(event.date) }
+                                SeriesEditScope.WHOLE_SERIES -> matchingSeries
+                            }
+                        val effectiveTargets = if (targets.isEmpty()) listOf(event) else targets
+                        runCatching {
+                            deleteCalendarEventsDirect(session, effectiveTargets.map { it.id })
+                        }.onSuccess {
+                            editEvent = null
+                            refreshActivity()
+                        }
+                    }
+                }
+            },
         )
     }
 
