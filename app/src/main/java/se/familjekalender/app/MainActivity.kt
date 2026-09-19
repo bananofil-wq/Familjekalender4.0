@@ -969,8 +969,13 @@ private fun ShoppingScreen(
     onClear: () -> Unit,
 ) {
     val motionEnabled = appMotionEnabled()
+    val shoppingScope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
     var showClearConfirmation by remember { mutableStateOf(false) }
+    var selectedShoppingTool by remember { mutableStateOf<String?>(null) }
+    var priceComparison by remember { mutableStateOf<ShoppingPriceComparison?>(null) }
+    var comparingPrices by remember { mutableStateOf(false) }
+    var priceComparisonError by remember { mutableStateOf("") }
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
     val total = items.size
@@ -1160,11 +1165,275 @@ private fun ShoppingScreen(
     Text("Tips: skriv flera varor separerade med kommatecken", color = Muted, fontSize = 11.sp)
     Spacer(Modifier.height(12.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PremiumShoppingAction("🏷", "Prisjämför", true, Modifier.weight(1f))
-        PremiumShoppingAction("▣", "Recept", false, Modifier.weight(1f))
-        PremiumShoppingAction("☷", "Planera", false, Modifier.weight(1f))
+        PremiumShoppingAction(
+            icon = "🏷",
+            label = "Prisjämför",
+            selected = selectedShoppingTool == "price",
+            modifier = Modifier.weight(1f),
+            onClick = {
+                selectedShoppingTool = "price"
+                priceComparisonError = ""
+                if (openItems.isEmpty()) {
+                    priceComparison = null
+                    priceComparisonError = "Lägg till minst en vara för att jämföra priser."
+                } else {
+                    shoppingScope.launch {
+                        comparingPrices = true
+                        runCatching { ShoppingPriceService.compare(openItems.map { it.name }) }
+                            .onSuccess { priceComparison = it }
+                            .onFailure {
+                                priceComparison = null
+                                priceComparisonError =
+                                    it.message ?: "Kunde inte hämta prisjämförelsen."
+                            }
+                        comparingPrices = false
+                    }
+                }
+            },
+        )
+        PremiumShoppingAction(
+            icon = "▣",
+            label = "Recept",
+            selected = selectedShoppingTool == "recipes",
+            modifier = Modifier.weight(1f),
+            onClick = { selectedShoppingTool = "recipes" },
+        )
+        PremiumShoppingAction(
+            icon = "☷",
+            label = "Planera",
+            selected = selectedShoppingTool == "plan",
+            modifier = Modifier.weight(1f),
+            onClick = { selectedShoppingTool = "plan" },
+        )
     }
     Spacer(Modifier.height(10.dp))
+
+    selectedShoppingTool?.let { tool ->
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .88f)),
+            shape = RoundedCornerShape(20.dp),
+            border =
+                BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = .20f),
+                ),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
+                when (tool) {
+                    "price" -> {
+                        Text(
+                            "Prisjämförelse",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                        Text(
+                            "Endast verifierade priser från ansluten prisdata visas. Inga uppskattade priser.",
+                            color = Muted,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                        )
+                        when {
+                            comparingPrices -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                    Spacer(Modifier.width(9.dp))
+                                    Text("Jämför priser…", color = Muted, fontSize = 12.sp)
+                                }
+                            }
+                            priceComparisonError.isNotBlank() -> {
+                                Text(
+                                    priceComparisonError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp,
+                                )
+                            }
+                            priceComparison != null -> {
+                                val result = priceComparison!!
+                                result.bestCompleteStore?.let { basket ->
+                                    Text(
+                                        "Billigaste kompletta butik: ${basket.store} · ${"%.2f".format(Locale("sv", "SE"), basket.total)} kr",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                                result.splitBasketTotal?.let { total ->
+                                    Text(
+                                        "Billigast om köpet delas upp: ${"%.2f".format(Locale("sv", "SE"), total)} kr",
+                                        color = Color.White.copy(alpha = .84f),
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                                result.splitSavingsAgainstBestCompleteStore?.let { saving ->
+                                    Text(
+                                        "Möjlig besparing: ${"%.2f".format(Locale("sv", "SE"), saving)} kr",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                                HorizontalDivider(color = Color.White.copy(alpha = .07f))
+                                result.items.forEach { pricedItem ->
+                                    val cheapest = pricedItem.cheapest
+                                    if (cheapest == null) {
+                                        Text(
+                                            "${pricedItem.query}: inget verifierat pris hittades",
+                                            color = Muted,
+                                            fontSize = 11.sp,
+                                        )
+                                    } else {
+                                        val detail =
+                                            listOfNotNull(
+                                                cheapest.brand,
+                                                cheapest.packageText,
+                                            ).joinToString(" · ")
+                                        Text(
+                                            "${pricedItem.query}: ${cheapest.store} · ${"%.2f".format(Locale("sv", "SE"), cheapest.price)} kr",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        if (detail.isNotBlank()) {
+                                            Text(detail, color = Muted, fontSize = 10.sp)
+                                        }
+                                    }
+                                }
+                            }
+                            else -> {
+                                Text(
+                                    "Tryck på Prisjämför för att jämföra varorna som inte är avbockade.",
+                                    color = Muted,
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        }
+                    }
+
+                    "recipes" -> {
+                        Text(
+                            "Recept från inköpslistan",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                        val names = openItems.map { it.name.lowercase(Locale("sv", "SE")) }
+                        val ideas = buildList {
+                            if (
+                                names.any { "pasta" in it } &&
+                                    names.any { "färs" in it || "kött" in it || "tomat" in it }
+                            ) add("Pasta med köttfärssås" to "Pasta, färs/kött och tomat från listan passar ihop.")
+                            if (
+                                names.any { "kyckling" in it } &&
+                                    names.any { "ris" in it || "grönsak" in it || "paprika" in it }
+                            ) add("Kyckling med ris och grönsaker" to "Bygg middagen runt kyckling och tillbehör som redan finns på listan.")
+                            if (
+                                names.any { "ägg" in it } &&
+                                    names.any { "mjölk" in it } &&
+                                    names.any { "mjöl" in it }
+                            ) add("Pannkakor" to "Ägg, mjölk och mjöl finns redan bland inköpen.")
+                            if (
+                                names.any { "lax" in it || "fisk" in it } &&
+                                    names.any { "potatis" in it || "ris" in it }
+                            ) add("Fiskmiddag" to "Fisk/lax tillsammans med potatis eller ris ger en enkel middag.")
+                        }.take(4)
+
+                        if (openItems.isEmpty()) {
+                            Text(
+                                "Lägg till varor i inköpslistan så visas receptidéer här.",
+                                color = Muted,
+                                fontSize = 12.sp,
+                            )
+                        } else if (ideas.isEmpty()) {
+                            Text(
+                                "Jag hittar ingen tydlig receptkombination i listan ännu. Lägg till fler huvudingredienser så blir förslagen bättre.",
+                                color = Muted,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                            )
+                        } else {
+                            ideas.forEach { (title, subtitle) ->
+                                Surface(
+                                    color = Color.White.copy(alpha = .035f),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Column(Modifier.padding(12.dp)) {
+                                        Text(
+                                            title,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.sp,
+                                        )
+                                        Text(subtitle, color = Muted, fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    "plan" -> {
+                        Text(
+                            "Planera handlingen",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                        if (openItems.isEmpty()) {
+                            Text(
+                                "Inga varor kvar att planera.",
+                                color = Muted,
+                                fontSize = 12.sp,
+                            )
+                        } else {
+                            Text(
+                                "${openItems.size} varor kvar · grupperade i en smidigare butiksordning.",
+                                color = Muted,
+                                fontSize = 11.sp,
+                            )
+                            categoryOrder.forEach { category ->
+                                val categoryItems = grouped[category].orEmpty()
+                                if (categoryItems.isNotEmpty()) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            category,
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            "${categoryItems.size}",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TextButton(
+                    onClick = { selectedShoppingTool = null },
+                    modifier = Modifier.align(Alignment.End),
+                ) {
+                    Text("Stäng")
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+    }
 
     AnimatedContent(
         targetState = items,
@@ -1333,9 +1602,10 @@ private fun PremiumShoppingAction(
     label: String,
     selected: Boolean,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit,
 ) {
     Surface(
-        modifier = modifier.height(52.dp),
+        modifier = modifier.height(52.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color =
             if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .15f)
