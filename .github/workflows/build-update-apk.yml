@@ -1,6 +1,8 @@
 name: Build Signed Update APK
 
 on:
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
   push:
     branches:
@@ -78,6 +80,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish latest app update
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
