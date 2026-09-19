@@ -16,13 +16,17 @@ import android.location.LocationManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class FamilyLocationService : Service() {
@@ -107,6 +111,12 @@ class FamilyLocationService : Service() {
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        serviceScope.launch {
+            while (isActive) {
+                syncChildModeState()
+                delay(30_000L)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -116,7 +126,7 @@ class FamilyLocationService : Service() {
         }
 
         configureTracking(
-            if (liveViewActive()) TrackingMode.LIVE else TrackingMode.MOVING,
+            if (liveViewActive() || childRealtimeEnabled()) TrackingMode.LIVE else TrackingMode.MOVING,
             force = true,
         )
         refreshPlaces()
@@ -150,6 +160,10 @@ class FamilyLocationService : Service() {
     private fun liveViewActive(): Boolean =
         getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
             .getBoolean("live_view_active", false)
+
+    private fun childRealtimeEnabled(): Boolean =
+        getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
+            .getBoolean("child_realtime_tracking", false)
 
     private fun configureTracking(mode: TrackingMode, force: Boolean = false) {
         if (!hasLocationPermission()) return
@@ -229,7 +243,8 @@ class FamilyLocationService : Service() {
 
         val now = System.currentTimeMillis()
         val desiredMode =
-            if (liveViewActive()) TrackingMode.LIVE else desiredTrackingMode(location, now)
+            if (liveViewActive() || childRealtimeEnabled()) TrackingMode.LIVE
+            else desiredTrackingMode(location, now)
         configureTracking(desiredMode)
 
         if (publishing) return
@@ -285,6 +300,37 @@ class FamilyLocationService : Service() {
                 publishing = false
             }
         }
+    }
+
+    private suspend fun syncChildModeState() {
+        val locationPrefs = getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
+        val memberId = locationPrefs.getString("device_member_id", null) ?: return
+        val session = currentSession() ?: return
+
+        runCatching { ChildModeSync.loadSettings(session, memberId) }
+            .onSuccess { settings ->
+                locationPrefs
+                    .edit()
+                    .putBoolean("child_realtime_tracking", settings.realtimeTracking)
+                    .apply()
+
+                val childPrefs = getSharedPreferences(CHILD_MODE_PREFS, Context.MODE_PRIVATE)
+                val manualSchool =
+                    childPrefs.getBoolean("manual_school_$memberId", false)
+                SchoolModeController.apply(
+                    applicationContext,
+                    isSchoolScheduleActive(settings) || manualSchool,
+                )
+
+                Handler(Looper.getMainLooper()).post {
+                    if (sharingEnabled()) {
+                        configureTracking(
+                            if (settings.realtimeTracking || liveViewActive()) TrackingMode.LIVE
+                            else TrackingMode.MOVING,
+                        )
+                    }
+                }
+            }
     }
 
     private fun desiredTrackingMode(location: Location, now: Long): TrackingMode {
@@ -381,7 +427,10 @@ class FamilyLocationService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_calendar)
             .setContentTitle("Familjekalendern")
-            .setContentText("Smart platsdelning aktiv i bakgrunden")
+            .setContentText(
+                if (childRealtimeEnabled()) "Liveposition delas med familjen"
+                else "Smart platsdelning aktiv i bakgrunden"
+            )
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
