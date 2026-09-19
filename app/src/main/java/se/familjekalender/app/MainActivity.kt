@@ -395,6 +395,7 @@ private fun SyncedApp(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showAddEvent by remember { mutableStateOf(false) }
+    var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
     var addEventInitialTitle by remember { mutableStateOf("") }
     var assistantAddRequest by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("") }
@@ -495,6 +496,7 @@ private fun SyncedApp(
                                     addEventInitialTitle = ""
                                     showAddEvent = true
                                 },
+                                onEdit = { editEvent = it },
                                 onOpenSettings = { selectedTab = 4 },
                             )
 
@@ -755,6 +757,90 @@ private fun SyncedApp(
     }
 
     AutomaticUpdateNotice()
+
+    editEvent?.let { event ->
+        val matchingSeries =
+            events
+                .filter { candidate ->
+                    candidate.source != "sportadmin" &&
+                            if (event.seriesId != null) {
+                                candidate.seriesId == event.seriesId
+                            } else {
+                                candidate.seriesId == null &&
+                                        candidate.source == event.source &&
+                                        candidate.memberId == event.memberId &&
+                                        candidate.title == event.title &&
+                                        candidate.time == event.time &&
+                                        candidate.endTime == event.endTime
+                            }
+                }
+                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+
+        EditEventDialog(
+            event = event,
+            members = members,
+            hasSeries = matchingSeries.size > 1,
+            onDismiss = { editEvent = null },
+            onSave = { title, date, time, endTime, memberId, editScope ->
+                scope.launch {
+                    val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
+                    val targets =
+                        when (editScope) {
+                            SeriesEditScope.THIS -> listOf(event)
+                            SeriesEditScope.THIS_AND_FUTURE ->
+                                matchingSeries.filter { !it.date.isBefore(event.date) }
+                            SeriesEditScope.WHOLE_SERIES -> matchingSeries
+                        }
+                    val effectiveTargets = if (targets.isEmpty()) listOf(event) else targets
+                    runCatching {
+                        val splitSeriesId =
+                            when {
+                                event.seriesId == null -> null
+                                editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                                    java.util.UUID.randomUUID().toString()
+                                else -> event.seriesId
+                            }
+
+                        effectiveTargets.forEach { target ->
+                            val targetDate =
+                                if (editScope == SeriesEditScope.THIS) date
+                                else target.date.plusDays(dayShift)
+                            SupabaseSync.updateEvent(
+                                session,
+                                target.id,
+                                title,
+                                targetDate,
+                                time,
+                                endTime,
+                                memberId,
+                            )
+                            when {
+                                event.seriesId == null -> Unit
+                                editScope == SeriesEditScope.THIS ->
+                                    SupabaseSync.updateEventSeriesId(session, target.id, null)
+                                editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                                    SupabaseSync.updateEventSeriesId(
+                                        session,
+                                        target.id,
+                                        splitSeriesId,
+                                    )
+                                editScope == SeriesEditScope.WHOLE_SERIES -> Unit
+                            }
+                        }
+                    }
+                        .onSuccess {
+                            editEvent = null
+                            selectedDate = date
+                            refresh()
+                            FamilyCalendarWidget.enqueueRefresh(context)
+                        }
+                        .onFailure {
+                            message = "Kunde inte spara aktiviteten: ${it.message}"
+                        }
+                }
+            },
+        )
+    }
 
     if (showAddEvent) {
         AddEventDialog(
