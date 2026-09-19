@@ -113,6 +113,7 @@ internal fun RunningLifeDashboard(
     members: List<SyncMember>,
     onAdd: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenLocation: () -> Unit,
     onRefresh: suspend () -> Unit,
 ) {
     val locale = remember { Locale("sv", "SE") }
@@ -141,6 +142,16 @@ internal fun RunningLifeDashboard(
         )
 
         Spacer(Modifier.height(14.dp))
+
+        if (members.any { it.name.equals("Hugo", ignoreCase = true) }) {
+            HugoLiveLocationCard(
+                session = session,
+                members = members,
+                onOpenLocation = onOpenLocation,
+                showMap = true,
+            )
+            Spacer(Modifier.height(14.dp))
+        }
 
         LifeFocusSelector(
             focus = focus,
