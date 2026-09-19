@@ -66,6 +66,7 @@ private fun cleanEventTime(event: SyncEvent): String =
 
 @Composable
 internal fun MinimalCalendarScreen(
+    session: FamilySession,
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit,
     events: List<SyncEvent>,
@@ -73,6 +74,7 @@ internal fun MinimalCalendarScreen(
     onAdd: () -> Unit,
     onEdit: (SyncEvent) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenLocation: () -> Unit,
 ) {
     val context = LocalContext.current
     val locale = remember { Locale("sv", "SE") }
@@ -175,6 +177,16 @@ internal fun MinimalCalendarScreen(
             )
 
             Spacer(Modifier.height(12.dp))
+
+            if (members.any { it.name.equals("Hugo", ignoreCase = true) }) {
+                HugoLiveLocationCard(
+                    session = session,
+                    members = members,
+                    onOpenLocation = onOpenLocation,
+                    showMap = true,
+                )
+                Spacer(Modifier.height(12.dp))
+            }
 
             CleanCalendarCard(
                 month = month,
