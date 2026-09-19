@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -605,13 +606,12 @@ private fun CleanCalendarCard(
     onNext: () -> Unit,
     onToday: () -> Unit,
 ) {
-    Surface(
-        color = Color.Transparent,
-        shape = RoundedCornerShape(30.dp),
-        border = BorderStroke(1.2.dp, Color.White.copy(alpha = .17f)),
-        shadowElevation = 8.dp,
-        tonalElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth(),
+    val calendarShape = RoundedCornerShape(30.dp)
+    Box(
+        modifier =
+            Modifier.fillMaxWidth()
+                .clip(calendarShape)
+                .border(1.2.dp, Color.White.copy(alpha = .17f), calendarShape),
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             Row(
@@ -735,17 +735,19 @@ private fun CleanCalendarCard(
                                     }
                                 }
                             } else {
-                                Surface(
-                                    color = Color.Transparent,
-                                    shape = RoundedCornerShape(11.dp),
-                                    border =
-                                        BorderStroke(
-                                            .6.dp,
-                                            Color.White.copy(alpha = if (inMonth) .09f else .045f),
-                                        ),
-                                    shadowElevation = if (inMonth) 1.dp else 0.dp,
-                                    tonalElevation = 0.dp,
-                                    modifier = Modifier.fillMaxSize(),
+                                val dayShape = RoundedCornerShape(11.dp)
+                                Box(
+                                    modifier =
+                                        Modifier.fillMaxSize()
+                                            .clip(dayShape)
+                                            .border(
+                                                .6.dp,
+                                                Color.White.copy(
+                                                    alpha = if (inMonth) .09f else .045f
+                                                ),
+                                                dayShape,
+                                            ),
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
