@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -318,6 +320,15 @@ internal fun MinimalCalendarScreen(
             selectedDate
                 .format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
                 .replaceFirstChar { it.uppercase(locale) }
+        val groupedEvents =
+            remember(selectedEvents) {
+                selectedEvents
+                    .groupBy { it.memberId ?: ALL_FAMILY_MEMBER_ID }
+                    .entries
+                    .sortedBy { entry -> entry.value.minOfOrNull { it.time } ?: "99:99" }
+            }
+        var collapsedMemberKeys by
+            remember(selectedDate) { mutableStateOf(emptySet<String>()) }
 
         AlertDialog(
             onDismissRequest = { showAllDayActivities = false },
@@ -345,81 +356,296 @@ internal fun MinimalCalendarScreen(
                     Modifier.fillMaxWidth()
                         .heightIn(max = 520.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
                     if (selectedEvents.isEmpty()) {
                         Text("Inga aktiviteter planerade", color = CleanMuted)
                     } else {
-                        selectedEvents.forEachIndexed { index, event ->
-                            val member = memberById[event.memberId]
+                        groupedEvents.forEach { (memberKey, personEventsRaw) ->
+                            val personEvents =
+                                personEventsRaw.sortedWith(
+                                    compareBy<SyncEvent> { it.time }.thenBy { it.title }
+                                )
+                            val member = memberById[memberKey]
+                            val memberName =
+                                if (memberKey == ALL_FAMILY_MEMBER_ID) "Hela familjen"
+                                else member?.name ?: "Övrigt"
                             val accent =
-                                member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
-                            Surface(
-                                color = Color.White.copy(alpha = .045f),
-                                shape = RoundedCornerShape(18.dp),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
-                                modifier =
-                                    Modifier.fillMaxWidth().clickable {
-                                        showAllDayActivities = false
-                                        openedEvent = event
-                                    },
-                            ) {
-                                Row(
-                                    Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                if (memberKey == ALL_FAMILY_MEMBER_ID) Color(0xFFFFD75E)
+                                else member?.let { Color(it.colorArgb.toInt()) }
+                                    ?: CleanPurpleBright
+
+                            if (personEvents.size == 1) {
+                                val event = personEvents.first()
+                                val hasConflict =
+                                    selectedConflicts.any {
+                                        it.first.id == event.id || it.second.id == event.id
+                                    }
+                                Surface(
+                                    color = Color.White.copy(alpha = .045f),
+                                    shape = RoundedCornerShape(18.dp),
+                                    border =
+                                        BorderStroke(
+                                            1.dp,
+                                            if (hasConflict) Color(0xFFFF8A94).copy(alpha = .35f)
+                                            else Color.White.copy(alpha = .08f),
+                                        ),
+                                    modifier =
+                                        Modifier.fillMaxWidth().clickable {
+                                            showAllDayActivities = false
+                                            openedEvent = event
+                                        },
                                 ) {
-                                    Box(
-                                        Modifier.width(3.dp)
-                                            .height(38.dp)
-                                            .clip(RoundedCornerShape(99.dp))
-                                            .background(accent)
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(
-                                        cleanEventTime(event),
-                                        color = Color.White.copy(alpha = .70f),
-                                        fontSize = 12.sp,
-                                        modifier = Modifier.width(72.dp),
-                                    )
-                                    Box(
-                                        Modifier.size(30.dp)
-                                            .clip(CircleShape)
-                                            .background(accent.copy(alpha = .18f)),
-                                        contentAlignment = Alignment.Center,
+                                    Row(
+                                        Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Box(
-                                            Modifier.size(8.dp)
-                                                .clip(CircleShape)
+                                            Modifier.width(3.dp)
+                                                .height(38.dp)
+                                                .clip(RoundedCornerShape(99.dp))
                                                 .background(accent)
                                         )
-                                    }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column(Modifier.weight(1f)) {
+                                        Spacer(Modifier.width(10.dp))
                                         Text(
-                                            cleanEventTitle(event),
-                                            color = Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
+                                            cleanEventTime(event),
+                                            color = Color.White.copy(alpha = .70f),
+                                            fontSize = 12.sp,
+                                            modifier = Modifier.width(78.dp),
                                         )
-                                        Text(
-                                            if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen"
-                                            else member?.name ?: "Övrigt",
-                                            color = CleanMuted,
-                                            fontSize = 11.sp,
+                                        Box(
+                                            Modifier.size(30.dp)
+                                                .clip(CircleShape)
+                                                .background(accent.copy(alpha = .18f)),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Box(
+                                                Modifier.size(8.dp)
+                                                    .clip(CircleShape)
+                                                    .background(accent)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                cleanEventTitle(event),
+                                                color = Color.White,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                Text(
+                                                    memberName,
+                                                    color = CleanMuted,
+                                                    fontSize = 11.sp,
+                                                )
+                                                if (hasConflict) {
+                                                    Text(
+                                                        "Krock",
+                                                        color = Color(0xFFFFA0A8),
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Icon(
+                                            Icons.Default.ChevronRight,
+                                            contentDescription = "Öppna aktivitet",
+                                            tint = Color.White.copy(alpha = .38f),
+                                            modifier = Modifier.size(19.dp),
                                         )
                                     }
-                                    Icon(
-                                        Icons.Default.ChevronRight,
-                                        contentDescription = "Öppna aktivitet",
-                                        tint = Color.White.copy(alpha = .38f),
-                                        modifier = Modifier.size(19.dp),
-                                    )
                                 }
-                            }
-                            if (index < selectedEvents.lastIndex) {
-                                Spacer(Modifier.height(2.dp))
+                            } else {
+                                val collapsed = memberKey in collapsedMemberKeys
+                                val firstStart = personEvents.first().time
+                                val lastEvent = personEvents.last()
+                                val lastTime =
+                                    lastEvent.endTime?.takeIf { it.isNotBlank() }
+                                        ?: lastEvent.time
+                                val daySpan =
+                                    if (firstStart == lastTime) firstStart else "$firstStart–$lastTime"
+                                val personHasConflict =
+                                    selectedConflicts.any { conflict ->
+                                        conflict.memberId == memberKey ||
+                                                personEvents.any {
+                                                    it.id == conflict.first.id ||
+                                                            it.id == conflict.second.id
+                                                }
+                                    }
+
+                                Surface(
+                                    color = Color.White.copy(alpha = .045f),
+                                    shape = RoundedCornerShape(20.dp),
+                                    border =
+                                        BorderStroke(
+                                            1.dp,
+                                            if (personHasConflict)
+                                                Color(0xFFFF8A94).copy(alpha = .30f)
+                                            else accent.copy(alpha = .22f),
+                                        ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Column {
+                                        Row(
+                                            Modifier.fillMaxWidth()
+                                                .clickable {
+                                                    collapsedMemberKeys =
+                                                        if (collapsed) {
+                                                            collapsedMemberKeys - memberKey
+                                                        } else {
+                                                            collapsedMemberKeys + memberKey
+                                                        }
+                                                }
+                                                .padding(horizontal = 13.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Box(
+                                                Modifier.size(34.dp)
+                                                    .clip(CircleShape)
+                                                    .background(accent.copy(alpha = .18f)),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Box(
+                                                    Modifier.size(9.dp)
+                                                        .clip(CircleShape)
+                                                        .background(accent)
+                                                )
+                                            }
+                                            Spacer(Modifier.width(10.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                                                ) {
+                                                    Text(
+                                                        memberName,
+                                                        color = Color.White,
+                                                        fontSize = 15.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+                                                    if (personHasConflict) {
+                                                        Text(
+                                                            "Krock",
+                                                            color = Color(0xFFFFA0A8),
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                        )
+                                                    }
+                                                }
+                                                Text(
+                                                    "${personEvents.size} aktiviteter · $daySpan",
+                                                    color = CleanMuted,
+                                                    fontSize = 11.sp,
+                                                )
+                                            }
+                                            Icon(
+                                                if (collapsed) Icons.Default.KeyboardArrowDown
+                                                else Icons.Default.KeyboardArrowUp,
+                                                contentDescription =
+                                                    if (collapsed) "Visa aktiviteter"
+                                                    else "Dölj aktiviteter",
+                                                tint = Color.White.copy(alpha = .48f),
+                                                modifier = Modifier.size(22.dp),
+                                            )
+                                        }
+
+                                        if (!collapsed) {
+                                            HorizontalDivider(
+                                                color = Color.White.copy(alpha = .07f),
+                                                thickness = .5.dp,
+                                            )
+                                            Column(
+                                                Modifier.padding(
+                                                    start = 13.dp,
+                                                    end = 10.dp,
+                                                    bottom = 8.dp,
+                                                )
+                                            ) {
+                                                personEvents.forEachIndexed { index, event ->
+                                                    val hasConflict =
+                                                        selectedConflicts.any {
+                                                            it.first.id == event.id ||
+                                                                    it.second.id == event.id
+                                                        }
+                                                    Row(
+                                                        Modifier.fillMaxWidth()
+                                                            .clickable {
+                                                                showAllDayActivities = false
+                                                                openedEvent = event
+                                                            }
+                                                            .padding(vertical = 7.dp),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                    ) {
+                                                        Text(
+                                                            cleanEventTime(event),
+                                                            color = Color.White.copy(alpha = .68f),
+                                                            fontSize = 11.sp,
+                                                            modifier = Modifier.width(82.dp),
+                                                        )
+                                                        Box(
+                                                            Modifier.width(20.dp).height(42.dp),
+                                                            contentAlignment = Alignment.Center,
+                                                        ) {
+                                                            if (personEvents.size > 1) {
+                                                                Box(
+                                                                    Modifier.width(2.dp)
+                                                                        .fillMaxHeight()
+                                                                        .background(
+                                                                            accent.copy(alpha = .28f)
+                                                                        )
+                                                                )
+                                                            }
+                                                            Box(
+                                                                Modifier.size(10.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(accent)
+                                                            )
+                                                        }
+                                                        Spacer(Modifier.width(7.dp))
+                                                        Column(Modifier.weight(1f)) {
+                                                            Text(
+                                                                cleanEventTitle(event),
+                                                                color = Color.White,
+                                                                fontSize = 13.sp,
+                                                                fontWeight = FontWeight.SemiBold,
+                                                                maxLines = 1,
+                                                                overflow = TextOverflow.Ellipsis,
+                                                            )
+                                                            if (hasConflict) {
+                                                                Text(
+                                                                    "Överlappning / dubbelbokning",
+                                                                    color = Color(0xFFFFA0A8),
+                                                                    fontSize = 9.sp,
+                                                                    fontWeight = FontWeight.SemiBold,
+                                                                )
+                                                            }
+                                                        }
+                                                        Icon(
+                                                            Icons.Default.ChevronRight,
+                                                            contentDescription = "Öppna aktivitet",
+                                                            tint = Color.White.copy(alpha = .32f),
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    }
+                                                    if (index < personEvents.lastIndex) {
+                                                        HorizontalDivider(
+                                                            color = Color.White.copy(alpha = .05f),
+                                                            thickness = .5.dp,
+                                                            modifier = Modifier.padding(start = 89.dp),
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
