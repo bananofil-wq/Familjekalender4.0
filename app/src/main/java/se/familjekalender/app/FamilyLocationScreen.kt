@@ -737,11 +737,14 @@ private fun LocationMemberStrip(
 }
 
 @Composable
-private fun LocationMapCard(
+internal fun LocationMapCard(
     locations: List<SyncFamilyLocation>,
     members: List<SyncMember>,
     selectedMemberId: String?,
     batteryVisible: Boolean,
+    mapHeight: androidx.compose.ui.unit.Dp = 300.dp,
+    showControls: Boolean = true,
+    showDetails: Boolean = true,
 ) {
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var userMovedMap by remember { mutableStateOf(false) }
@@ -757,7 +760,7 @@ private fun LocationMapCard(
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
     ) {
-        Box(Modifier.fillMaxWidth().height(300.dp)) {
+        Box(Modifier.fillMaxWidth().height(mapHeight)) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
@@ -824,28 +827,31 @@ private fun LocationMapCard(
                 }
             }
 
-            Column(
-                modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SmallFloatingActionButton(
-                    onClick = { mapView?.controller?.zoomIn() },
-                    containerColor = Color(0xEE17151F),
-                    contentColor = Color.White,
+            if (showControls) {
+                Column(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Zooma in")
-                }
-                SmallFloatingActionButton(
-                    onClick = { mapView?.controller?.zoomOut() },
-                    containerColor = Color(0xEE17151F),
-                    contentColor = Color.White,
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Zooma ut")
+                    SmallFloatingActionButton(
+                        onClick = { mapView?.controller?.zoomIn() },
+                        containerColor = Color(0xEE17151F),
+                        contentColor = Color.White,
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Zooma in")
+                    }
+                    SmallFloatingActionButton(
+                        onClick = { mapView?.controller?.zoomOut() },
+                        containerColor = Color(0xEE17151F),
+                        contentColor = Color.White,
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = "Zooma ut")
+                    }
                 }
             }
 
-            selected?.let { item ->
-                val member = members.firstOrNull { it.id == item.memberId }
+            if (showDetails) {
+                selected?.let { item ->
+                    val member = members.firstOrNull { it.id == item.memberId }
                 Card(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp).fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xEE17151F)),
@@ -896,6 +902,7 @@ private fun LocationMapCard(
                             )
                         }
                     }
+                }
                 }
             }
         }
