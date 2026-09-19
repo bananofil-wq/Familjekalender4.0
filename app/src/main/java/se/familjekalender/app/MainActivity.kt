@@ -84,9 +84,9 @@ enum class ThemeMode(val label: String, val emoji: String) {
 
 enum class UiLayoutMode(val label: String, val description: String) {
     MINIMAL("Clean", "Ren månadskalender med en diskret markering per dag"),
-    FULL("Fullständigt", "Alla översikter, familjeverktyg och den fulla kalendern"),
+    HUGO_CHILD("Hugo-läge", "Minecraft-inspirerat barnläge med live-GPS, skolläge och dagens aktiviteter"),
     RUNNING("Sportläge", "Löpning i fokus med träningspass, progression, schema och återhämtning"),
-    HUGO_CHILD("Hugo", "Minecraft-inspirerat barnläge med live-GPS, skolläge och dagens aktiviteter"),
+    FULL("Fullständigt", "Alla översikter, familjeverktyg och den fulla kalendern"),
     PERSONAL(
         "Personligt",
         "Helt anpassningsbar vy där du lägger till, tar bort, flyttar och ändrar storlek på alla delar.",
