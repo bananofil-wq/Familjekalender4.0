@@ -69,6 +69,7 @@ internal fun MinimalCalendarScreen(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     onAdd: () -> Unit,
+    onEdit: (SyncEvent) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -331,6 +332,16 @@ internal fun MinimalCalendarScreen(
                 }
             },
             confirmButton = {
+                Button(
+                    onClick = {
+                        openedEvent = null
+                        onEdit(event)
+                    },
+                ) {
+                    Text("Redigera")
+                }
+            },
+            dismissButton = {
                 TextButton(onClick = { openedEvent = null }) {
                     Text("Stäng")
                 }
