@@ -115,6 +115,14 @@ internal fun MinimalCalendarScreen(
                 .filter { it.date == selectedDate }
                 .sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
         }
+    val selectedConflicts =
+        remember(events, members, selectedDate) {
+            analyzeCalendarConflicts(events, members, selectedDate)
+        }
+    val conflictDates =
+        remember(events, members) {
+            analyzeCalendarConflicts(events, members).map { it.date }.toSet()
+        }
 
     LaunchedEffect(selectedDate) {
         val target = YearMonth.from(selectedDate)
@@ -172,6 +180,7 @@ internal fun MinimalCalendarScreen(
                 locale = locale,
                 eventsByDate = eventsByDate,
                 memberById = memberById,
+                conflictDates = conflictDates,
                 onSelect = { date ->
                     month = YearMonth.from(date)
                     onSelect(date)
@@ -211,6 +220,7 @@ internal fun MinimalCalendarScreen(
             ) {
                 CleanAssistantCard(
                     eventCount = selectedEvents.size,
+                    conflicts = selectedConflicts,
                     onClick = { showAssistantDetails = true },
                     modifier = Modifier.weight(1.65f),
                 )
@@ -329,16 +339,25 @@ internal fun MinimalCalendarScreen(
                     Text(dateText)
                     Text("Tid: $timeText")
                     Text("Gäller för: $memberName")
+                    if (event.source == "sportadmin") {
+                        Text(
+                            "Den här aktiviteten kommer från SportAdmin och hanteras där.",
+                            color = CleanMuted,
+                            fontSize = 12.sp,
+                        )
+                    }
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        openedEvent = null
-                        onEdit(event)
-                    },
-                ) {
-                    Text("Redigera")
+                if (event.source != "sportadmin") {
+                    Button(
+                        onClick = {
+                            openedEvent = null
+                            onEdit(event)
+                        },
+                    ) {
+                        Text("Redigera")
+                    }
                 }
             },
             dismissButton = {
@@ -377,11 +396,52 @@ internal fun MinimalCalendarScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        if (selectedEvents.isEmpty()) "Allt ser lugnt ut för den valda dagen."
-                        else "Du har ${selectedEvents.size} aktiviteter den valda dagen.",
-                        color = Color.White.copy(alpha = .76f),
+                        when {
+                            selectedConflicts.isNotEmpty() ->
+                                if (selectedConflicts.size == 1) selectedConflicts.first().message
+                                else "${selectedConflicts.size} saker behöver din uppmärksamhet."
+                            selectedEvents.isEmpty() -> "Allt ser lugnt ut för den valda dagen."
+                            else -> "Du har ${selectedEvents.size} aktiviteter den valda dagen."
+                        },
+                        color =
+                            if (selectedConflicts.isNotEmpty()) Color(0xFFFFA0A8)
+                            else Color.White.copy(alpha = .76f),
                         fontSize = 14.sp,
                     )
+                    selectedConflicts.take(3).forEach { conflict ->
+                        Surface(
+                            color = Color(0xFFFF6B78).copy(alpha = .10f),
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFF8A94).copy(alpha = .22f)),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(
+                                    conflict.message,
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    lineHeight = 17.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Spacer(Modifier.height(5.dp))
+                                listOf(conflict.first, conflict.second).distinctBy { it.id }.forEach {
+                                    conflictEvent ->
+                                    Text(
+                                        "${cleanEventTime(conflictEvent)} · ${cleanEventTitle(conflictEvent)}  ›",
+                                        color = Color(0xFFFFB1B8),
+                                        fontSize = 11.sp,
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .clickable {
+                                                    showAssistantDetails = false
+                                                    openedEvent = conflictEvent
+                                                }
+                                                .padding(vertical = 4.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
                     selectedEvents.take(6).forEach { event ->
                         val memberName =
                             if (event.memberId == ALL_FAMILY_MEMBER_ID) {
@@ -612,6 +672,7 @@ private fun CleanCalendarCard(
     locale: Locale,
     eventsByDate: Map<LocalDate, List<SyncEvent>>,
     memberById: Map<String, SyncMember>,
+    conflictDates: Set<LocalDate>,
     onSelect: (LocalDate) -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -797,6 +858,24 @@ private fun CleanCalendarCard(
                                     }
                                 }
                             }
+                            if (date in conflictDates) {
+                                Box(
+                                    Modifier.align(Alignment.TopEnd)
+                                        .padding(top = 3.dp, end = 3.dp)
+                                        .size(11.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFE96A72)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        "!",
+                                        color = Color.White,
+                                        fontSize = 7.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = 7.sp,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -945,6 +1024,7 @@ private fun CleanAgendaCard(
 @Composable
 private fun CleanAssistantCard(
     eventCount: Int,
+    conflicts: List<CalendarConflict>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -971,9 +1051,16 @@ private fun CleanAssistantCard(
                 )
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    if (eventCount == 0) "Allt ser bra ut idag! 🎉"
-                    else "Du har $eventCount aktiviteter idag.",
-                    color = Color.White.copy(alpha = .67f),
+                    when {
+                        conflicts.isNotEmpty() ->
+                            if (conflicts.size == 1) conflicts.first().message
+                            else "${conflicts.size} saker behöver din uppmärksamhet."
+                        eventCount == 0 -> "Allt ser bra ut idag! 🎉"
+                        else -> "Du har $eventCount aktiviteter idag."
+                    },
+                    color =
+                        if (conflicts.isNotEmpty()) Color(0xFFFFA0A8)
+                        else Color.White.copy(alpha = .67f),
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
                 )
