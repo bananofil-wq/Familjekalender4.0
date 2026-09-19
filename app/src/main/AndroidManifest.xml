@@ -56,6 +56,17 @@
         </provider>
 
         <receiver
+            android:name=".HugoHomeWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/hugo_home_widget_info" />
+        </receiver>
+
+        <receiver
             android:name=".FamilyCalendarWidget"
             android:exported="false">
             <intent-filter>
@@ -103,6 +114,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.HOME" />
             </intent-filter>
         </activity>
     </application>
