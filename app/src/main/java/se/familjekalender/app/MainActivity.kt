@@ -1663,6 +1663,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Triple(1, Icons.Default.ShoppingCart, "Inköp"),
             Triple(2, Icons.Default.CheckCircle, "Att göra"),
             Triple(4, Icons.Default.Settings, "Inställningar"),
+            Triple(5, Icons.Default.LocationOn, "Plats"),
         )
             .forEach { (tab, icon, label) ->
                 val isSelected = selected == tab
