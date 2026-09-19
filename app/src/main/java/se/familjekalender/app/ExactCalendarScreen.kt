@@ -843,9 +843,11 @@ internal fun EditEventDialog(
     hasSeries: Boolean,
     onDismiss: () -> Unit,
     onSave: (String, LocalDate, String, String?, String?, SeriesEditScope) -> Unit,
+    onDelete: (SeriesEditScope) -> Unit,
 ) {
     val context = LocalContext.current
     val birthday = isBirthdayEvent(event)
+    val canModify = event.source != "sportadmin"
     var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").trim()) }
     var date by remember(event.id) { mutableStateOf(event.date) }
     var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
@@ -853,6 +855,7 @@ internal fun EditEventDialog(
     var memberId by remember(event.id) { mutableStateOf(event.memberId ?: ALL_FAMILY_MEMBER_ID) }
     var editScope by remember(event.id) { mutableStateOf(SeriesEditScope.THIS) }
     var timePickerRequest by remember(event.id) { mutableStateOf<MaterialTimePickerRequest?>(null) }
+    var showDeleteConfirm by remember(event.id) { mutableStateOf(false) }
 
     fun chooseDate() {
         DatePickerDialog(
@@ -863,8 +866,7 @@ internal fun EditEventDialog(
             date.year,
             date.monthValue - 1,
             date.dayOfMonth,
-        )
-            .show()
+        ).show()
     }
 
     fun chooseTime() {
@@ -876,9 +878,8 @@ internal fun EditEventDialog(
     }
 
     fun chooseEndTime() {
-        val fallback = runCatching {
-            LocalTime.parse(time).plusHours(1)
-        }.getOrElse { LocalTime.of(19, 0) }
+        val fallback =
+            runCatching { LocalTime.parse(time).plusHours(1) }.getOrElse { LocalTime.of(19, 0) }
         val parsed = runCatching { LocalTime.parse(endTime) }.getOrDefault(fallback)
         timePickerRequest =
             MaterialTimePickerRequest(parsed.hour, parsed.minute) { hour, minute ->
@@ -886,94 +887,332 @@ internal fun EditEventDialog(
             }
     }
 
+    val panelColor = Color(0xE61A1624)
+    val innerColor = Color.White.copy(alpha = .045f)
+    val outline = Color.White.copy(alpha = .10f)
+    val muted = Color.White.copy(alpha = .62f)
+    val accent = MaterialTheme.colorScheme.primary
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Redigera aktivitet") },
+        containerColor = panelColor,
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 0.dp,
+        title = {
+            Column {
+                Text(
+                    "Redigera aktivitet",
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (canModify) "Ändra detaljer och spara när du är klar."
+                    else "Den här aktiviteten hanteras av SportAdmin.",
+                    color = muted,
+                    fontSize = 12.sp,
+                )
+            }
+        },
         text = {
             Column(
-                Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                Modifier.fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedTextField(
-                    title,
-                    { title = it },
-                    label = { Text(if (birthday) "Namn" else "Aktivitet") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedButton(onClick = ::chooseDate, modifier = Modifier.fillMaxWidth()) {
-                    Text("Datum: ${date.dayOfMonth}/${date.monthValue} ${date.year}")
-                }
-                OutlinedButton(onClick = ::chooseTime, modifier = Modifier.fillMaxWidth()) {
-                    Text("Starttid: $time")
-                }
-                OutlinedButton(onClick = ::chooseEndTime, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (endTime.isBlank()) "Sluttid: inte angiven" else "Sluttid: $endTime")
-                }
-                if (endTime.isNotBlank()) {
-                    TextButton(onClick = { endTime = "" }) { Text("Ta bort sluttid") }
-                }
-                Text("Gäller", fontWeight = FontWeight.Bold)
-                members.forEach { member ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { memberId = member.id },
-                        verticalAlignment = Alignment.CenterVertically,
+                if (!canModify) {
+                    Surface(
+                        color = Color(0xFFFFB86B).copy(alpha = .10f),
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, Color(0xFFFFB86B).copy(alpha = .22f)),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        RadioButton(
-                            selected = memberId == member.id,
-                            onClick = { memberId = member.id },
-                        )
                         Text(
-                            if (member.id == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member.name
+                            "Den här aktiviteten kommer från SportAdmin. Ändringar och borttagning görs där för att inte skrivas över vid nästa synk.",
+                            color = Color.White.copy(alpha = .88f),
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(14.dp),
                         )
                     }
-                }
-                if (hasSeries) {
-                    HorizontalDivider()
-                    Text("Ändra återkommande aktivitet", fontWeight = FontWeight.Bold)
-                    listOf(
-                        SeriesEditScope.THIS to "Bara denna",
-                        SeriesEditScope.THIS_AND_FUTURE to "Denna och framåt",
-                        SeriesEditScope.WHOLE_SERIES to "Hela serien",
+                } else {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text(if (birthday) "Namn" else "Aktivitet") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                        .forEach { (scopeOption, label) ->
-                            Row(
-                                Modifier.fillMaxWidth().clickable { editScope = scopeOption },
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                RadioButton(
-                                    selected = editScope == scopeOption,
-                                    onClick = { editScope = scopeOption },
-                                )
-                                Text(label)
+
+                    Text("Datum och tid", color = muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Surface(
+                        color = innerColor,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, outline),
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = ::chooseDate),
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Datum", color = muted, fontSize = 12.sp, modifier = Modifier.width(70.dp))
+                            Text(
+                                "${date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE")).replaceFirstChar { it.uppercase() }} ${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))}",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text("›", color = accent, fontSize = 20.sp)
+                        }
+                    }
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            color = innerColor,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, outline),
+                            modifier = Modifier.weight(1f).clickable(onClick = ::chooseTime),
+                        ) {
+                            Column(Modifier.padding(13.dp)) {
+                                Text("Starttid", color = muted, fontSize = 11.sp)
+                                Text(time, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-                    Text(
-                        "Datumändringar flyttar motsvarande förekomster lika många dagar. Övriga ändringar används på vald del av serien.",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f),
-                        fontSize = 11.sp,
-                    )
+                        Surface(
+                            color = innerColor,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, outline),
+                            modifier = Modifier.weight(1f).clickable(onClick = ::chooseEndTime),
+                        ) {
+                            Column(Modifier.padding(13.dp)) {
+                                Text("Sluttid", color = muted, fontSize = 11.sp)
+                                Text(
+                                    endTime.ifBlank { "Ingen" },
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
+                    if (endTime.isNotBlank()) {
+                        TextButton(
+                            onClick = { endTime = "" },
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text("Ingen sluttid")
+                        }
+                    }
+
+                    Text("Gäller för", color = muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    members.forEach { member ->
+                        val selected = memberId == member.id
+                        val memberColor =
+                            if (member.id == ALL_FAMILY_MEMBER_ID) Color(0xFFFFD75E)
+                            else Color(member.colorArgb.toInt())
+                        Surface(
+                            color =
+                                if (selected) memberColor.copy(alpha = .16f)
+                                else innerColor,
+                            shape = RoundedCornerShape(16.dp),
+                            border =
+                                BorderStroke(
+                                    1.dp,
+                                    if (selected) memberColor.copy(alpha = .62f) else outline,
+                                ),
+                            modifier =
+                                Modifier.fillMaxWidth().clickable { memberId = member.id },
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    Modifier.size(10.dp).clip(CircleShape).background(memberColor)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    if (member.id == ALL_FAMILY_MEMBER_ID) "Hela familjen"
+                                    else member.name,
+                                    color = Color.White,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (selected) {
+                                    Text("✓", color = memberColor, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    if (hasSeries) {
+                        Text(
+                            "Vad vill du ändra?",
+                            color = muted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        listOf(
+                            SeriesEditScope.THIS to "Bara denna",
+                            SeriesEditScope.THIS_AND_FUTURE to "Denna och framåt",
+                            SeriesEditScope.WHOLE_SERIES to "Hela serien",
+                        ).forEach { (scopeOption, label) ->
+                            val selected = editScope == scopeOption
+                            Surface(
+                                color =
+                                    if (selected) accent.copy(alpha = .14f)
+                                    else innerColor,
+                                shape = RoundedCornerShape(15.dp),
+                                border =
+                                    BorderStroke(
+                                        1.dp,
+                                        if (selected) accent.copy(alpha = .55f) else outline,
+                                    ),
+                                modifier =
+                                    Modifier.fillMaxWidth().clickable { editScope = scopeOption },
+                            ) {
+                                Row(
+                                    Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        label,
+                                        color = Color.White,
+                                        modifier = Modifier.weight(1f),
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    )
+                                    if (selected) Text("✓", color = accent, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = .07f))
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors =
+                            ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                        border =
+                            BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.error.copy(alpha = .45f),
+                            ),
+                    ) {
+                        Text("Ta bort aktivitet", fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         },
         confirmButton = {
-            Button(
-                enabled = title.isNotBlank(),
-                onClick = {
-                    onSave(
-                        (if (birthday) "🌈 " else "") + title.trim(),
-                        date,
-                        time,
-                        endTime.ifBlank { null },
-                        memberId,
-                        editScope,
-                    )
-                },
-            ) {
-                Text("Spara")
+            if (canModify) {
+                Button(
+                    enabled = title.isNotBlank(),
+                    onClick = {
+                        onSave(
+                            (if (birthday) "🌈 " else "") + title.trim(),
+                            date,
+                            time,
+                            endTime.ifBlank { null },
+                            memberId,
+                            editScope,
+                        )
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Text("Spara ändringar")
+                }
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(if (canModify) "Avbryt" else "Stäng")
+            }
+        },
     )
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            containerColor = panelColor,
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 0.dp,
+            title = {
+                Text(
+                    if (hasSeries) "Vad vill du ta bort?" else "Ta bort aktivitet?",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    if (hasSeries) {
+                        Text(
+                            "Välj hur stor del av den återkommande aktiviteten som ska tas bort.",
+                            color = muted,
+                            fontSize = 12.sp,
+                        )
+                        listOf(
+                            SeriesEditScope.THIS to "Bara denna",
+                            SeriesEditScope.THIS_AND_FUTURE to "Denna och framåt",
+                            SeriesEditScope.WHOLE_SERIES to "Hela serien",
+                        ).forEach { (scopeOption, label) ->
+                            OutlinedButton(
+                                onClick = {
+                                    showDeleteConfirm = false
+                                    onDelete(scopeOption)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(15.dp),
+                                colors =
+                                    ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    ),
+                            ) {
+                                Text(label)
+                            }
+                        }
+                    } else {
+                        Text(
+                            "Är du säker på att du vill ta bort \"${displayEventTitle(event)}\"?",
+                            color = Color.White.copy(alpha = .82f),
+                            fontSize = 13.sp,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (!hasSeries) {
+                    Button(
+                        onClick = {
+                            showDeleteConfirm = false
+                            onDelete(SeriesEditScope.THIS)
+                        },
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                    ) {
+                        Text("Ta bort")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Avbryt")
+                }
+            },
+        )
+    }
 
     timePickerRequest?.let { request ->
         MyTimePickerDialog(
