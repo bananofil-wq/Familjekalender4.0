@@ -86,6 +86,7 @@ enum class UiLayoutMode(val label: String, val description: String) {
     MINIMAL("Clean", "Ren månadskalender med en diskret markering per dag"),
     FULL("Fullständigt", "Alla översikter, familjeverktyg och den fulla kalendern"),
     RUNNING("Sportläge", "Löpning i fokus med träningspass, progression, schema och återhämtning"),
+    HUGO_CHILD("Hugo", "Minecraft-inspirerat barnläge med live-GPS, skolläge och dagens aktiviteter"),
     PERSONAL(
         "Personligt",
         "Helt anpassningsbar vy där du lägger till, tar bort, flyttar och ändrar storlek på alla delar.",
@@ -399,6 +400,7 @@ private fun SyncedApp(
     var addEventInitialTitle by remember { mutableStateOf("") }
     var assistantAddRequest by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("") }
+    val deviceMemberId = remember { appPrefs.getString("device_member_id", null) }
 
     suspend fun refresh() {
         runCatching {
@@ -414,6 +416,18 @@ private fun SyncedApp(
             .onFailure {
                 message = "Synkfel: ${it.message}"
             }
+    }
+
+    LaunchedEffect(members, deviceMemberId) {
+        val deviceMember = members.firstOrNull { it.id == deviceMemberId }
+        if (
+            deviceMember?.name.equals("Hugo", ignoreCase = true) &&
+                !appPrefs.getBoolean("hugo_child_mode_initialized", false)
+        ) {
+            appPrefs.edit().putBoolean("hugo_child_mode_initialized", true).apply()
+            selectedTab = 0
+            onUiLayoutModeSaved(UiLayoutMode.HUGO_CHILD)
+        }
     }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -460,10 +474,10 @@ private fun SyncedApp(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (uiLayoutMode == UiLayoutMode.MINIMAL) {
-                MinimalBottomNav(selectedTab) { selectedTab = it }
-            } else {
-                BottomNav(selectedTab) { selectedTab = it }
+            when (uiLayoutMode) {
+                UiLayoutMode.MINIMAL -> MinimalBottomNav(selectedTab) { selectedTab = it }
+                UiLayoutMode.HUGO_CHILD -> HugoBottomNav(selectedTab) { selectedTab = it }
+                else -> BottomNav(selectedTab) { selectedTab = it }
             }
         },
     ) { padding ->
@@ -488,6 +502,7 @@ private fun SyncedApp(
                     when (mode) {
                         UiLayoutMode.MINIMAL ->
                             MinimalCalendarScreen(
+                                session = session,
                                 selectedDate = selectedDate,
                                 onSelect = { selectedDate = it },
                                 events = events,
@@ -498,6 +513,21 @@ private fun SyncedApp(
                                 },
                                 onEdit = { editEvent = it },
                                 onOpenSettings = { selectedTab = 4 },
+                                onOpenLocation = { selectedTab = 5 },
+                            )
+
+                        UiLayoutMode.HUGO_CHILD ->
+                            HugoChildModeScreen(
+                                session = session,
+                                member =
+                                    members.firstOrNull { it.id == deviceMemberId }
+                                        ?.takeIf { it.name.equals("Hugo", ignoreCase = true) }
+                                        ?: members.firstOrNull {
+                                            it.name.equals("Hugo", ignoreCase = true)
+                                        },
+                                events = events,
+                                members = members,
+                                onOpenLocation = { selectedTab = 5 },
                             )
 
                         UiLayoutMode.PERSONAL ->
@@ -588,6 +618,7 @@ private fun SyncedApp(
                                         showAddEvent = true
                                     },
                                     onOpenSettings = { selectedTab = 4 },
+                                    onOpenLocation = { selectedTab = 5 },
                                     onRefresh = {
                                         refresh()
                                         FamilyCalendarWidget.enqueueRefresh(context)
@@ -1430,8 +1461,18 @@ private fun SettingsScreen(
         title = "Utseende",
         subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen.",
     ) {
+        val currentDeviceMemberId =
+            context.getSharedPreferences("family_calendar", 0).getString("device_member_id", null)
+        val isHugoDevice =
+            members.any {
+                it.id == currentDeviceMemberId && it.name.equals("Hugo", ignoreCase = true)
+            }
+
         UiLayoutMode.values()
-            .filter { it != UiLayoutMode.PERSONAL }
+            .filter {
+                it != UiLayoutMode.PERSONAL &&
+                    (it != UiLayoutMode.HUGO_CHILD || isHugoDevice)
+            }
             .forEach { mode ->
                 val selected = uiLayoutMode == mode
                 Surface(
