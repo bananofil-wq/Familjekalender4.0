@@ -563,7 +563,7 @@ internal fun HugoChildModeScreen(
                             when {
                                 !gpsEnabled -> "Platsbehörighet behövs"
                                 settings.realtimeTracking -> "Position delas med familjen i nära realtid"
-                                else -> "Smart platsdelning är aktiv",
+                                else -> "Smart platsdelning är aktiv"
                             },
                             color = Color.White.copy(alpha = .70f),
                             fontSize = 12.sp,
