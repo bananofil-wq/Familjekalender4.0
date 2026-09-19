@@ -54,7 +54,7 @@ private data class WorkRotationWeekDraft(
     val dayTimes: Map<Int, Pair<String, String>> = weekdays.associateWith { startTime to endTime },
 )
 
-private enum class SeriesEditScope {
+internal enum class SeriesEditScope {
     THIS,
     THIS_AND_FUTURE,
     WHOLE_SERIES,
@@ -837,7 +837,7 @@ private fun DayOverviewPopup(
 }
 
 @Composable
-private fun EditEventDialog(
+internal fun EditEventDialog(
     event: SyncEvent,
     members: List<SyncMember>,
     hasSeries: Boolean,
