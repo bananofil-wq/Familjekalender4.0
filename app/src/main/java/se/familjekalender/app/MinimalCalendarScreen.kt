@@ -178,16 +178,6 @@ internal fun MinimalCalendarScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            if (members.any { it.name.equals("Hugo", ignoreCase = true) }) {
-                HugoLiveLocationCard(
-                    session = session,
-                    members = members,
-                    onOpenLocation = onOpenLocation,
-                    showMap = true,
-                )
-                Spacer(Modifier.height(12.dp))
-            }
-
             CleanCalendarCard(
                 month = month,
                 selectedDate = selectedDate,
