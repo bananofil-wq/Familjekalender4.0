@@ -144,32 +144,8 @@ private fun clockText(minutes: Int): String {
     return "%02d:%02d".format(normalized / 60, normalized % 60)
 }
 
-private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
-    val warnings = mutableListOf<String>()
-    events
-        .filter { it.memberId != null && it.memberId != ALL_FAMILY_MEMBER_ID }
-        .groupBy { it.memberId }
-        .forEach { (memberId, memberEvents) ->
-            val timed =
-                memberEvents
-                    .mapNotNull { event -> assistantTimeRange(event)?.let { event to it } }
-                    .sortedBy { it.second.start }
-            for (index in 0 until timed.lastIndex) {
-                val (firstEvent, firstRange) = timed[index]
-                for (nextIndex in index + 1..timed.lastIndex) {
-                    val (secondEvent, secondRange) = timed[nextIndex]
-                    if (secondRange.start >= firstRange.end) break
-                    warnings +=
-                        "${memberName(memberId, members)} har överlappning: ${
-                            shortEventTitle(
-                                firstEvent
-                            )
-                        } och ${shortEventTitle(secondEvent)}."
-                }
-            }
-        }
-    return warnings.distinct()
-}
+private fun conflictLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> =
+    analyzeCalendarConflicts(events, members).map { it.message }.distinct()
 
 private fun coordinationLines(events: List<SyncEvent>, members: List<SyncMember>): List<String> {
     val timed =
