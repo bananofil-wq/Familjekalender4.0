@@ -366,6 +366,7 @@ internal fun HugoLiveLocationCard(
                     batteryVisible = true,
                     mapHeight = 178.dp,
                     showControls = false,
+                    showDetails = false,
                 )
             }
 
