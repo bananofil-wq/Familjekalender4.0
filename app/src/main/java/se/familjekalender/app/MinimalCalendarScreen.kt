@@ -606,7 +606,7 @@ private fun CleanCalendarCard(
     onToday: () -> Unit,
 ) {
     Surface(
-        color = Color(0xB31A1424),
+        color = Color.Transparent,
         shape = RoundedCornerShape(30.dp),
         border = BorderStroke(1.2.dp, Color.White.copy(alpha = .17f)),
         shadowElevation = 8.dp,
@@ -736,9 +736,7 @@ private fun CleanCalendarCard(
                                 }
                             } else {
                                 Surface(
-                                    color =
-                                        if (inMonth) Color.White.copy(alpha = .035f)
-                                        else Color.White.copy(alpha = .015f),
+                                    color = Color.Transparent,
                                     shape = RoundedCornerShape(11.dp),
                                     border =
                                         BorderStroke(
