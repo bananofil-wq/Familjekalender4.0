@@ -742,7 +742,12 @@ internal fun MinimalCalendarScreen(
                 }
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    Modifier.fillMaxWidth()
+                        .heightIn(max = 520.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     Text(
                         when {
                             selectedConflicts.isNotEmpty() ->
@@ -790,54 +795,229 @@ internal fun MinimalCalendarScreen(
                             }
                         }
                     }
-                    selectedEvents.take(6).forEach { event ->
+                    val assistantGroups =
+                        selectedEvents
+                            .groupBy { it.memberId ?: ALL_FAMILY_MEMBER_ID }
+                            .entries
+                            .sortedBy { entry -> entry.value.minOfOrNull { it.time } ?: "99:99" }
+
+                    assistantGroups.forEach { (memberKey, groupEventsRaw) ->
+                        val groupEvents =
+                            groupEventsRaw.sortedWith(
+                                compareBy<SyncEvent> { it.time }.thenBy { it.title }
+                            )
+                        val member = memberById[memberKey]
                         val memberName =
-                            if (event.memberId == ALL_FAMILY_MEMBER_ID) {
-                                "Hela familjen"
-                            } else {
-                                memberById[event.memberId]?.name ?: "Övrigt"
-                            }
-                        Surface(
-                            color = Color.White.copy(alpha = .045f),
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
-                            modifier =
-                                Modifier.fillMaxWidth().clickable {
-                                    showAssistantDetails = false
-                                    openedEvent = event
-                                },
-                        ) {
-                            Row(
-                                Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                            if (memberKey == ALL_FAMILY_MEMBER_ID) "Hela familjen"
+                            else member?.name ?: "Övrigt"
+                        val accent =
+                            if (memberKey == ALL_FAMILY_MEMBER_ID) Color(0xFFFFD75E)
+                            else member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
+
+                        if (groupEvents.size == 1) {
+                            val event = groupEvents.first()
+                            Surface(
+                                color = Color.White.copy(alpha = .045f),
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+                                modifier =
+                                    Modifier.fillMaxWidth().clickable {
+                                        showAssistantDetails = false
+                                        openedEvent = event
+                                    },
                             ) {
-                                Box(
-                                    Modifier.size(34.dp)
-                                        .clip(CircleShape)
-                                        .background(CleanPurple.copy(alpha = .20f)),
-                                    contentAlignment = Alignment.Center,
+                                Row(
+                                    Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Box(
-                                        Modifier.size(7.dp)
+                                        Modifier.size(34.dp)
                                             .clip(CircleShape)
-                                            .background(CleanPurpleBright)
+                                            .background(accent.copy(alpha = .20f)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Box(
+                                            Modifier.size(7.dp)
+                                                .clip(CircleShape)
+                                                .background(accent)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            cleanEventTitle(event),
+                                            color = Color.White.copy(alpha = .92f),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            "${cleanEventTime(event)} · $memberName",
+                                            color = CleanMuted,
+                                            fontSize = 11.sp,
+                                        )
+                                    }
+                                    Icon(
+                                        Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = .38f),
+                                        modifier = Modifier.size(18.dp),
                                     )
                                 }
-                                Spacer(Modifier.width(10.dp))
-                                Text(
-                                    "${cleanEventTime(event)} · ${cleanEventTitle(event)} · $memberName",
-                                    color = Color.White.copy(alpha = .90f),
-                                    fontSize = 13.sp,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Icon(
-                                    Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(alpha = .38f),
-                                    modifier = Modifier.size(18.dp),
-                                )
+                            }
+                        } else {
+                            val firstStart = groupEvents.first().time
+                            val lastEvent = groupEvents.last()
+                            val lastTime =
+                                lastEvent.endTime?.takeIf { it.isNotBlank() } ?: lastEvent.time
+                            val span =
+                                if (firstStart == lastTime) firstStart else "$firstStart–$lastTime"
+                            val hasConflict =
+                                selectedConflicts.any { conflict ->
+                                    conflict.memberId == memberKey ||
+                                            groupEvents.any {
+                                                it.id == conflict.first.id ||
+                                                    it.id == conflict.second.id
+                                            }
+                                }
+
+                            Surface(
+                                color = Color.White.copy(alpha = .045f),
+                                shape = RoundedCornerShape(20.dp),
+                                border =
+                                    BorderStroke(
+                                        1.dp,
+                                        if (hasConflict) Color(0xFFFF8A94).copy(alpha = .30f)
+                                        else accent.copy(alpha = .22f),
+                                    ),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column {
+                                    Row(
+                                        Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Box(
+                                            Modifier.size(34.dp)
+                                                .clip(CircleShape)
+                                                .background(accent.copy(alpha = .20f)),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Box(
+                                                Modifier.size(8.dp)
+                                                    .clip(CircleShape)
+                                                    .background(accent)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                Text(
+                                                    memberName,
+                                                    color = Color.White,
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                )
+                                                if (hasConflict) {
+                                                    Text(
+                                                        "Krock",
+                                                        color = Color(0xFFFFA0A8),
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+                                                }
+                                            }
+                                            Text(
+                                                "${groupEvents.size} aktiviteter · $span",
+                                                color = CleanMuted,
+                                                fontSize = 10.sp,
+                                            )
+                                        }
+                                    }
+
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = .06f),
+                                        thickness = .5.dp,
+                                    )
+
+                                    groupEvents.forEachIndexed { index, event ->
+                                        val eventHasConflict =
+                                            selectedConflicts.any {
+                                                it.first.id == event.id || it.second.id == event.id
+                                            }
+                                        Row(
+                                            Modifier.fillMaxWidth()
+                                                .clickable {
+                                                    showAssistantDetails = false
+                                                    openedEvent = event
+                                                }
+                                                .padding(
+                                                    start = 13.dp,
+                                                    end = 10.dp,
+                                                    top = 7.dp,
+                                                    bottom = 7.dp,
+                                                ),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(
+                                                cleanEventTime(event),
+                                                color = Color.White.copy(alpha = .68f),
+                                                fontSize = 11.sp,
+                                                modifier = Modifier.width(82.dp),
+                                            )
+                                            Box(
+                                                Modifier.width(20.dp).height(36.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Box(
+                                                    Modifier.width(2.dp)
+                                                        .fillMaxHeight()
+                                                        .background(accent.copy(alpha = .28f))
+                                                )
+                                                Box(
+                                                    Modifier.size(9.dp)
+                                                        .clip(CircleShape)
+                                                        .background(accent)
+                                                )
+                                            }
+                                            Spacer(Modifier.width(7.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text(
+                                                    cleanEventTitle(event),
+                                                    color = Color.White,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                                if (eventHasConflict) {
+                                                    Text(
+                                                        "Dubbelbokning / överlappning",
+                                                        color = Color(0xFFFFA0A8),
+                                                        fontSize = 9.sp,
+                                                    )
+                                                }
+                                            }
+                                            Icon(
+                                                Icons.Default.ChevronRight,
+                                                contentDescription = null,
+                                                tint = Color.White.copy(alpha = .32f),
+                                                modifier = Modifier.size(17.dp),
+                                            )
+                                        }
+                                        if (index < groupEvents.lastIndex) {
+                                            HorizontalDivider(
+                                                color = Color.White.copy(alpha = .045f),
+                                                thickness = .5.dp,
+                                                modifier = Modifier.padding(start = 102.dp),
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
