@@ -839,6 +839,29 @@ private fun SyncedApp(
                         }
                 }
             },
+            onDelete = { deleteScope ->
+                scope.launch {
+                    val targets =
+                        when (deleteScope) {
+                            SeriesEditScope.THIS -> listOf(event)
+                            SeriesEditScope.THIS_AND_FUTURE ->
+                                matchingSeries.filter { !it.date.isBefore(event.date) }
+                            SeriesEditScope.WHOLE_SERIES -> matchingSeries
+                        }
+                    val effectiveTargets = if (targets.isEmpty()) listOf(event) else targets
+                    runCatching {
+                        deleteCalendarEventsDirect(session, effectiveTargets.map { it.id })
+                    }
+                        .onSuccess {
+                            editEvent = null
+                            refresh()
+                            FamilyCalendarWidget.enqueueRefresh(context)
+                        }
+                        .onFailure {
+                            message = "Kunde inte ta bort aktiviteten: ${it.message}"
+                        }
+                }
+            },
         )
     }
 
