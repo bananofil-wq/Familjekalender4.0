@@ -455,18 +455,24 @@ private fun SyncedApp(
     // list frequently while the Shopping tab is visible. Opening the tab also
     // causes an immediate refresh.
     LaunchedEffect(session.id, selectedTab, lifecycle) {
-        if (selectedTab != 1) return@LaunchedEffect
+        if (selectedTab != 1) {
+            if (message.startsWith("Inköpssynkfel:")) message = ""
+            return@LaunchedEffect
+        }
 
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (isActive) {
-                runCatching { SupabaseSync.loadShopping(session) }
-                    .onSuccess { latest ->
-                        if (latest != shopping) shopping = latest
-                        if (message.startsWith("Inköpssynkfel:")) message = ""
-                    }
-                    .onFailure {
-                        message = "Inköpssynkfel: ${it.message}"
-                    }
+                try {
+                    val latest = SupabaseSync.loadShopping(session)
+                    if (latest != shopping) shopping = latest
+                    if (message.startsWith("Inköpssynkfel:")) message = ""
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    // Leaving the Shopping tab cancels this coroutine by design.
+                    // Propagate cancellation instead of surfacing it as a sync error.
+                    throw cancelled
+                } catch (error: Throwable) {
+                    message = "Inköpssynkfel: ${error.message ?: "Okänt fel"}"
+                }
                 delay(3_000L)
             }
         }
