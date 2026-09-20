@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore approved seasonal images
+        run: python3 scripts/restore-season-images.py
+
       - name: Verify approved seasonal images
         shell: bash
         run: |
