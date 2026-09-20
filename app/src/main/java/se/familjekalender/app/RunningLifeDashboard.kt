@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -119,10 +120,12 @@ internal fun RunningLifeDashboard(
     val locale = remember { Locale("sv", "SE") }
     val motionEnabled = appMotionEnabled()
     var focus by rememberSaveable { mutableStateOf(LifeFocus.EVERYDAY) }
-    val weekStart =
-        remember(selectedDate) {
-            selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())
-        }
+    var visibleMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    LaunchedEffect(selectedDate.year, selectedDate.monthValue) {
+        val selectedMonth = YearMonth.from(selectedDate)
+        if (selectedMonth != visibleMonth) visibleMonth = selectedMonth
+    }
+    val eventsByDate = remember(events) { events.groupBy { it.date } }
     val memberById = remember(members) { members.associateBy { it.id } }
     val runSnapshot = remember(events) { runningSnapshot(events) }
 
@@ -170,59 +173,19 @@ internal fun RunningLifeDashboard(
             when (currentFocus) {
                 LifeFocus.EVERYDAY ->
                     Column {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = LifeSurface),
-                            shape = RoundedCornerShape(22.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        "Den här veckan",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 16.sp,
-                                    )
-                                    Text(
-                                        "${
-                                            weekStart.month.getDisplayName(
-                                                TextStyle.SHORT,
-                                                locale
-                                            )
-                                        } ${weekStart.year}",
-                                        color = LifeMuted,
-                                        fontSize = 11.sp,
-                                    )
-                                }
-                                Spacer(Modifier.height(12.dp))
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                ) {
-                                    repeat(7) { index ->
-                                        val date = weekStart.plusDays(index.toLong())
-                                        val dayEvents =
-                                            remember(events, date) {
-                                                events.filter { it.date == date }
-                                            }
-                                        LifeDayCell(
-                                            date = date,
-                                            selected = date == selectedDate,
-                                            hasEvents = dayEvents.isNotEmpty(),
-                                            hasRun = dayEvents.any { it.title.startsWith("🏃") },
-                                            locale = locale,
-                                            motionEnabled = motionEnabled,
-                                            modifier = Modifier.weight(1f),
-                                            onClick = { onSelectDate(date) },
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        LifeMonthCalendar(
+                            visibleMonth = visibleMonth,
+                            selectedDate = selectedDate,
+                            eventsByDate = eventsByDate,
+                            locale = locale,
+                            motionEnabled = motionEnabled,
+                            onMonthChanged = { month ->
+                                visibleMonth = month
+                                val day = selectedDate.dayOfMonth.coerceAtMost(month.lengthOfMonth())
+                                onSelectDate(month.atDay(day))
+                            },
+                            onSelectDate = onSelectDate,
+                        )
 
                         Spacer(Modifier.height(12.dp))
 
@@ -560,6 +523,198 @@ private fun LifeFocusButton(
             icon()
             Spacer(Modifier.width(7.dp))
             Text(label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun LifeMonthCalendar(
+    visibleMonth: YearMonth,
+    selectedDate: LocalDate,
+    eventsByDate: Map<LocalDate, List<SyncEvent>>,
+    locale: Locale,
+    motionEnabled: Boolean,
+    onMonthChanged: (YearMonth) -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+) {
+    val monthTitle =
+        remember(visibleMonth, locale) {
+            visibleMonth.month
+                .getDisplayName(TextStyle.FULL, locale)
+                .replaceFirstChar { it.uppercase(locale) } + " " + visibleMonth.year
+        }
+    val firstDate = visibleMonth.atDay(1)
+    val leadingEmptyDays = firstDate.dayOfWeek.value - 1
+    val totalSlots = leadingEmptyDays + visibleMonth.lengthOfMonth()
+    val rowCount = (totalSlots + 6) / 7
+    val weekdayLabels = remember { listOf("MÅ", "TI", "ON", "TO", "FR", "LÖ", "SÖ") }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = LifeSurface),
+        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = { onMonthChanged(visibleMonth.minusMonths(1)) },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text("‹", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Light)
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        monthTitle,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 17.sp,
+                    )
+                    Text("Månadsvy", color = LifeMuted, fontSize = 10.sp)
+                }
+
+                TextButton(
+                    onClick = { onMonthChanged(visibleMonth.plusMonths(1)) },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text("›", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Light)
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(Modifier.fillMaxWidth()) {
+                weekdayLabels.forEach { label ->
+                    Text(
+                        label,
+                        color = LifeMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(5.dp))
+
+            repeat(rowCount) { row ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    repeat(7) { column ->
+                        val slot = row * 7 + column
+                        val dayOfMonth = slot - leadingEmptyDays + 1
+                        if (dayOfMonth in 1..visibleMonth.lengthOfMonth()) {
+                            val date = visibleMonth.atDay(dayOfMonth)
+                            val dayEvents = eventsByDate[date].orEmpty()
+                            LifeMonthDayCell(
+                                date = date,
+                                selected = date == selectedDate,
+                                isToday = date == LocalDate.now(),
+                                hasEvents = dayEvents.isNotEmpty(),
+                                hasRun = dayEvents.any { it.title.startsWith("🏃") },
+                                motionEnabled = motionEnabled,
+                                modifier = Modifier.weight(1f),
+                                onClick = { onSelectDate(date) },
+                            )
+                        } else {
+                            Spacer(Modifier.weight(1f).aspectRatio(1f))
+                        }
+                    }
+                }
+                if (row < rowCount - 1) Spacer(Modifier.height(3.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LifeMonthDayCell(
+    date: LocalDate,
+    selected: Boolean,
+    isToday: Boolean,
+    hasEvents: Boolean,
+    hasRun: Boolean,
+    motionEnabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val scale by
+        animateFloatAsState(
+            targetValue = if (selected) 1.05f else 1f,
+            animationSpec = tween(motionDuration(180, motionEnabled)),
+            label = "life-month-day-scale",
+        )
+    val selectedAlpha by
+        animateFloatAsState(
+            targetValue = if (selected) 1f else 0f,
+            animationSpec = tween(motionDuration(180, motionEnabled)),
+            label = "life-month-day-background",
+        )
+
+    Box(
+        modifier
+            .aspectRatio(1f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            color = Color.Transparent,
+            shape = RoundedCornerShape(13.dp),
+            border =
+                if (isToday && !selected) {
+                    androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        LifePurple.copy(alpha = .65f),
+                    )
+                } else {
+                    null
+                },
+            modifier = Modifier.fillMaxSize().clickable(onClick = onClick),
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.matchParentSize()
+                        .graphicsLayer { alpha = selectedAlpha }
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(LifePurple)
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        date.dayOfMonth.toString(),
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = if (selected || isToday) FontWeight.Bold else FontWeight.Medium,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    when {
+                        hasRun ->
+                            Box(
+                                Modifier.size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(if (selected) Color.White else LifePurple)
+                            )
+
+                        hasEvents ->
+                            Box(
+                                Modifier.size(4.dp)
+                                    .clip(CircleShape)
+                                    .background(if (selected) Color.White else LifeMuted)
+                            )
+
+                        else -> Spacer(Modifier.height(5.dp))
+                    }
+                }
+            }
         }
     }
 }
