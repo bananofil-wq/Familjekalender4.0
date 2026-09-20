@@ -14,6 +14,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -219,19 +221,17 @@ fun RunningProgressCard(
     ) {
         Column(Modifier.padding(16.dp)) {
             if (members.isNotEmpty()) {
-                Text("GPS-runda", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Text(
-                    "Välj person och starta rundan direkt.",
+                    "Välj person för GPS-rundan",
                     color = Muted,
                     fontSize = 12.sp,
                 )
-                Spacer(Modifier.height(10.dp))
-                Text("Person", color = Muted, fontSize = 12.sp)
+                Spacer(Modifier.height(8.dp))
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    members.take(4).forEach { member ->
+                    members.forEach { member ->
                         FilterChip(
                             selected = selectedMemberId == member.id,
                             onClick = { selectedMemberId = member.id },
