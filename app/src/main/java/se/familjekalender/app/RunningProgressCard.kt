@@ -218,6 +218,51 @@ fun RunningProgressCard(
                 .animateContentSize(tween(motionDuration(240, motionEnabled))),
     ) {
         Column(Modifier.padding(16.dp)) {
+            if (members.isNotEmpty()) {
+                Text("GPS-runda", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(
+                    "Välj person och starta rundan direkt.",
+                    color = Muted,
+                    fontSize = 12.sp,
+                )
+                Spacer(Modifier.height(10.dp))
+                Text("Person", color = Muted, fontSize = 12.sp)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    members.take(4).forEach { member ->
+                        FilterChip(
+                            selected = selectedMemberId == member.id,
+                            onClick = { selectedMemberId = member.id },
+                            label = { Text(member.name, maxLines = 1) },
+                            leadingIcon = {
+                                Box(
+                                    Modifier.size(9.dp)
+                                        .background(
+                                            Color(member.colorArgb.toInt()),
+                                            CircleShape,
+                                        )
+                                )
+                            },
+                        )
+                    }
+                }
+
+                selectedMemberId?.let { memberId ->
+                    Spacer(Modifier.height(12.dp))
+                    RunRecorderPanel(
+                        session = session,
+                        memberId = memberId,
+                        onChanged = onChanged,
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider(color = Color.White.copy(alpha = .10f))
+                Spacer(Modifier.height(14.dp))
+            }
+
             Row(
                 Modifier.fillMaxWidth().clickable { expanded = !expanded },
                 verticalAlignment = Alignment.CenterVertically,
@@ -277,41 +322,6 @@ fun RunningProgressCard(
             ) {
                 Column {
                     Spacer(Modifier.height(14.dp))
-                    if (members.isNotEmpty()) {
-                        Text("Person", color = Muted, fontSize = 12.sp)
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            members.take(4).forEach { member ->
-                                FilterChip(
-                                    selected = selectedMemberId == member.id,
-                                    onClick = { selectedMemberId = member.id },
-                                    label = { Text(member.name, maxLines = 1) },
-                                    leadingIcon = {
-                                        Box(
-                                            Modifier.size(9.dp)
-                                                .background(
-                                                    Color(member.colorArgb.toInt()),
-                                                    CircleShape,
-                                                )
-                                        )
-                                    },
-                                )
-                            }
-                        }
-                    }
-
-                    selectedMemberId?.let { memberId ->
-                        Spacer(Modifier.height(12.dp))
-                        RunRecorderPanel(
-                            session = session,
-                            memberId = memberId,
-                            onChanged = onChanged,
-                        )
-                    }
-
-                    Spacer(Modifier.height(10.dp))
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
