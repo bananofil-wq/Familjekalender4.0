@@ -143,16 +143,6 @@ internal fun RunningLifeDashboard(
 
         Spacer(Modifier.height(14.dp))
 
-        if (members.any { it.name.equals("Hugo", ignoreCase = true) }) {
-            HugoLiveLocationCard(
-                session = session,
-                members = members,
-                onOpenLocation = onOpenLocation,
-                showMap = true,
-            )
-            Spacer(Modifier.height(14.dp))
-        }
-
         LifeFocusSelector(
             focus = focus,
             onFocusChanged = { focus = it },
@@ -285,14 +275,14 @@ internal fun RunningLifeDashboard(
                         Spacer(Modifier.height(12.dp))
 
                         Text(
-                            "Progression & pass",
+                            "GPS-runda & progression",
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 4.dp),
                         )
                         Text(
-                            "Öppna kortet för detaljer, historik, mål och registrering.",
+                            "Starta GPS-rundan direkt. Historik, mål och progression finns i samma kort.",
                             color = LifeMuted,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
