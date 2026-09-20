@@ -86,6 +86,23 @@ fun FirstRunIdentityGate(
 
     LaunchedEffect(session.id) { reloadMembers() }
 
+    // Never render the identity prompt while the saved identity is still being validated.
+    // Otherwise "Vem är du?" flashes briefly on every app launch before members finish loading.
+    if (loading) {
+        Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    strokeWidth = 2.dp,
+                )
+            }
+        }
+        return
+    }
+
     val chosenIsValid =
         identityConfirmed && selectedMemberId != null && members.any { it.id == selectedMemberId }
     if (chosenIsValid) {
