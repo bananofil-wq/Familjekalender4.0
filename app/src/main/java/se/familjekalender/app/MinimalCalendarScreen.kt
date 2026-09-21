@@ -189,7 +189,6 @@ internal fun MinimalCalendarScreen(
                 locale = locale,
                 eventsByDate = eventsByDate,
                 memberById = memberById,
-                conflictDates = conflictDates,
                 onSelect = { date ->
                     month = YearMonth.from(date)
                     onSelect(date)
@@ -1206,7 +1205,6 @@ private fun CleanCalendarCard(
     locale: Locale,
     eventsByDate: Map<LocalDate, List<SyncEvent>>,
     memberById: Map<String, SyncMember>,
-    conflictDates: Set<LocalDate>,
     onSelect: (LocalDate) -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -1283,66 +1281,83 @@ private fun CleanCalendarCard(
                         val date = gridStart.plusDays((row * 7 + column).toLong())
                         val inMonth = YearMonth.from(date) == month
                         val isSelected = date == selectedDate
-                        val dayEvents = eventsByDate[date].orEmpty()
                         val isToday = date == today
+                        val dayEvents = eventsByDate[date].orEmpty()
                         val dayShape = RoundedCornerShape(12.dp)
-                        val dayBrush =
+
+                        val glassBrush =
                             when {
                                 isToday ->
                                     Brush.verticalGradient(
-                                        listOf(Color(0xFFB45DFF), Color(0xFF7A2CF4))
+                                        listOf(
+                                            Color(0xFFC06BFF),
+                                            Color(0xFF8E3CFF),
+                                            Color(0xFF6D22E8),
+                                        )
                                     )
                                 isSelected ->
                                     Brush.verticalGradient(
                                         listOf(
-                                            Color.White.copy(alpha = .46f),
-                                            Color.White.copy(alpha = .20f),
+                                            Color.White.copy(alpha = .43f),
+                                            Color.White.copy(alpha = .24f),
+                                            Color.White.copy(alpha = .12f),
                                         )
                                     )
                                 inMonth ->
                                     Brush.verticalGradient(
                                         listOf(
-                                            Color.White.copy(alpha = .165f),
-                                            Color(0x30191420),
+                                            Color.White.copy(alpha = .18f),
+                                            Color.White.copy(alpha = .085f),
+                                            Color.White.copy(alpha = .035f),
                                         )
                                     )
                                 else ->
                                     Brush.verticalGradient(
                                         listOf(
-                                            Color.White.copy(alpha = .035f),
+                                            Color.White.copy(alpha = .045f),
+                                            Color.White.copy(alpha = .018f),
                                             Color.Transparent,
                                         )
                                     )
                             }
-                        val borderColor =
+
+                        val glassBorder =
                             when {
-                                isToday -> Color(0xFFC792FF)
-                                isSelected -> Color.White.copy(alpha = .88f)
-                                inMonth -> Color.White.copy(alpha = .15f)
-                                else -> Color.White.copy(alpha = .055f)
+                                isToday -> Color(0xFFD9B2FF)
+                                isSelected -> Color.White.copy(alpha = .82f)
+                                inMonth -> Color.White.copy(alpha = .20f)
+                                else -> Color.White.copy(alpha = .075f)
                             }
+
                         Box(
-                            Modifier.weight(1f)
-                                .height(54.dp)
-                                .padding(horizontal = 3.dp, vertical = 3.dp)
-                                .shadow(
-                                    elevation = when {
-                                        isToday -> 18.dp
-                                        isSelected -> 15.dp
-                                        inMonth -> 7.dp
-                                        else -> 0.dp
-                                    },
-                                    shape = dayShape,
-                                    clip = false,
-                                )
-                                .clip(dayShape)
-                                .background(dayBrush)
-                                .border(
-                                    width = when { isToday -> 1.8.dp; isSelected -> 1.6.dp; else -> .7.dp },
-                                    color = borderColor,
-                                    shape = dayShape,
-                                )
-                                .clickable { onSelect(date) },
+                            modifier =
+                                Modifier.weight(1f)
+                                    .height(56.dp)
+                                    .padding(horizontal = 3.dp, vertical = 3.dp)
+                                    .shadow(
+                                        elevation =
+                                            when {
+                                                isToday -> 15.dp
+                                                isSelected -> 10.dp
+                                                inMonth -> 5.dp
+                                                else -> 0.dp
+                                            },
+                                        shape = dayShape,
+                                        clip = false,
+                                    )
+                                    .clip(dayShape)
+                                    .background(glassBrush, dayShape)
+                                    .border(
+                                        width =
+                                            when {
+                                                isToday -> 1.5.dp
+                                                isSelected -> 1.25.dp
+                                                else -> .8.dp
+                                            },
+                                        color = glassBorder,
+                                        shape = dayShape,
+                                    )
+                                    .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Column(
@@ -1353,10 +1368,15 @@ private fun CleanCalendarCard(
                                     date.dayOfMonth.toString(),
                                     color =
                                         if (inMonth) Color.White
-                                        else Color.White.copy(alpha = .34f),
+                                        else Color.White.copy(alpha = .32f),
                                     fontSize = 14.sp,
                                     fontWeight =
-                                        when { isToday -> FontWeight.ExtraBold; isSelected -> FontWeight.Bold; else -> FontWeight.SemiBold },
+                                        when {
+                                            isToday -> FontWeight.ExtraBold
+                                            isSelected -> FontWeight.Bold
+                                            inMonth -> FontWeight.SemiBold
+                                            else -> FontWeight.Normal
+                                        },
                                 )
                                 Spacer(Modifier.height(3.dp))
                                 Row(
@@ -1364,39 +1384,22 @@ private fun CleanCalendarCard(
                                     modifier = Modifier.height(5.dp),
                                 ) {
                                     dayEvents.take(3).forEach { event ->
-                                        val color =
+                                        val dotColor =
                                             memberById[event.memberId]?.let {
                                                 Color(it.colorArgb.toInt())
                                             } ?: CleanPurpleBright
                                         Box(
                                             Modifier.size(4.dp)
                                                 .clip(CircleShape)
-                                                .background(color)
+                                                .background(dotColor)
                                         )
                                     }
-                                }
-                            }
-                            if (date in conflictDates) {
-                                Box(
-                                    Modifier.align(Alignment.TopEnd)
-                                        .padding(top = 3.dp, end = 3.dp)
-                                        .size(11.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFE96A72)),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        "!",
-                                        color = Color.White,
-                                        fontSize = 7.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        lineHeight = 7.sp,
-                                    )
                                 }
                             }
                         }
                     }
                 }
+            }
             }
         }
     }
