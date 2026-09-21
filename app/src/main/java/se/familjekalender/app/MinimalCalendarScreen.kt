@@ -1248,17 +1248,15 @@ private fun CleanCalendarCard(
                             modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
                         )
                     }
-                    Icon(
-                        Icons.Default.ChevronLeft,
-                        contentDescription = "Föregående månad",
-                        tint = Color.White.copy(alpha = .92f),
-                        modifier = Modifier.size(34.dp).clickable(onClick = onPrevious).padding(6.dp),
+                    SingleGlassArrowButton(
+                        icon = Icons.Default.ChevronLeft,
+                        description = "Föregående månad",
+                        onClick = onPrevious,
                     )
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = "Nästa månad",
-                        tint = Color.White.copy(alpha = .92f),
-                        modifier = Modifier.size(34.dp).clickable(onClick = onNext).padding(6.dp),
+                    SingleGlassArrowButton(
+                        icon = Icons.Default.ChevronRight,
+                        description = "Nästa månad",
+                        onClick = onNext,
                     )
                 }
             }
@@ -1391,6 +1389,31 @@ private fun CleanCalendarCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SingleGlassArrowButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        color = Color.White.copy(alpha = .09f),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .24f)),
+        shadowElevation = 8.dp,
+        tonalElevation = 0.dp,
+        modifier = Modifier.size(42.dp).clickable(onClick = onClick),
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(
+                icon,
+                contentDescription = description,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp),
+            )
         }
     }
 }
