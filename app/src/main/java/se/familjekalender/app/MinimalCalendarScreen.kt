@@ -1382,15 +1382,25 @@ private fun CleanCalendarCard(
                                     modifier = Modifier.height(5.dp),
                                 ) {
                                     dayEvents.take(3).forEach { event ->
-                                        val dotColor =
-                                            memberById[event.memberId]?.let {
-                                                Color(it.colorArgb.toInt())
-                                            } ?: CleanPurpleBright
-                                        Box(
-                                            Modifier.size(4.dp)
-                                                .clip(CircleShape)
-                                                .background(dotColor)
-                                        )
+                                        val isBirthday = event.title.trimStart().startsWith("🌈")
+                                        if (isBirthday) {
+                                            Text(
+                                                "🌈",
+                                                fontSize = 8.sp,
+                                                lineHeight = 8.sp,
+                                                modifier = Modifier.offset(y = (-2).dp),
+                                            )
+                                        } else {
+                                            val dotColor =
+                                                memberById[event.memberId]?.let {
+                                                    Color(it.colorArgb.toInt())
+                                                } ?: CleanPurpleBright
+                                            Box(
+                                                Modifier.size(4.dp)
+                                                    .clip(CircleShape)
+                                                    .background(dotColor)
+                                            )
+                                        }
                                     }
                                 }
                             }
