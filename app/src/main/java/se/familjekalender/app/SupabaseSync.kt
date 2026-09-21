@@ -275,6 +275,35 @@ object SupabaseSync {
             }
         }
 
+    suspend fun addReminder(
+        session: FamilySession,
+        title: String,
+        date: LocalDate,
+        time: String,
+        memberId: String?,
+    ) =
+        withContext(Dispatchers.IO) {
+            val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
+            val startsAt =
+                ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
+            val body =
+                JSONObject()
+                    .put("family_id", session.id)
+                    .put("title", "🔔 " + title.removePrefix("🔔").trim())
+                    .put("starts_at", startsAt)
+                    .put("source", "reminder")
+            if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
+                body.put("member_id", JSONObject.NULL)
+            else body.put("member_id", memberId)
+            request(
+                "POST",
+                "/rest/v1/calendar_events",
+                body,
+                session.code,
+                preferRepresentation = false,
+            )
+        }
+
     suspend fun addEvent(
         session: FamilySession,
         title: String,
