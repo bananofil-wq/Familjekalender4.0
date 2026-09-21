@@ -2247,7 +2247,7 @@ private fun AddEventDialog(
                             color = Muted,
                             fontSize = 12.sp,
                         )
-                    } else if (!endTime!!.isAfter(startTime)) {
+                    } else if (!isReminder && endTime != null && startTime != null && !endTime!!.isAfter(startTime)) {
                         Text(
                             "Sluttiden räknas som nästa dag.",
                             color = Muted,
