@@ -1293,8 +1293,8 @@ private fun CleanCalendarCard(
                         val dayEvents = eventsByDate[date].orEmpty()
                         Box(
                             Modifier.weight(1f)
-                                .height(48.dp)
-                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                                .height(50.dp)
+                                .padding(horizontal = 3.dp, vertical = 3.dp)
                                 .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
                         ) {
@@ -1302,10 +1302,10 @@ private fun CleanCalendarCard(
                             Surface(
                                 color =
                                     when {
-                                        isToday -> Color(0xFF8E45FF)
-                                        isSelected -> Color.White.copy(alpha = .30f)
-                                        inMonth -> Color(0x30191420)
-                                        else -> Color(0x12191420)
+                                        isToday -> Color(0xFF8A35FF)
+                                        isSelected -> Color.White.copy(alpha = .24f)
+                                        inMonth -> Color(0x24191420)
+                                        else -> Color(0x0D191420)
                                     },
                                 shape = dayShape,
                                 border =
@@ -1324,9 +1324,9 @@ private fun CleanCalendarCard(
                                     ),
                                 shadowElevation =
                                     when {
-                                        isToday -> 14.dp
-                                        isSelected -> 10.dp
-                                        inMonth -> 4.dp
+                                        isToday -> 18.dp
+                                        isSelected -> 14.dp
+                                        inMonth -> 8.dp
                                         else -> 0.dp
                                     },
                                 tonalElevation = 0.dp,
