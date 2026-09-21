@@ -1263,6 +1263,14 @@ private fun CleanCalendarCard(
 
             val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
             Row(Modifier.fillMaxWidth()) {
+                Text(
+                    "V",
+                    color = Color.White.copy(alpha = .38f),
+                    fontSize = 8.sp,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(22.dp),
+                )
                 weekdays.forEach { day ->
                     Text(
                         day,
@@ -1279,8 +1287,18 @@ private fun CleanCalendarCard(
 
             val first = month.atDay(1)
             val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
+            val weekFields = java.time.temporal.WeekFields.ISO
             repeat(6) { row ->
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    val weekDate = gridStart.plusDays((row * 7).toLong())
+                    Text(
+                        weekDate.get(weekFields.weekOfWeekBasedYear()).toString(),
+                        color = Color.White.copy(alpha = .38f),
+                        fontSize = 8.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.width(22.dp),
+                    )
                     repeat(7) { column ->
                         val date = gridStart.plusDays((row * 7 + column).toLong())
                         val inMonth = YearMonth.from(date) == month
