@@ -1335,13 +1335,7 @@ private fun CleanCalendarCard(
                                     .height(56.dp)
                                     .padding(horizontal = 3.dp, vertical = 3.dp)
                                     .shadow(
-                                        elevation =
-                                            when {
-                                                isToday -> 15.dp
-                                                isSelected -> 10.dp
-                                                inMonth -> 3.dp
-                                                else -> 0.dp
-                                            },
+                                        elevation = 0.dp,
                                         shape = dayShape,
                                         clip = false,
                                     )
