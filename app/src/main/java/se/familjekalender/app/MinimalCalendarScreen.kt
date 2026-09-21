@@ -214,7 +214,7 @@ internal fun MinimalCalendarScreen(
             CleanAgendaCard(
                 date = selectedDate,
                 today = today,
-                events = selectedEvents,
+                events = events,
                 memberById = memberById,
                 locale = locale,
                 onEventClick = { openedEvent = it },
@@ -1463,10 +1463,16 @@ private fun CleanAgendaCard(
     onEventClick: (SyncEvent) -> Unit,
     onShowAll: () -> Unit,
 ) {
-    val formatted =
-        date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale)).replaceFirstChar {
-            it.uppercase(locale)
-        }
+    val weekStart = date.minusDays((date.dayOfWeek.value - 1).toLong())
+    val weekEnd = weekStart.plusDays(6)
+    val weekEvents = remember(events, weekStart) {
+        events.filter { !it.date.isBefore(weekStart) && !it.date.isAfter(weekEnd) }
+            .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time }.thenBy { it.title })
+    }
+    val eventsByDay = remember(weekEvents) { weekEvents.groupBy { it.date } }
+    val weekLabel = weekStart.format(DateTimeFormatter.ofPattern("d MMM", locale)) + " – " +
+        weekEnd.format(DateTimeFormatter.ofPattern("d MMM", locale))
+
     Surface(
         color = CleanGlassSoft,
         shape = RoundedCornerShape(25.dp),
@@ -1479,15 +1485,10 @@ private fun CleanAgendaCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    formatted,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(Modifier.weight(1f)) {
+                    Text("Veckan", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(weekLabel, color = Color.White.copy(alpha = .55f), fontSize = 11.sp)
+                }
                 Spacer(Modifier.width(8.dp))
                 Surface(
                     color = Color.White.copy(alpha = .055f),
@@ -1495,87 +1496,66 @@ private fun CleanAgendaCard(
                     border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
                     modifier = Modifier.clickable(onClick = onShowAll),
                 ) {
-                    Row(
-                        Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    Row(Modifier.padding(horizontal = 9.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
-                            color = Color.White.copy(alpha = .74f),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            if (weekEvents.size == 1) "1 aktivitet" else "${weekEvents.size} aktiviteter",
+                            color = Color.White.copy(alpha = .74f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.width(3.dp))
                         Text("›", color = CleanPurpleBright, fontSize = 13.sp)
                     }
                 }
             }
+            Spacer(Modifier.height(10.dp))
+            (0L..6L).forEach { offset ->
+                val day = weekStart.plusDays(offset)
+                val dayEvents = eventsByDay[day].orEmpty()
+                val isToday = day == today
+                val dayTitle = day.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+                    .replaceFirstChar { it.uppercase(locale) }
 
-            if (events.isEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Text("Inga aktiviteter planerade", color = CleanMuted, fontSize = 13.sp)
-            } else {
-                Spacer(Modifier.height(8.dp))
-                events.take(3).forEachIndexed { index, event ->
-                    val member = memberById[event.memberId]
-                    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .clickable { onEventClick(event) }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            Modifier.width(3.dp)
-                                .height(40.dp)
-                                .clip(RoundedCornerShape(99.dp))
-                                .background(accent)
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            event.time,
-                            color = Color.White.copy(alpha = .67f),
-                            fontSize = 12.sp,
-                            modifier = Modifier.width(54.dp),
-                        )
-                        Box(
-                            Modifier.size(32.dp)
-                                .clip(CircleShape)
-                                .background(accent.copy(alpha = .20f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Box(Modifier.size(9.dp).clip(CircleShape).background(accent))
-                        }
-                        Spacer(Modifier.width(9.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                cleanEventTitle(event),
-                                color = Color.White,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen"
-                                else member?.name ?: "Övrigt",
-                                color = Color.White.copy(alpha = .52f),
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = .36f),
-                            modifier = Modifier.size(18.dp),
-                        )
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (isToday) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(CleanPurpleBright))
+                        Spacer(Modifier.width(7.dp))
                     }
-                    if (index < events.take(3).lastIndex) {
-                        HorizontalDivider(color = Color.White.copy(alpha = .07f), thickness = .5.dp)
+                    Text(
+                        dayTitle,
+                        color = if (isToday) Color.White else Color.White.copy(alpha = .72f),
+                        fontSize = 12.sp,
+                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.SemiBold,
+                    )
+                }
+                if (dayEvents.isEmpty()) {
+                    Text("Inga aktiviteter", color = Color.White.copy(alpha = .34f), fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 14.dp, bottom = 4.dp))
+                } else {
+                    dayEvents.forEach { event ->
+                        val member = memberById[event.memberId]
+                        val accent = member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onEventClick(event) }.padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.width(3.dp).height(32.dp).clip(RoundedCornerShape(99.dp)).background(accent))
+                            Spacer(Modifier.width(9.dp))
+                            Text(event.time, color = Color.White.copy(alpha = .62f), fontSize = 11.sp, modifier = Modifier.width(48.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(cleanEventTitle(event), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member?.name ?: "Övrigt",
+                                    color = Color.White.copy(alpha = .48f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .30f), modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
+                if (offset < 6L) HorizontalDivider(color = Color.White.copy(alpha = .055f), thickness = .5.dp)
             }
         }
     }
