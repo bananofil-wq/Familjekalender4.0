@@ -1391,8 +1391,9 @@ private fun MonthPanel(
                                     containerColor =
                                         when {
                                             day == null -> Color.Transparent
-                                            selectedDay -> accent.copy(alpha = .88f)
-                                            todayDay -> accent.copy(alpha = .42f)
+                                            selectedDay && todayDay -> accent.copy(alpha = .88f)
+                                            selectedDay -> Color.White.copy(alpha = .14f)
+                                            todayDay -> accent.copy(alpha = .58f)
                                             else -> Color(0x991B2028)
                                         }
                                 ),
@@ -1402,7 +1403,8 @@ private fun MonthPanel(
                                     BorderStroke(
                                         if (todayDay && !selectedDay) 2.dp else 1.dp,
                                         when {
-                                            selectedDay -> accent.copy(alpha = .95f)
+                                            selectedDay && todayDay -> Color.White.copy(alpha = .96f)
+                                            selectedDay -> Color.White.copy(alpha = .72f)
                                             todayDay -> accent
                                             else -> Color.White.copy(alpha = .18f)
                                         },
