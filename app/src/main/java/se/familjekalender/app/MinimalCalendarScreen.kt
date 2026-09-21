@@ -280,7 +280,7 @@ internal fun MinimalCalendarScreen(
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         placeholder = { Text("Aktivitet") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().shadow(10.dp, RoundedCornerShape(25.dp), clip = false),
                     )
                     matches.forEach { event ->
                         Surface(
@@ -1214,9 +1214,10 @@ private fun CleanCalendarCard(
     Box(
         modifier =
             Modifier.fillMaxWidth()
+                .shadow(12.dp, calendarShape, clip = false)
                 .clip(calendarShape)
-                .background(Color(0x2414111D))
-                .border(1.2.dp, Color.White.copy(alpha = .20f), calendarShape),
+                .background(Color(0x2B14111D))
+                .border(1.2.dp, Color.White.copy(alpha = .22f), calendarShape),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
             Row(
@@ -1554,7 +1555,7 @@ private fun CleanAgendaCard(
                     Row(
                         Modifier.fillMaxWidth()
                             .clickable { onEventClick(event) }
-                            .padding(vertical = 7.dp),
+                            .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
