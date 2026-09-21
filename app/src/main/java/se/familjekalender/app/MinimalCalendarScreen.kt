@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -1246,7 +1247,7 @@ private fun CleanCalendarCard(
                             "Idag",
                             color = Color.White,
                             fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                         )
                     }
                     SingleGlassArrowButton(
@@ -1298,43 +1299,71 @@ private fun CleanCalendarCard(
                             contentAlignment = Alignment.Center,
                         ) {
                             val dayShape = RoundedCornerShape(11.dp)
-                            Surface(
-                                color =
-                                    when {
-                                        isToday -> Color(0xFF8C3BFF)
-                                        isSelected -> Color.White.copy(alpha = .34f)
-                                        inMonth -> Color.White.copy(alpha = .060f)
-                                        else -> Color.White.copy(alpha = .018f)
-                                    },
-                                shape = dayShape,
-                                border =
-                                    BorderStroke(
-                                        when {
-                                            isToday -> 1.6.dp
-                                            isSelected -> 1.4.dp
-                                            else -> .65.dp
-                                        },
-                                        when {
-                                            isToday -> Color(0xFFC18BFF)
-                                            isSelected -> Color.White.copy(alpha = .96f)
-                                            inMonth -> Color.White.copy(alpha = .18f)
-                                            else -> Color.White.copy(alpha = .055f)
-                                        },
-                                    ),
-                                shadowElevation =
-                                    when {
-                                        isToday -> 18.dp
-                                        isSelected -> 15.dp
-                                        inMonth -> 7.dp
-                                        else -> 0.dp
-                                    },
-                                tonalElevation = 0.dp,
-                                modifier = Modifier.fillMaxSize(),
+                            val dayBrush =
+                                when {
+                                    isToday ->
+                                        Brush.verticalGradient(
+                                            listOf(Color(0xFFB65EFF), Color(0xFF7A28F5))
+                                        )
+                                    isSelected ->
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = .42f),
+                                                Color.White.copy(alpha = .18f),
+                                            )
+                                        )
+                                    inMonth ->
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = .105f),
+                                                Color(0x40191420),
+                                            )
+                                        )
+                                    else ->
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = .025f),
+                                                Color.Transparent,
+                                            )
+                                        )
+                                }
+                            Box(
+                                modifier =
+                                    Modifier.fillMaxSize()
+                                        .shadow(
+                                            elevation =
+                                                when {
+                                                    isToday -> 16.dp
+                                                    isSelected -> 12.dp
+                                                    inMonth -> 5.dp
+                                                    else -> 0.dp
+                                                },
+                                            shape = dayShape,
+                                            clip = false,
+                                        )
+                                        .clip(dayShape)
+                                        .background(dayBrush)
+                                        .border(
+                                            width =
+                                                when {
+                                                    isToday -> 1.5.dp
+                                                    isSelected -> 1.4.dp
+                                                    else -> .7.dp
+                                                },
+                                            color =
+                                                when {
+                                                    isToday -> Color(0xFFC792FF)
+                                                    isSelected -> Color.White.copy(alpha = .88f)
+                                                    inMonth -> Color.White.copy(alpha = .15f)
+                                                    else -> Color.White.copy(alpha = .05f)
+                                                },
+                                            shape = dayShape,
+                                        ),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center,
-                                    modifier = Modifier.fillMaxSize(),
                                 ) {
                                     Text(
                                         date.dayOfMonth.toString(),
@@ -1400,25 +1429,33 @@ private fun SingleGlassArrowButton(
     description: String,
     onClick: () -> Unit,
 ) {
-    Surface(
-        color = Color.White.copy(alpha = .085f),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .23f)),
-        shadowElevation = 9.dp,
-        tonalElevation = 0.dp,
-        modifier = Modifier.size(44.dp).clickable(onClick = onClick),
+    val shape = RoundedCornerShape(15.dp)
+    Box(
+        modifier =
+            Modifier.size(40.dp)
+                .shadow(8.dp, shape, clip = false)
+                .clip(shape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = .16f),
+                            Color.White.copy(alpha = .065f),
+                        )
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = .24f), shape)
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                glyph,
-                color = Color.White,
-                fontSize = 31.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 31.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.offset(y = (-1).dp),
-            )
-        }
+        Text(
+            glyph,
+            color = Color.White,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = 30.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.offset(y = (-1).dp),
+        )
     }
 }
 
