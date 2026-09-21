@@ -1135,6 +1135,13 @@ internal fun MinimalCalendarScreen(
 
 @Composable
 private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
+    val context = LocalContext.current
+    val versionName =
+        remember {
+            runCatching {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
+            }.getOrDefault("?")
+        }
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1160,7 +1167,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "VERIFY " + BuildConfig.VERSION_NAME,
+                "VERIFY $versionName",
                 color = CleanPurpleBright.copy(alpha = .92f),
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
