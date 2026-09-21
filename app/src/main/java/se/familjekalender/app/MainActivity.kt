@@ -914,9 +914,18 @@ private fun SyncedApp(
                                         memberId,
                                         dates,
                                         birthday,
+                                        reminder,
                                         recurrence ->
             scope.launch {
-                if (birthday) {
+                if (reminder) {
+                    SupabaseSync.addReminder(
+                        session,
+                        title,
+                        dates.first(),
+                        startTime,
+                        memberId,
+                    )
+                } else if (birthday) {
                     val today = LocalDate.now()
                     val month = dates.first().monthValue
                     val day = dates.first().dayOfMonth
@@ -2042,7 +2051,7 @@ private fun AddEventDialog(
     selectedDate: LocalDate,
     initialTitle: String = "",
     onDismiss: () -> Unit,
-    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, RecurrenceMode) -> Unit,
+    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, Boolean, RecurrenceMode) -> Unit,
 ) {
     val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
@@ -2054,6 +2063,7 @@ private fun AddEventDialog(
     var showEndTimePicker by remember { mutableStateOf(false) }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
     var isBirthday by remember { mutableStateOf(false) }
+    var isReminder by remember { mutableStateOf(false) }
     var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }
     val dates = remember { mutableStateListOf(selectedDate) }
 
@@ -2116,7 +2126,7 @@ private fun AddEventDialog(
         titleContentColor = Color.White,
         textContentColor = Color.White,
         title = {
-            Text(if (isBirthday) "Ny födelsedag" else "Ny aktivitet", fontWeight = FontWeight.Bold)
+            Text(when { isBirthday -> "Ny födelsedag"; isReminder -> "Ny påminnelse"; else -> "Ny aktivitet" }, fontWeight = FontWeight.Bold)
         },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -2147,7 +2157,40 @@ private fun AddEventDialog(
                     Text("Födelsedag – upprepas varje år")
                 }
 
-                if (!isBirthday) {
+                Row(
+                    Modifier.fillMaxWidth().clickable {
+                        isReminder = !isReminder
+                        if (isReminder) {
+                            isBirthday = false
+                            recurrence = RecurrenceMode.NONE
+                            if (dates.size > 1) {
+                                val first = dates.first()
+                                dates.clear()
+                                dates.add(first)
+                            }
+                        }
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        isReminder,
+                        { checked ->
+                            isReminder = checked
+                            if (checked) {
+                                isBirthday = false
+                                recurrence = RecurrenceMode.NONE
+                                if (dates.size > 1) {
+                                    val first = dates.first()
+                                    dates.clear()
+                                    dates.add(first)
+                                }
+                            }
+                        },
+                    )
+                    Text("Påminnelse – krockar inte med aktiviteter")
+                }
+
+                if (!isBirthday && !isReminder) {
                     Spacer(Modifier.height(6.dp))
                     Text("Upprepning", fontWeight = FontWeight.Bold)
                     RecurrenceMode.values().forEach { mode ->
@@ -2167,13 +2210,13 @@ private fun AddEventDialog(
                 OutlinedTextField(
                     title,
                     { title = it },
-                    label = { Text(if (isBirthday) "Namn" else "Aktivitet") },
+                    label = { Text(when { isBirthday -> "Namn"; isReminder -> "Påminnelse"; else -> "Aktivitet" }) },
                     modifier = Modifier.fillMaxWidth(),
                 )
 
                 if (!isBirthday) {
                     Spacer(Modifier.height(8.dp))
-                    Text("Tid", fontWeight = FontWeight.Bold)
+                    Text(if (isReminder) "Påminn mig" else "Tid", fontWeight = FontWeight.Bold)
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2190,6 +2233,7 @@ private fun AddEventDialog(
                         OutlinedButton(
                             onClick = { showEndTimePicker = true },
                             modifier = Modifier.weight(1f),
+                            enabled = !isReminder,
                         ) {
                             Text(
                                 endTime?.let { "Slut ${it.format(timeFormatter)}" }
@@ -2197,9 +2241,9 @@ private fun AddEventDialog(
                             )
                         }
                     }
-                    if (startTime == null || endTime == null) {
+                    if (startTime == null || (!isReminder && endTime == null)) {
                         Text(
-                            "Välj både start- och sluttid.",
+                            if (isReminder) "Välj tid för påminnelsen." else "Välj både start- och sluttid.",
                             color = Muted,
                             fontSize = 12.sp,
                         )
@@ -2304,13 +2348,14 @@ private fun AddEventDialog(
                         memberId,
                         dates.toList(),
                         isBirthday,
+                        isReminder,
                         recurrence,
                     )
                 },
                 enabled =
                     title.isNotBlank() &&
                             dates.isNotEmpty() &&
-                            (isBirthday || (startTime != null && endTime != null)),
+                            (isBirthday || (isReminder && startTime != null) || (startTime != null && endTime != null)),
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = Purple,
@@ -2320,6 +2365,8 @@ private fun AddEventDialog(
                 Text(
                     if (isBirthday) {
                         "Lägg till födelsedag"
+                    } else if (isReminder) {
+                        "Lägg till påminnelse"
                     } else if (dates.size > 1) {
                         "Lägg till ${dates.size} dagar"
                     } else {
