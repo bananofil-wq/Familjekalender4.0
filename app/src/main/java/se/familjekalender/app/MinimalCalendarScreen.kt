@@ -51,6 +51,7 @@ private val CleanGlass = Color(0xB8171422)
 private val CleanGlassSoft = Color(0xA61C1828)
 private val CleanBorder = Color.White.copy(alpha = .13f)
 private val CleanMuted = Color.White.copy(alpha = .66f)
+// Clean calendar reference build marker
 
 private val EmbeddedTimeRange = Regex("""(?:\s*[·•]\s*)?\b\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b""")
 
