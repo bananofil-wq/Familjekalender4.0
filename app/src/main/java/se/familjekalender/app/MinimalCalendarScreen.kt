@@ -1250,12 +1250,12 @@ private fun CleanCalendarCard(
                         )
                     }
                     SingleGlassArrowButton(
-                        icon = Icons.Default.ChevronLeft,
+                        glyph = "‹",
                         description = "Föregående månad",
                         onClick = onPrevious,
                     )
                     SingleGlassArrowButton(
-                        icon = Icons.Default.ChevronRight,
+                        glyph = "›",
                         description = "Nästa månad",
                         onClick = onNext,
                     )
@@ -1301,10 +1301,10 @@ private fun CleanCalendarCard(
                             Surface(
                                 color =
                                     when {
-                                        isToday -> Color(0xFF8A35FF)
-                                        isSelected -> Color.White.copy(alpha = .24f)
-                                        inMonth -> Color(0x24191420)
-                                        else -> Color(0x0D191420)
+                                        isToday -> Color(0xFF8C3BFF)
+                                        isSelected -> Color.White.copy(alpha = .34f)
+                                        inMonth -> Color.White.copy(alpha = .060f)
+                                        else -> Color.White.copy(alpha = .018f)
                                     },
                                 shape = dayShape,
                                 border =
@@ -1315,17 +1315,17 @@ private fun CleanCalendarCard(
                                             else -> .65.dp
                                         },
                                         when {
-                                            isToday -> Color(0xFFB97AFF)
-                                            isSelected -> Color.White.copy(alpha = .86f)
-                                            inMonth -> Color.White.copy(alpha = .14f)
-                                            else -> Color.White.copy(alpha = .05f)
+                                            isToday -> Color(0xFFC18BFF)
+                                            isSelected -> Color.White.copy(alpha = .96f)
+                                            inMonth -> Color.White.copy(alpha = .18f)
+                                            else -> Color.White.copy(alpha = .055f)
                                         },
                                     ),
                                 shadowElevation =
                                     when {
                                         isToday -> 18.dp
-                                        isSelected -> 14.dp
-                                        inMonth -> 8.dp
+                                        isSelected -> 15.dp
+                                        inMonth -> 7.dp
                                         else -> 0.dp
                                     },
                                 tonalElevation = 0.dp,
@@ -1396,24 +1396,27 @@ private fun CleanCalendarCard(
 
 @Composable
 private fun SingleGlassArrowButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    glyph: String,
     description: String,
     onClick: () -> Unit,
 ) {
     Surface(
-        color = Color.White.copy(alpha = .09f),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .24f)),
-        shadowElevation = 8.dp,
+        color = Color.White.copy(alpha = .085f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .23f)),
+        shadowElevation = 9.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier.size(42.dp).clickable(onClick = onClick),
+        modifier = Modifier.size(44.dp).clickable(onClick = onClick),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Icon(
-                icon,
-                contentDescription = description,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp),
+            Text(
+                glyph,
+                color = Color.White,
+                fontSize = 31.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 31.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.offset(y = (-1).dp),
             )
         }
     }
@@ -1459,7 +1462,7 @@ private fun CleanAgendaCard(
             it.uppercase(locale)
         }
     Surface(
-        color = CleanGlassSoft,
+        color = Color(0xB0191622),
         shape = RoundedCornerShape(25.dp),
         border = BorderStroke(1.dp, CleanBorder),
         modifier = Modifier.fillMaxWidth(),
@@ -1471,7 +1474,7 @@ private fun CleanAgendaCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    if (date == today) "Idag • $formatted" else formatted,
+                    formatted,
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
