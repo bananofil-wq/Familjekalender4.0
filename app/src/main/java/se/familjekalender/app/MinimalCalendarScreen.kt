@@ -1409,11 +1409,11 @@ private fun CleanCalendarCard(
                                             sweepAngle = 180f,
                                             useCenter = false,
                                             topLeft = Offset(arcBox.left + offset, arcBox.top + offset),
-                                            size = Size(
+                                            size = androidx.compose.ui.geometry.Size(
                                                 arcBox.width - offset * 2f,
                                                 arcBox.height - offset * 2f,
                                             ),
-                                            style = Stroke(width = stroke, cap = StrokeCap.Round),
+                                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke, cap = StrokeCap.Round),
                                         )
                                     }
                                 }
