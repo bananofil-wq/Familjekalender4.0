@@ -1159,6 +1159,13 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                 letterSpacing = 1.8.sp,
                 fontWeight = FontWeight.SemiBold,
             )
+            Text(
+                "VERIFY " + BuildConfig.VERSION_NAME,
+                color = CleanPurpleBright.copy(alpha = .92f),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = .6.sp,
+            )
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(9.dp),
