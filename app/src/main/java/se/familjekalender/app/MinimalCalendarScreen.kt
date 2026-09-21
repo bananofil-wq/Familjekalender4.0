@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,8 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -1135,13 +1138,6 @@ internal fun MinimalCalendarScreen(
 
 @Composable
 private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
-    val context = LocalContext.current
-    val versionName =
-        remember {
-            runCatching {
-                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
-            }.getOrDefault("?")
-        }
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1153,11 +1149,11 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     "Familjekalender",
                     color = Color.White,
                     fontFamily = FontFamily.Cursive,
-                    fontSize = 34.sp,
+                    fontSize = 31.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("♡", color = CleanPurpleBright, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                Text("♡", color = CleanPurpleBright, fontSize = 27.sp, fontWeight = FontWeight.Bold)
             }
             Text(
                 "TILLSAMMANS VARJE DAG",
@@ -1166,20 +1162,13 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                 letterSpacing = 1.8.sp,
                 fontWeight = FontWeight.SemiBold,
             )
-            Text(
-                "VERIFY $versionName",
-                color = CleanPurpleBright.copy(alpha = .92f),
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = .6.sp,
-            )
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(48.dp)
+                Modifier.size(43.dp)
                     .clip(CircleShape)
                     .background(Color(0x661C1726))
                     .clickable(onClick = onSearch),
@@ -1189,11 +1178,11 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     Icons.Default.Search,
                     contentDescription = "Sök",
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(21.dp),
                 )
             }
             Box(
-                Modifier.size(56.dp)
+                Modifier.size(50.dp)
                     .clip(CircleShape)
                     .background(Brush.linearGradient(listOf(CleanPurpleBright, CleanPurple)))
                     .clickable(onClick = onAdd),
@@ -1203,7 +1192,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     Icons.Default.Add,
                     contentDescription = "Lägg till aktivitet",
                     tint = Color.White,
-                    modifier = Modifier.size(31.dp),
+                    modifier = Modifier.size(27.dp),
                 )
             }
         }
@@ -1228,12 +1217,11 @@ private fun CleanCalendarCard(
     Box(
         modifier =
             Modifier.fillMaxWidth()
-                .shadow(12.dp, calendarShape, clip = false)
                 .clip(calendarShape)
-                .background(Color(0x2B14111D))
-                .border(1.2.dp, Color.White.copy(alpha = .22f), calendarShape),
+                .background(Color(0x1D14111D))
+                .border(1.2.dp, Color.White.copy(alpha = .20f), calendarShape),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1244,8 +1232,8 @@ private fun CleanCalendarCard(
                         it.uppercase(locale)
                     } + " ${month.year}",
                     color = Color.White,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1262,8 +1250,8 @@ private fun CleanCalendarCard(
                         Text(
                             "Idag",
                             color = Color.White,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
                         )
                     }
                     SingleGlassArrowButton(
@@ -1309,7 +1297,7 @@ private fun CleanCalendarCard(
                         val dayEvents = eventsByDate[date].orEmpty()
                         Box(
                             Modifier.weight(1f)
-                                .height(56.dp)
+                                .height(54.dp)
                                 .padding(horizontal = 3.dp, vertical = 3.dp)
                                 .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
@@ -1324,15 +1312,15 @@ private fun CleanCalendarCard(
                                     isSelected ->
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color.White.copy(alpha = .42f),
-                                                Color.White.copy(alpha = .18f),
+                                                Color.White.copy(alpha = .46f),
+                                                Color.White.copy(alpha = .20f),
                                             )
                                         )
                                     inMonth ->
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color.White.copy(alpha = .135f),
-                                                Color(0x36191420),
+                                                Color.White.copy(alpha = .165f),
+                                                Color(0x30191420),
                                             )
                                         )
                                     else ->
@@ -1454,24 +1442,34 @@ private fun SingleGlassArrowButton(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color.White.copy(alpha = .16f),
-                            Color.White.copy(alpha = .065f),
+                            Color.White.copy(alpha = .15f),
+                            Color.White.copy(alpha = .055f),
                         )
                     )
                 )
-                .border(1.dp, Color.White.copy(alpha = .24f), shape)
+                .border(1.dp, Color.White.copy(alpha = .23f), shape)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            glyph,
-            color = Color.White,
-            fontSize = 29.sp,
-            fontWeight = FontWeight.Normal,
-            lineHeight = 30.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.offset(y = (-1).dp),
-        )
+        Canvas(Modifier.size(18.dp)) {
+            val stroke = 2.6.dp.toPx()
+            val xLeft = if (glyph == "‹") size.width * .66f else size.width * .34f
+            val xRight = if (glyph == "‹") size.width * .34f else size.width * .66f
+            drawLine(
+                color = Color.White,
+                start = Offset(xLeft, size.height * .18f),
+                end = Offset(xRight, size.height * .50f),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = Color.White,
+                start = Offset(xRight, size.height * .50f),
+                end = Offset(xLeft, size.height * .82f),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round,
+            )
+        }
     }
 }
 
