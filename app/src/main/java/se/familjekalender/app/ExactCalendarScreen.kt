@@ -1306,15 +1306,15 @@ private fun MonthPanel(
                 )
                 TextButton(
                     onClick = onPreviousMonth,
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 ) {
-                    Text("‹", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("‹", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
                 TextButton(
                     onClick = onNextMonth,
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 ) {
-                    Text("›", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("›", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Row(Modifier.fillMaxWidth()) {
@@ -1391,28 +1391,28 @@ private fun MonthPanel(
                                     containerColor =
                                         when {
                                             day == null -> Color.Transparent
-                                            selectedDay && todayDay -> accent.copy(alpha = .88f)
-                                            selectedDay -> Color.White.copy(alpha = .14f)
-                                            todayDay -> accent.copy(alpha = .58f)
-                                            else -> Color(0x991B2028)
+                                            selectedDay && todayDay -> accent.copy(alpha = .92f)
+                                            todayDay -> accent.copy(alpha = .82f)
+                                            selectedDay -> Color.White.copy(alpha = .26f)
+                                            else -> Color(0x661B2028)
                                         }
                                 ),
                             border =
                                 if (day == null) null
                                 else
                                     BorderStroke(
-                                        if (todayDay && !selectedDay) 2.dp else 1.dp,
+                                        if (todayDay) 2.dp else 1.dp,
                                         when {
-                                            selectedDay && todayDay -> Color.White.copy(alpha = .96f)
-                                            selectedDay -> Color.White.copy(alpha = .72f)
-                                            todayDay -> accent
-                                            else -> Color.White.copy(alpha = .18f)
+                                            selectedDay && todayDay -> Color.White.copy(alpha = .98f)
+                                            todayDay -> accent.copy(alpha = .98f)
+                                            selectedDay -> Color.White.copy(alpha = .82f)
+                                            else -> Color.White.copy(alpha = .24f)
                                         },
                                     ),
                             elevation =
                                 CardDefaults.cardElevation(
                                     defaultElevation =
-                                        if (day == null) 0.dp else if (selectedDay) 6.dp else 3.dp
+                                        if (day == null) 0.dp else if (todayDay) 12.dp else if (selectedDay) 9.dp else 6.dp
                                 ),
                             shape = RoundedCornerShape(10.dp),
                             modifier =
