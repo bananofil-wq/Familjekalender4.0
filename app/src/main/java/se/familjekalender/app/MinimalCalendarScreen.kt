@@ -1302,87 +1302,69 @@ private fun CleanCalendarCard(
                             Surface(
                                 color =
                                     when {
-                                        isToday -> CleanPurple.copy(alpha = if (isSelected) .98f else .92f)
-                                        isSelected -> Color.White.copy(alpha = .38f)
-                                        inMonth -> Color.White.copy(alpha = .075f)
-                                        else -> Color.White.copy(alpha = .025f)
+                                        isToday -> Color(0xFF8E45FF)
+                                        isSelected -> Color.White.copy(alpha = .30f)
+                                        inMonth -> Color(0x30191420)
+                                        else -> Color(0x12191420)
                                     },
                                 shape = dayShape,
                                 border =
                                     BorderStroke(
                                         when {
-                                            isToday -> 1.8.dp
-                                            isSelected -> 1.5.dp
-                                            else -> .8.dp
+                                            isToday -> 1.6.dp
+                                            isSelected -> 1.4.dp
+                                            else -> .65.dp
                                         },
                                         when {
-                                            isToday -> CleanPurpleBright.copy(alpha = .98f)
-                                            isSelected -> Color.White.copy(alpha = .92f)
-                                            inMonth -> Color.White.copy(alpha = .18f)
-                                            else -> Color.White.copy(alpha = .07f)
+                                            isToday -> Color(0xFFB97AFF)
+                                            isSelected -> Color.White.copy(alpha = .86f)
+                                            inMonth -> Color.White.copy(alpha = .14f)
+                                            else -> Color.White.copy(alpha = .05f)
                                         },
                                     ),
                                 shadowElevation =
                                     when {
-                                        isToday -> 16.dp
-                                        isSelected -> 12.dp
-                                        inMonth -> 7.dp
-                                        else -> 2.dp
+                                        isToday -> 14.dp
+                                        isSelected -> 10.dp
+                                        inMonth -> 4.dp
+                                        else -> 0.dp
                                     },
                                 tonalElevation = 0.dp,
                                 modifier = Modifier.fillMaxSize(),
                             ) {
-                                Box(Modifier.fillMaxSize()) {
-                                    Box(
-                                        Modifier.align(Alignment.TopCenter)
-                                            .padding(top = 3.dp)
-                                            .width(26.dp)
-                                            .height(5.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                Color.White.copy(
-                                                    alpha =
-                                                        when {
-                                                            isToday -> .30f
-                                                            isSelected -> .22f
-                                                            inMonth -> .08f
-                                                            else -> .03f
-                                                        }
-                                                )
-                                            )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxSize(),
+                                ) {
+                                    Text(
+                                        date.dayOfMonth.toString(),
+                                        color =
+                                            if (inMonth) Color.White
+                                            else Color.White.copy(alpha = .28f),
+                                        fontSize = 14.sp,
+                                        fontWeight =
+                                            when {
+                                                isToday -> FontWeight.ExtraBold
+                                                isSelected -> FontWeight.Bold
+                                                else -> FontWeight.SemiBold
+                                            },
                                     )
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier.fillMaxSize(),
+                                    Spacer(Modifier.height(2.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier.height(5.dp),
                                     ) {
-                                        Text(
-                                            date.dayOfMonth.toString(),
-                                            color = if (inMonth) Color.White else Color.White.copy(alpha = .30f),
-                                            fontSize = 14.sp,
-                                            fontWeight =
-                                                when {
-                                                    isToday -> FontWeight.ExtraBold
-                                                    isSelected -> FontWeight.Bold
-                                                    else -> FontWeight.SemiBold
-                                                },
-                                        )
-                                        Spacer(Modifier.height(2.dp))
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                            modifier = Modifier.height(5.dp),
-                                        ) {
-                                            dayEvents.take(3).forEach { event ->
-                                                val color =
-                                                    memberById[event.memberId]?.let {
-                                                        Color(it.colorArgb.toInt())
-                                                    } ?: CleanPurpleBright
-                                                Box(
-                                                    Modifier.size(4.dp)
-                                                        .clip(CircleShape)
-                                                        .background(color)
-                                                )
-                                            }
+                                        dayEvents.take(3).forEach { event ->
+                                            val color =
+                                                memberById[event.memberId]?.let {
+                                                    Color(it.colorArgb.toInt())
+                                                } ?: CleanPurpleBright
+                                            Box(
+                                                Modifier.size(4.dp)
+                                                    .clip(CircleShape)
+                                                    .background(color)
+                                            )
                                         }
                                     }
                                 }
