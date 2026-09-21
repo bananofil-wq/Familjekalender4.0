@@ -1400,11 +1400,9 @@ private fun CleanCalendarCard(
                     }
                 }
             }
-            }
         }
     }
 }
-
 
 @Composable
 private fun SingleGlassArrowButton(
