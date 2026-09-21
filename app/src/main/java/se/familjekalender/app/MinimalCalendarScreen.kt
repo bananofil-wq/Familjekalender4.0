@@ -1306,16 +1306,16 @@ private fun CleanCalendarCard(
                                 inMonth ->
                                     Brush.verticalGradient(
                                         listOf(
-                                            Color.White.copy(alpha = .18f),
                                             Color.White.copy(alpha = .085f),
                                             Color.White.copy(alpha = .035f),
+                                            Color.White.copy(alpha = .012f),
                                         )
                                     )
                                 else ->
                                     Brush.verticalGradient(
                                         listOf(
-                                            Color.White.copy(alpha = .045f),
-                                            Color.White.copy(alpha = .018f),
+                                            Color.White.copy(alpha = .025f),
+                                            Color.White.copy(alpha = .008f),
                                             Color.Transparent,
                                         )
                                     )
@@ -1325,7 +1325,7 @@ private fun CleanCalendarCard(
                             when {
                                 isToday -> Color(0xFFD9B2FF)
                                 isSelected -> Color.White.copy(alpha = .82f)
-                                inMonth -> Color.White.copy(alpha = .20f)
+                                inMonth -> Color.White.copy(alpha = .14f)
                                 else -> Color.White.copy(alpha = .075f)
                             }
 
@@ -1339,7 +1339,7 @@ private fun CleanCalendarCard(
                                             when {
                                                 isToday -> 15.dp
                                                 isSelected -> 10.dp
-                                                inMonth -> 5.dp
+                                                inMonth -> 3.dp
                                                 else -> 0.dp
                                             },
                                         shape = dayShape,
