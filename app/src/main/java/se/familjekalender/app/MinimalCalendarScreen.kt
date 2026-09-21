@@ -1146,11 +1146,11 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     "Familjekalender",
                     color = Color.White,
                     fontFamily = FontFamily.Cursive,
-                    fontSize = 31.sp,
+                    fontSize = 34.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("♡", color = CleanPurpleBright, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                Text("♡", color = CleanPurpleBright, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             }
             Text(
                 "TILLSAMMANS VARJE DAG",
@@ -1165,7 +1165,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(43.dp)
+                Modifier.size(48.dp)
                     .clip(CircleShape)
                     .background(Color(0x661C1726))
                     .clickable(onClick = onSearch),
@@ -1179,7 +1179,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                 )
             }
             Box(
-                Modifier.size(50.dp)
+                Modifier.size(56.dp)
                     .clip(CircleShape)
                     .background(Brush.linearGradient(listOf(CleanPurpleBright, CleanPurple)))
                     .clickable(onClick = onAdd),
