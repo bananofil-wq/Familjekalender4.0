@@ -844,7 +844,7 @@ internal fun MinimalCalendarScreen(
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Box(
-                                            Modifier.size(7.dp)
+                                            Modifier.size(9.dp)
                                                 .clip(CircleShape)
                                                 .background(accent)
                                         )
@@ -1297,12 +1297,12 @@ private fun CleanCalendarCard(
                         val dayEvents = eventsByDate[date].orEmpty()
                         Box(
                             Modifier.weight(1f)
-                                .height(48.dp)
-                                .padding(horizontal = 3.dp, vertical = 3.dp)
+                                .height(55.dp)
+                                .padding(horizontal = 4.dp, vertical = 4.dp)
                                 .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            val dayShape = RoundedCornerShape(10.dp)
+                            val dayShape = RoundedCornerShape(12.dp)
                             val dayBrush =
                                 when {
                                     isToday ->
@@ -1312,15 +1312,15 @@ private fun CleanCalendarCard(
                                     isSelected ->
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color.White.copy(alpha = .34f),
-                                                Color.White.copy(alpha = .14f),
+                                                Color.White.copy(alpha = .30f),
+                                                Color.White.copy(alpha = .11f),
                                             )
                                         )
                                     inMonth ->
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color.White.copy(alpha = .10f),
-                                                Color(0x24191420),
+                                                Color.White.copy(alpha = .075f),
+                                                Color(0x16191420),
                                             )
                                         )
                                     else ->
@@ -1339,7 +1339,7 @@ private fun CleanCalendarCard(
                                                 when {
                                                     isToday -> 12.dp
                                                     isSelected -> 9.dp
-                                                    inMonth -> 4.dp
+                                                    inMonth -> 2.dp
                                                     else -> 0.dp
                                                 },
                                             shape = dayShape,
@@ -1518,7 +1518,7 @@ private fun CleanAgendaCard(
         border = BorderStroke(1.1.dp, Color.White.copy(alpha = .15f)),
         modifier = Modifier.fillMaxWidth().shadow(10.dp, RoundedCornerShape(25.dp), clip = false),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1547,18 +1547,18 @@ private fun CleanAgendaCard(
                         Text(
                             if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
                             color = Color.White.copy(alpha = .74f),
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.width(3.dp))
-                        Text("›", color = CleanPurpleBright, fontSize = 13.sp)
+                        Text("›", color = CleanPurpleBright, fontSize = 15.sp)
                     }
                 }
             }
 
             if (events.isEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                Text("Inga aktiviteter planerade", color = CleanMuted, fontSize = 13.sp)
+                Text("Inga aktiviteter planerade", color = CleanMuted, fontSize = 15.sp)
             } else {
                 Spacer(Modifier.height(10.dp))
                 events.take(3).forEachIndexed { index, event ->
@@ -1567,12 +1567,12 @@ private fun CleanAgendaCard(
                     Row(
                         Modifier.fillMaxWidth()
                             .clickable { onEventClick(event) }
-                            .padding(vertical = 7.dp),
+                            .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
                             Modifier.width(4.dp)
-                                .height(35.dp)
+                                .height(44.dp)
                                 .clip(RoundedCornerShape(99.dp))
                                 .background(accent)
                         )
@@ -1580,11 +1580,11 @@ private fun CleanAgendaCard(
                         Text(
                             event.time,
                             color = Color.White.copy(alpha = .70f),
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             modifier = Modifier.width(58.dp),
                         )
                         Box(
-                            Modifier.size(24.dp)
+                            Modifier.size(32.dp)
                                 .clip(CircleShape)
                                 .background(accent.copy(alpha = .20f)),
                             contentAlignment = Alignment.Center,
@@ -1596,7 +1596,7 @@ private fun CleanAgendaCard(
                             Text(
                                 cleanEventTitle(event),
                                 color = Color.White,
-                                fontSize = 13.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1605,7 +1605,7 @@ private fun CleanAgendaCard(
                                 if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen"
                                 else member?.name ?: "Övrigt",
                                 color = Color.White.copy(alpha = .52f),
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
