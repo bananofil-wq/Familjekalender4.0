@@ -160,9 +160,9 @@ internal fun MinimalCalendarScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0x44120B16),
-                            Color(0x66120C19),
-                            Color(0x99110D18),
+                            Color(0x26120B16),
+                            Color(0x43120C19),
+                            Color(0x73110D18),
                         )
                     )
                 )
@@ -584,7 +584,7 @@ internal fun MinimalCalendarScreen(
                                                                 showAllDayActivities = false
                                                                 openedEvent = event
                                                             }
-                                                            .padding(vertical = 7.dp),
+                                                            .padding(vertical = 10.dp),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                     ) {
                                                         Text(
@@ -1293,12 +1293,12 @@ private fun CleanCalendarCard(
                         val dayEvents = eventsByDate[date].orEmpty()
                         Box(
                             Modifier.weight(1f)
-                                .height(50.dp)
+                                .height(56.dp)
                                 .padding(horizontal = 3.dp, vertical = 3.dp)
                                 .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            val dayShape = RoundedCornerShape(11.dp)
+                            val dayShape = RoundedCornerShape(12.dp)
                             val dayBrush =
                                 when {
                                     isToday ->
@@ -1315,8 +1315,8 @@ private fun CleanCalendarCard(
                                     inMonth ->
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color.White.copy(alpha = .105f),
-                                                Color(0x40191420),
+                                                Color.White.copy(alpha = .135f),
+                                                Color(0x36191420),
                                             )
                                         )
                                     else ->
@@ -1333,9 +1333,9 @@ private fun CleanCalendarCard(
                                         .shadow(
                                             elevation =
                                                 when {
-                                                    isToday -> 16.dp
-                                                    isSelected -> 12.dp
-                                                    inMonth -> 5.dp
+                                                    isToday -> 18.dp
+                                                    isSelected -> 15.dp
+                                                    inMonth -> 7.dp
                                                     else -> 0.dp
                                                 },
                                             shape = dayShape,
@@ -1346,8 +1346,8 @@ private fun CleanCalendarCard(
                                         .border(
                                             width =
                                                 when {
-                                                    isToday -> 1.5.dp
-                                                    isSelected -> 1.4.dp
+                                                    isToday -> 1.8.dp
+                                                    isSelected -> 1.6.dp
                                                     else -> .7.dp
                                                 },
                                             color =
@@ -1432,7 +1432,7 @@ private fun SingleGlassArrowButton(
     val shape = RoundedCornerShape(15.dp)
     Box(
         modifier =
-            Modifier.size(40.dp)
+            Modifier.size(42.dp)
                 .shadow(8.dp, shape, clip = false)
                 .clip(shape)
                 .background(
@@ -1450,7 +1450,7 @@ private fun SingleGlassArrowButton(
         Text(
             glyph,
             color = Color.White,
-            fontSize = 30.sp,
+            fontSize = 29.sp,
             fontWeight = FontWeight.Normal,
             lineHeight = 30.sp,
             textAlign = TextAlign.Center,
@@ -1501,10 +1501,10 @@ private fun CleanAgendaCard(
     Surface(
         color = Color(0xB0191622),
         shape = RoundedCornerShape(25.dp),
-        border = BorderStroke(1.dp, CleanBorder),
+        border = BorderStroke(1.1.dp, Color.White.copy(alpha = .15f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1513,8 +1513,8 @@ private fun CleanAgendaCard(
                 Text(
                     formatted,
                     color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -1527,13 +1527,13 @@ private fun CleanAgendaCard(
                     modifier = Modifier.clickable(onClick = onShowAll),
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                        Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             if (events.size == 1) "1 aktivitet" else "${events.size} aktiviteter",
                             color = Color.White.copy(alpha = .74f),
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.width(3.dp))
@@ -1546,7 +1546,7 @@ private fun CleanAgendaCard(
                 Spacer(Modifier.height(12.dp))
                 Text("Inga aktiviteter planerade", color = CleanMuted, fontSize = 13.sp)
             } else {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 events.take(3).forEachIndexed { index, event ->
                     val member = memberById[event.memberId]
                     val accent = member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
@@ -1557,33 +1557,33 @@ private fun CleanAgendaCard(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
-                            Modifier.width(3.dp)
-                                .height(35.dp)
+                            Modifier.width(4.dp)
+                                .height(44.dp)
                                 .clip(RoundedCornerShape(99.dp))
                                 .background(accent)
                         )
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(
                             event.time,
-                            color = Color.White.copy(alpha = .67f),
-                            fontSize = 11.sp,
-                            modifier = Modifier.width(42.dp),
+                            color = Color.White.copy(alpha = .70f),
+                            fontSize = 12.sp,
+                            modifier = Modifier.width(58.dp),
                         )
                         Box(
-                            Modifier.size(24.dp)
+                            Modifier.size(32.dp)
                                 .clip(CircleShape)
                                 .background(accent.copy(alpha = .20f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
+                            Box(Modifier.size(9.dp).clip(CircleShape).background(accent))
                         }
-                        Spacer(Modifier.width(9.dp))
+                        Spacer(Modifier.width(11.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
                                 cleanEventTitle(event),
                                 color = Color.White,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -1591,7 +1591,7 @@ private fun CleanAgendaCard(
                                 if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen"
                                 else member?.name ?: "Övrigt",
                                 color = Color.White.copy(alpha = .52f),
-                                fontSize = 10.sp,
+                                fontSize = 11.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
