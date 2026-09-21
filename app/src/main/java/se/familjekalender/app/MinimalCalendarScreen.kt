@@ -1248,8 +1248,18 @@ private fun CleanCalendarCard(
                             modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
                         )
                     }
-                    SmallGlassIconButton(Icons.Default.ChevronLeft, "Föregående månad", onPrevious)
-                    SmallGlassIconButton(Icons.Default.ChevronRight, "Nästa månad", onNext)
+                    Icon(
+                        Icons.Default.ChevronLeft,
+                        contentDescription = "Föregående månad",
+                        tint = Color.White.copy(alpha = .92f),
+                        modifier = Modifier.size(34.dp).clickable(onClick = onPrevious).padding(6.dp),
+                    )
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = "Nästa månad",
+                        tint = Color.White.copy(alpha = .92f),
+                        modifier = Modifier.size(34.dp).clickable(onClick = onNext).padding(6.dp),
+                    )
                 }
             }
 
@@ -1279,6 +1289,7 @@ private fun CleanCalendarCard(
                         val date = gridStart.plusDays((row * 7 + column).toLong())
                         val inMonth = YearMonth.from(date) == month
                         val isSelected = date == selectedDate
+                        val isToday = date == today
                         val dayEvents = eventsByDate[date].orEmpty()
                         Box(
                             Modifier.weight(1f)
@@ -1287,70 +1298,52 @@ private fun CleanCalendarCard(
                                 .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (isSelected) {
-                                Surface(
-                                    color = Color.White.copy(alpha = .11f),
-                                    shape = CircleShape,
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = .34f)),
-                                    shadowElevation = 13.dp,
-                                    tonalElevation = 0.dp,
-                                    modifier = Modifier.size(44.dp),
-                                ) {
-                                    Box(Modifier.fillMaxSize()) {
+                            val dayShape = RoundedCornerShape(12.dp)
+                            Surface(
+                                color =
+                                    when {
+                                        isToday && isSelected -> CleanPurple.copy(alpha = .88f)
+                                        isToday -> CleanPurple.copy(alpha = .72f)
+                                        isSelected -> Color.White.copy(alpha = .15f)
+                                        inMonth -> Color(0x241B1624)
+                                        else -> Color.Transparent
+                                    },
+                                shape = dayShape,
+                                border =
+                                    BorderStroke(
+                                        when {
+                                            isToday -> 2.dp
+                                            isSelected -> 1.4.dp
+                                            else -> .7.dp
+                                        },
+                                        when {
+                                            isToday -> Color.White.copy(alpha = .92f)
+                                            isSelected -> Color.White.copy(alpha = .72f)
+                                            inMonth -> Color.White.copy(alpha = .12f)
+                                            else -> Color.White.copy(alpha = .05f)
+                                        },
+                                    ),
+                                shadowElevation =
+                                    when {
+                                        isToday -> 14.dp
+                                        isSelected -> 9.dp
+                                        inMonth -> 4.dp
+                                        else -> 0.dp
+                                    },
+                                tonalElevation = 0.dp,
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Box(Modifier.fillMaxSize()) {
+                                    if (isToday || isSelected) {
                                         Box(
                                             Modifier.align(Alignment.TopCenter)
-                                                .padding(top = 4.dp)
-                                                .width(24.dp)
-                                                .height(8.dp)
+                                                .padding(top = 3.dp)
+                                                .width(if (isToday) 26.dp else 22.dp)
+                                                .height(5.dp)
                                                 .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = .13f))
+                                                .background(Color.White.copy(alpha = if (isToday) .24f else .11f))
                                         )
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center,
-                                            modifier = Modifier.fillMaxSize(),
-                                        ) {
-                                            Text(
-                                                date.dayOfMonth.toString(),
-                                                color = Color.White,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                            )
-                                            Spacer(Modifier.height(2.dp))
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                modifier = Modifier.height(5.dp),
-                                            ) {
-                                                dayEvents.take(3).forEach { event ->
-                                                    val color =
-                                                        memberById[event.memberId]?.let {
-                                                            Color(it.colorArgb.toInt())
-                                                        } ?: CleanPurpleBright
-                                                    Box(
-                                                        Modifier.size(4.dp)
-                                                            .clip(CircleShape)
-                                                            .background(color)
-                                                    )
-                                                }
-                                            }
-                                        }
                                     }
-                                }
-                            } else {
-                                val dayShape = RoundedCornerShape(11.dp)
-                                Box(
-                                    modifier =
-                                        Modifier.fillMaxSize()
-                                            .clip(dayShape)
-                                            .border(
-                                                .6.dp,
-                                                Color.White.copy(
-                                                    alpha = if (inMonth) .09f else .045f
-                                                ),
-                                                dayShape,
-                                            ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.Center,
@@ -1360,13 +1353,16 @@ private fun CleanCalendarCard(
                                             date.dayOfMonth.toString(),
                                             color =
                                                 when {
-                                                    inMonth -> Color.White.copy(alpha = .92f)
-                                                    else -> Color.White.copy(alpha = .30f)
+                                                    !inMonth -> Color.White.copy(alpha = .30f)
+                                                    else -> Color.White
                                                 },
-                                            fontSize = 13.sp,
+                                            fontSize = if (isToday) 14.sp else 13.sp,
                                             fontWeight =
-                                                if (date == today) FontWeight.Bold
-                                                else FontWeight.Normal,
+                                                when {
+                                                    isToday -> FontWeight.ExtraBold
+                                                    isSelected -> FontWeight.Bold
+                                                    else -> FontWeight.Normal
+                                                },
                                         )
                                         Spacer(Modifier.height(2.dp))
                                         Row(
