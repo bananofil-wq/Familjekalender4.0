@@ -280,7 +280,7 @@ internal fun MinimalCalendarScreen(
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         placeholder = { Text("Aktivitet") },
-                        modifier = Modifier.fillMaxWidth().shadow(10.dp, RoundedCornerShape(25.dp), clip = false),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     matches.forEach { event ->
                         Surface(
@@ -1175,7 +1175,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     Icons.Default.Search,
                     contentDescription = "Sök",
                     tint = Color.White,
-                    modifier = Modifier.size(21.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
             Box(
@@ -1189,7 +1189,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     Icons.Default.Add,
                     contentDescription = "Lägg till aktivitet",
                     tint = Color.White,
-                    modifier = Modifier.size(27.dp),
+                    modifier = Modifier.size(31.dp),
                 )
             }
         }
@@ -1504,7 +1504,7 @@ private fun CleanAgendaCard(
         color = Color(0xB0191622),
         shape = RoundedCornerShape(25.dp),
         border = BorderStroke(1.1.dp, Color.White.copy(alpha = .15f)),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().shadow(10.dp, RoundedCornerShape(25.dp), clip = false),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
             Row(
