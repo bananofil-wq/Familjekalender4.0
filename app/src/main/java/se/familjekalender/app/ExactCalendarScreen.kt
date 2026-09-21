@@ -1304,18 +1304,22 @@ private fun MonthPanel(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f).padding(start = 4.dp, bottom = 8.dp),
                 )
-                TextButton(
-                    onClick = onPreviousMonth,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                ) {
-                    Text("‹", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                }
-                TextButton(
-                    onClick = onNextMonth,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                ) {
-                    Text("›", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                }
+                Text(
+                    "‹",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(44.dp).clickable { onPreviousMonth() },
+                )
+                Text(
+                    "›",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(44.dp).clickable { onNextMonth() },
+                )
             }
             Row(Modifier.fillMaxWidth()) {
                 Text(
@@ -1391,10 +1395,10 @@ private fun MonthPanel(
                                     containerColor =
                                         when {
                                             day == null -> Color.Transparent
-                                            selectedDay && todayDay -> accent.copy(alpha = .92f)
-                                            todayDay -> accent.copy(alpha = .82f)
-                                            selectedDay -> Color.White.copy(alpha = .26f)
-                                            else -> Color(0x661B2028)
+                                            selectedDay && todayDay -> accent.copy(alpha = .96f)
+                                            todayDay -> Color.White.copy(alpha = .30f)
+                                            selectedDay -> Color.White.copy(alpha = .18f)
+                                            else -> Color(0x7A151922)
                                         }
                                 ),
                             border =
@@ -1403,16 +1407,16 @@ private fun MonthPanel(
                                     BorderStroke(
                                         if (todayDay) 2.dp else 1.dp,
                                         when {
-                                            selectedDay && todayDay -> Color.White.copy(alpha = .98f)
-                                            todayDay -> accent.copy(alpha = .98f)
-                                            selectedDay -> Color.White.copy(alpha = .82f)
-                                            else -> Color.White.copy(alpha = .24f)
+                                            selectedDay && todayDay -> Color.White
+                                            todayDay -> Color.White
+                                            selectedDay -> Color.White.copy(alpha = .88f)
+                                            else -> Color.White.copy(alpha = .30f)
                                         },
                                     ),
                             elevation =
                                 CardDefaults.cardElevation(
                                     defaultElevation =
-                                        if (day == null) 0.dp else if (todayDay) 12.dp else if (selectedDay) 9.dp else 6.dp
+                                        if (day == null) 0.dp else if (todayDay) 16.dp else if (selectedDay) 12.dp else 8.dp
                                 ),
                             shape = RoundedCornerShape(10.dp),
                             modifier =
@@ -1434,7 +1438,7 @@ private fun MonthPanel(
                                         "$number",
                                         color = Color.White,
                                         fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = if (todayDay) FontWeight.ExtraBold else FontWeight.Bold,
                                         lineHeight = 15.sp,
                                     )
                                     Spacer(Modifier.height(2.dp))
