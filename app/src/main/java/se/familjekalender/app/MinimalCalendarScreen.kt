@@ -1298,52 +1298,59 @@ private fun CleanCalendarCard(
                                 .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            val dayShape = RoundedCornerShape(12.dp)
+                            val dayShape = RoundedCornerShape(11.dp)
                             Surface(
                                 color =
                                     when {
-                                        isToday && isSelected -> CleanPurple.copy(alpha = .88f)
-                                        isToday -> CleanPurple.copy(alpha = .72f)
-                                        isSelected -> Color.White.copy(alpha = .15f)
-                                        inMonth -> Color(0x241B1624)
-                                        else -> Color.Transparent
+                                        isToday -> CleanPurple.copy(alpha = if (isSelected) .98f else .92f)
+                                        isSelected -> Color.White.copy(alpha = .38f)
+                                        inMonth -> Color.White.copy(alpha = .075f)
+                                        else -> Color.White.copy(alpha = .025f)
                                     },
                                 shape = dayShape,
                                 border =
                                     BorderStroke(
                                         when {
-                                            isToday -> 2.dp
-                                            isSelected -> 1.4.dp
-                                            else -> .7.dp
+                                            isToday -> 1.8.dp
+                                            isSelected -> 1.5.dp
+                                            else -> .8.dp
                                         },
                                         when {
-                                            isToday -> Color.White.copy(alpha = .92f)
-                                            isSelected -> Color.White.copy(alpha = .72f)
-                                            inMonth -> Color.White.copy(alpha = .12f)
-                                            else -> Color.White.copy(alpha = .05f)
+                                            isToday -> CleanPurpleBright.copy(alpha = .98f)
+                                            isSelected -> Color.White.copy(alpha = .92f)
+                                            inMonth -> Color.White.copy(alpha = .18f)
+                                            else -> Color.White.copy(alpha = .07f)
                                         },
                                     ),
                                 shadowElevation =
                                     when {
-                                        isToday -> 14.dp
-                                        isSelected -> 9.dp
-                                        inMonth -> 4.dp
-                                        else -> 0.dp
+                                        isToday -> 16.dp
+                                        isSelected -> 12.dp
+                                        inMonth -> 7.dp
+                                        else -> 2.dp
                                     },
                                 tonalElevation = 0.dp,
                                 modifier = Modifier.fillMaxSize(),
                             ) {
                                 Box(Modifier.fillMaxSize()) {
-                                    if (isToday || isSelected) {
-                                        Box(
-                                            Modifier.align(Alignment.TopCenter)
-                                                .padding(top = 3.dp)
-                                                .width(if (isToday) 26.dp else 22.dp)
-                                                .height(5.dp)
-                                                .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = if (isToday) .24f else .11f))
-                                        )
-                                    }
+                                    Box(
+                                        Modifier.align(Alignment.TopCenter)
+                                            .padding(top = 3.dp)
+                                            .width(26.dp)
+                                            .height(5.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Color.White.copy(
+                                                    alpha =
+                                                        when {
+                                                            isToday -> .30f
+                                                            isSelected -> .22f
+                                                            inMonth -> .08f
+                                                            else -> .03f
+                                                        }
+                                                )
+                                            )
+                                    )
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.Center,
@@ -1351,17 +1358,13 @@ private fun CleanCalendarCard(
                                     ) {
                                         Text(
                                             date.dayOfMonth.toString(),
-                                            color =
-                                                when {
-                                                    !inMonth -> Color.White.copy(alpha = .30f)
-                                                    else -> Color.White
-                                                },
-                                            fontSize = if (isToday) 14.sp else 13.sp,
+                                            color = if (inMonth) Color.White else Color.White.copy(alpha = .30f),
+                                            fontSize = 14.sp,
                                             fontWeight =
                                                 when {
                                                     isToday -> FontWeight.ExtraBold
                                                     isSelected -> FontWeight.Bold
-                                                    else -> FontWeight.Normal
+                                                    else -> FontWeight.SemiBold
                                                 },
                                         )
                                         Spacer(Modifier.height(2.dp))
