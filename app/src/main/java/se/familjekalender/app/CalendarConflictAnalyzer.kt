@@ -25,9 +25,17 @@ private data class ConflictInterval(
 
 private fun isNonActivityConflictExempt(event: SyncEvent): Boolean {
     val source = event.source.trim().lowercase()
-    return event.title.trimStart().startsWith("🌈") ||
-        event.title.trimStart().startsWith("🔔") ||
-        source == "reminder"
+    val title = event.title.trimStart()
+
+    // Reminders are notifications, not time reservations. Keep both the canonical
+    // source marker and the bell-title fallback so older reminder rows also stay
+    // out of double-booking/overlap analysis.
+    val isReminder =
+        source == "reminder" ||
+            source.startsWith("reminder:") ||
+            title.startsWith("🔔")
+
+    return title.startsWith("🌈") || isReminder
 }
 
 private fun conflictMinutes(value: String?): Int? {
