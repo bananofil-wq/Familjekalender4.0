@@ -1360,12 +1360,45 @@ private fun CleanCalendarCard(
                         ) {
                             val hasBirthday = dayEvents.any { it.title.trimStart().startsWith("🌈") }
                             if (hasBirthday) {
-                                Text(
-                                    "🌈",
-                                    fontSize = 15.sp,
-                                    lineHeight = 15.sp,
-                                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 1.dp),
-                                )
+                                Canvas(
+                                    modifier =
+                                        Modifier.align(Alignment.TopCenter)
+                                            .padding(top = 2.dp)
+                                            .width(24.dp)
+                                            .height(12.dp)
+                                ) {
+                                    val stroke = 2.dp.toPx()
+                                    val inset = stroke / 2f
+                                    val arcBox = androidx.compose.ui.geometry.Rect(
+                                        inset,
+                                        inset,
+                                        size.width - inset,
+                                        size.height * 1.85f,
+                                    )
+                                    val rainbowColors = listOf(
+                                        Color(0xFFFF5A67),
+                                        Color(0xFFFFA63D),
+                                        Color(0xFFFFE45C),
+                                        Color(0xFF55D98B),
+                                        Color(0xFF55B8FF),
+                                        Color(0xFFA66CFF),
+                                    )
+                                    rainbowColors.forEachIndexed { index, color ->
+                                        val offset = index * stroke * .72f
+                                        drawArc(
+                                            color = color,
+                                            startAngle = 180f,
+                                            sweepAngle = 180f,
+                                            useCenter = false,
+                                            topLeft = Offset(arcBox.left + offset, arcBox.top + offset),
+                                            size = Size(
+                                                arcBox.width - offset * 2f,
+                                                arcBox.height - offset * 2f,
+                                            ),
+                                            style = Stroke(width = stroke, cap = StrokeCap.Round),
+                                        )
+                                    }
+                                }
                             }
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
