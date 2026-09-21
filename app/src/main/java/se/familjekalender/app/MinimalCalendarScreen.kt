@@ -218,6 +218,10 @@ internal fun MinimalCalendarScreen(
                 memberById = memberById,
                 locale = locale,
                 onEventClick = { openedEvent = it },
+                onDayClick = { day ->
+                    onSelect(day)
+                    showAllDayActivities = true
+                },
                 onShowAll = { showAllDayActivities = true },
             )
 
@@ -1461,13 +1465,13 @@ private fun CleanAgendaCard(
     memberById: Map<String, SyncMember>,
     locale: Locale,
     onEventClick: (SyncEvent) -> Unit,
+    onDayClick: (LocalDate) -> Unit,
     onShowAll: () -> Unit,
 ) {
     val weekStart = date.minusDays((date.dayOfWeek.value - 1).toLong())
     val weekEnd = weekStart.plusDays(6)
     val weekEvents = remember(events, weekStart) {
         events.filter { !it.date.isBefore(weekStart) && !it.date.isAfter(weekEnd) }
-            .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time }.thenBy { it.title })
     }
     val eventsByDay = remember(weekEvents) { weekEvents.groupBy { it.date } }
     val weekLabel = weekStart.format(DateTimeFormatter.ofPattern("d MMM", locale)) + " – " +
@@ -1479,7 +1483,7 @@ private fun CleanAgendaCard(
         border = BorderStroke(1.dp, CleanBorder),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1489,33 +1493,28 @@ private fun CleanAgendaCard(
                     Text("Veckan", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(weekLabel, color = Color.White.copy(alpha = .55f), fontSize = 11.sp)
                 }
-                Spacer(Modifier.width(8.dp))
-                Surface(
-                    color = Color.White.copy(alpha = .055f),
-                    shape = RoundedCornerShape(99.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
-                    modifier = Modifier.clickable(onClick = onShowAll),
-                ) {
-                    Row(Modifier.padding(horizontal = 9.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (weekEvents.size == 1) "1 aktivitet" else "${weekEvents.size} aktiviteter",
-                            color = Color.White.copy(alpha = .74f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(Modifier.width(3.dp))
-                        Text("›", color = CleanPurpleBright, fontSize = 13.sp)
-                    }
-                }
+                Text(
+                    if (weekEvents.size == 1) "1 aktivitet" else "${weekEvents.size} aktiviteter",
+                    color = Color.White.copy(alpha = .58f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             (0L..6L).forEach { offset ->
                 val day = weekStart.plusDays(offset)
                 val dayEvents = eventsByDay[day].orEmpty()
                 val isToday = day == today
-                val dayTitle = day.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+                val dayName = day.format(DateTimeFormatter.ofPattern("EEEE", locale))
                     .replaceFirstChar { it.uppercase(locale) }
+                val conflicts = analyzeCalendarConflicts(events, memberById.values.toList(), day)
+                val hasConflict = conflicts.isNotEmpty()
 
                 Row(
-                    Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 3.dp),
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(13.dp))
+                        .clickable { onDayClick(day) }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (isToday) {
@@ -1523,39 +1522,38 @@ private fun CleanAgendaCard(
                         Spacer(Modifier.width(7.dp))
                     }
                     Text(
-                        dayTitle,
-                        color = if (isToday) Color.White else Color.White.copy(alpha = .72f),
+                        dayName,
+                        color = if (isToday) Color.White else Color.White.copy(alpha = .76f),
                         fontSize = 12.sp,
                         fontWeight = if (isToday) FontWeight.Bold else FontWeight.SemiBold,
+                        modifier = Modifier.width(74.dp),
                     )
-                }
-                if (dayEvents.isEmpty()) {
-                    Text("Inga aktiviteter", color = Color.White.copy(alpha = .34f), fontSize = 11.sp,
-                        modifier = Modifier.padding(start = 14.dp, bottom = 4.dp))
-                } else {
-                    dayEvents.forEach { event ->
-                        val member = memberById[event.memberId]
-                        val accent = member?.let { Color(it.colorArgb.toInt()) } ?: CleanPurpleBright
-                        Row(
-                            Modifier.fillMaxWidth().clickable { onEventClick(event) }.padding(vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(Modifier.width(3.dp).height(32.dp).clip(RoundedCornerShape(99.dp)).background(accent))
-                            Spacer(Modifier.width(9.dp))
-                            Text(event.time, color = Color.White.copy(alpha = .62f), fontSize = 11.sp, modifier = Modifier.width(48.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(cleanEventTitle(event), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    if (event.memberId == ALL_FAMILY_MEMBER_ID) "Hela familjen" else member?.name ?: "Övrigt",
-                                    color = Color.White.copy(alpha = .48f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = .30f), modifier = Modifier.size(16.dp))
-                        }
+                    Text(
+                        day.dayOfMonth.toString(),
+                        color = Color.White.copy(alpha = .50f),
+                        fontSize = 11.sp,
+                        modifier = Modifier.width(28.dp),
+                    )
+                    if (hasConflict) {
+                        Text("!", color = Color(0xFFFF8A94), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(6.dp))
                     }
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        when (dayEvents.size) {
+                            0 -> "Ledigt"
+                            1 -> "1 aktivitet"
+                            else -> "${dayEvents.size} aktiviteter"
+                        },
+                        color = if (hasConflict) Color(0xFFFFA0A8) else Color.White.copy(alpha = .52f),
+                        fontSize = 10.sp,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("›", color = CleanPurpleBright, fontSize = 15.sp)
                 }
-                if (offset < 6L) HorizontalDivider(color = Color.White.copy(alpha = .055f), thickness = .5.dp)
+                if (offset < 6L) {
+                    HorizontalDivider(color = Color.White.copy(alpha = .045f), thickness = .5.dp)
+                }
             }
         }
     }
