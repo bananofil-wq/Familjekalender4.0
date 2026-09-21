@@ -1215,9 +1215,10 @@ private fun CleanCalendarCard(
         modifier =
             Modifier.fillMaxWidth()
                 .clip(calendarShape)
-                .border(1.2.dp, Color.White.copy(alpha = .17f), calendarShape),
+                .background(Color(0x2414111D))
+                .border(1.2.dp, Color.White.copy(alpha = .20f), calendarShape),
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1228,8 +1229,8 @@ private fun CleanCalendarCard(
                         it.uppercase(locale)
                     } + " ${month.year}",
                     color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold,
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1246,8 +1247,8 @@ private fun CleanCalendarCard(
                         Text(
                             "Idag",
                             color = Color.White,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
                         )
                     }
                     SingleGlassArrowButton(
