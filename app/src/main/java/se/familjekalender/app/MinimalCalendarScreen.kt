@@ -1358,6 +1358,15 @@ private fun CleanCalendarCard(
                                     .clickable { onSelect(date) },
                             contentAlignment = Alignment.Center,
                         ) {
+                            val hasBirthday = dayEvents.any { it.title.trimStart().startsWith("🌈") }
+                            if (hasBirthday) {
+                                Text(
+                                    "🌈",
+                                    fontSize = 15.sp,
+                                    lineHeight = 15.sp,
+                                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 1.dp),
+                                )
+                            }
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
@@ -1381,16 +1390,10 @@ private fun CleanCalendarCard(
                                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                                     modifier = Modifier.height(5.dp),
                                 ) {
-                                    dayEvents.take(3).forEach { event ->
-                                        val isBirthday = event.title.trimStart().startsWith("🌈")
-                                        if (isBirthday) {
-                                            Text(
-                                                "🌈",
-                                                fontSize = 8.sp,
-                                                lineHeight = 8.sp,
-                                                modifier = Modifier.offset(y = (-2).dp),
-                                            )
-                                        } else {
+                                    dayEvents
+                                        .filterNot { it.title.trimStart().startsWith("🌈") }
+                                        .take(3)
+                                        .forEach { event ->
                                             val dotColor =
                                                 memberById[event.memberId]?.let {
                                                     Color(it.colorArgb.toInt())
@@ -1401,7 +1404,6 @@ private fun CleanCalendarCard(
                                                     .background(dotColor)
                                             )
                                         }
-                                    }
                                 }
                             }
                         }
