@@ -36,6 +36,17 @@ private data class PostUpdateNotes(
 
 private fun localFallbackNotes(version: String): PostUpdateNotes =
     when (version) {
+        "4.3.20260922.554" ->
+            PostUpdateNotes(
+                summary = "Nytt i denna version:\n• ICA-recept visas direkt i appen\n• Ingen extern webbläsare öppnas\n• Receptvyn har förbättrats",
+                details =
+                    "• ICA Recept är nu integrerat i Familjekalenderns receptvy.\n\n" +
+                            "• När du söker efter en maträtt, bakelse, dessert eller ingrediens visas ICA:s recept direkt inne i appen.\n\n" +
+                            "• Familjekalendern öppnar inte längre telefonens externa webbläsare när du väljer ett recept.\n\n" +
+                            "• Receptvyn har fått en tydligare intern navigering med möjlighet att stänga receptet och gå tillbaka till inköpsdelen.\n\n" +
+                            "• Uppdateringsrutan visar nu konkreta nyheter direkt, medan Mer visar hela ändringslistan.",
+            )
+
         "4.3.20260917.5" ->
             PostUpdateNotes(
                 summary = "Nu får du en tydlig sammanfattning efter varje uppdatering.",
