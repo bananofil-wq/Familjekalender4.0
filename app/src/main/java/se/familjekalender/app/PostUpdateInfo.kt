@@ -81,6 +81,9 @@ private suspend fun fetchPostUpdateNotes(version: String): PostUpdateNotes? =
             val json = connection.inputStream.bufferedReader().use { it.readText() }
             val body = JSONObject(json).optString("body").trim()
             if (body.isBlank()) return@withContext null
+            if (body.equals("Signerad uppdatering för Familjekalendern.", ignoreCase = true)) {
+                return@withContext null
+            }
 
             val summary =
                 body
