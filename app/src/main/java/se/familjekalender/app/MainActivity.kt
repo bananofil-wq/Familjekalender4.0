@@ -987,6 +987,7 @@ private fun ShoppingScreen(
 ) {
     val motionEnabled = appMotionEnabled()
     val shoppingScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var showClearConfirmation by remember { mutableStateOf(false) }
     var selectedShoppingTool by remember { mutableStateOf<String?>(null) }
