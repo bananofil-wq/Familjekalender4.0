@@ -1,6 +1,7 @@
 package se.familjekalender.app
 
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.Dispatchers
@@ -101,13 +102,13 @@ object ShoppingPriceService {
             val body = JSONObject().put("queries", JSONArray(clean)).toString()
             val connection = URL(ENDPOINT).openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 30_000
+            connection.connectTimeout = 25_000
+            connection.readTimeout = 60_000
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json")
             connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
 
-            val code = connection.responseCode
+            val code = try { connection.responseCode } catch (_: SocketTimeoutException) { throw IllegalStateException("Prisjämförelsen tar längre tid än väntat. Försök igen om en stund.") }
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             require(code in 200..299) { "Prisjämförelsen svarade med fel $code" }
