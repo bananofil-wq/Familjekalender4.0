@@ -85,4 +85,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh release create "v${FAMILJEKALENDER_VERSION_NAME}"             "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK"             --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}"             --notes "Signerad uppdatering för Familjekalendern."             --latest
+          RELEASE_NOTES="$(git log -1 --pretty=format:%s)"
+          gh release create "v${FAMILJEKALENDER_VERSION_NAME}" \
+            "Familjekalender-${FAMILJEKALENDER_VERSION_NAME}.apk#Familjekalender ${FAMILJEKALENDER_VERSION_NAME} APK" \
+            --title "Familjekalender ${FAMILJEKALENDER_VERSION_NAME}" \
+            --notes "Nytt i denna version:\n\n• ${RELEASE_NOTES}" \
+            --latest
