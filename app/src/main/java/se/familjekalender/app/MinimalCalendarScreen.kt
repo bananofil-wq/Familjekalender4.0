@@ -1485,6 +1485,7 @@ private fun CleanCalendarCard(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -1539,8 +1540,6 @@ private fun SmallGlassIconButton(
                 modifier = Modifier.size(19.dp),
             )
         }
-    }
-}
     }
 }
 
