@@ -37,11 +37,19 @@ internal val PremiumPurpleBright = Color(0xFFAA72FF)
 @Composable
 internal fun PremiumModeBackground(
     modifier: Modifier = Modifier,
+    themeMode: ThemeMode = ThemeMode.AUTO,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val backgroundRes = when (paletteFor(themeMode).mode) {
+        ThemeMode.SPRING -> R.drawable.season_spring
+        ThemeMode.SUMMER -> R.drawable.season_summer
+        ThemeMode.AUTUMN -> R.drawable.season_autumn
+        ThemeMode.WINTER -> R.drawable.season_winter
+        ThemeMode.CLASSIC, ThemeMode.AUTO -> R.drawable.season_autumn
+    }
     Box(modifier.fillMaxSize()) {
         Image(
-            painter = painterResource(R.drawable.season_autumn),
+            painter = painterResource(backgroundRes),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
