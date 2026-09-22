@@ -86,7 +86,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
     var sharing by remember { mutableStateOf(prefs.getBoolean("sharing_enabled", false)) }
     var batteryVisible by remember { mutableStateOf(prefs.getBoolean("battery_visible", true)) }
     var locationAlertsEnabled by remember {
-        mutableStateOf(prefs.getBoolean("location_alerts_enabled", false))
+        mutableStateOf(prefs.getBoolean("location_alerts_enabled", true))
     }
     var alertPreferenceRevision by remember { mutableIntStateOf(0) }
     var locations by remember { mutableStateOf(emptyList<SyncFamilyLocation>()) }
@@ -430,7 +430,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     familyMembers.forEach { member ->
                         val memberAlerts =
                             remember(member.id, alertPreferenceRevision) {
-                                prefs.getBoolean("location_alert_member_${member.id}", false)
+                                prefs.getBoolean("location_alert_member_${member.id}", true)
                             }
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
@@ -1036,7 +1036,7 @@ private fun AddDestinationDialog(
                     singleLine = true,
                 )
                 Text(
-                    "Platsnotiser är avstängda tills du själv aktiverar dem. Ankomst och avresa kan sedan styras per destination.",
+                    "Ankomst- och avresenotiser är aktiverade för nya destinationer. De kan stängas av per destination eller person.",
                     color = Muted,
                     fontSize = 12.sp,
                 )
@@ -1101,13 +1101,13 @@ internal fun checkLocationTransitions(
 ) {
     if (locations.isEmpty() || places.isEmpty()) return
     val alertPrefs = context.getSharedPreferences(LOCATION_PREFS, Context.MODE_PRIVATE)
-    if (!alertPrefs.getBoolean("location_alerts_enabled", false)) return
+    if (!alertPrefs.getBoolean("location_alerts_enabled", true)) return
 
     val prefs =
         context.getSharedPreferences("location_geofence_state_$familyId", Context.MODE_PRIVATE)
 
     locations.forEach { location ->
-        if (!alertPrefs.getBoolean("location_alert_member_${location.memberId}", false))
+        if (!alertPrefs.getBoolean("location_alert_member_${location.memberId}", true))
             return@forEach
         places.forEach { place ->
             val inside =
