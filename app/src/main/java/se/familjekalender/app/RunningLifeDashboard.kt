@@ -237,6 +237,10 @@ internal fun RunningLifeDashboard(
 
                         Spacer(Modifier.height(12.dp))
 
+                        RunningTrainingCalendar(events = events)
+
+                        Spacer(Modifier.height(12.dp))
+
                         Text(
                             "GPS-runda & progression",
                             color = Color.White,
