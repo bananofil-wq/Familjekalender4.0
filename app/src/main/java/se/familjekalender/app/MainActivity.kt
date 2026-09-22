@@ -605,6 +605,7 @@ private fun SyncedApp(
                                                     showAddEvent = true
                                                 },
                                                 addMenuRequest = assistantAddRequest,
+                                                showSeasonalBackground = false,
                                             )
                                         }
                                     }
@@ -992,6 +993,8 @@ private fun ShoppingScreen(
     var priceComparison by remember { mutableStateOf<ShoppingPriceComparison?>(null) }
     var comparingPrices by remember { mutableStateOf(false) }
     var priceComparisonError by remember { mutableStateOf("") }
+    var recipeQuery by remember { mutableStateOf("") }
+    var selectedRecipe by remember { mutableStateOf<String?>(null) }
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
     val total = items.size
@@ -1333,80 +1336,65 @@ private fun ShoppingScreen(
                     }
 
                     "recipes" -> {
+                        Text("Recept", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         Text(
-                            "Recept från inköpslistan",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            "Skriv en maträtt, bakelse eller dessert så får du ingredienser och recept.",
+                            color = Muted,
+                            fontSize = 11.sp,
                         )
-                        val names = openItems.map { it.name.lowercase(Locale("sv", "SE")) }
-                        val ideas = buildList {
-                            if (
-                                names.any { "pasta" in it } &&
-                                    names.any { "färs" in it || "kött" in it || "tomat" in it }
-                            ) add("Pasta med köttfärssås" to "Pasta, färs/kött och tomat från listan passar ihop.")
-                            if (
-                                names.any { "kyckling" in it } &&
-                                    names.any { "ris" in it || "grönsak" in it || "paprika" in it }
-                            ) add("Kyckling med ris och grönsaker" to "Bygg middagen runt kyckling och tillbehör som redan finns på listan.")
-                            if (
-                                names.any { "ägg" in it } &&
-                                    names.any { "mjölk" in it } &&
-                                    names.any { "mjöl" in it }
-                            ) add("Pannkakor" to "Ägg, mjölk och mjöl finns redan bland inköpen.")
-                            if (
-                                names.any { "lax" in it || "fisk" in it } &&
-                                    names.any { "potatis" in it || "ris" in it }
-                            ) add("Fiskmiddag" to "Fisk/lax tillsammans med potatis eller ris ger en enkel middag.")
-                        }.take(4)
+                        OutlinedTextField(
+                            value = recipeQuery,
+                            onValueChange = { recipeQuery = it },
+                            label = { Text("Vad vill du laga eller baka?") },
+                            placeholder = { Text("t.ex. lasagne, kladdkaka, pannkakor") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
 
-                        if (openItems.isEmpty()) {
-                            Text(
-                                "Lägg till varor i inköpslistan så visas receptidéer här.",
-                                color = Muted,
-                                fontSize = 12.sp,
-                            )
-                        } else if (ideas.isEmpty()) {
-                            Text(
-                                "Jag hittar ingen tydlig receptkombination i listan ännu. Lägg till fler huvudingredienser så blir förslagen bättre.",
-                                color = Muted,
-                                fontSize = 12.sp,
-                                lineHeight = 17.sp,
-                            )
-                        } else {
-                            ideas.forEach { (title, subtitle) ->
-                                Surface(
-                                    color = Color.White.copy(alpha = .035f),
-                                    shape = RoundedCornerShape(14.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Column(Modifier.padding(12.dp)) {
-                                        Text(
-                                            title,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 13.sp,
-                                        )
-                                        Text(subtitle, color = Muted, fontSize = 11.sp)
-                                        val ingredients = when (title) {
-                                            "Pasta med köttfärssås" -> listOf("pasta", "köttfärs", "krossade tomater", "gul lök")
-                                            "Kyckling med ris och grönsaker" -> listOf("kyckling", "ris", "paprika", "grönsaker")
-                                            "Pannkakor" -> listOf("ägg", "mjölk", "vetemjöl", "smör")
-                                            else -> listOf("fisk", "potatis", "citron")
+                        data class Recipe(val name: String, val ingredients: List<String>, val steps: List<String>)
+                        val recipes = listOf(
+                            Recipe("Kladdkaka", listOf("100 g smör", "2 ägg", "2,5 dl strösocker", "1,5 dl vetemjöl", "3 msk kakao", "1 tsk vaniljsocker", "1 krm salt"), listOf("Sätt ugnen på 175°C och smörj en form, cirka 24 cm.", "Smält smöret och låt det svalna något.", "Rör ihop ägg och socker. Vispa inte luftigt.", "Blanda ner mjöl, kakao, vaniljsocker och salt. Rör sist ner smöret.", "Grädda 15–20 minuter. Kakan ska vara kladdig i mitten. Låt svalna före servering.")),
+                            Recipe("Lasagne", listOf("500 g köttfärs", "1 gul lök", "2 vitlöksklyftor", "400 g krossade tomater", "2 msk tomatpuré", "9 lasagneplattor", "5 dl béchamelsås", "2 dl riven ost", "salt", "svartpeppar"), listOf("Sätt ugnen på 200°C.", "Hacka lök och vitlök och stek mjukt. Bryn köttfärsen.", "Tillsätt tomatpuré och krossade tomater. Krydda och låt sjuda cirka 15 minuter.", "Varva köttfärssås, béchamelsås och lasagneplattor i en form.", "Avsluta med béchamelsås och riven ost. Grädda 30–35 minuter.")),
+                            Recipe("Pannkakor", listOf("2,5 dl vetemjöl", "6 dl mjölk", "3 ägg", "0,5 tsk salt", "2 msk smör"), listOf("Vispa ut mjölet i hälften av mjölken till en slät smet.", "Vispa ner resten av mjölken, äggen och saltet.", "Smält smöret och rör ner det i smeten.", "Stek tunna pannkakor på medelvärme.")),
+                            Recipe("Kanelbullar", listOf("25 g jäst", "2,5 dl mjölk", "75 g smör", "0,75 dl strösocker", "1 krm salt", "1 tsk kardemumma", "7 dl vetemjöl", "75 g smör till fyllning", "0,75 dl strösocker till fyllning", "1 msk kanel", "1 ägg"), listOf("Värm mjölken till fingervarm och lös upp jästen.", "Tillsätt smör, socker, salt, kardemumma och nästan allt mjöl. Arbeta degen och jäs 30 minuter.", "Kavla ut degen. Bred på smör och strö över socker och kanel.", "Rulla ihop, skär bullar och lägg i formar. Jäs cirka 30 minuter.", "Pensla med ägg och grädda i 225°C i 8–10 minuter.")),
+                            Recipe("Köttbullar", listOf("500 g köttfärs", "1 dl ströbröd", "1,5 dl mjölk", "1 ägg", "1 gul lök", "1 tsk salt", "svartpeppar", "smör till stekning"), listOf("Blanda ströbröd och mjölk och låt svälla 10 minuter.", "Finhacka löken.", "Blanda färs, ströbrödsblandning, ägg, lök och kryddor.", "Forma köttbullar och stek i smör tills de är genomstekta.")),
+                            Recipe("Kycklinggryta", listOf("600 g kycklingfilé", "1 gul lök", "1 paprika", "2 vitlöksklyftor", "3 dl matlagningsgrädde", "1 msk kycklingfond", "salt", "svartpeppar", "ris"), listOf("Koka ris enligt förpackningen.", "Skär kycklingen i bitar och bryn den.", "Tillsätt hackad lök, vitlök och paprika och stek några minuter.", "Häll i grädde och fond. Sjud tills kycklingen är genomstekt. Smaka av med salt och peppar.")),
+                            Recipe("Chokladbollar", listOf("100 g smör", "1 dl strösocker", "3 dl havregryn", "3 msk kakao", "1 tsk vaniljsocker", "2 msk kaffe", "kokos eller pärlsocker"), listOf("Rör smör och socker mjukt.", "Blanda ner havregryn, kakao, vaniljsocker och kaffe.", "Forma bollar och rulla i kokos eller pärlsocker.", "Kyl minst 30 minuter.")),
+                            Recipe("Sockerkaka", listOf("2 ägg", "2 dl strösocker", "3 dl vetemjöl", "2 tsk bakpulver", "1 tsk vaniljsocker", "1 dl mjölk", "75 g smör"), listOf("Sätt ugnen på 175°C och smörj en sockerkaksform.", "Vispa ägg och socker pösigt.", "Blanda mjöl, bakpulver och vaniljsocker och vänd ner.", "Smält smöret, blanda med mjölken och rör ner.", "Grädda i nedre delen av ugnen cirka 35 minuter."))
+                        )
+                        val query = recipeQuery.trim().lowercase(Locale("sv", "SE"))
+                        val matches = if (query.isBlank()) emptyList() else recipes.filter {
+                            it.name.lowercase(Locale("sv", "SE")).contains(query) ||
+                                query.contains(it.name.lowercase(Locale("sv", "SE")))
+                        }
+                        if (query.isNotBlank() && matches.isEmpty()) {
+                            Text("Jag har inget färdigt recept för “${recipeQuery.trim()}” ännu.", color = Muted, fontSize = 12.sp)
+                        }
+                        matches.take(3).forEach { recipe ->
+                            val expanded = selectedRecipe == recipe.name
+                            Surface(
+                                color = Color.White.copy(alpha = .035f),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.fillMaxWidth().clickable { selectedRecipe = if (expanded) null else recipe.name },
+                            ) {
+                                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(recipe.name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                    Text(if (expanded) "Tryck för att minimera" else "Visa ingredienser och recept", color = Muted, fontSize = 11.sp)
+                                    if (expanded) {
+                                        Text("Ingredienser", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                        recipe.ingredients.forEach { Text("• $it", color = Color.White.copy(alpha = .86f), fontSize = 12.sp) }
+                                        val missing = recipe.ingredients.filter { ingredient ->
+                                            val base = ingredient.replace(Regex("""^[0-9,.]+\s*(g|kg|dl|ml|msk|tsk|krm|st)?\s*""", RegexOption.IGNORE_CASE), "").trim()
+                                            openItems.none { item -> item.name.contains(base, true) || base.contains(item.name, true) }
                                         }
-                                        val missingIngredients = ingredients.filter { ingredient ->
-                                            openItems.none { item ->
-                                                item.name.contains(ingredient, ignoreCase = true) ||
-                                                    ingredient.contains(item.name, ignoreCase = true)
+                                        if (missing.isNotEmpty()) {
+                                            Button(onClick = { missing.forEach(onAdd) }, modifier = Modifier.fillMaxWidth()) {
+                                                Text("Lägg saknade ingredienser i inköpslistan")
                                             }
                                         }
-                                        Text("Ingredienser: " + ingredients.joinToString(", "), color = Color.White.copy(alpha = .78f), fontSize = 11.sp)
-                                        if (missingIngredients.isEmpty()) {
-                                            Text("Alla ingredienser finns redan i inköpslistan.", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
-                                        } else {
-                                            Button(onClick = { missingIngredients.forEach(onAdd) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), shape = RoundedCornerShape(12.dp)) {
-                                                Text(if (missingIngredients.size == 1) "Lägg till " + missingIngredients.first() else "Lägg till " + missingIngredients.size + " saknade ingredienser")
-                                            }
+                                        Text("Gör så här", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                        recipe.steps.forEachIndexed { index, step ->
+                                            Text("${index + 1}. $step", color = Color.White.copy(alpha = .9f), fontSize = 12.sp, lineHeight = 17.sp)
                                         }
                                     }
                                 }
