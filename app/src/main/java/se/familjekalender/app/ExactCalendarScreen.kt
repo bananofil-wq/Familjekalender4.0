@@ -118,6 +118,7 @@ internal fun ExactCalendarScreen(
     onAdd: () -> Unit,
     onAddLaundry: () -> Unit,
     addMenuRequest: Int = 0,
+    showSeasonalBackground: Boolean = true,
 ) {
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var showAddMenu by remember { mutableStateOf(false) }
@@ -147,7 +148,7 @@ internal fun ExactCalendarScreen(
         (context as? Activity)?.recreate()
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
+    BoxWithConstraints(Modifier.fillMaxSize().then(if (showSeasonalBackground) Modifier.background(Color.Black) else Modifier)) {
         // The month grid always owns a predictable amount of vertical space.
         // Do not combine weight(), negative offsets and min-height here: that made
         // six equal week rows collapse differently on different screen heights.
@@ -156,7 +157,7 @@ internal fun ExactCalendarScreen(
         val sectionSpacing = 8.dp
         val seasonalHeroMax = 135.dp
         val seasonalHeroMin = 72.dp
-        val hasSeasonalHero = mode != ThemeMode.CLASSIC
+        val hasSeasonalHero = showSeasonalBackground && mode != ThemeMode.CLASSIC
         val availableForHero = maxHeight - calendarMinHeight - outerVerticalPadding - sectionSpacing
         val heroHeight =
             if (hasSeasonalHero) {
@@ -170,7 +171,7 @@ internal fun ExactCalendarScreen(
                     heroHeight -
                     if (heroHeight > 0.dp) sectionSpacing else 0.dp)
                 .coerceAtLeast(calendarMinHeight)
-        SeasonalPhoto(mode, Modifier.matchParentSize())
+        if (showSeasonalBackground) SeasonalPhoto(mode, Modifier.matchParentSize())
 
         fun settleMonth(delta: Long, widthPx: Float) {
             if (widthPx <= 0f) return
