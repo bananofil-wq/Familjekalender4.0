@@ -10,7 +10,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -48,6 +54,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private val CleanPurple = Color(0xFF8A5CF6)
 private val CleanPurpleBright = Color(0xFFAA72FF)
@@ -193,19 +200,10 @@ internal fun MinimalCalendarScreen(
                     month = YearMonth.from(date)
                     onSelect(date)
                 },
-                onPrevious = {
-                    val next = month.minusMonths(1)
+                onMonthChange = { delta ->
+                    val next = month.plusMonths(delta)
                     month = next
                     onSelect(next.atDay(1))
-                },
-                onNext = {
-                    val next = month.plusMonths(1)
-                    month = next
-                    onSelect(next.atDay(1))
-                },
-                onToday = {
-                    month = YearMonth.from(today)
-                    onSelect(today)
                 },
             )
 
@@ -1210,17 +1208,62 @@ private fun CleanCalendarCard(
     eventsByDate: Map<LocalDate, List<SyncEvent>>,
     memberById: Map<String, SyncMember>,
     onSelect: (LocalDate) -> Unit,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onToday: () -> Unit,
+    onMonthChange: (Long) -> Unit,
 ) {
     val calendarShape = RoundedCornerShape(30.dp)
-    Box(
+    val scope = rememberCoroutineScope()
+    val dragOffset = remember { Animatable(0f) }
+    BoxWithConstraints(
         modifier =
             Modifier.fillMaxWidth()
                 .clip(calendarShape)
-                .border(1.2.dp, Color.White.copy(alpha = .17f), calendarShape),
+                .clipToBounds()
+                .border(1.2.dp, Color.White.copy(alpha = .17f), calendarShape)
+                .pointerInput(month) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, amount ->
+                            change.consume()
+                            scope.launch {
+                                dragOffset.snapTo(
+                                    (dragOffset.value + amount).coerceIn(
+                                        -size.width.toFloat(),
+                                        size.width.toFloat(),
+                                    )
+                                )
+                            }
+                        },
+                        onDragEnd = {
+                            val widthPx = size.width.toFloat().coerceAtLeast(1f)
+                            val threshold = widthPx * 0.14f
+                            val delta =
+                                when {
+                                    dragOffset.value <= -threshold -> 1L
+                                    dragOffset.value >= threshold -> -1L
+                                    else -> 0L
+                                }
+                            scope.launch {
+                                if (delta == 0L) {
+                                    dragOffset.animateTo(0f, tween(180))
+                                } else {
+                                    val target = if (delta > 0) -widthPx else widthPx
+                                    dragOffset.animateTo(target, tween(260))
+                                    onMonthChange(delta)
+                                    dragOffset.snapTo(0f)
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch { dragOffset.animateTo(0f, tween(180)) }
+                        },
+                    )
+                },
     ) {
+        Box(
+            Modifier.fillMaxWidth().graphicsLayer {
+                translationX = dragOffset.value
+                alpha = 1f - (kotlin.math.abs(dragOffset.value) / constraints.maxWidth.coerceAtLeast(1)) * 0.12f
+            }
+        ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -1235,28 +1278,7 @@ private fun CleanCalendarCard(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        color = Color.White.copy(alpha = .075f),
-                        shape = RoundedCornerShape(99.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = .20f)),
-                        shadowElevation = 4.dp,
-                        tonalElevation = 0.dp,
-                        modifier = Modifier.clickable(onClick = onToday),
-                    ) {
-                        Text(
-                            "Idag",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                        )
-                    }
-                    SingleGlassArrowButton("‹", "Föregående månad", onPrevious)
-                    SingleGlassArrowButton("›", "Nästa månad", onNext)
-                }
+
             }
 
             Spacer(Modifier.height(12.dp))
@@ -1517,6 +1539,8 @@ private fun SmallGlassIconButton(
                 modifier = Modifier.size(19.dp),
             )
         }
+    }
+}
     }
 }
 
