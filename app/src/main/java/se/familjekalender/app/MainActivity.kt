@@ -538,7 +538,7 @@ private fun SyncedApp(
                             )
 
                         UiLayoutMode.PERSONAL ->
-                            PremiumModeBackground {
+                            PremiumModeBackground(themeMode = themeMode) {
                                 PersonalCalendarScreen(
                                     session = session,
                                     prefs = appPrefs,
@@ -563,7 +563,7 @@ private fun SyncedApp(
                             }
 
                         UiLayoutMode.FULL ->
-                            PremiumModeBackground {
+                            PremiumModeBackground(themeMode = themeMode) {
                                 Column(
                                     Modifier.fillMaxSize()
                                         .verticalScroll(rememberScrollState())
@@ -613,7 +613,7 @@ private fun SyncedApp(
                             }
 
                         UiLayoutMode.RUNNING ->
-                            PremiumModeBackground {
+                            PremiumModeBackground(themeMode = themeMode) {
                                 RunningLifeDashboard(
                                     session = session,
                                     selectedDate = selectedDate,
@@ -1388,6 +1388,26 @@ private fun ShoppingScreen(
                                             fontSize = 13.sp,
                                         )
                                         Text(subtitle, color = Muted, fontSize = 11.sp)
+                                        val ingredients = when (title) {
+                                            "Pasta med köttfärssås" -> listOf("pasta", "köttfärs", "krossade tomater", "gul lök")
+                                            "Kyckling med ris och grönsaker" -> listOf("kyckling", "ris", "paprika", "grönsaker")
+                                            "Pannkakor" -> listOf("ägg", "mjölk", "vetemjöl", "smör")
+                                            else -> listOf("fisk", "potatis", "citron")
+                                        }
+                                        val missingIngredients = ingredients.filter { ingredient ->
+                                            openItems.none { item ->
+                                                item.name.contains(ingredient, ignoreCase = true) ||
+                                                    ingredient.contains(item.name, ignoreCase = true)
+                                            }
+                                        }
+                                        Text("Ingredienser: " + ingredients.joinToString(", "), color = Color.White.copy(alpha = .78f), fontSize = 11.sp)
+                                        if (missingIngredients.isEmpty()) {
+                                            Text("Alla ingredienser finns redan i inköpslistan.", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
+                                        } else {
+                                            Button(onClick = { missingIngredients.forEach(onAdd) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), shape = RoundedCornerShape(12.dp)) {
+                                                Text(if (missingIngredients.size == 1) "Lägg till " + missingIngredients.first() else "Lägg till " + missingIngredients.size + " saknade ingredienser")
+                                            }
+                                        }
                                     }
                                 }
                             }
