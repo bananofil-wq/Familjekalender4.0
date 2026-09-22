@@ -11,7 +11,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -53,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -996,6 +1000,7 @@ private fun ShoppingScreen(
     var priceComparisonError by remember { mutableStateOf("") }
     var recipeQuery by remember { mutableStateOf("") }
     var selectedRecipe by remember { mutableStateOf<String?>(null) }
+    var recipeWebUrl by remember { mutableStateOf<String?>(null) }
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
     val total = items.size
@@ -1339,7 +1344,7 @@ private fun ShoppingScreen(
                     "recipes" -> {
                         Text("Recept från ICA", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         Text(
-                            "Sökningen använder ICA Recept som källa. Skriv en maträtt, bakelse, dessert eller ingrediens.",
+                            "Sök och läs recepten direkt här i Familjekalendern. Ingen extern webbläsare öppnas.",
                             color = Muted,
                             fontSize = 11.sp,
                             lineHeight = 16.sp,
@@ -1353,24 +1358,50 @@ private fun ShoppingScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         if (recipeQuery.isNotBlank()) {
-                            val encodedQuery = java.net.URLEncoder.encode(recipeQuery.trim(), "UTF-8")
                             Button(
                                 onClick = {
-                                    val uri = Uri.parse("https://www.ica.se/recept/?q=$encodedQuery")
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                                    val encodedQuery = java.net.URLEncoder.encode(recipeQuery.trim(), "UTF-8")
+                                    recipeWebUrl = "https://www.ica.se/recept/?q=$encodedQuery"
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                             ) {
                                 Text("Visa receptförslag från ICA")
                             }
-                            Text(
-                                "ICA visar receptförslag, ingredienser, mängder och tillagning för sökningen. Recepten öppnas hos ICA så att innehållet alltid kommer från originalkällan och hålls aktuellt.",
-                                color = Color.White.copy(alpha = .78f),
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp,
-                            )
-                        } else {
+                        }
+                        recipeWebUrl?.let { url ->
+                            BackHandler { recipeWebUrl = null }
+                            Card(
+                                modifier = Modifier.fillMaxWidth().height(620.dp),
+                                shape = RoundedCornerShape(16.dp),
+                            ) {
+                                Column(Modifier.fillMaxSize()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text("ICA Recept", fontWeight = FontWeight.Bold)
+                                        TextButton(onClick = { recipeWebUrl = null }) { Text("Stäng recept") }
+                                    }
+                                    AndroidView(
+                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        factory = { webContext ->
+                                            WebView(webContext).apply {
+                                                settings.javaScriptEnabled = true
+                                                settings.domStorageEnabled = true
+                                                webViewClient = WebViewClient()
+                                                loadUrl(url)
+                                            }
+                                        },
+                                        update = { webView ->
+                                            if (webView.url != url) webView.loadUrl(url)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        if (recipeQuery.isBlank() && recipeWebUrl == null) {
                             Text(
                                 "Exempel: skriv “pannkakor”, “kanelbullar” eller en ingrediens som “kyckling”.",
                                 color = Muted,
