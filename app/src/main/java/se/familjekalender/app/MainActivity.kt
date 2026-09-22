@@ -11,8 +11,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -56,7 +54,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -999,8 +996,7 @@ private fun ShoppingScreen(
     var comparingPrices by remember { mutableStateOf(false) }
     var priceComparisonError by remember { mutableStateOf("") }
     var recipeQuery by remember { mutableStateOf("") }
-    var selectedRecipe by remember { mutableStateOf<String?>(null) }
-    var recipeWebUrl by remember { mutableStateOf<String?>(null) }
+    var selectedRecipe by remember { mutableStateOf<FamilyRecipe?>(null) }
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
     val total = items.size
@@ -1342,71 +1338,236 @@ private fun ShoppingScreen(
                     }
 
                     "recipes" -> {
-                        Text("Recept från ICA", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        val recipeResults =
+                            remember(recipeQuery) {
+                                FamilyRecipeCatalog.search(recipeQuery).take(30)
+                            }
+
                         Text(
-                            "Sök och läs recepten direkt här i Familjekalendern. Ingen extern webbläsare öppnas.",
+                            "Familjens recept",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                        Text(
+                            "Sök bland recepten direkt i Familjekalendern. Allt visas och hanteras inne i appen.",
                             color = Muted,
                             fontSize = 11.sp,
                             lineHeight = 16.sp,
                         )
-                        OutlinedTextField(
-                            value = recipeQuery,
-                            onValueChange = { recipeQuery = it },
-                            label = { Text("Sök recept hos ICA") },
-                            placeholder = { Text("t.ex. lasagne, kladdkaka, kyckling") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        if (recipeQuery.isNotBlank()) {
-                            Button(
-                                onClick = {
-                                    val encodedQuery = java.net.URLEncoder.encode(recipeQuery.trim(), "UTF-8")
-                                    recipeWebUrl = "https://www.ica.se/recept/?q=$encodedQuery"
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+
+                        selectedRecipe?.let { recipe ->
+                            BackHandler { selectedRecipe = null }
+
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = .10f),
+                                shape = RoundedCornerShape(18.dp),
+                                border =
+                                    BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = .28f),
+                                    ),
                             ) {
-                                Text("Visa receptförslag från ICA")
-                            }
-                        }
-                        recipeWebUrl?.let { url ->
-                            BackHandler { recipeWebUrl = null }
-                            Card(
-                                modifier = Modifier.fillMaxWidth().height(620.dp),
-                                shape = RoundedCornerShape(16.dp),
-                            ) {
-                                Column(Modifier.fillMaxSize()) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(15.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
                                     Row(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                                        Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Text("ICA Recept", fontWeight = FontWeight.Bold)
-                                        TextButton(onClick = { recipeWebUrl = null }) { Text("Stäng recept") }
+                                        TextButton(onClick = { selectedRecipe = null }) {
+                                            Text("← Alla recept")
+                                        }
+                                        Text(
+                                            "${recipe.timeMinutes} min · ${recipe.servings} port",
+                                            color = Muted,
+                                            fontSize = 11.sp,
+                                        )
                                     }
-                                    AndroidView(
-                                        modifier = Modifier.fillMaxWidth().weight(1f),
-                                        factory = { webContext ->
-                                            WebView(webContext).apply {
-                                                settings.javaScriptEnabled = true
-                                                settings.domStorageEnabled = true
-                                                webViewClient = WebViewClient()
-                                                loadUrl(url)
+
+                                    Text(
+                                        recipe.title,
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                    )
+                                    Text(
+                                        recipe.description,
+                                        color = Color.White.copy(alpha = .78f),
+                                        fontSize = 12.sp,
+                                        lineHeight = 17.sp,
+                                    )
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = .13f),
+                                        shape = RoundedCornerShape(99.dp),
+                                    ) {
+                                        Text(
+                                            recipe.category,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                        )
+                                    }
+
+                                    HorizontalDivider(color = Color.White.copy(alpha = .08f))
+                                    Text(
+                                        "Ingredienser",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                    )
+                                    recipe.ingredients.forEach { ingredient ->
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            Text(
+                                                ingredient.amount,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 12.sp,
+                                                modifier = Modifier.width(76.dp),
+                                            )
+                                            Text(
+                                                ingredient.name,
+                                                color = Color.White.copy(alpha = .90f),
+                                                fontSize = 12.sp,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            recipe.ingredients.forEach { ingredient ->
+                                                onAdd("${ingredient.amount} ${ingredient.name}")
                                             }
                                         },
-                                        update = { webView ->
-                                            if (webView.url != url) webView.loadUrl(url)
-                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                    ) {
+                                        Text("Lägg ingredienser i inköpslistan")
+                                    }
+
+                                    HorizontalDivider(color = Color.White.copy(alpha = .08f))
+                                    Text(
+                                        "Gör så här",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
                                     )
+                                    recipe.steps.forEachIndexed { index, step ->
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.Top,
+                                        ) {
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = .16f),
+                                                shape = CircleShape,
+                                            ) {
+                                                Text(
+                                                    "${index + 1}",
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.sp,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                )
+                                            }
+                                            Text(
+                                                step,
+                                                color = Color.White.copy(alpha = .88f),
+                                                fontSize = 12.sp,
+                                                lineHeight = 17.sp,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
-                        if (recipeQuery.isBlank() && recipeWebUrl == null) {
-                            Text(
-                                "Exempel: skriv “pannkakor”, “kanelbullar” eller en ingrediens som “kyckling”.",
-                                color = Muted,
-                                fontSize = 12.sp,
+
+                        if (selectedRecipe == null) {
+                            OutlinedTextField(
+                                value = recipeQuery,
+                                onValueChange = { recipeQuery = it },
+                                label = { Text("Sök recept") },
+                                placeholder = { Text("t.ex. kyckling, pasta, kladdkaka") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
                             )
+
+                            Text(
+                                if (recipeQuery.isBlank()) {
+                                    "${FamilyRecipeCatalog.all.size} recept i Familjekalendern"
+                                } else {
+                                    "${recipeResults.size} träffar"
+                                },
+                                color = Muted,
+                                fontSize = 11.sp,
+                            )
+
+                            if (recipeResults.isEmpty()) {
+                                Text(
+                                    "Inga recept matchade sökningen. Prova en rätt, råvara eller kategori.",
+                                    color = Muted,
+                                    fontSize = 12.sp,
+                                )
+                            } else {
+                                recipeResults.forEach { recipe ->
+                                    Surface(
+                                        modifier =
+                                            Modifier.fillMaxWidth().clickable {
+                                                selectedRecipe = recipe
+                                            },
+                                        color = Color.White.copy(alpha = .045f),
+                                        shape = RoundedCornerShape(14.dp),
+                                        border =
+                                            BorderStroke(
+                                                1.dp,
+                                                Color.White.copy(alpha = .07f),
+                                            ),
+                                    ) {
+                                        Column(
+                                            Modifier.fillMaxWidth().padding(13.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            Row(
+                                                Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Text(
+                                                    recipe.title,
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 14.sp,
+                                                    modifier = Modifier.weight(1f),
+                                                )
+                                                Text(
+                                                    "${recipe.timeMinutes} min",
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontSize = 11.sp,
+                                                )
+                                            }
+                                            Text(
+                                                recipe.description,
+                                                color = Muted,
+                                                fontSize = 11.sp,
+                                                maxLines = 2,
+                                            )
+                                            Text(
+                                                "${recipe.category} · ${recipe.servings} portioner",
+                                                color = Color.White.copy(alpha = .55f),
+                                                fontSize = 10.sp,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
