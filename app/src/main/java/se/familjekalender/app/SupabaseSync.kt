@@ -380,6 +380,7 @@ object SupabaseSync {
         time: String,
         endTime: String?,
         memberId: String?,
+        source: String? = null,
     ) =
         withContext(Dispatchers.IO) {
             val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
@@ -402,6 +403,7 @@ object SupabaseSync {
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
+            if (!source.isNullOrBlank()) body.put("source", source)
             request(
                 "PATCH",
                 "/rest/v1/calendar_events?id=eq.$eventId&family_id=eq.${session.id}",
