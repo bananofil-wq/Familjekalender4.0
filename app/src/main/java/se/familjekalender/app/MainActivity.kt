@@ -1869,6 +1869,29 @@ private fun SettingsScreen(
     onImport: (String, String?) -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var customBackgroundActive by remember { mutableStateOf(hasCustomBackground(context)) }
+    var customBackgroundMessage by remember { mutableStateOf("") }
+    val customBackgroundPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                scope.launch {
+                    runCatching {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            saveCustomBackground(context, uri)
+                        }
+                    }
+                        .onSuccess {
+                            customBackgroundActive = true
+                            customBackgroundMessage = "Egen bakgrund sparad."
+                        }
+                        .onFailure {
+                            customBackgroundMessage =
+                                it.message ?: "Kunde inte spara bakgrundsbilden."
+                        }
+                }
+            }
+        }
     var url by remember(initialSportUrl) { mutableStateOf(initialSportUrl) }
     var memberId by
     remember(initialSportMemberId, members) {
@@ -2007,6 +2030,105 @@ private fun SettingsScreen(
                 }
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Egen bakgrund",
+            color = LuxuryTextMuted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(7.dp))
+
+        Surface(
+            color = LuxurySurfaceElevated,
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+            modifier = Modifier.fillMaxWidth().height(170.dp),
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                if (customBackgroundActive) {
+                    CustomBackgroundImage(Modifier.fillMaxSize())
+                    Box(
+                        Modifier.fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = .42f),
+                                    )
+                                )
+                            )
+                    )
+                    Text(
+                        "Egen bakgrund aktiv",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
+                    )
+                } else {
+                    Column(
+                        Modifier.fillMaxSize().padding(18.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            "Ingen egen bakgrund vald",
+                            color = LuxuryText,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Säsongsbakgrunden används tills du väljer en bild.",
+                            color = LuxuryTextMuted,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(9.dp))
+        Button(
+            onClick = { customBackgroundPicker.launch("image/*") },
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(if (customBackgroundActive) "Byt bakgrundsbild" else "Välj bild från mobilen")
+        }
+
+        if (customBackgroundActive) {
+            Spacer(Modifier.height(7.dp))
+            OutlinedButton(
+                onClick = {
+                    removeCustomBackground(context)
+                    customBackgroundActive = false
+                    customBackgroundMessage = "Egen bakgrund borttagen."
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Text("Ta bort egen bakgrund")
+            }
+        }
+
+        if (customBackgroundMessage.isNotBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Text(
+                customBackgroundMessage,
+                color = LuxuryTextMuted,
+                fontSize = 11.sp,
+            )
+        }
+
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Den egna bilden används före säsongsbakgrunden i Clean och fullständigt/personligt läge. Bilden sparas lokalt på telefonen.",
+            color = LuxuryTextMuted,
+            fontSize = 10.sp,
+            lineHeight = 14.sp,
+        )
     }
 
     Spacer(Modifier.height(14.dp))
