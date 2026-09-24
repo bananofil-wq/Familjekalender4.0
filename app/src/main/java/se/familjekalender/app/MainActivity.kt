@@ -2079,7 +2079,7 @@ private fun SettingsScreen(
                             color = LuxuryText,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(2.dp))
                         Text(
                             "Säsongsbakgrunden används tills du väljer en bild.",
                             color = LuxuryTextMuted,
@@ -2291,7 +2291,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
 
     Box(
         Modifier.fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
         Surface(
             color = Color(0xEE1B1727),
@@ -2303,8 +2303,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
         ) {
             Row(
                 Modifier.fillMaxWidth()
-                    .height(76.dp)
-                    .padding(horizontal = 6.dp, vertical = 7.dp),
+                    .height(64.dp)
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 items.forEach { (tab, icon, label) ->
@@ -2313,7 +2313,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                         Modifier.weight(1f)
                             .fillMaxHeight()
                             .padding(horizontal = 2.dp)
-                            .clip(RoundedCornerShape(21.dp))
+                            .clip(RoundedCornerShape(18.dp))
                             .then(
                                 if (isSelected) {
                                     Modifier.background(
