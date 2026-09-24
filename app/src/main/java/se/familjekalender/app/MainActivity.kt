@@ -2368,8 +2368,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                 }
             }
         }
-        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
+    Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
 }
 @Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
