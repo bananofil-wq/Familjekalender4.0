@@ -59,6 +59,7 @@ private val SportPurple = Color(0xFF9B6CFF)
 
 private enum class SportSection {
     HOME,
+    TRAINING,
     RUNNING,
     OVERVIEW,
 }
@@ -111,8 +112,19 @@ internal fun SportPremiumDashboard(
                     members = realMembers,
                     onAdd = onAdd,
                     onOpenSettings = onOpenSettings,
+                    onOpenTraining = { section = SportSection.TRAINING },
                     onOpenRunning = { section = SportSection.RUNNING },
                     onOpenOverview = { section = SportSection.OVERVIEW },
+                )
+
+            SportSection.TRAINING ->
+                SportTraining(
+                    selectedDate = selectedDate,
+                    onSelectDate = onSelectDate,
+                    events = events,
+                    members = realMembers,
+                    onBack = { section = SportSection.HOME },
+                    onAdd = onAdd,
                 )
 
             SportSection.RUNNING ->
@@ -145,6 +157,7 @@ private fun SportHome(
     members: List<SyncMember>,
     onAdd: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenTraining: () -> Unit,
     onOpenRunning: () -> Unit,
     onOpenOverview: () -> Unit,
 ) {
@@ -170,6 +183,12 @@ private fun SportHome(
         remember(events, weekStart, weekEnd) {
             events
                 .filter { it.date in weekStart..weekEnd && !isSportNoiseEvent(it) }
+                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { safeTimeMinutes(it.time) })
+        }
+    val weekTrainingEvents =
+        remember(events, weekStart, weekEnd) {
+            events
+                .filter { it.date in weekStart..weekEnd && isTrainingEvent(it) }
                 .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { safeTimeMinutes(it.time) })
         }
     val selectedEvents =
@@ -250,13 +269,11 @@ private fun SportHome(
             SportHubCard(
                 title = "TRÄNING",
                 subtitle = "Veckans pass",
-                value = "${weekEvents.size} st",
+                value = "${weekTrainingEvents.size} st",
                 accent = SportAccent,
                 icon = { Icon(Icons.Default.FitnessCenter, null, modifier = Modifier.size(25.dp)) },
                 modifier = Modifier.weight(1f),
-                onClick = {
-                    nextActivity?.date?.let(onSelectDate)
-                },
+                onClick = onOpenTraining,
             )
             SportHubCard(
                 title = "LÖPNING",
@@ -279,6 +296,258 @@ private fun SportHome(
         }
 
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+@Composable
+private fun SportTraining(
+    selectedDate: LocalDate,
+    onSelectDate: (LocalDate) -> Unit,
+    events: List<SyncEvent>,
+    members: List<SyncMember>,
+    onBack: () -> Unit,
+    onAdd: () -> Unit,
+) {
+    val today = LocalDate.now()
+    val locale = remember { Locale("sv", "SE") }
+    val weekStart = remember(today) {
+        today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
+    val weekEnd = weekStart.plusDays(6)
+    val memberById = remember(members) { members.associateBy { it.id } }
+    val trainingEvents = remember(events) {
+        events.filter(::isTrainingEvent)
+            .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { safeTimeMinutes(it.time) })
+    }
+    val thisWeek = remember(trainingEvents, weekStart, weekEnd) {
+        trainingEvents.filter { it.date in weekStart..weekEnd }
+    }
+    val upcoming = remember(trainingEvents, today) {
+        trainingEvents.filter { !it.date.isBefore(today) }.take(12)
+    }
+    val memberCounts = remember(thisWeek, members) {
+        members.map { member ->
+            member to thisWeek.count {
+                it.memberId == member.id || it.memberId == ALL_FAMILY_MEMBER_ID
+            }
+        }.filter { it.second > 0 }
+    }
+
+    Column(
+        Modifier.fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SportRoundIcon(Icons.Default.ChevronLeft, "Tillbaka", onBack)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "TRÄNING",
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = .8.sp,
+                )
+                Text(
+                    "VECKANS PASS OCH KOMMANDE AKTIVITETER",
+                    color = SportMuted,
+                    fontSize = 9.sp,
+                    letterSpacing = 1.1.sp,
+                )
+            }
+            Surface(
+                color = SportAccent,
+                contentColor = Color(0xFF101213),
+                shape = CircleShape,
+                modifier = Modifier.size(44.dp).clickable(onClick = onAdd),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Add, "Lägg till träning", modifier = Modifier.size(24.dp))
+                }
+            }
+        }
+
+        Surface(
+            color = SportPanel,
+            shape = RoundedCornerShape(22.dp),
+            border = BorderStroke(1.dp, SportBorder),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OverviewStat(
+                    "PASS I VECKAN",
+                    thisWeek.size.toString(),
+                    SportAccent,
+                    Modifier.weight(1f),
+                )
+                OverviewStat(
+                    "KOMMANDE",
+                    upcoming.size.toString(),
+                    SportBlue,
+                    Modifier.weight(1f),
+                )
+                OverviewStat(
+                    "AKTIVA",
+                    memberCounts.size.toString(),
+                    SportPurple,
+                    Modifier.weight(1f),
+                )
+            }
+        }
+
+        if (memberCounts.isNotEmpty()) {
+            Surface(
+                color = SportPanel,
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, SportBorder),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    Modifier.padding(15.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    Text(
+                        "DEN HÄR VECKAN",
+                        color = SportMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                    )
+                    memberCounts.forEach { (member, count) ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier.size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(memberColor(member))
+                            )
+                            Spacer(Modifier.width(9.dp))
+                            Text(
+                                member.name,
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                if (count == 1) "1 pass" else "$count pass",
+                                color = SportAccent,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Text(
+            "KOMMANDE TRÄNING",
+            color = SportMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(start = 2.dp),
+        )
+
+        if (upcoming.isEmpty()) {
+            Surface(
+                color = SportPanel,
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, SportBorder),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        "Ingen träning planerad",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "Lägg till ett pass med plusknappen.",
+                        color = SportMuted,
+                        fontSize = 11.sp,
+                    )
+                }
+            }
+        } else {
+            upcoming.forEach { event ->
+                val member = event.memberId?.let(memberById::get)
+                Surface(
+                    color = if (event.date == selectedDate) SportAccentSoft else SportPanel,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (event.date == selectedDate) SportAccent.copy(alpha = .42f) else SportBorder,
+                    ),
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        onSelectDate(event.date)
+                    },
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier.width(4.dp)
+                                .height(44.dp)
+                                .clip(CircleShape)
+                                .background(member?.let(::memberColor) ?: SportAccent)
+                        )
+                        Spacer(Modifier.width(11.dp))
+                        Column(Modifier.width(70.dp)) {
+                            Text(
+                                event.date.format(DateTimeFormatter.ofPattern("EEE d/M", locale))
+                                    .replaceFirstChar { it.uppercase(locale) },
+                                color = SportMuted,
+                                fontSize = 10.sp,
+                            )
+                            Text(
+                                event.time.ifBlank { "—" },
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                cleanSportTitle(event.title),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                member?.name ?: "Familjen",
+                                color = member?.let(::memberColor) ?: SportMuted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            null,
+                            tint = SportMuted,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
     }
 }
 
@@ -1019,6 +1288,43 @@ internal fun SportBottomNav(selected: Int, onSelect: (Int) -> Unit) {
 
 private fun memberColor(member: SyncMember): Color =
     runCatching { Color(member.colorArgb.toInt()) }.getOrDefault(SportBlue)
+
+private fun isTrainingEvent(event: SyncEvent): Boolean {
+    if (isSportNoiseEvent(event)) return false
+
+    val title = event.title.lowercase(Locale("sv", "SE"))
+    val source = event.source.lowercase(Locale("sv", "SE"))
+
+    if (
+        source.contains("sportadmin") ||
+        source.contains("sport_admin") ||
+        source.contains("training") ||
+        source.contains("workout")
+    ) return true
+
+    return listOf(
+        "träning",
+        "match",
+        "innebandy",
+        "handboll",
+        "fotboll",
+        "basket",
+        "hockey",
+        "tennis",
+        "padel",
+        "gym",
+        "löpning",
+        "löprunda",
+        "springa",
+        "simning",
+        "simträning",
+        "dans",
+        "ridning",
+        "karate",
+        "judo",
+        "taekwondo",
+    ).any(title::contains) || title.startsWith("🏃")
+}
 
 private fun isSportNoiseEvent(event: SyncEvent): Boolean {
     val title = event.title.trim()
