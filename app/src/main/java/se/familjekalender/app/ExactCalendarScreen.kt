@@ -460,7 +460,7 @@ internal fun ExactCalendarScreen(
             members = members,
             hasSeries = matchingSeries.size > 1,
             onDismiss = { editEvent = null },
-            onSave = { title, date, time, endTime, memberId, editScope ->
+            onSave = { title, date, time, endTime, memberId, isReminder, editScope ->
                 val session = currentFamilySession(context)
                 if (session != null) {
                     scope.launch {
@@ -494,6 +494,7 @@ internal fun ExactCalendarScreen(
                                     time,
                                     endTime,
                                     memberId,
+                                    source = if (isReminder) "reminder" else "manual",
                                 )
                                 when {
                                     event.seriesId == null -> Unit
