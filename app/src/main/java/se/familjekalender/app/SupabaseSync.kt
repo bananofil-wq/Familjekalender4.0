@@ -255,18 +255,22 @@ object SupabaseSync {
                                     .atZoneSameInstant(STOCKHOLM)
                             }
                                 .getOrNull()
+                    val source = row.optString("source", "manual")
+                    val noTime = source.lowercase().contains("no_time")
                     add(
                         SyncEvent(
                             id = row.getString("id"),
                             title = row.getString("title"),
                             date = zoned.toLocalDate(),
-                            time = "%02d:%02d".format(zoned.hour, zoned.minute),
+                            time = if (noTime) "" else "%02d:%02d".format(zoned.hour, zoned.minute),
                             memberId =
                                 if (row.isNull("member_id")) ALL_FAMILY_MEMBER_ID
                                 else row.getString("member_id"),
-                            source = row.optString("source", "manual"),
-                            endDate = endZoned?.toLocalDate(),
-                            endTime = endZoned?.let { "%02d:%02d".format(it.hour, it.minute) },
+                            source = source,
+                            endDate = if (noTime) null else endZoned?.toLocalDate(),
+                            endTime =
+                                if (noTime) null
+                                else endZoned?.let { "%02d:%02d".format(it.hour, it.minute) },
                             seriesId =
                                 if (row.isNull("series_id")) null else row.getString("series_id"),
                         )
@@ -283,7 +287,10 @@ object SupabaseSync {
         memberId: String?,
     ) =
         withContext(Dispatchers.IO) {
-            val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
+            val noTime = time.isBlank()
+            val parsedTime =
+                if (noTime) LocalTime.MIDNIGHT
+                else runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
             val startsAt =
                 ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
             val body =
@@ -291,7 +298,7 @@ object SupabaseSync {
                     .put("family_id", session.id)
                     .put("title", "🔔 " + title.removePrefix("🔔").trim())
                     .put("starts_at", startsAt)
-                    .put("source", "reminder")
+                    .put("source", if (noTime) "reminder_no_time" else "reminder")
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
@@ -343,17 +350,20 @@ object SupabaseSync {
         seriesId: String? = null,
     ) =
         withContext(Dispatchers.IO) {
-            val parsedStart = runCatching {
-                LocalTime.parse(startTime)
-            }.getOrElse { LocalTime.of(18, 0) }
+            val noTime = startTime.isBlank()
+            val parsedStart =
+                if (noTime) LocalTime.MIDNIGHT
+                else runCatching { LocalTime.parse(startTime) }.getOrElse { LocalTime.of(18, 0) }
             val starts = ZonedDateTime.of(date, parsedStart, STOCKHOLM)
             val body =
                 JSONObject()
                     .put("family_id", session.id)
                     .put("title", title)
                     .put("starts_at", starts.toOffsetDateTime().toString())
-                    .put("source", "manual")
-            val parsedEnd = endTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+                    .put("source", if (noTime) "manual_no_time" else "manual")
+            val parsedEnd =
+                if (noTime) null
+                else endTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
             if (parsedEnd != null) {
                 var ends = ZonedDateTime.of(date, parsedEnd, STOCKHOLM)
                 if (!ends.isAfter(starts)) ends = ends.plusDays(1)
@@ -383,9 +393,14 @@ object SupabaseSync {
         source: String? = null,
     ) =
         withContext(Dispatchers.IO) {
-            val parsedTime = runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
+            val noTime = time.isBlank()
+            val parsedTime =
+                if (noTime) LocalTime.MIDNIGHT
+                else runCatching { LocalTime.parse(time) }.getOrElse { LocalTime.of(18, 0) }
             val startsAt = ZonedDateTime.of(date, parsedTime, STOCKHOLM)
-            val parsedEnd = endTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+            val parsedEnd =
+                if (noTime) null
+                else endTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
             val endsAt = parsedEnd?.let { value ->
                 ZonedDateTime.of(
                     if (value.isAfter(parsedTime)) date else date.plusDays(1),
