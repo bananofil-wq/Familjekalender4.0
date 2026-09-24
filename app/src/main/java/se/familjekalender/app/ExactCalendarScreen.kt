@@ -864,13 +864,20 @@ internal fun EditEventDialog(
     members: List<SyncMember>,
     hasSeries: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, LocalDate, String, String?, String?, SeriesEditScope) -> Unit,
+    onSave: (String, LocalDate, String, String?, String?, Boolean, SeriesEditScope) -> Unit,
     onDelete: (SeriesEditScope) -> Unit,
 ) {
     val context = LocalContext.current
     val birthday = isBirthdayEvent(event)
     val canModify = event.source != "sportadmin"
-    var title by remember(event.id) { mutableStateOf(event.title.removePrefix("🌈").trim()) }
+    var isReminder by remember(event.id) {
+        mutableStateOf(
+            event.source.lowercase().contains("reminder") || event.title.trimStart().startsWith("🔔")
+        )
+    }
+    var title by remember(event.id) {
+        mutableStateOf(event.title.removePrefix("🌈").removePrefix("🔔").trim())
+    }
     var date by remember(event.id) { mutableStateOf(event.date) }
     var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
     var endTime by remember(event.id) { mutableStateOf(event.endTime ?: "") }
@@ -923,7 +930,11 @@ internal fun EditEventDialog(
         title = {
             Column {
                 Text(
-                    "Redigera aktivitet",
+                    when {
+                        birthday -> "Redigera födelsedag"
+                        isReminder -> "Redigera påminnelse"
+                        else -> "Redigera aktivitet"
+                    },
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
@@ -962,11 +973,93 @@ internal fun EditEventDialog(
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
-                        label = { Text(if (birthday) "Namn" else "Aktivitet") },
+                        label = {
+                            Text(
+                                when {
+                                    birthday -> "Namn"
+                                    isReminder -> "Påminnelse"
+                                    else -> "Aktivitet"
+                                }
+                            )
+                        },
                         singleLine = true,
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
+
+                    if (!birthday) {
+                        Text(
+                            "Typ",
+                            color = muted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Surface(
+                                color =
+                                    if (!isReminder) accent.copy(alpha = .14f)
+                                    else innerColor,
+                                shape = RoundedCornerShape(16.dp),
+                                border =
+                                    BorderStroke(
+                                        1.dp,
+                                        if (!isReminder) accent.copy(alpha = .55f) else outline,
+                                    ),
+                                modifier =
+                                    Modifier.weight(1f).clickable {
+                                        isReminder = false
+                                    },
+                            ) {
+                                Column(Modifier.padding(13.dp)) {
+                                    Text(
+                                        "Aktivitet",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        "Kan krocka med andra aktiviteter",
+                                        color = muted,
+                                        fontSize = 9.sp,
+                                        lineHeight = 13.sp,
+                                    )
+                                }
+                            }
+                            Surface(
+                                color =
+                                    if (isReminder) Color(0xFF8FB8FF).copy(alpha = .14f)
+                                    else innerColor,
+                                shape = RoundedCornerShape(16.dp),
+                                border =
+                                    BorderStroke(
+                                        1.dp,
+                                        if (isReminder) Color(0xFF8FB8FF).copy(alpha = .55f)
+                                        else outline,
+                                    ),
+                                modifier =
+                                    Modifier.weight(1f).clickable {
+                                        isReminder = true
+                                        endTime = ""
+                                    },
+                            ) {
+                                Column(Modifier.padding(13.dp)) {
+                                    Text(
+                                        "Påminnelse",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        "Räknas aldrig som kalenderkrock",
+                                        color = muted,
+                                        fontSize = 9.sp,
+                                        lineHeight = 13.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Text("Datum och tid", color = muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Surface(
@@ -1007,23 +1100,27 @@ internal fun EditEventDialog(
                             }
                         }
                         Surface(
-                            color = innerColor,
+                            color = if (isReminder) Color.White.copy(alpha = .025f) else innerColor,
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, outline),
-                            modifier = Modifier.weight(1f).clickable(onClick = ::chooseEndTime),
+                            modifier =
+                                Modifier.weight(1f).then(
+                                    if (isReminder) Modifier
+                                    else Modifier.clickable(onClick = ::chooseEndTime)
+                                ),
                         ) {
                             Column(Modifier.padding(13.dp)) {
                                 Text("Sluttid", color = muted, fontSize = 11.sp)
                                 Text(
-                                    endTime.ifBlank { "Ingen" },
-                                    color = Color.White,
+                                    if (isReminder) "Ej relevant" else endTime.ifBlank { "Ingen" },
+                                    color = if (isReminder) muted else Color.White,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
                     }
-                    if (endTime.isNotBlank()) {
+                    if (!isReminder && endTime.isNotBlank()) {
                         TextButton(
                             onClick = { endTime = "" },
                             modifier = Modifier.align(Alignment.End),
@@ -1130,7 +1227,10 @@ internal fun EditEventDialog(
                                 MaterialTheme.colorScheme.error.copy(alpha = .45f),
                             ),
                     ) {
-                        Text("Ta bort aktivitet", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (isReminder) "Ta bort påminnelse" else "Ta bort aktivitet",
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                 }
             }
@@ -1141,11 +1241,16 @@ internal fun EditEventDialog(
                     enabled = title.isNotBlank(),
                     onClick = {
                         onSave(
-                            (if (birthday) "🌈 " else "") + title.trim(),
+                            when {
+                                birthday -> "🌈 " + title.trim()
+                                isReminder -> "🔔 " + title.removePrefix("🔔").trim()
+                                else -> title.removePrefix("🔔").trim()
+                            },
                             date,
                             time,
-                            endTime.ifBlank { null },
+                            if (isReminder) null else endTime.ifBlank { null },
                             memberId,
+                            isReminder,
                             editScope,
                         )
                     },
@@ -1170,7 +1275,9 @@ internal fun EditEventDialog(
             tonalElevation = 0.dp,
             title = {
                 Text(
-                    if (hasSeries) "Vad vill du ta bort?" else "Ta bort aktivitet?",
+                    if (hasSeries) "Vad vill du ta bort?"
+                    else if (isReminder) "Ta bort påminnelse?"
+                    else "Ta bort aktivitet?",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                 )
