@@ -92,6 +92,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 today
                     .format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE")))
                     .replaceFirstChar { it.uppercase() }
+            views.setTextViewText(R.id.widget_badge_day, today.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale("sv", "SE")).uppercase(Locale("sv", "SE")))
+            views.setTextViewText(R.id.widget_badge_number, today.dayOfMonth.toString())
             views.setTextViewText(R.id.widget_date, dateText)
             clearRows(views)
             bindActions(context, views, appWidgetId)
