@@ -2191,36 +2191,6 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
 }
 
 @Composable
-private fun SportBottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
-    NavigationBar(containerColor = PremiumGlassRaised.copy(alpha = .96f), tonalElevation = 0.dp) {
-        listOf(
-            Triple(0, Icons.Default.CalendarMonth, "Sport"),
-            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
-            Triple(2, Icons.Default.CheckCircle, "To-Do"),
-            Triple(3, Icons.Default.People, "Familj"),
-            Triple(5, Icons.Default.LocationOn, "GPS"),
-            Triple(4, Icons.Default.Settings, "Inställningar"),
-        ).forEach { (tab, icon, label) ->
-            val isSelected = selected == tab
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { onSelect(tab) },
-                icon = { AnimatedNavIcon(icon, label, isSelected) },
-                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 9.sp) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = accent,
-                    selectedTextColor = accent,
-                    unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
-                    unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
-                    indicatorColor = PremiumPurple.copy(alpha = .18f),
-                ),
-            )
-        }
-    }
-}
-
-@Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     NavigationBar(containerColor = PremiumGlassRaised.copy(alpha = .96f), tonalElevation = 0.dp) {
