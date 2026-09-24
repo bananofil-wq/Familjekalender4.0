@@ -174,12 +174,15 @@ internal fun MinimalCalendarScreen(
             analyzeCalendarConflicts(events, members).map { it.date }.toSet()
         }
 
-    val weekStart = remember(today) { today.minusDays((today.dayOfWeek.value - 1).toLong()) }
+    val weekStart =
+        remember(selectedDate) {
+            selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())
+        }
     val weekEnd = remember(weekStart) { weekStart.plusDays(6) }
-    val todayActivities =
-        remember(events, today) {
+    val selectedDayActivities =
+        remember(events, selectedDate) {
             events
-                .filter { it.date == today && !isCleanReminderEvent(it) }
+                .filter { it.date == selectedDate && !isCleanReminderEvent(it) }
                 .sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
         }
     val weekActivities =
@@ -260,12 +263,13 @@ internal fun MinimalCalendarScreen(
             Spacer(Modifier.height(10.dp))
 
             CleanSummaryStrip(
-                todayCount = todayActivities.size,
+                selectedDate = selectedDate,
+                today = today,
+                dayCount = selectedDayActivities.size,
                 weekCount = weekActivities.size,
                 conflictCount = weekConflicts.size,
                 reminderCount = weekReminders.size,
                 onToday = {
-                    onSelect(today)
                     summaryDetail = CleanSummaryKind.TODAY
                 },
                 onWeek = { summaryDetail = CleanSummaryKind.WEEK },
@@ -323,10 +327,10 @@ internal fun MinimalCalendarScreen(
     summaryDetail?.let { detail ->
         CleanSummaryDialog(
             kind = detail,
-            today = today,
+            selectedDate = selectedDate,
             weekStart = weekStart,
             weekEnd = weekEnd,
-            todayActivities = todayActivities,
+            dayActivities = selectedDayActivities,
             weekActivities = weekActivities,
             conflicts = weekConflicts,
             reminders = weekReminders,
@@ -339,7 +343,11 @@ internal fun MinimalCalendarScreen(
             },
             onOpenEvent = { event ->
                 summaryDetail = null
-                openedEvent = event
+                if (event.source == "sportadmin") {
+                    openedEvent = event
+                } else {
+                    onEdit(event)
+                }
             },
         )
     }
@@ -906,7 +914,9 @@ internal fun MinimalCalendarScreen(
 
 @Composable
 private fun CleanSummaryStrip(
-    todayCount: Int,
+    selectedDate: LocalDate,
+    today: LocalDate,
+    dayCount: Int,
     weekCount: Int,
     conflictCount: Int,
     reminderCount: Int,
@@ -920,9 +930,16 @@ private fun CleanSummaryStrip(
         horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         CleanSummaryTile(
-            label = "IDAG",
-            value = todayCount.toString(),
-            helper = if (todayCount == 1) "aktivitet" else "aktiviteter",
+            label =
+                if (selectedDate == today) "IDAG"
+                else selectedDate.dayOfWeek
+                    .getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))
+                    .uppercase(Locale("sv", "SE"))
+                    .take(3),
+            value = dayCount.toString(),
+            helper =
+                selectedDate.format(DateTimeFormatter.ofPattern("d/M")) +
+                    if (dayCount == 1) " · aktivitet" else " · aktiviteter",
             onClick = onToday,
             modifier = Modifier.weight(1f),
         )
@@ -1000,10 +1017,10 @@ private fun CleanSummaryTile(
 @Composable
 private fun CleanSummaryDialog(
     kind: CleanSummaryKind,
-    today: LocalDate,
+    selectedDate: LocalDate,
     weekStart: LocalDate,
     weekEnd: LocalDate,
-    todayActivities: List<SyncEvent>,
+    dayActivities: List<SyncEvent>,
     weekActivities: List<SyncEvent>,
     conflicts: List<CalendarConflict>,
     reminders: List<SyncEvent>,
@@ -1023,7 +1040,7 @@ private fun CleanSummaryDialog(
     val subtitle =
         when (kind) {
             CleanSummaryKind.TODAY ->
-                today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+                selectedDate.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
                     .replaceFirstChar { it.uppercase(locale) }
 
             else ->
@@ -1052,11 +1069,11 @@ private fun CleanSummaryDialog(
             ) {
                 when (kind) {
                     CleanSummaryKind.TODAY -> {
-                        if (todayActivities.isEmpty()) {
-                            CleanSummaryEmpty("Inga aktiviteter idag.")
+                        if (dayActivities.isEmpty()) {
+                            CleanSummaryEmpty("Inga aktiviteter den här dagen.")
                         } else {
                             CleanGroupedActivityList(
-                                events = todayActivities,
+                                events = dayActivities,
                                 memberById = memberById,
                                 onOpenEvent = onOpenEvent,
                             )
