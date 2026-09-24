@@ -40,11 +40,11 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private val LifeBg = Color.Transparent
-private val LifeSurface = PremiumGlass
-private val LifeSurfaceRaised = PremiumGlassRaised
-private val LifePurple = PremiumPurpleBright
-private val LifeMuted = PremiumMuted
-private val LifeDivider = PremiumBorder
+private val LifeSurface = Color(0xFF15181B)
+private val LifeSurfaceRaised = Color(0xFF1B1F22)
+private val LifePurple = Color(0xFFB8FF3D)
+private val LifeMuted = Color(0xFF9CA3A7)
+private val LifeDivider = Color.White.copy(alpha = .09f)
 
 private enum class LifeFocus {
     EVERYDAY,
@@ -135,11 +135,8 @@ internal fun RunningLifeDashboard(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp, vertical = 12.dp)
     ) {
-        PremiumModeHeader(
-            title = "Sportläge",
-            subtitle =
-                if (focus == LifeFocus.EVERYDAY) "Löpning och vardag i balans"
-                else "Träning, utveckling och historik",
+        SportReferenceHeader(
+            running = focus == LifeFocus.RUNNING,
             onAdd = onAdd,
             onSettings = onOpenSettings,
         )
@@ -173,17 +170,18 @@ internal fun RunningLifeDashboard(
             when (currentFocus) {
                 LifeFocus.EVERYDAY ->
                     Column {
-                        LifeMonthCalendar(
-                            visibleMonth = visibleMonth,
+                        SportNextActivity(
+                            events = events,
+                            members = members,
+                            memberById = memberById,
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        SportWeekStrip(
                             selectedDate = selectedDate,
                             eventsByDate = eventsByDate,
                             locale = locale,
-                            motionEnabled = motionEnabled,
-                            onMonthChanged = { month ->
-                                visibleMonth = month
-                                val day = selectedDate.dayOfMonth.coerceAtMost(month.lengthOfMonth())
-                                onSelectDate(month.atDay(day))
-                            },
                             onSelectDate = onSelectDate,
                         )
 
@@ -279,6 +277,133 @@ internal fun RunningLifeDashboard(
 }
 
 @Composable
+private fun SportReferenceHeader(
+    running: Boolean,
+    onAdd: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (running) "LÖPNING" else "SPORT",
+                color = Color.White,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp,
+            )
+            Text(
+                if (running) "DIN TRÄNING · DIN UTVECKLING" else "FAMILJENS SPORTCENTER",
+                color = LifeMuted,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.4.sp,
+            )
+        }
+        Text(
+            "+",
+            color = Color(0xFF101213),
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Light,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(LifePurple)
+                .clickable(onClick = onAdd)
+                .wrapContentSize(Alignment.Center),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "⚙",
+            color = Color.White,
+            fontSize = 20.sp,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(LifeSurfaceRaised)
+                .clickable(onClick = onSettings)
+                .wrapContentSize(Alignment.Center),
+        )
+    }
+}
+
+@Composable
+private fun SportNextActivity(
+    events: List<SyncEvent>,
+    members: List<SyncMember>,
+    memberById: Map<String, SyncMember>,
+) {
+    val today = LocalDate.now()
+    val next = remember(events) {
+        events.asSequence()
+            .filter { !it.date.isBefore(today) && !it.title.startsWith("🏃 RUN|") }
+            .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time })
+            .firstOrNull()
+    }
+    val member = next?.memberId?.let(memberById::get)
+    val accent = member?.let { Color(it.colorArgb.toInt()) } ?: LifePurple
+    Surface(
+        color = LifeSurfaceRaised,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text("NÄSTA AKTIVITET", color = LifeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+            Spacer(Modifier.height(8.dp))
+            if (next == null) {
+                Text("Inget planerat", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Sportkalendern är fri just nu", color = LifeMuted, fontSize = 12.sp)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(4.dp).height(52.dp).clip(CircleShape).background(accent))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(member?.name ?: "Familjen", color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(next.title.removePrefix("🌈").trim(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(next.date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale("sv","SE"))) + "  ·  " + next.time.ifBlank { "Hela dagen" }, color = LifeMuted, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SportWeekStrip(
+    selectedDate: LocalDate,
+    eventsByDate: Map<LocalDate, List<SyncEvent>>,
+    locale: Locale,
+    onSelectDate: (LocalDate) -> Unit,
+) {
+    val monday = selectedDate.minusDays((selectedDate.dayOfWeek.value - 1).toLong())
+    Column {
+        Text("DEN HÄR VECKAN", color = LifeMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(7) { index ->
+                val date = monday.plusDays(index.toLong())
+                val selected = date == selectedDate
+                val hasEvent = eventsByDate[date].orEmpty().isNotEmpty()
+                Surface(
+                    color = if (selected) LifePurple else LifeSurface,
+                    contentColor = if (selected) Color(0xFF101213) else Color.White,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.weight(1f).clickable { onSelectDate(date) },
+                ) {
+                    Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale).take(2).uppercase(locale), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text(date.dayOfMonth.toString(), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Box(Modifier.size(4.dp).clip(CircleShape).background(if (hasEvent) { if (selected) Color(0xFF101213) else LifePurple } else Color.Transparent))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun RunningQuickActions(
     onLocation: () -> Unit,
     onPlan: () -> Unit,
@@ -339,7 +464,7 @@ private fun RunningOverviewHero(
             Modifier.fillMaxWidth()
                 .background(
                     Brush.linearGradient(
-                        listOf(Color(0xFF573A8E), Color(0xFF24192F), Color(0xFF17171F))
+                        listOf(Color(0xFF20251F), Color(0xFF151917), Color(0xFF101213))
                     )
                 )
                 .padding(18.dp)
@@ -502,7 +627,7 @@ private fun LifeFocusSelector(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             LifeFocusButton(
-                label = "Vardag",
+                label = "Översikt",
                 selected = focus == LifeFocus.EVERYDAY,
                 icon = {
                     Icon(
