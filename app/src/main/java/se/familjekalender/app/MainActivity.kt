@@ -746,6 +746,7 @@ private fun SyncedApp(
                                         personalLayoutRevision++
                                     },
                                     { personalLayoutRevision++ },
+                                    { selectedTab = 3 },
                                     onSportSettingsSaved,
                                 ) { url, memberId ->
                                     scope.launch {
@@ -1857,6 +1858,7 @@ private fun SettingsScreen(
     onUiLayoutChanged: (UiLayoutMode) -> Unit,
     onPersonalProfileChanged: (Int) -> Unit,
     onPersonalLayoutChanged: () -> Unit,
+    onOpenFamily: () -> Unit,
     onSaveSportSettings: (String, String?) -> Unit,
     onImport: (String, String?) -> Unit,
 ) {
@@ -1879,6 +1881,16 @@ private fun SettingsScreen(
         subtitle = "Familjekod · ${session.code}",
     ) {
         Button(
+            onClick = onOpenFamily,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Icon(Icons.Default.People, null)
+            Spacer(Modifier.width(8.dp))
+            Text("Hantera familjen")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
             onClick = { shareFamilyInvite(context, session) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = MaterialTheme.shapes.medium,
@@ -2143,7 +2155,6 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
     NavigationBar(containerColor = PremiumGlassRaised.copy(alpha = .96f), tonalElevation = 0.dp) {
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
-            Triple(3, Icons.Default.People, "Familj"),
             Triple(1, Icons.Default.ShoppingCart, "Inköp"),
             Triple(2, Icons.Default.CheckCircle, "Att göra"),
             Triple(4, Icons.Default.Settings, "Inställningar"),
@@ -2174,30 +2185,28 @@ private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     NavigationBar(containerColor = PremiumGlassRaised.copy(alpha = .96f), tonalElevation = 0.dp) {
         listOf(
-            Icons.Default.CalendarMonth to "Kalender",
-            Icons.Default.ShoppingCart to "Inköp",
-            Icons.Default.CheckCircle to "To-Do",
-            Icons.Default.People to "Familj",
-            Icons.Default.Settings to "Inställningar",
-            Icons.Default.LocationOn to "Plats",
-        )
-            .forEachIndexed { i, (icon, label) ->
-                val isSelected = selected == i
-                NavigationBarItem(
-                    isSelected,
-                    { onSelect(i) },
-                    { AnimatedNavIcon(icon, label, isSelected) },
-                    label = { Text(label, maxLines = 1, softWrap = false, fontSize = 9.sp) },
-                    colors =
-                        NavigationBarItemDefaults.colors(
-                            selectedIconColor = accent,
-                            selectedTextColor = accent,
-                            unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
-                            unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
-                            indicatorColor = PremiumPurple.copy(alpha = .18f),
-                        ),
-                )
-            }
+            Triple(0, Icons.Default.CalendarMonth, "Kalender"),
+            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
+            Triple(2, Icons.Default.CheckCircle, "To-Do"),
+            Triple(4, Icons.Default.Settings, "Inställningar"),
+            Triple(5, Icons.Default.LocationOn, "Plats"),
+        ).forEach { (tab, icon, label) ->
+            val isSelected = selected == tab
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onSelect(tab) },
+                icon = { AnimatedNavIcon(icon, label, isSelected) },
+                label = { Text(label, maxLines = 1, softWrap = false, fontSize = 9.sp) },
+                colors =
+                    NavigationBarItemDefaults.colors(
+                        selectedIconColor = accent,
+                        selectedTextColor = accent,
+                        unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
+                        unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
+                        indicatorColor = PremiumPurple.copy(alpha = .18f),
+                    ),
+            )
+        }
     }
 }
 
