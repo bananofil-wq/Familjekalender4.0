@@ -105,9 +105,10 @@
             android:textStyle="bold"
             android:maxLines="1" />
 
-        <Space
+        <TextView
             android:layout_width="8dp"
-            android:layout_height="1dp" />
+            android:layout_height="1dp"
+            android:text="" />
 
         <TextView
             android:id="@+id/widget_shopping"
