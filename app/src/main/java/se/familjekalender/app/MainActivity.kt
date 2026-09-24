@@ -800,7 +800,7 @@ private fun SyncedApp(
             members = members,
             hasSeries = matchingSeries.size > 1,
             onDismiss = { editEvent = null },
-            onSave = { title, date, time, endTime, memberId, editScope ->
+            onSave = { title, date, time, endTime, memberId, isReminder, editScope ->
                 scope.launch {
                     val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
                     val targets =
@@ -832,6 +832,7 @@ private fun SyncedApp(
                                 time,
                                 endTime,
                                 memberId,
+                                source = if (isReminder) "reminder" else "manual",
                             )
                             when {
                                 event.seriesId == null -> Unit
