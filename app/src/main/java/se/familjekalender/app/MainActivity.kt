@@ -665,7 +665,7 @@ private fun SyncedApp(
                                     },
                                 )
 
-                            2 -> ToDoScreen(session)
+                            2 -> ToDoScreen(session, members)
                             3 -> {
                                 if (uiLayoutMode == UiLayoutMode.MINIMAL) {
                                     OutlinedButton(
