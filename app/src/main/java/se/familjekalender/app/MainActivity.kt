@@ -186,9 +186,22 @@ internal fun paletteFor(mode: ThemeMode, date: LocalDate = LocalDate.now()): Sea
     }
 
 class MainActivity : ComponentActivity() {
+    private var widgetOpenTab by mutableIntStateOf(-1)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { ResponsiveApp { FamilyCalendarApp() } }
+        widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
+        setContent { ResponsiveApp { FamilyCalendarApp(widgetOpenTab) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
+    }
+
+    companion object {
+        const val EXTRA_OPEN_TAB = "open_tab"
     }
 
     override fun onStart() {
@@ -204,7 +217,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun FamilyCalendarApp() {
+fun FamilyCalendarApp(initialTab: Int = -1) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("family_calendar", 0) }
     val notificationPermissionLauncher =
@@ -308,6 +321,7 @@ fun FamilyCalendarApp() {
                             uiLayoutMode = it
                             prefs.edit().putString("ui_layout_mode", it.name).apply()
                         },
+                        initialTab = initialTab,
                     )
                 }
             }
@@ -383,6 +397,7 @@ private fun SyncedApp(
     onSportSettingsSaved: (String, String?) -> Unit,
     onThemeModeSaved: (ThemeMode) -> Unit,
     onUiLayoutModeSaved: (UiLayoutMode) -> Unit,
+    initialTab: Int = -1,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -397,7 +412,11 @@ private fun SyncedApp(
     var mailOffers by remember { mutableStateOf(emptyList<MailOffer>()) }
     var events by remember { mutableStateOf(emptyList<SyncEvent>()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(if (initialTab in 0..5) initialTab else 0) }
+
+    LaunchedEffect(initialTab) {
+        if (initialTab in 0..5) selectedTab = initialTab
+    }
     var showAddEvent by remember { mutableStateOf(false) }
     var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
     var addEventInitialTitle by remember { mutableStateOf("") }
