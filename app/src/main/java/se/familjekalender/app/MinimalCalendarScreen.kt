@@ -65,6 +65,14 @@ private val CleanMuted = Color.White.copy(alpha = .66f)
 
 private val EmbeddedTimeRange = Regex("""(?:\s*[·•]\s*)?\b\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}\b""")
 
+private fun cleanSeasonDrawable(month: YearMonth): Int =
+    when (month.monthValue) {
+        3, 4, 5 -> R.drawable.season_spring
+        6, 7, 8 -> R.drawable.season_summer
+        9, 10, 11 -> R.drawable.season_autumn
+        else -> R.drawable.season_winter
+    }
+
 private fun cleanEventTitle(event: SyncEvent): String =
     event.title
         .replace(EmbeddedTimeRange, "")
@@ -159,7 +167,7 @@ internal fun MinimalCalendarScreen(
 
     Box(Modifier.fillMaxSize()) {
         Image(
-            painter = painterResource(R.drawable.season_autumn),
+            painter = painterResource(cleanSeasonDrawable(month)),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
