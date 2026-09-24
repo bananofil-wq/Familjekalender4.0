@@ -30,6 +30,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -1004,6 +1005,7 @@ private fun ShoppingScreen(
     var priceComparisonError by remember { mutableStateOf("") }
     var recipeQuery by remember { mutableStateOf("") }
     var selectedRecipe by remember { mutableStateOf<FamilyRecipe?>(null) }
+    var selectedCategory by remember { mutableStateOf("Alla") }
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
     val total = items.size
@@ -1087,152 +1089,275 @@ private fun ShoppingScreen(
         )
     val grouped = openItems.groupBy { categoryFor(it.name) }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text("Inköp", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Surface(
-            shape = RoundedCornerShape(99.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
-            border =
-                androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = .55f),
-                ),
+    val verifiedCheapestByItem =
+        openItems.mapNotNull { item ->
+            mailOffers
+                .filter { mailOfferMatchesItem(it, item.name) }
+                .minByOrNull { it.price }
+                ?.let { item.id to it }
+        }.toMap()
+    val estimatedTotal = verifiedCheapestByItem.values.sumOf { it.price }
+    val categoryEmoji =
+        mapOf(
+            "Frukt & grönt" to "🍏",
+            "Mejeri & ägg" to "🥛",
+            "Kött & fisk" to "🥩",
+            "Skafferi" to "🫙",
+            "Frys" to "❄️",
+            "Hygien" to "🧴",
+            "Hushåll" to "🧽",
+            "Övrigt" to "🛒",
+        )
+    val availableCategories =
+        listOf("Alla") +
+            categoryOrder.filter { category -> openItems.any { categoryFor(it.name) == category } }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
-                "♛  Premium",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-        }
-    }
-    Text("Familjens gemensamma inköpslista", color = Muted)
-    Spacer(Modifier.height(16.dp))
-    Card(
-        colors = CardDefaults.cardColors(containerColor = SoftPurple.copy(alpha = .82f)),
-        shape = RoundedCornerShape(24.dp),
-        border =
-            androidx.compose.foundation.BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.primary.copy(alpha = .42f),
-            ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(20.dp)) {
             Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = .14f),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = .35f),
+                    ),
+                ) {
+                    Icon(
+                        Icons.Default.ShoppingCart,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(11.dp).size(30.dp),
+                    )
+                }
                 Column {
                     Text(
-                        if (total == 0) "Listan är tom" else "$done av $total klara",
+                        "Inköp",
+                        fontSize = 30.sp,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
+                        color = Color.White,
                     )
                     Text(
-                        if (openItems.isEmpty() && total > 0) "Allt är fixat"
-                        else "${openItems.size} kvar att handla",
-                        color = Muted,
+                        "${openItems.size} kvar · $done klara",
+                        color = Color.White.copy(alpha = .68f),
                         fontSize = 13.sp,
                     )
                 }
-                if (total > 0)
-                    Text(
-                        "${(animatedProgress * 100).toInt()}%",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
             }
-            if (total > 0) {
-                Spacer(Modifier.height(10.dp))
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)),
+            Surface(
+                shape = RoundedCornerShape(99.dp),
+                color = Color.White.copy(alpha = .06f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .10f)),
+            ) {
+                Text(
+                    "PREMIUM",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
         }
-    }
-    Spacer(Modifier.height(14.dp))
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            label = { Text("Lägg till vara") },
-            placeholder = { Text("t.ex. mjölk, bananer, kaffe") },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-        )
-        FilledIconButton(
-            onClick = {
-                text
-                    .split(',', ';', '\n')
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-                    .forEach(onAdd)
-                text = ""
-            },
-            enabled = text.isNotBlank(),
-            modifier = Modifier.size(64.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors =
-                IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+            shape = RoundedCornerShape(26.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = .12f)),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Lägg till", tint = Color.Black)
-        }
-    }
-    Text("Tips: skriv flera varor separerade med kommatecken", color = Muted, fontSize = 11.sp)
-    Spacer(Modifier.height(12.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PremiumShoppingAction(
-            icon = "🏷",
-            label = "Prisjämför",
-            selected = selectedShoppingTool == "price",
-            modifier = Modifier.weight(1f),
-            onClick = {
-                selectedShoppingTool = "price"
-                priceComparisonError = ""
-                if (openItems.isEmpty()) {
-                    priceComparison = null
-                    priceComparisonError = "Lägg till minst en vara för att jämföra priser."
-                } else {
-                    shoppingScope.launch {
-                        comparingPrices = true
-                        runCatching { ShoppingPriceService.compare(openItems.map { it.name }) }
-                            .onSuccess { priceComparison = it }
-                            .onFailure {
-                                priceComparison = null
-                                priceComparisonError =
-                                    it.message ?: "Kunde inte hämta prisjämförelsen."
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = .18f),
+                                SoftPurple.copy(alpha = .90f),
+                                CardBg.copy(alpha = .94f),
+                            )
+                        )
+                    )
+                    .padding(18.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(
+                                if (verifiedCheapestByItem.isEmpty()) "Verifierade priser"
+                                else "Lägsta verifierade priser",
+                                color = Color.White.copy(alpha = .68f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                if (verifiedCheapestByItem.isEmpty()) "—"
+                                else "${"%.0f".format(Locale("sv", "SE"), estimatedTotal)} kr",
+                                color = Color.White,
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            if (verifiedCheapestByItem.isNotEmpty()) {
+                                Text(
+                                    "${verifiedCheapestByItem.size} av ${openItems.size} varor har verifierat pris",
+                                    color = Muted,
+                                    fontSize = 10.sp,
+                                )
                             }
-                        comparingPrices = false
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                "${openItems.size} kvar",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                            )
+                            Text(
+                                "$done klara",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                    if (total > 0) {
+                        LinearProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .height(7.dp)
+                                    .clip(RoundedCornerShape(99.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.White.copy(alpha = .08f),
+                        )
                     }
                 }
-            },
-        )
-        PremiumShoppingAction(
-            icon = "▣",
-            label = "Recept",
-            selected = selectedShoppingTool == "recipes",
-            modifier = Modifier.weight(1f),
-            onClick = { selectedShoppingTool = "recipes" },
-        )
-        PremiumShoppingAction(
-            icon = "☷",
-            label = "Planera",
-            selected = selectedShoppingTool == "plan",
-            modifier = Modifier.weight(1f),
-            onClick = { selectedShoppingTool = "plan" },
-        )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            availableCategories.forEach { category ->
+                val selected = selectedCategory == category
+                Surface(
+                    modifier = Modifier.clickable { selectedCategory = category },
+                    shape = RoundedCornerShape(99.dp),
+                    color =
+                        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .20f)
+                        else Color.White.copy(alpha = .055f),
+                    border =
+                        BorderStroke(
+                            1.dp,
+                            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .60f)
+                            else Color.White.copy(alpha = .09f),
+                        ),
+                ) {
+                    Text(
+                        if (category == "Alla") "▦  Alla"
+                        else "${categoryEmoji[category] ?: "•"}  $category",
+                        color = if (selected) Color.White else Muted,
+                        fontSize = 12.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+                    )
+                }
+            }
+        }
+
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = CardBg.copy(alpha = .88f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = .10f)),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    placeholder = { Text("Lägg till vara…") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
+                )
+                FilledIconButton(
+                    onClick = {
+                        text
+                            .split(',', ';', '\n')
+                            .map { it.trim() }
+                            .filter { it.isNotBlank() }
+                            .forEach(onAdd)
+                        text = ""
+                    },
+                    enabled = text.isNotBlank(),
+                    modifier = Modifier.size(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors =
+                        IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Lägg till", tint = Color.Black)
+                }
+            }
+        }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PremiumShoppingAction(
+                icon = "🏷",
+                label = "Priser",
+                selected = selectedShoppingTool == "price",
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    selectedShoppingTool = "price"
+                    priceComparisonError = ""
+                    if (openItems.isEmpty()) {
+                        priceComparison = null
+                        priceComparisonError = "Lägg till minst en vara för att jämföra priser."
+                    } else {
+                        shoppingScope.launch {
+                            comparingPrices = true
+                            runCatching { ShoppingPriceService.compare(openItems.map { it.name }) }
+                                .onSuccess { priceComparison = it }
+                                .onFailure {
+                                    priceComparison = null
+                                    priceComparisonError =
+                                        it.message ?: "Kunde inte hämta prisjämförelsen."
+                                }
+                            comparingPrices = false
+                        }
+                    }
+                },
+            )
+            PremiumShoppingAction(
+                icon = "▣",
+                label = "Recept",
+                selected = selectedShoppingTool == "recipes",
+                modifier = Modifier.weight(1f),
+                onClick = { selectedShoppingTool = "recipes" },
+            )
+            PremiumShoppingAction(
+                icon = "☷",
+                label = "Planera",
+                selected = selectedShoppingTool == "plan",
+                modifier = Modifier.weight(1f),
+                onClick = { selectedShoppingTool = "plan" },
+            )
+        }
     }
     Spacer(Modifier.height(10.dp))
 
@@ -1639,89 +1764,191 @@ private fun ShoppingScreen(
         targetState = items,
         transitionSpec = {
             (fadeIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) +
-                    slideInVertically(tween(motionDuration(210, motionEnabled))) {
-                        it / 16
-                    }) togetherWith
+                    slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 16 }) togetherWith
                     (fadeOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) +
-                            slideOutVertically(
-                                tween(
-                                    motionDuration(
-                                        170,
-                                        motionEnabled
-                                    )
-                                )
-                            ) { -it / 18 })
+                            slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 18 })
         },
         label = "shopping-items",
     ) { visibleItems ->
-        val visibleOpen = visibleItems.filterNot { it.checked }
-        val visibleChecked = visibleItems.filter { it.checked }
+        val visibleOpenAll = visibleItems.filterNot { it.checked }
+        val visibleCheckedAll = visibleItems.filter { it.checked }
+        val visibleOpen =
+            if (selectedCategory == "Alla") visibleOpenAll
+            else visibleOpenAll.filter { categoryFor(it.name) == selectedCategory }
+        val visibleChecked =
+            if (selectedCategory == "Alla") visibleCheckedAll
+            else visibleCheckedAll.filter { categoryFor(it.name) == selectedCategory }
         val visibleGrouped = visibleOpen.groupBy { categoryFor(it.name) }
+
         Column(
-            Modifier.fillMaxWidth().animateContentSize(tween(motionDuration(220, motionEnabled)))
+            Modifier.fillMaxWidth().animateContentSize(tween(motionDuration(220, motionEnabled))),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (visibleOpen.isEmpty() && visibleChecked.isEmpty()) {
+            if (visibleItems.isEmpty()) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = CardBg),
-                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .86f)),
+                    shape = RoundedCornerShape(22.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(
-                        Modifier.padding(24.dp).fillMaxWidth(),
+                        Modifier.padding(26.dp).fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(
                             Icons.Default.ShoppingCart,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(38.dp),
+                            modifier = Modifier.size(42.dp),
                         )
-                        Spacer(Modifier.height(8.dp))
-                        Text("Dags att fylla listan", fontWeight = FontWeight.SemiBold)
-                        Text("Lägg till det ni behöver ovan", color = Muted, fontSize = 13.sp)
+                        Spacer(Modifier.height(9.dp))
+                        Text(
+                            "Dags att fylla listan",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                        )
+                        Text(
+                            "Lägg till första varan ovan",
+                            color = Muted,
+                            fontSize = 12.sp,
+                        )
                     }
+                }
+            } else if (visibleOpen.isEmpty() && visibleChecked.isEmpty()) {
+                Surface(
+                    color = CardBg.copy(alpha = .72f),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        "Inga varor i den här kategorin.",
+                        color = Muted,
+                        modifier = Modifier.padding(18.dp),
+                        fontSize = 12.sp,
+                    )
                 }
             }
 
             categoryOrder.forEach { category ->
                 val categoryItems = visibleGrouped[category].orEmpty()
                 if (categoryItems.isNotEmpty()) {
-                    Text(
-                        category,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(top = 10.dp, bottom = 3.dp),
-                    )
-                    categoryItems.forEach { item ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = CardBg),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                        ) {
+                    Surface(
+                        shape = RoundedCornerShape(22.dp),
+                        color = CardBg.copy(alpha = .88f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = .10f)),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(Modifier.fillMaxWidth()) {
                             Row(
-                                Modifier.fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Checkbox(checked = false, onCheckedChange = { onToggle(item) })
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.name, color = Color.White, fontSize = 16.sp)
-                                    val offersForItem =
-                                        mailOffers
-                                            .filter { mailOfferMatchesItem(it, item.name) }
-                                            .sortedBy { it.price }
-                                            .take(3)
-                                    offersForItem.forEach { offer ->
-                                        val unit = offer.unitText?.let { " / $it" }.orEmpty()
-                                        val formattedPrice =
-                                            "%.2f".format(Locale.US, offer.price).replace('.', ',')
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                                ) {
+                                    Text(categoryEmoji[category] ?: "🛒", fontSize = 20.sp)
+                                    Text(
+                                        category,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 17.sp,
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(99.dp),
+                                    color = Color.White.copy(alpha = .06f),
+                                ) {
+                                    Text(
+                                        "${categoryItems.size} kvar",
+                                        color = Muted,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                    )
+                                }
+                            }
+                            HorizontalDivider(color = Color.White.copy(alpha = .07f))
+
+                            categoryItems.forEachIndexed { index, item ->
+                                val offersForItem =
+                                    mailOffers
+                                        .filter { mailOfferMatchesItem(it, item.name) }
+                                        .sortedBy { it.price }
+                                        .take(2)
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .clickable { onToggle(item) }
+                                        .padding(horizontal = 10.dp, vertical = 9.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Checkbox(
+                                        checked = false,
+                                        onCheckedChange = { onToggle(item) },
+                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                                    ) {
                                         Text(
-                                            "${offer.store}: $formattedPrice kr$unit",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontSize = 12.sp,
+                                            item.name,
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold,
                                         )
+                                        if (offersForItem.isNotEmpty()) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                                offersForItem.forEach { offer ->
+                                                    val formattedPrice =
+                                                        "%.2f"
+                                                            .format(Locale.US, offer.price)
+                                                            .replace('.', ',')
+                                                    Surface(
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        color =
+                                                            MaterialTheme.colorScheme.primary.copy(
+                                                                alpha = .12f
+                                                            ),
+                                                        border =
+                                                            BorderStroke(
+                                                                1.dp,
+                                                                MaterialTheme.colorScheme.primary.copy(
+                                                                    alpha = .20f
+                                                                ),
+                                                            ),
+                                                    ) {
+                                                        Text(
+                                                            "${offer.store}  $formattedPrice kr",
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            fontSize = 9.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            modifier =
+                                                                Modifier.padding(
+                                                                    horizontal = 7.dp,
+                                                                    vertical = 4.dp,
+                                                                ),
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            Text(
+                                                "Inget verifierat pris ännu",
+                                                color = Muted.copy(alpha = .72f),
+                                                fontSize = 10.sp,
+                                            )
+                                        }
                                     }
+                                }
+                                if (index != categoryItems.lastIndex) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = .055f),
+                                        modifier = Modifier.padding(start = 58.dp),
+                                    )
                                 }
                             }
                         }
@@ -1730,37 +1957,62 @@ private fun ShoppingScreen(
             }
 
             if (visibleChecked.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                Surface(
+                    shape = RoundedCornerShape(22.dp),
+                    color = CardBg.copy(alpha = .62f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        "Klara (${visibleChecked.size})",
-                        color = Muted,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    TextButton(onClick = { showClearConfirmation = true }) { Text("Rensa bockade") }
-                }
-                visibleChecked.forEach { item ->
-                    Card(
-                        colors =
-                            CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .62f)),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                    ) {
+                    Column(Modifier.fillMaxWidth()) {
                         Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(checked = true, onCheckedChange = { onToggle(item) })
-                            Text(
-                                item.name,
-                                color = Muted,
-                                fontSize = 15.sp,
-                                modifier = Modifier.weight(1f),
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(
+                                    "Klara (${visibleChecked.size})",
+                                    color = Color.White.copy(alpha = .72f),
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                            TextButton(onClick = { showClearConfirmation = true }) {
+                                Text("Rensa")
+                            }
+                        }
+                        visibleChecked.forEachIndexed { index, item ->
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    color = Color.White.copy(alpha = .045f),
+                                    modifier = Modifier.padding(start = 58.dp),
+                                )
+                            }
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .clickable { onToggle(item) }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = true,
+                                    onCheckedChange = { onToggle(item) },
+                                )
+                                Text(
+                                    item.name,
+                                    color = Muted,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
                 }
