@@ -275,7 +275,7 @@ internal fun MinimalCalendarScreen(
                 onAdd = onAdd,
             )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(6.dp)
 
             CleanSummaryStrip(
                 selectedDate = selectedDate,
@@ -292,7 +292,7 @@ internal fun MinimalCalendarScreen(
                 onReminders = { summaryDetail = CleanSummaryKind.REMINDERS },
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(7.dp)
 
             CleanCalendarCard(
                 month = month,
@@ -312,7 +312,7 @@ internal fun MinimalCalendarScreen(
                 },
             )
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(7.dp)
 
             CleanWeatherCard(
                 weather = weather,
@@ -1058,7 +1058,7 @@ private fun CleanSummaryTile(
             Text(
                 value,
                 color = if (label == "KROCKAR" && value == "0") CleanPurpleBright else Color.White,
-                fontSize = 22.sp,
+                fontSize = 25.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
             )
@@ -1518,7 +1518,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("♡", color = CleanPurpleBright, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("♡", color = CleanPurpleBright, fontSize = 25.sp, fontWeight = FontWeight.Bold)
             }
             Text(
                 "TILLSAMMANS VARJE DAG",
@@ -1686,7 +1686,7 @@ private fun CleanCalendarCard(
                     }
                 }
 
-                Spacer(Modifier.height(9.dp))
+                Spacer(Modifier.height(9.dp)
 
                 val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
                 Row(Modifier.fillMaxWidth()) {
@@ -1710,7 +1710,7 @@ private fun CleanCalendarCard(
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(4.dp)
 
                 val first = month.atDay(1)
                 val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
@@ -1956,7 +1956,7 @@ private fun CleanMonthArrow(
             icon,
             contentDescription = contentDescription,
             tint = Color.White,
-            modifier = Modifier.size(21.dp),
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -1968,7 +1968,7 @@ private fun SingleGlassArrowButton(
 ) {
     val shape = RoundedCornerShape(15.dp)
     Box(
-        modifier = Modifier.size(34.dp)
+        modifier = Modifier.size(42.dp)
             .shadow(8.dp, shape, clip = false)
             .clip(shape)
             .background(
@@ -2002,7 +2002,7 @@ private fun SmallGlassIconButton(
         border = BorderStroke(1.dp, Color.White.copy(alpha = .23f)),
         shadowElevation = 4.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier.size(34.dp).clickable(onClick = onClick),
+        modifier = Modifier.size(42.dp).clickable(onClick = onClick),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
@@ -2207,7 +2207,7 @@ private fun CleanWeatherCard(
                 tint = Color.White,
                 modifier = Modifier.size(34.dp),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp)
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
