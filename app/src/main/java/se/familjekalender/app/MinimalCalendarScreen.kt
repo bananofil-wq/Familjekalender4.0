@@ -275,7 +275,7 @@ internal fun MinimalCalendarScreen(
                 onAdd = onAdd,
             )
 
-            Spacer(Modifier.height(6.dp)
+            Spacer(Modifier.height(6.dp))
 
             CleanSummaryStrip(
                 selectedDate = selectedDate,
@@ -292,7 +292,7 @@ internal fun MinimalCalendarScreen(
                 onReminders = { summaryDetail = CleanSummaryKind.REMINDERS },
             )
 
-            Spacer(Modifier.height(7.dp)
+            Spacer(Modifier.height(7.dp))
 
             CleanCalendarCard(
                 month = month,
@@ -312,7 +312,7 @@ internal fun MinimalCalendarScreen(
                 },
             )
 
-            Spacer(Modifier.height(7.dp)
+            Spacer(Modifier.height(12.dp))
 
             CleanWeatherCard(
                 weather = weather,
@@ -1686,7 +1686,7 @@ private fun CleanCalendarCard(
                     }
                 }
 
-                Spacer(Modifier.height(9.dp)
+                Spacer(Modifier.height(9.dp))
 
                 val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
                 Row(Modifier.fillMaxWidth()) {
@@ -1710,7 +1710,7 @@ private fun CleanCalendarCard(
                     }
                 }
 
-                Spacer(Modifier.height(4.dp)
+                Spacer(Modifier.height(4.dp))
 
                 val first = month.atDay(1)
                 val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
@@ -2207,7 +2207,7 @@ private fun CleanWeatherCard(
                 tint = Color.White,
                 modifier = Modifier.size(34.dp),
             )
-            Spacer(Modifier.width(12.dp)
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
