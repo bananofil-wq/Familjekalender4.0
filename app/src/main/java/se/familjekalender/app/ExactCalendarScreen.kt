@@ -494,7 +494,13 @@ internal fun ExactCalendarScreen(
                                     time,
                                     endTime,
                                     memberId,
-                                    source = if (isReminder) "reminder" else "manual",
+                                    source =
+                                        when {
+                                            isReminder && time.isBlank() -> "reminder_no_time"
+                                            isReminder -> "reminder"
+                                            time.isBlank() -> "manual_no_time"
+                                            else -> "manual"
+                                        },
                                 )
                                 when {
                                     event.seriesId == null -> Unit
@@ -880,7 +886,8 @@ internal fun EditEventDialog(
         mutableStateOf(event.title.removePrefix("🌈").removePrefix("🔔").trim())
     }
     var date by remember(event.id) { mutableStateOf(event.date) }
-    var time by remember(event.id) { mutableStateOf(event.time.ifBlank { "18:00" }) }
+    var hasTime by remember(event.id) { mutableStateOf(event.time.isNotBlank()) }
+    var time by remember(event.id) { mutableStateOf(event.time) }
     var endTime by remember(event.id) { mutableStateOf(event.endTime ?: "") }
     var memberId by remember(event.id) { mutableStateOf(event.memberId ?: ALL_FAMILY_MEMBER_ID) }
     var editScope by remember(event.id) { mutableStateOf(SeriesEditScope.THIS) }
@@ -1062,6 +1069,57 @@ internal fun EditEventDialog(
                         }
                     }
 
+                    if (!birthday) {
+                        Surface(
+                            color = if (!hasTime) accent.copy(alpha = .12f) else innerColor,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (!hasTime) accent.copy(alpha = .48f) else outline,
+                            ),
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                hasTime = !hasTime
+                                if (!hasTime) {
+                                    time = ""
+                                    endTime = ""
+                                } else if (time.isBlank()) {
+                                    time = "18:00"
+                                }
+                            },
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = !hasTime,
+                                    onCheckedChange = { checked ->
+                                        hasTime = !checked
+                                        if (checked) {
+                                            time = ""
+                                            endTime = ""
+                                        } else if (time.isBlank()) {
+                                            time = "18:00"
+                                        }
+                                    },
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        "Ingen tid",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        "Visas på dagen utan klockslag",
+                                        color = muted,
+                                        fontSize = 10.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Text("Datum och tid", color = muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Surface(
                         color = innerColor,
@@ -1090,38 +1148,48 @@ internal fun EditEventDialog(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Surface(
-                            color = innerColor,
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, outline),
-                            modifier = Modifier.weight(1f).clickable(onClick = ::chooseTime),
-                        ) {
-                            Column(Modifier.padding(13.dp)) {
-                                Text("Starttid", color = muted, fontSize = 11.sp)
-                                Text(time, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Surface(
-                            color = if (isReminder) Color.White.copy(alpha = .025f) else innerColor,
+                            color = if (hasTime) innerColor else Color.White.copy(alpha = .025f),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, outline),
                             modifier =
                                 Modifier.weight(1f).then(
-                                    if (isReminder) Modifier
+                                    if (hasTime) Modifier.clickable(onClick = ::chooseTime) else Modifier
+                                ),
+                        ) {
+                            Column(Modifier.padding(13.dp)) {
+                                Text("Starttid", color = muted, fontSize = 11.sp)
+                                Text(
+                                    if (hasTime) time.ifBlank { "18:00" } else "Ingen tid",
+                                    color = if (hasTime) Color.White else muted,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                        Surface(
+                            color = if (isReminder || !hasTime) Color.White.copy(alpha = .025f) else innerColor,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, outline),
+                            modifier =
+                                Modifier.weight(1f).then(
+                                    if (isReminder || !hasTime) Modifier
                                     else Modifier.clickable(onClick = ::chooseEndTime)
                                 ),
                         ) {
                             Column(Modifier.padding(13.dp)) {
                                 Text("Sluttid", color = muted, fontSize = 11.sp)
                                 Text(
-                                    if (isReminder) "Ej relevant" else endTime.ifBlank { "Ingen" },
-                                    color = if (isReminder) muted else Color.White,
+                                    if (isReminder) "Ej relevant"
+                                    else if (!hasTime) "Ingen tid"
+                                    else endTime.ifBlank { "Ingen" },
+                                    color = if (isReminder || !hasTime) muted else Color.White,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
                     }
-                    if (!isReminder && endTime.isNotBlank()) {
+                    if (hasTime && !isReminder && endTime.isNotBlank()) {
                         TextButton(
                             onClick = { endTime = "" },
                             modifier = Modifier.align(Alignment.End),
@@ -1248,8 +1316,8 @@ internal fun EditEventDialog(
                                 else -> title.removePrefix("🔔").trim()
                             },
                             date,
-                            time,
-                            if (isReminder) null else endTime.ifBlank { null },
+                            if (hasTime) time else "",
+                            if (!hasTime || isReminder) null else endTime.ifBlank { null },
                             memberId,
                             isReminder,
                             editScope,
@@ -1257,7 +1325,7 @@ internal fun EditEventDialog(
                     },
                     shape = RoundedCornerShape(16.dp),
                 ) {
-                    Text("Spara ändringar")
+                    Text("Färdig")
                 }
             }
         },
