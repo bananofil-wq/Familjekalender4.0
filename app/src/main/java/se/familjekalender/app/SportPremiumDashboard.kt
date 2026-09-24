@@ -46,13 +46,13 @@ import java.time.temporal.WeekFields
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val SportBg = Color(0xF205090C)
-private val SportPanel = Color(0xE80A1216)
-private val SportPanelRaised = Color(0xFF101A20)
+private val SportBg = Color(0xFF0D0F10)
+private val SportPanel = Color(0xFF15181B)
+private val SportPanelRaised = Color(0xFF1B1F22)
 private val SportBorder = Color.White.copy(alpha = .11f)
 private val SportMuted = Color.White.copy(alpha = .60f)
-private val SportAccent = Color(0xFF50F5AC)
-private val SportAccentSoft = Color(0x2450F5AC)
+private val SportAccent = Color(0xFFB8FF3D)
+private val SportAccentSoft = Color(0x24B8FF3D)
 private val SportBlue = Color(0xFF6383FF)
 private val SportOrange = Color(0xFFFF9B51)
 private val SportPurple = Color(0xFF9B6CFF)
@@ -315,7 +315,7 @@ private fun SportRunning(
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = SportAccent,
-                    contentColor = Color(0xFF03120B),
+                    contentColor = Color(0xFF101213),
                 ),
             shape = RoundedCornerShape(18.dp),
             modifier = Modifier.fillMaxWidth().height(58.dp),
@@ -323,7 +323,7 @@ private fun SportRunning(
             Icon(Icons.Default.DirectionsRun, null)
             Spacer(Modifier.width(9.dp))
             Text(
-                if (showRecorder) "DÖLJ GPS-LÖPNING" else "GPS & STARTA LÖPNING",
+                if (showRecorder) "DÖLJ GPS" else "STARTA LÖPNING",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = .4.sp,
@@ -737,9 +737,9 @@ private fun RunningHero(latest: SportRunSummary?) {
             Modifier.background(
                     Brush.linearGradient(
                         listOf(
-                            Color(0xFF111E1A),
-                            Color(0xFF07100E),
-                            Color(0xFF071015),
+                            Color(0xFF252A20),
+                            Color(0xFF171A16),
+                            Color(0xFF101213),
                         )
                     )
                 )
