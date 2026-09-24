@@ -48,12 +48,22 @@ internal fun PremiumModeBackground(
         ThemeMode.CLASSIC, ThemeMode.AUTO -> R.drawable.season_autumn
     }
     Box(modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(backgroundRes),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
+        val customBackground = rememberCustomBackgroundBitmap()
+        if (customBackground != null) {
+            Image(
+                bitmap = customBackground,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Image(
+                painter = painterResource(backgroundRes),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
         Box(
             Modifier.fillMaxSize()
                 .background(
