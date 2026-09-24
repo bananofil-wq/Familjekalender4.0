@@ -111,17 +111,23 @@ class FamilyCalendarWidget : AppWidgetProvider() {
         }
 
         private fun bindActions(context: Context, views: RemoteViews, appWidgetId: Int) {
-            val openIntent = Intent(context, MainActivity::class.java)
-            val openPending =
-                PendingIntent.getActivity(
+            fun openTabPendingIntent(tab: Int, requestOffset: Int): PendingIntent {
+                val intent =
+                    Intent(context, MainActivity::class.java).apply {
+                        putExtra(MainActivity.EXTRA_OPEN_TAB, tab)
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                return PendingIntent.getActivity(
                     context,
-                    appWidgetId,
-                    openIntent,
+                    appWidgetId + requestOffset,
+                    intent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
-            views.setOnClickPendingIntent(R.id.widget_root, openPending)
-            views.setOnClickPendingIntent(R.id.widget_todo, openPending)
-            views.setOnClickPendingIntent(R.id.widget_shopping, openPending)
+            }
+
+            views.setOnClickPendingIntent(R.id.widget_root, openTabPendingIntent(0, 0))
+            views.setOnClickPendingIntent(R.id.widget_todo, openTabPendingIntent(2, 20_000))
+            views.setOnClickPendingIntent(R.id.widget_shopping, openTabPendingIntent(1, 30_000))
 
             val refreshIntent =
                 Intent(context, FamilyCalendarWidget::class.java).apply {
