@@ -241,6 +241,13 @@ internal fun RunningLifeDashboard(
 
                         Spacer(Modifier.height(12.dp))
 
+                        RunningQuickActions(
+                            onLocation = onOpenLocation,
+                            onPlan = onAdd,
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
                         Text(
                             "GPS-runda & progression",
                             color = Color.White,
@@ -268,6 +275,40 @@ internal fun RunningLifeDashboard(
         }
 
         Spacer(Modifier.height(18.dp))
+    }
+}
+
+@Composable
+private fun RunningQuickActions(
+    onLocation: () -> Unit,
+    onPlan: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Surface(
+            color = LifeSurfaceRaised,
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = onLocation),
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Text("GPS", color = LifePurple, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Familjens plats", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Öppna kartan", color = LifeMuted, fontSize = 10.sp)
+            }
+        }
+        Surface(
+            color = LifeSurfaceRaised,
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = onPlan),
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Text("PLANERA", color = LifePurple, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Nytt pass", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Lägg i kalendern", color = LifeMuted, fontSize = 10.sp)
+            }
+        }
     }
 }
 
