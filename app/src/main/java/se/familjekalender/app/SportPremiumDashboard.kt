@@ -1263,7 +1263,6 @@ internal fun SportBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                 Triple(0, Icons.Default.DirectionsRun, "Sport"),
                 Triple(1, Icons.Default.ShoppingCart, "Inköp"),
                 Triple(2, Icons.Default.CheckCircle, "To-Do"),
-                Triple(3, Icons.Default.People, "Familj"),
                 Triple(4, Icons.Default.Settings, "Inställningar"),
                 Triple(5, Icons.Default.LocationOn, "Plats"),
             )
