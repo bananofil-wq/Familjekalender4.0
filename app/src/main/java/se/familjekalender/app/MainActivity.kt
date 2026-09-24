@@ -616,7 +616,7 @@ private fun SyncedApp(
                             }
 
                         UiLayoutMode.RUNNING ->
-                            PremiumModeBackground(themeMode = themeMode) {
+                            Box(Modifier.fillMaxSize().background(Color(0xFF0D0F10))) {
                                 SportPremiumDashboard(
                                     session = session,
                                     selectedDate = selectedDate,
