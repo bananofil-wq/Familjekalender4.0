@@ -1076,17 +1076,13 @@ private fun CleanSummaryDialog(
                                             onSelectDate(date)
                                             onDismiss()
                                         }
-                                        .padding(top = 5.dp, bottom = 2.dp),
+                                        .padding(top = 6.dp, bottom = 3.dp),
                                 )
-                                dayEvents.forEach { event ->
-                                    CleanSummaryEventRow(
-                                        event = event,
-                                        member = event.memberId?.let(memberById::get),
-                                        locale = locale,
-                                        showDate = false,
-                                        onClick = { onOpenEvent(event) },
-                                    )
-                                }
+                                CleanGroupedActivityList(
+                                    events = dayEvents,
+                                    memberById = memberById,
+                                    onOpenEvent = onOpenEvent,
+                                )
                             }
                         }
                     }
