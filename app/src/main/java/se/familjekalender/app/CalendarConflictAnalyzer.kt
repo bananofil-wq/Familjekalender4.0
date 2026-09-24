@@ -33,6 +33,7 @@ private fun isNonActivityConflictExempt(event: SyncEvent): Boolean {
     val isReminder =
         source == "reminder" ||
             source.startsWith("reminder:") ||
+            source.contains("reminder") ||
             title.startsWith("🔔")
 
     return title.startsWith("🌈") || isReminder
