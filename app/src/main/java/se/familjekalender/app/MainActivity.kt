@@ -58,6 +58,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -2289,22 +2292,23 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Triple(5, Icons.Default.LocationOn, "Plats"),
         )
 
-    Box(
-        Modifier.fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-    ) {
-        Surface(
-            color = Color(0xEE1B1727),
-            shape = RoundedCornerShape(30.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
-            shadowElevation = 12.dp,
-            tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth(),
+    Column(Modifier.fillMaxWidth()) {
+        Box(
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp)
         ) {
-            Row(
-                Modifier.fillMaxWidth()
-                    .height(64.dp)
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+            Surface(
+                color = Color(0xEE1B1727),
+                shape = RoundedCornerShape(30.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+                shadowElevation = 12.dp,
+                tonalElevation = 0.dp,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .height(64.dp)
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 items.forEach { (tab, icon, label) ->
@@ -2364,6 +2368,7 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                 }
             }
         }
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 @Composable
