@@ -20,12 +20,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +43,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -252,9 +257,9 @@ internal fun MinimalCalendarScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0x44120B16),
-                            Color(0x66120C19),
-                            Color(0x99110D18),
+                            Color(0x33120B16),
+                            Color(0x4D120C19),
+                            Color(0x77110D18),
                         )
                     )
                 )
@@ -937,7 +942,7 @@ private fun CleanSummaryStrip(
 ) {
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         CleanSummaryTile(
             label =
@@ -950,6 +955,8 @@ private fun CleanSummaryStrip(
             helper =
                 selectedDate.format(DateTimeFormatter.ofPattern("d/M")) +
                     if (dayCount == 1) " · aktivitet" else " · aktiviteter",
+            icon = Icons.Default.CalendarMonth,
+            accent = CleanPurpleBright,
             onClick = onToday,
             modifier = Modifier.weight(1f),
         )
@@ -957,6 +964,8 @@ private fun CleanSummaryStrip(
             label = "VECKAN",
             value = weekCount.toString(),
             helper = if (weekCount == 1) "aktivitet" else "aktiviteter",
+            icon = Icons.Default.BarChart,
+            accent = Color(0xFF78AFFF),
             onClick = onWeek,
             modifier = Modifier.weight(1f),
         )
@@ -964,7 +973,8 @@ private fun CleanSummaryStrip(
             label = "KROCKAR",
             value = conflictCount.toString(),
             helper = if (conflictCount == 0) "lugnt" else "att se över",
-            accent = if (conflictCount > 0) Color(0xFFFFA56A) else CleanPurpleBright,
+            icon = Icons.Default.WarningAmber,
+            accent = if (conflictCount > 0) Color(0xFFFFB35C) else CleanPurpleBright,
             onClick = onConflicts,
             modifier = Modifier.weight(1f),
         )
@@ -972,50 +982,89 @@ private fun CleanSummaryStrip(
             label = "PÅMINN.",
             value = reminderCount.toString(),
             helper = if (reminderCount == 1) "påminnelse" else "påminnelser",
-            accent = Color(0xFF8FB8FF),
+            icon = Icons.Default.Notifications,
+            accent = Color(0xFF8FC9FF),
             onClick = onReminders,
             modifier = Modifier.weight(1f),
         )
     }
 }
-
 @Composable
 private fun CleanSummaryTile(
     label: String,
     value: String,
     helper: String,
-    accent: Color = Color.White,
+    icon: ImageVector,
+    accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        color = CleanGlassSoft,
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, CleanBorder),
-        modifier = modifier.height(112.dp).clickable(onClick = onClick),
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        modifier
+            .height(122.dp)
+            .shadow(8.dp, shape, clip = false)
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = .20f),
+                        Color(0xD9292731),
+                        Color(0xE61A1821),
+                    )
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = .26f), shape)
+            .clickable(onClick = onClick)
     ) {
+        Box(
+            Modifier.fillMaxWidth()
+                .height(1.dp)
+                .background(Color.White.copy(alpha = .36f))
+                .align(Alignment.TopCenter)
+        )
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 11.dp),
+            Modifier.fillMaxSize().padding(horizontal = 11.dp, vertical = 11.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
-                label,
-                color = Color.White.copy(alpha = .62f),
-                fontSize = 8.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = .7.sp,
-                maxLines = 1,
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    label,
+                    color = Color.White.copy(alpha = .80f),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = .7.sp,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    Modifier.size(27.dp)
+                        .clip(CircleShape)
+                        .background(accent.copy(alpha = .18f))
+                        .border(1.dp, accent.copy(alpha = .40f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+            }
             Text(
                 value,
-                color = accent,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
+                color = if (label == "KROCKAR" && value == "0") CleanPurpleBright else Color.White,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
             )
             Text(
                 helper,
-                color = Color.White.copy(alpha = .56f),
+                color = Color.White.copy(alpha = .66f),
                 fontSize = 8.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1023,7 +1072,6 @@ private fun CleanSummaryTile(
         }
     }
 }
-
 @Composable
 private fun CleanSummaryDialog(
     kind: CleanSummaryKind,
@@ -1466,28 +1514,37 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     "Familjekalender",
                     color = Color.White,
                     fontFamily = FontFamily.Cursive,
-                    fontSize = 31.sp,
+                    fontSize = 33.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("♡", color = CleanPurpleBright, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                Text("♡", color = CleanPurpleBright, fontSize = 29.sp, fontWeight = FontWeight.Bold)
             }
             Text(
                 "TILLSAMMANS VARJE DAG",
-                color = Color.White.copy(alpha = .67f),
+                color = Color.White.copy(alpha = .80f),
                 fontSize = 9.sp,
-                letterSpacing = 1.8.sp,
-                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold,
             )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(43.dp)
+                Modifier.size(47.dp)
+                    .shadow(7.dp, CircleShape, clip = false)
                     .clip(CircleShape)
-                    .background(Color(0x661C1726))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = .24f),
+                                Color(0xB91D1B23),
+                            )
+                        )
+                    )
+                    .border(1.dp, Color.White.copy(alpha = .28f), CircleShape)
                     .clickable(onClick = onSearch),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1495,13 +1552,19 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     Icons.Default.Search,
                     contentDescription = "Sök",
                     tint = Color.White,
-                    modifier = Modifier.size(21.dp),
+                    modifier = Modifier.size(23.dp),
                 )
             }
             Box(
-                Modifier.size(50.dp)
+                Modifier.size(58.dp)
+                    .shadow(11.dp, CircleShape, clip = false)
                     .clip(CircleShape)
-                    .background(Brush.linearGradient(listOf(CleanPurpleBright, CleanPurple)))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFFC777FF), Color(0xFF8A43FF), Color(0xFF6A24DB))
+                        )
+                    )
+                    .border(1.2.dp, Color(0xFFE2C2FF), CircleShape)
                     .clickable(onClick = onAdd),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1509,13 +1572,12 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     Icons.Default.Add,
                     contentDescription = "Lägg till aktivitet",
                     tint = Color.White,
-                    modifier = Modifier.size(27.dp),
+                    modifier = Modifier.size(32.dp),
                 )
             }
         }
     }
 }
-
 @Composable
 private fun CleanCalendarCard(
     month: YearMonth,
@@ -1527,15 +1589,26 @@ private fun CleanCalendarCard(
     onSelect: (LocalDate) -> Unit,
     onMonthChange: (Long) -> Unit,
 ) {
-    val calendarShape = RoundedCornerShape(30.dp)
+    val calendarShape = RoundedCornerShape(32.dp)
     val scope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
+
     BoxWithConstraints(
         modifier =
             Modifier.fillMaxWidth()
+                .shadow(13.dp, calendarShape, clip = false)
                 .clip(calendarShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = .16f),
+                            Color(0xCB23212A),
+                            Color(0xE319171F),
+                        )
+                    )
+                )
+                .border(1.2.dp, Color.White.copy(alpha = .28f), calendarShape)
                 .clipToBounds()
-                .border(1.2.dp, Color.White.copy(alpha = .17f), calendarShape)
                 .pointerInput(month) {
                     detectHorizontalDragGestures(
                         onHorizontalDrag = { change, amount ->
@@ -1578,222 +1651,275 @@ private fun CleanCalendarCard(
         Box(
             Modifier.fillMaxWidth().graphicsLayer {
                 translationX = dragOffset.value
-                alpha = 1f - (kotlin.math.abs(dragOffset.value) / constraints.maxWidth.coerceAtLeast(1)) * 0.12f
+                alpha =
+                    1f -
+                        (kotlin.math.abs(dragOffset.value) /
+                            constraints.maxWidth.coerceAtLeast(1)) * .12f
             }
         ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar {
-                        it.uppercase(locale)
-                    } + " ${month.year}",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
-            Row(Modifier.fillMaxWidth()) {
-                Text(
-                    "V",
-                    color = Color.White.copy(alpha = .38f),
-                    fontSize = 8.sp,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(22.dp),
-                )
-                weekdays.forEach { day ->
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 16.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        day,
-                        color = Color.White.copy(alpha = .52f),
+                        month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar {
+                            it.uppercase(locale)
+                        } + " ${month.year}",
+                        color = Color.White,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CleanMonthArrow(
+                            icon = Icons.Default.ChevronLeft,
+                            contentDescription = "Föregående månad",
+                            onClick = { onMonthChange(-1) },
+                        )
+                        CleanMonthArrow(
+                            icon = Icons.Default.ChevronRight,
+                            contentDescription = "Nästa månad",
+                            onClick = { onMonthChange(1) },
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(15.dp))
+
+                val weekdays = listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN")
+                Row(Modifier.fillMaxWidth()) {
+                    Text(
+                        "V",
+                        color = Color.White.copy(alpha = .48f),
                         fontSize = 9.sp,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.width(24.dp),
                     )
+                    weekdays.forEach { day ->
+                        Text(
+                            day,
+                            color = Color.White.copy(alpha = .76f),
+                            fontSize = 9.sp,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(7.dp))
 
-            val first = month.atDay(1)
-            val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
-            val weekFields = java.time.temporal.WeekFields.ISO
-            repeat(6) { row ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    val weekDate = gridStart.plusDays((row * 7).toLong())
-                    Text(
-                        weekDate.get(weekFields.weekOfWeekBasedYear()).toString(),
-                        color = Color.White.copy(alpha = .38f),
-                        fontSize = 8.sp,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.width(22.dp),
-                    )
-                    repeat(7) { column ->
-                        val date = gridStart.plusDays((row * 7 + column).toLong())
-                        val inMonth = YearMonth.from(date) == month
-                        val isSelected = date == selectedDate
-                        val isToday = date == today
-                        val dayEvents = eventsByDate[date].orEmpty()
-                        val dayShape = RoundedCornerShape(12.dp)
+                val first = month.atDay(1)
+                val gridStart = first.minusDays((first.dayOfWeek.value - 1).toLong())
+                val weekFields = java.time.temporal.WeekFields.ISO
+                repeat(6) { row ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val weekDate = gridStart.plusDays((row * 7).toLong())
+                        Text(
+                            weekDate.get(weekFields.weekOfWeekBasedYear()).toString(),
+                            color = Color.White.copy(alpha = .46f),
+                            fontSize = 9.sp,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.width(24.dp),
+                        )
 
-                        val glassBrush =
-                            when {
-                                isToday ->
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color(0xFFC06BFF),
-                                            Color(0xFF8E3CFF),
-                                            Color(0xFF6D22E8),
-                                        )
-                                    )
-                                isSelected ->
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.White.copy(alpha = .43f),
-                                            Color.White.copy(alpha = .24f),
-                                            Color.White.copy(alpha = .12f),
-                                        )
-                                    )
-                                inMonth ->
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.White.copy(alpha = .085f),
-                                            Color.White.copy(alpha = .035f),
-                                            Color.White.copy(alpha = .012f),
-                                        )
-                                    )
-                                else ->
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.White.copy(alpha = .025f),
-                                            Color.White.copy(alpha = .008f),
-                                            Color.Transparent,
-                                        )
-                                    )
-                            }
+                        repeat(7) { column ->
+                            val date = gridStart.plusDays((row * 7 + column).toLong())
+                            val inMonth = YearMonth.from(date) == month
+                            val isSelected = date == selectedDate
+                            val isToday = date == today
+                            val dayEvents = eventsByDate[date].orEmpty()
+                            val dayShape = RoundedCornerShape(16.dp)
 
-                        val glassBorder =
-                            when {
-                                isToday -> Color(0xFFD9B2FF)
-                                isSelected -> Color.White.copy(alpha = .82f)
-                                inMonth -> Color.White.copy(alpha = .14f)
-                                else -> Color.White.copy(alpha = .075f)
-                            }
-
-                        Box(
-                            modifier =
-                                Modifier.weight(1f)
-                                    .height(56.dp)
-                                    .padding(horizontal = 3.dp, vertical = 3.dp)
-                                    .shadow(
-                                        elevation = 0.dp,
-                                        shape = dayShape,
-                                        clip = false,
-                                    )
-                                    .clip(dayShape)
-                                    .background(glassBrush, dayShape)
-                                    .border(
-                                        width =
-                                            when {
-                                                isToday -> 1.5.dp
-                                                isSelected -> 1.25.dp
-                                                else -> .8.dp
-                                            },
-                                        color = glassBorder,
-                                        shape = dayShape,
-                                    )
-                                    .clickable { onSelect(date) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val hasBirthday = dayEvents.any { it.title.trimStart().startsWith("🌈") }
-                            if (hasBirthday) {
-                                Canvas(
-                                    modifier =
-                                        Modifier.align(Alignment.TopCenter)
-                                            .padding(top = 2.dp)
-                                            .width(24.dp)
-                                            .height(12.dp)
-                                ) {
-                                    val stroke = 2.dp.toPx()
-                                    val inset = stroke / 2f
-                                    val arcBox = androidx.compose.ui.geometry.Rect(
-                                        inset,
-                                        inset,
-                                        size.width - inset,
-                                        size.height * 1.85f,
-                                    )
-                                    val rainbowColors = listOf(
-                                        Color(0xFFFF5A67),
-                                        Color(0xFFFFA63D),
-                                        Color(0xFFFFE45C),
-                                        Color(0xFF55D98B),
-                                        Color(0xFF55B8FF),
-                                        Color(0xFFA66CFF),
-                                    )
-                                    rainbowColors.forEachIndexed { index, color ->
-                                        val offset = index * stroke * .72f
-                                        drawArc(
-                                            color = color,
-                                            startAngle = 180f,
-                                            sweepAngle = 180f,
-                                            useCenter = false,
-                                            topLeft = Offset(arcBox.left + offset, arcBox.top + offset),
-                                            size = androidx.compose.ui.geometry.Size(
-                                                arcBox.width - offset * 2f,
-                                                arcBox.height - offset * 2f,
-                                            ),
-                                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke, cap = StrokeCap.Round),
+                            val glassBrush =
+                                when {
+                                    isSelected ->
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color(0xFFD07BFF),
+                                                Color(0xFF9E43FF),
+                                                Color(0xFF7224E7),
+                                            )
                                         )
-                                    }
+
+                                    isToday ->
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = .34f),
+                                                Color.White.copy(alpha = .16f),
+                                                Color.White.copy(alpha = .08f),
+                                            )
+                                        )
+
+                                    inMonth ->
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = .18f),
+                                                Color.White.copy(alpha = .075f),
+                                                Color(0x16000000),
+                                            )
+                                        )
+
+                                    else ->
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = .07f),
+                                                Color.White.copy(alpha = .025f),
+                                                Color.Transparent,
+                                            )
+                                        )
                                 }
-                            }
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
+
+                            val glassBorder =
+                                when {
+                                    isSelected -> Color(0xFFF0D5FF)
+                                    isToday -> Color(0xFFB993FF).copy(alpha = .75f)
+                                    inMonth -> Color.White.copy(alpha = .25f)
+                                    else -> Color.White.copy(alpha = .10f)
+                                }
+
+                            Box(
+                                modifier =
+                                    Modifier.weight(1f)
+                                        .height(60.dp)
+                                        .padding(horizontal = 3.dp, vertical = 3.dp)
+                                        .shadow(
+                                            elevation =
+                                                when {
+                                                    isSelected -> 9.dp
+                                                    isToday -> 5.dp
+                                                    inMonth -> 2.dp
+                                                    else -> 0.dp
+                                                },
+                                            shape = dayShape,
+                                            clip = false,
+                                        )
+                                        .clip(dayShape)
+                                        .background(glassBrush, dayShape)
+                                        .border(
+                                            width =
+                                                when {
+                                                    isSelected -> 1.7.dp
+                                                    isToday -> 1.3.dp
+                                                    else -> .9.dp
+                                                },
+                                            color = glassBorder,
+                                            shape = dayShape,
+                                        )
+                                        .clickable { onSelect(date) },
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Text(
-                                    date.dayOfMonth.toString(),
-                                    color =
-                                        if (inMonth) Color.White
-                                        else Color.White.copy(alpha = .32f),
-                                    fontSize = 14.sp,
-                                    fontWeight =
-                                        when {
-                                            isToday -> FontWeight.ExtraBold
-                                            isSelected -> FontWeight.Bold
-                                            inMonth -> FontWeight.SemiBold
-                                            else -> FontWeight.Normal
-                                        },
+                                Box(
+                                    Modifier.fillMaxWidth(.82f)
+                                        .height(1.dp)
+                                        .background(
+                                            Color.White.copy(
+                                                alpha = if (isSelected) .54f else .22f
+                                            )
+                                        )
+                                        .align(Alignment.TopCenter)
                                 )
-                                Spacer(Modifier.height(3.dp))
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                    modifier = Modifier.height(5.dp),
-                                ) {
-                                    dayEvents
-                                        .filterNot { it.title.trimStart().startsWith("🌈") }
-                                        .take(3)
-                                        .forEach { event ->
-                                            val dotColor =
-                                                memberById[event.memberId]?.let {
-                                                    Color(it.colorArgb.toInt())
-                                                } ?: CleanPurpleBright
-                                            Box(
-                                                Modifier.size(4.dp)
-                                                    .clip(CircleShape)
-                                                    .background(dotColor)
+
+                                val hasBirthday =
+                                    dayEvents.any { it.title.trimStart().startsWith("🌈") }
+                                if (hasBirthday) {
+                                    Canvas(
+                                        modifier =
+                                            Modifier.align(Alignment.TopCenter)
+                                                .padding(top = 3.dp)
+                                                .width(25.dp)
+                                                .height(12.dp)
+                                    ) {
+                                        val stroke = 2.dp.toPx()
+                                        val inset = stroke / 2f
+                                        val arcBox =
+                                            androidx.compose.ui.geometry.Rect(
+                                                inset,
+                                                inset,
+                                                size.width - inset,
+                                                size.height * 1.85f,
+                                            )
+                                        val rainbowColors =
+                                            listOf(
+                                                Color(0xFFFF5A67),
+                                                Color(0xFFFFA63D),
+                                                Color(0xFFFFE45C),
+                                                Color(0xFF55D98B),
+                                                Color(0xFF55B8FF),
+                                                Color(0xFFA66CFF),
+                                            )
+                                        rainbowColors.forEachIndexed { index, color ->
+                                            val offset = index * stroke * .72f
+                                            drawArc(
+                                                color = color,
+                                                startAngle = 180f,
+                                                sweepAngle = 180f,
+                                                useCenter = false,
+                                                topLeft =
+                                                    Offset(
+                                                        arcBox.left + offset,
+                                                        arcBox.top + offset,
+                                                    ),
+                                                size =
+                                                    androidx.compose.ui.geometry.Size(
+                                                        arcBox.width - offset * 2f,
+                                                        arcBox.height - offset * 2f,
+                                                    ),
+                                                style =
+                                                    androidx.compose.ui.graphics.drawscope.Stroke(
+                                                        width = stroke,
+                                                        cap = StrokeCap.Round,
+                                                    ),
                                             )
                                         }
+                                    }
+                                }
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Text(
+                                        date.dayOfMonth.toString(),
+                                        color =
+                                            if (inMonth) Color.White
+                                            else Color.White.copy(alpha = .38f),
+                                        fontSize = if (isSelected) 17.sp else 15.sp,
+                                        fontWeight =
+                                            when {
+                                                isSelected -> FontWeight.ExtraBold
+                                                isToday -> FontWeight.Bold
+                                                inMonth -> FontWeight.SemiBold
+                                                else -> FontWeight.Normal
+                                            },
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier.height(6.dp),
+                                    ) {
+                                        dayEvents
+                                            .filterNot { it.title.trimStart().startsWith("🌈") }
+                                            .take(4)
+                                            .forEach { event ->
+                                                val dotColor =
+                                                    memberById[event.memberId]?.let {
+                                                        Color(it.colorArgb.toInt())
+                                                    } ?: CleanPurpleBright
+                                                Box(
+                                                    Modifier.size(5.dp)
+                                                        .clip(CircleShape)
+                                                        .background(dotColor)
+                                                )
+                                            }
+                                    }
                                 }
                             }
                         }
@@ -1802,9 +1928,38 @@ private fun CleanCalendarCard(
             }
         }
     }
-    }
 }
 
+@Composable
+private fun CleanMonthArrow(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier.size(40.dp)
+            .shadow(5.dp, CircleShape, clip = false)
+            .clip(CircleShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = .25f),
+                        Color.White.copy(alpha = .07f),
+                    )
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = .27f), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
 @Composable
 private fun SingleGlassArrowButton(
     glyph: String,
@@ -2024,47 +2179,86 @@ private fun CleanWeatherCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        color = CleanGlassSoft,
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, CleanBorder),
-        modifier = modifier.heightIn(min = 100.dp).clickable(onClick = onClick),
+    val shape = RoundedCornerShape(30.dp)
+    Box(
+        modifier
+            .heightIn(min = 112.dp)
+            .shadow(10.dp, shape, clip = false)
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = .20f),
+                        Color(0xDB25232D),
+                        Color(0xEC19171F),
+                    )
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = .26f), shape)
+            .clickable(onClick = onClick)
     ) {
-        Column(
-            Modifier.padding(13.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 Icons.Default.Cloud,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = .80f),
-                modifier = Modifier.size(25.dp),
+                tint = Color.White,
+                modifier = Modifier.size(42.dp),
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                when {
-                    weather != null -> "${weather.temperatureC}°"
-                    loading -> "…"
-                    else -> "—°"
-                },
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text("Väder", color = Color.White.copy(alpha = .70f), fontSize = 10.sp)
-            Text(
-                when {
-                    weather != null -> weather.description
-                    loading -> "Hämtar…"
-                    hasLocationPermission -> "Tryck för väder"
-                    else -> "Aktivera plats"
-                },
-                color = Color.White.copy(alpha = .48f),
-                fontSize = 9.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Spacer(Modifier.width(15.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    when {
+                        weather != null -> "${weather.temperatureC}°"
+                        loading -> "…"
+                        else -> "—°"
+                    },
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+                Text(
+                    "Väder",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    when {
+                        weather != null -> weather.description
+                        loading -> "Hämtar…"
+                        hasLocationPermission -> "Tryck för aktuell prognos"
+                        else -> "Aktivera plats"
+                    },
+                    color = Color.White.copy(alpha = .58f),
+                    fontSize = 9.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                Modifier.size(45.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = .24f),
+                                Color.White.copy(alpha = .07f),
+                            )
+                        )
+                    )
+                    .border(1.dp, Color.White.copy(alpha = .25f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }
