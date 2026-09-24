@@ -91,6 +91,19 @@ private fun cleanEventTitle(event: SyncEvent): String =
 private fun cleanEventTime(event: SyncEvent): String =
     event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
 
+private enum class CleanSummaryKind {
+    TODAY,
+    WEEK,
+    CONFLICTS,
+    REMINDERS,
+}
+
+private fun isCleanReminderEvent(event: SyncEvent): Boolean {
+    val source = event.source.trim().lowercase()
+    val title = event.title.trimStart()
+    return source == "reminder" || source.startsWith("reminder:") || title.startsWith("🔔")
+}
+
 @Composable
 internal fun MinimalCalendarScreen(
     session: FamilySession,
@@ -113,6 +126,7 @@ internal fun MinimalCalendarScreen(
     var openedEvent by remember { mutableStateOf<SyncEvent?>(null) }
     var showAllDayActivities by remember { mutableStateOf(false) }
     var showAssistantDetails by remember { mutableStateOf(false) }
+    var summaryDetail by remember { mutableStateOf<CleanSummaryKind?>(null) }
     var showWeatherDetails by remember { mutableStateOf(false) }
     var weather by remember { mutableStateOf<CleanWeatherSnapshot?>(null) }
     var weatherLoading by remember { mutableStateOf(false) }
@@ -155,6 +169,40 @@ internal fun MinimalCalendarScreen(
     val conflictDates =
         remember(events, members) {
             analyzeCalendarConflicts(events, members).map { it.date }.toSet()
+        }
+
+    val weekStart = remember(today) { today.minusDays((today.dayOfWeek.value - 1).toLong()) }
+    val weekEnd = remember(weekStart) { weekStart.plusDays(6) }
+    val todayActivities =
+        remember(events, today) {
+            events
+                .filter { it.date == today && !isCleanReminderEvent(it) }
+                .sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
+        }
+    val weekActivities =
+        remember(events, weekStart, weekEnd) {
+            events
+                .filter {
+                    !it.date.isBefore(weekStart) &&
+                        !it.date.isAfter(weekEnd) &&
+                        !isCleanReminderEvent(it)
+                }
+                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time }.thenBy { it.title })
+        }
+    val weekConflicts =
+        remember(events, members, weekStart, weekEnd) {
+            analyzeCalendarConflicts(events, members)
+                .filter { !it.date.isBefore(weekStart) && !it.date.isAfter(weekEnd) }
+        }
+    val weekReminders =
+        remember(events, weekStart, weekEnd) {
+            events
+                .filter {
+                    !it.date.isBefore(weekStart) &&
+                        !it.date.isAfter(weekEnd) &&
+                        isCleanReminderEvent(it)
+                }
+                .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time }.thenBy { it.title })
         }
 
     LaunchedEffect(selectedDate) {
@@ -208,6 +256,22 @@ internal fun MinimalCalendarScreen(
 
             Spacer(Modifier.height(10.dp))
 
+            CleanSummaryStrip(
+                todayCount = todayActivities.size,
+                weekCount = weekActivities.size,
+                conflictCount = weekConflicts.size,
+                reminderCount = weekReminders.size,
+                onToday = {
+                    onSelect(today)
+                    summaryDetail = CleanSummaryKind.TODAY
+                },
+                onWeek = { summaryDetail = CleanSummaryKind.WEEK },
+                onConflicts = { summaryDetail = CleanSummaryKind.CONFLICTS },
+                onReminders = { summaryDetail = CleanSummaryKind.REMINDERS },
+            )
+
+            Spacer(Modifier.height(12.dp))
+
             CleanCalendarCard(
                 month = month,
                 selectedDate = selectedDate,
@@ -224,22 +288,6 @@ internal fun MinimalCalendarScreen(
                     month = next
                     onSelect(next.atDay(1))
                 },
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            CleanAgendaCard(
-                date = selectedDate,
-                today = today,
-                events = events,
-                memberById = memberById,
-                locale = locale,
-                onEventClick = { openedEvent = it },
-                onDayClick = { day ->
-                    onSelect(day)
-                    showAllDayActivities = true
-                },
-                onShowAll = { showAllDayActivities = true },
             )
 
             Spacer(Modifier.height(12.dp))
@@ -278,6 +326,30 @@ internal fun MinimalCalendarScreen(
 
             Spacer(Modifier.height(18.dp))
         }
+    }
+
+    summaryDetail?.let { detail ->
+        CleanSummaryDialog(
+            kind = detail,
+            today = today,
+            weekStart = weekStart,
+            weekEnd = weekEnd,
+            todayActivities = todayActivities,
+            weekActivities = weekActivities,
+            conflicts = weekConflicts,
+            reminders = weekReminders,
+            memberById = memberById,
+            locale = locale,
+            onDismiss = { summaryDetail = null },
+            onSelectDate = { date ->
+                month = YearMonth.from(date)
+                onSelect(date)
+            },
+            onOpenEvent = { event ->
+                summaryDetail = null
+                openedEvent = event
+            },
+        )
     }
 
     if (showSearch) {
@@ -1152,6 +1224,365 @@ internal fun MinimalCalendarScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun CleanSummaryStrip(
+    todayCount: Int,
+    weekCount: Int,
+    conflictCount: Int,
+    reminderCount: Int,
+    onToday: () -> Unit,
+    onWeek: () -> Unit,
+    onConflicts: () -> Unit,
+    onReminders: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        CleanSummaryTile(
+            label = "IDAG",
+            value = todayCount.toString(),
+            helper = if (todayCount == 1) "aktivitet" else "aktiviteter",
+            onClick = onToday,
+            modifier = Modifier.weight(1f),
+        )
+        CleanSummaryTile(
+            label = "VECKAN",
+            value = weekCount.toString(),
+            helper = if (weekCount == 1) "aktivitet" else "aktiviteter",
+            onClick = onWeek,
+            modifier = Modifier.weight(1f),
+        )
+        CleanSummaryTile(
+            label = "KROCKAR",
+            value = conflictCount.toString(),
+            helper = if (conflictCount == 0) "lugnt" else "att se över",
+            accent = if (conflictCount > 0) Color(0xFFFFA56A) else CleanPurpleBright,
+            onClick = onConflicts,
+            modifier = Modifier.weight(1f),
+        )
+        CleanSummaryTile(
+            label = "PÅMINN.",
+            value = reminderCount.toString(),
+            helper = if (reminderCount == 1) "påminnelse" else "påminnelser",
+            accent = Color(0xFF8FB8FF),
+            onClick = onReminders,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun CleanSummaryTile(
+    label: String,
+    value: String,
+    helper: String,
+    accent: Color = Color.White,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = CleanGlassSoft,
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, CleanBorder),
+        modifier = modifier.height(112.dp).clickable(onClick = onClick),
+    ) {
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 9.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                label,
+                color = Color.White.copy(alpha = .62f),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = .7.sp,
+                maxLines = 1,
+            )
+            Text(
+                value,
+                color = accent,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Text(
+                helper,
+                color = Color.White.copy(alpha = .56f),
+                fontSize = 8.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CleanSummaryDialog(
+    kind: CleanSummaryKind,
+    today: LocalDate,
+    weekStart: LocalDate,
+    weekEnd: LocalDate,
+    todayActivities: List<SyncEvent>,
+    weekActivities: List<SyncEvent>,
+    conflicts: List<CalendarConflict>,
+    reminders: List<SyncEvent>,
+    memberById: Map<String, SyncMember>,
+    locale: Locale,
+    onDismiss: () -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+    onOpenEvent: (SyncEvent) -> Unit,
+) {
+    val title =
+        when (kind) {
+            CleanSummaryKind.TODAY -> "Idag"
+            CleanSummaryKind.WEEK -> "Veckan"
+            CleanSummaryKind.CONFLICTS -> "Krockar"
+            CleanSummaryKind.REMINDERS -> "Påminnelser"
+        }
+    val subtitle =
+        when (kind) {
+            CleanSummaryKind.TODAY ->
+                today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+                    .replaceFirstChar { it.uppercase(locale) }
+
+            else ->
+                weekStart.format(DateTimeFormatter.ofPattern("d MMM", locale)) +
+                    " – " +
+                    weekEnd.format(DateTimeFormatter.ofPattern("d MMM", locale))
+        }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xE61A1624),
+        shape = RoundedCornerShape(28.dp),
+        tonalElevation = 0.dp,
+        title = {
+            Column {
+                Text(title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = CleanMuted, fontSize = 11.sp)
+            }
+        },
+        text = {
+            Column(
+                Modifier.fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                when (kind) {
+                    CleanSummaryKind.TODAY -> {
+                        if (todayActivities.isEmpty()) {
+                            CleanSummaryEmpty("Inga aktiviteter idag.")
+                        } else {
+                            todayActivities.forEach { event ->
+                                CleanSummaryEventRow(
+                                    event = event,
+                                    member = event.memberId?.let(memberById::get),
+                                    locale = locale,
+                                    showDate = false,
+                                    onClick = { onOpenEvent(event) },
+                                )
+                            }
+                        }
+                    }
+
+                    CleanSummaryKind.WEEK -> {
+                        if (weekActivities.isEmpty()) {
+                            CleanSummaryEmpty("Inga aktiviteter den här veckan.")
+                        } else {
+                            weekActivities.groupBy { it.date }.toSortedMap().forEach { (date, dayEvents) ->
+                                Text(
+                                    date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+                                        .replaceFirstChar { it.uppercase(locale) },
+                                    color = CleanPurpleBright,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onSelectDate(date)
+                                            onDismiss()
+                                        }
+                                        .padding(top = 5.dp, bottom = 2.dp),
+                                )
+                                dayEvents.forEach { event ->
+                                    CleanSummaryEventRow(
+                                        event = event,
+                                        member = event.memberId?.let(memberById::get),
+                                        locale = locale,
+                                        showDate = false,
+                                        onClick = { onOpenEvent(event) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    CleanSummaryKind.CONFLICTS -> {
+                        if (conflicts.isEmpty()) {
+                            CleanSummaryEmpty("Inga krockar den här veckan.")
+                        } else {
+                            conflicts.forEach { conflict ->
+                                Surface(
+                                    color = Color(0xFFFF6B78).copy(alpha = .09f),
+                                    shape = RoundedCornerShape(18.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFFF8A94).copy(alpha = .24f)),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Column(Modifier.padding(12.dp)) {
+                                        Text(
+                                            conflict.date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+                                                .replaceFirstChar { it.uppercase(locale) },
+                                            color = Color(0xFFFFB1B8),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        Spacer(Modifier.height(3.dp))
+                                        Text(
+                                            conflict.message,
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            lineHeight = 17.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Spacer(Modifier.height(5.dp))
+                                        listOf(conflict.first, conflict.second)
+                                            .distinctBy { it.id }
+                                            .forEach { event ->
+                                                Text(
+                                                    "${cleanEventTime(event)} · ${cleanEventTitle(event)}  ›",
+                                                    color = Color(0xFFFFB1B8),
+                                                    fontSize = 11.sp,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable { onOpenEvent(event) }
+                                                        .padding(vertical = 4.dp),
+                                                )
+                                            }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    CleanSummaryKind.REMINDERS -> {
+                        if (reminders.isEmpty()) {
+                            CleanSummaryEmpty("Inga påminnelser den här veckan.")
+                        } else {
+                            reminders.forEach { event ->
+                                CleanSummaryEventRow(
+                                    event = event,
+                                    member = event.memberId?.let(memberById::get),
+                                    locale = locale,
+                                    showDate = true,
+                                    reminder = true,
+                                    onClick = { onOpenEvent(event) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Stäng", color = CleanPurpleBright) }
+        },
+    )
+}
+
+@Composable
+private fun CleanSummaryEmpty(text: String) {
+    Surface(
+        color = Color.White.copy(alpha = .045f),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text,
+            color = CleanMuted,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(14.dp),
+        )
+    }
+}
+
+@Composable
+private fun CleanSummaryEventRow(
+    event: SyncEvent,
+    member: SyncMember?,
+    locale: Locale,
+    showDate: Boolean,
+    reminder: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val accent =
+        when {
+            reminder -> Color(0xFF8FB8FF)
+            member != null -> Color(member.colorArgb.toInt())
+            event.memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFFFD75E)
+            else -> CleanPurpleBright
+        }
+    val memberName =
+        when {
+            event.memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
+            member != null -> member.name
+            else -> "Familjen"
+        }
+    Surface(
+        color = Color.White.copy(alpha = .045f),
+        shape = RoundedCornerShape(17.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = .18f)),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.width(3.dp)
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(accent)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.width(if (showDate) 88.dp else 64.dp)) {
+                if (showDate) {
+                    Text(
+                        event.date.format(DateTimeFormatter.ofPattern("EEE d/M", locale))
+                            .replaceFirstChar { it.uppercase(locale) },
+                        color = CleanMuted,
+                        fontSize = 9.sp,
+                    )
+                }
+                Text(
+                    event.time.ifBlank { "Hela dagen" },
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    cleanEventTitle(event).removePrefix("🔔").trim(),
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(memberName, color = CleanMuted, fontSize = 9.sp)
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = .38f),
+                modifier = Modifier.size(17.dp),
+            )
+        }
     }
 }
 
