@@ -485,6 +485,7 @@ private fun SyncedApp(
             when (uiLayoutMode) {
                 UiLayoutMode.MINIMAL -> MinimalBottomNav(selectedTab) { selectedTab = it }
                 UiLayoutMode.HUGO_CHILD -> HugoBottomNav(selectedTab) { selectedTab = it }
+                UiLayoutMode.RUNNING -> SportBottomNav(selectedTab) { selectedTab = it }
                 else -> BottomNav(selectedTab) { selectedTab = it }
             }
         },
@@ -616,7 +617,7 @@ private fun SyncedApp(
 
                         UiLayoutMode.RUNNING ->
                             PremiumModeBackground(themeMode = themeMode) {
-                                RunningLifeDashboard(
+                                SportPremiumDashboard(
                                     session = session,
                                     selectedDate = selectedDate,
                                     onSelectDate = { selectedDate = it },
