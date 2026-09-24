@@ -229,13 +229,23 @@ internal fun MinimalCalendarScreen(
     }
 
     Box(Modifier.fillMaxSize()) {
-        cleanSeasonDrawable(month, themeMode)?.let { backgroundRes ->
+        val customBackground = rememberCustomBackgroundBitmap()
+        if (customBackground != null) {
             Image(
-                painter = painterResource(backgroundRes),
+                bitmap = customBackground,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
+        } else {
+            cleanSeasonDrawable(month, themeMode)?.let { backgroundRes ->
+                Image(
+                    painter = painterResource(backgroundRes),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         }
         Box(
             Modifier.fillMaxSize()
