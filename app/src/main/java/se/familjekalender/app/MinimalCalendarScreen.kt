@@ -89,7 +89,11 @@ private fun cleanEventTitle(event: SyncEvent): String =
         .trim('·', '-', ' ')
 
 private fun cleanEventTime(event: SyncEvent): String =
-    event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
+    if (event.time.isBlank()) {
+        "Ingen tid"
+    } else {
+        event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
+    }
 
 private enum class CleanSummaryKind {
     TODAY,
@@ -101,7 +105,7 @@ private enum class CleanSummaryKind {
 private fun isCleanReminderEvent(event: SyncEvent): Boolean {
     val source = event.source.trim().lowercase()
     val title = event.title.trimStart()
-    return source == "reminder" || source.startsWith("reminder:") || title.startsWith("🔔")
+    return source.contains("reminder") || title.startsWith("🔔")
 }
 
 @Composable
