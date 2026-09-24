@@ -833,7 +833,13 @@ private fun SyncedApp(
                                 time,
                                 endTime,
                                 memberId,
-                                source = if (isReminder) "reminder" else "manual",
+                                source =
+                                    when {
+                                        isReminder && time.isBlank() -> "reminder_no_time"
+                                        isReminder -> "reminder"
+                                        time.isBlank() -> "manual_no_time"
+                                        else -> "manual"
+                                    },
                             )
                             when {
                                 event.seriesId == null -> Unit
@@ -2223,6 +2229,7 @@ private fun AddEventDialog(
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
+    var hasTime by remember { mutableStateOf(true) }
     var startTime by remember { mutableStateOf<LocalTime?>(null) }
     var endTime by remember { mutableStateOf<LocalTime?>(null) }
     var showStartTimePicker by remember { mutableStateOf(false) }
@@ -2383,42 +2390,89 @@ private fun AddEventDialog(
                 if (!isBirthday) {
                     Spacer(Modifier.height(8.dp))
                     Text(if (isReminder) "Påminn mig" else "Tid", fontWeight = FontWeight.Bold)
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+
+                    Surface(
+                        color = if (!hasTime) MaterialTheme.colorScheme.primary.copy(alpha = .12f)
+                            else Color.White.copy(alpha = .03f),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            if (!hasTime) MaterialTheme.colorScheme.primary.copy(alpha = .45f)
+                            else Color.White.copy(alpha = .08f),
+                        ),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            hasTime = !hasTime
+                            if (!hasTime) {
+                                startTime = null
+                                endTime = null
+                            }
+                        },
                     ) {
-                        OutlinedButton(
-                            onClick = { showStartTimePicker = true },
-                            modifier = Modifier.weight(1f),
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                startTime?.let { "Start ${it.format(timeFormatter)}" }
-                                    ?: "Välj starttid"
+                            Checkbox(
+                                checked = !hasTime,
+                                onCheckedChange = { checked ->
+                                    hasTime = !checked
+                                    if (checked) {
+                                        startTime = null
+                                        endTime = null
+                                    }
+                                },
                             )
-                        }
-                        OutlinedButton(
-                            onClick = { showEndTimePicker = true },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isReminder,
-                        ) {
-                            Text(
-                                endTime?.let { "Slut ${it.format(timeFormatter)}" }
-                                    ?: "Välj sluttid"
-                            )
+                            Spacer(Modifier.width(6.dp))
+                            Column {
+                                Text("Ingen tid", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "Visas på dagen utan klockslag",
+                                    color = Muted,
+                                    fontSize = 11.sp,
+                                )
+                            }
                         }
                     }
-                    if (startTime == null || (!isReminder && endTime == null)) {
-                        Text(
-                            if (isReminder) "Välj tid för påminnelsen." else "Välj både start- och sluttid.",
-                            color = Muted,
-                            fontSize = 12.sp,
-                        )
-                    } else if (!isReminder && endTime != null && startTime != null && !endTime!!.isAfter(startTime)) {
-                        Text(
-                            "Sluttiden räknas som nästa dag.",
-                            color = Muted,
-                            fontSize = 12.sp,
-                        )
+
+                    if (hasTime) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = { showStartTimePicker = true },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    startTime?.let { "Start ${it.format(timeFormatter)}" }
+                                        ?: "Välj starttid"
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { showEndTimePicker = true },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReminder,
+                            ) {
+                                Text(
+                                    endTime?.let { "Slut ${it.format(timeFormatter)}" }
+                                        ?: "Välj sluttid"
+                                )
+                            }
+                        }
+                        if (startTime == null || (!isReminder && endTime == null)) {
+                            Text(
+                                if (isReminder) "Välj tid för påminnelsen." else "Välj både start- och sluttid.",
+                                color = Muted,
+                                fontSize = 12.sp,
+                            )
+                        } else if (!isReminder && endTime != null && startTime != null && !endTime!!.isAfter(startTime)) {
+                            Text(
+                                "Sluttiden räknas som nästa dag.",
+                                color = Muted,
+                                fontSize = 12.sp,
+                            )
+                        }
                     }
                 }
 
@@ -2505,8 +2559,10 @@ private fun AddEventDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val selectedStartTime = startTime?.format(timeFormatter) ?: "09:00"
-                    val selectedEndTime = endTime?.format(timeFormatter) ?: "10:00"
+                    val selectedStartTime =
+                        if (!hasTime && !isBirthday) "" else startTime?.format(timeFormatter) ?: "09:00"
+                    val selectedEndTime =
+                        if (!hasTime && !isBirthday) "" else endTime?.format(timeFormatter) ?: "10:00"
                     onAdd(
                         title.trim(),
                         selectedStartTime,
@@ -2521,24 +2577,14 @@ private fun AddEventDialog(
                 enabled =
                     title.isNotBlank() &&
                             dates.isNotEmpty() &&
-                            (isBirthday || (isReminder && startTime != null) || (startTime != null && endTime != null)),
+                            (isBirthday || !hasTime || (isReminder && startTime != null) || (startTime != null && endTime != null)),
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = Purple,
                         contentColor = Color.White,
                     ),
             ) {
-                Text(
-                    if (isBirthday) {
-                        "Lägg till födelsedag"
-                    } else if (isReminder) {
-                        "Lägg till påminnelse"
-                    } else if (dates.size > 1) {
-                        "Lägg till ${dates.size} dagar"
-                    } else {
-                        "Lägg till"
-                    }
-                )
+                Text("Färdig")
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } },
