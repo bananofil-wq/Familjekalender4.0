@@ -2280,8 +2280,7 @@ private fun AnimatedNavIcon(icon: ImageVector, label: String, selected: Boolean)
 
 @Composable
 private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
-    NavigationBar(containerColor = PremiumGlassRaised.copy(alpha = .96f), tonalElevation = 0.dp) {
+    val items =
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
             Triple(1, Icons.Default.ShoppingCart, "Inköp"),
@@ -2289,26 +2288,84 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Triple(4, Icons.Default.Settings, "Inställningar"),
             Triple(5, Icons.Default.LocationOn, "Plats"),
         )
-            .forEach { (tab, icon, label) ->
-                val isSelected = selected == tab
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick = { onSelect(tab) },
-                    icon = { AnimatedNavIcon(icon, label, isSelected) },
-                    label = { Text(label, maxLines = 1, softWrap = false, fontSize = 9.sp) },
-                    colors =
-                        NavigationBarItemDefaults.colors(
-                            selectedIconColor = accent,
-                            selectedTextColor = accent,
-                            unselectedIconColor = LuxuryTextMuted.copy(alpha = .72f),
-                            unselectedTextColor = LuxuryTextMuted.copy(alpha = .72f),
-                            indicatorColor = PremiumPurple.copy(alpha = .18f),
-                        ),
-                )
+
+    Box(
+        Modifier.fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+    ) {
+        Surface(
+            color = Color(0xEE1B1727),
+            shape = RoundedCornerShape(30.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+            shadowElevation = 12.dp,
+            tonalElevation = 0.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .height(76.dp)
+                    .padding(horizontal = 6.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                items.forEach { (tab, icon, label) ->
+                    val isSelected = selected == tab
+                    Box(
+                        Modifier.weight(1f)
+                            .fillMaxHeight()
+                            .padding(horizontal = 2.dp)
+                            .clip(RoundedCornerShape(21.dp))
+                            .then(
+                                if (isSelected) {
+                                    Modifier.background(
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color(0xFF9D5CFF),
+                                                Color(0xFF6E34C9),
+                                            )
+                                        )
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .clickable { onSelect(tab) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(
+                                icon,
+                                contentDescription = label,
+                                tint =
+                                    if (isSelected) Color.White
+                                    else LuxuryTextMuted.copy(alpha = .72f),
+                                modifier =
+                                    Modifier.size(if (isSelected) 26.dp else 24.dp)
+                                        .graphicsLayer {
+                                            scaleX = if (isSelected) 1.06f else 1f
+                                            scaleY = if (isSelected) 1.06f else 1f
+                                        },
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                label,
+                                color =
+                                    if (isSelected) Color.White
+                                    else LuxuryTextMuted.copy(alpha = .78f),
+                                fontSize = 9.sp,
+                                fontWeight =
+                                    if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
             }
+        }
     }
 }
-
 @Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
