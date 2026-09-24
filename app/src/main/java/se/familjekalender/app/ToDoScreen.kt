@@ -8,8 +8,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -150,6 +153,42 @@ internal fun ToDoScreen(session: FamilySession) {
             .onFailure { error = it.message ?: "Kunde inte ladda To-Do" }
     }
 
+    fun addItem() {
+        val title = text.trim()
+        if (title.isEmpty()) return
+        text = ""
+        scope.launch {
+            runCatching {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    TodoSync.add(session, title)
+                }
+            }.onFailure { error = it.message ?: "Kunde inte lägga till" }
+            refresh()
+        }
+    }
+
+    fun toggleItem(item: SyncTodoItem) {
+        scope.launch {
+            runCatching {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    TodoSync.toggle(session, item)
+                }
+            }.onFailure { error = it.message ?: "Kunde inte uppdatera" }
+            refresh()
+        }
+    }
+
+    fun deleteItem(item: SyncTodoItem) {
+        scope.launch {
+            runCatching {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    TodoSync.delete(session, item)
+                }
+            }.onFailure { error = it.message ?: "Kunde inte ta bort" }
+            refresh()
+        }
+    }
+
     LaunchedEffect(session.id) {
         refresh()
         while (true) {
@@ -158,130 +197,299 @@ internal fun ToDoScreen(session: FamilySession) {
         }
     }
 
-    Text("To-Do", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-    Text("Gemensam lista för familjen", color = Muted)
-    Spacer(Modifier.height(18.dp))
+    val openItems = items.filterNot { it.checked }
+    val completedItems = items.filter { it.checked }
+    val total = items.size
+    val completed = completedItems.size
+    val progress = if (total == 0) 0f else completed.toFloat() / total.toFloat()
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            label = { Text("Ny uppgift") },
-            singleLine = true,
-            modifier = Modifier.weight(1f).heightIn(min = 56.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        FilledIconButton(
-            onClick = {
-                val title = text.trim()
-                if (title.isNotEmpty()) {
-                    text = ""
-                    scope.launch {
-                        runCatching {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                TodoSync.add(session, title)
-                            }
-                        }
-                            .onFailure { error = it.message ?: "Kunde inte lägga till" }
-                        refresh()
-                    }
-                }
-            },
-            enabled = text.isNotBlank(),
-            modifier = Modifier.size(56.dp).offset(y = 4.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors =
-                IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.Black.copy(alpha = .78f),
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .45f),
-                    disabledContentColor = Color.Black.copy(alpha = .55f),
-                ),
+    Column(
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Lägg till")
-        }
-    }
-
-    if (error.isNotBlank()) {
-        Spacer(Modifier.height(8.dp))
-        Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-    }
-
-    Spacer(Modifier.height(12.dp))
-
-    AnimatedContent(
-        targetState = items,
-        transitionSpec = {
-            (fadeIn(tween(motionDuration(170, motionEnabled))) +
-                    slideInVertically(tween(motionDuration(210, motionEnabled))) {
-                        it / 14
-                    }) togetherWith
-                    (fadeOut(tween(motionDuration(120, motionEnabled))) +
-                            slideOutVertically(
-                                tween(
-                                    motionDuration(
-                                        170,
-                                        motionEnabled
-                                    )
-                                )
-                            ) { -it / 18 })
-        },
-        label = "todo-list",
-    ) { visibleItems ->
-        Column(
-            Modifier.fillMaxWidth().animateContentSize(tween(motionDuration(220, motionEnabled)))
-        ) {
-            if (visibleItems.isEmpty()) {
-                Text("Inga uppgifter ännu", color = Muted)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "To-Do",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    "Familjens gemensamma uppgifter",
+                    color = LuxuryTextMuted,
+                    fontSize = 12.sp,
+                )
             }
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
+                shape = RoundedCornerShape(99.dp),
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = .30f),
+                ),
+            ) {
+                Text(
+                    "FAMILJ",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                )
+            }
+        }
 
-            visibleItems.forEach { item ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = CardBg),
-                    modifier =
-                        Modifier.fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .animateContentSize(tween(motionDuration(180, motionEnabled))),
+        Surface(
+            color = LuxurySurfaceElevated,
+            shape = RoundedCornerShape(26.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(18.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = item.checked,
-                            onCheckedChange = {
-                                scope.launch {
-                                    runCatching {
-                                        kotlinx.coroutines.withContext(
-                                            kotlinx.coroutines.Dispatchers.IO
-                                        ) {
-                                            TodoSync.toggle(session, item)
-                                        }
-                                    }
-                                        .onFailure { error = it.message ?: "Kunde inte uppdatera" }
-                                    refresh()
-                                }
-                            },
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (openItems.isEmpty() && total > 0) "Allt klart"
+                            else "${openItems.size} kvar",
+                            color = Color.White,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            item.title,
-                            color = if (item.checked) Muted else Color.White,
-                            modifier =
-                                Modifier.weight(1f).clickable {
-                                    scope.launch {
-                                        runCatching {
-                                            kotlinx.coroutines.withContext(
-                                                kotlinx.coroutines.Dispatchers.IO
-                                            ) {
-                                                TodoSync.toggle(session, item)
-                                            }
-                                        }
-                                            .onFailure {
-                                                error = it.message ?: "Kunde inte uppdatera"
-                                            }
-                                        refresh()
-                                    }
-                                },
+                            when {
+                                total == 0 -> "Lägg till första uppgiften"
+                                completed == 0 -> "$total uppgifter totalt"
+                                else -> "$completed av $total avklarade"
+                            },
+                            color = LuxuryTextMuted,
+                            fontSize = 11.sp,
+                        )
+                    }
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = .15f),
+                        shape = CircleShape,
+                        modifier = Modifier.size(58.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                "${(progress * 100).toInt()}%",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                            )
+                        }
+                    }
+                }
+                if (total > 0) {
+                    Spacer(Modifier.height(14.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth().height(7.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color.White.copy(alpha = .08f),
+                    )
+                }
+            }
+        }
+
+        Surface(
+            color = LuxurySurfaceElevated,
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Text(
+                    "NY UPPGIFT",
+                    color = LuxuryTextMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        placeholder = { Text("Vad behöver göras?") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.weight(1f),
+                    )
+                    FilledIconButton(
+                        onClick = ::addItem,
+                        enabled = text.isNotBlank(),
+                        modifier = Modifier.size(56.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        colors =
+                            IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = Color.Black.copy(alpha = .82f),
+                                disabledContainerColor =
+                                    MaterialTheme.colorScheme.primary.copy(alpha = .28f),
+                            ),
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Lägg till")
+                    }
+                }
+            }
+        }
+
+        if (error.isNotBlank()) {
+            Surface(
+                color = MaterialTheme.colorScheme.error.copy(alpha = .10f),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.error.copy(alpha = .22f),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    error,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
+        }
+
+        AnimatedContent(
+            targetState = items,
+            transitionSpec = {
+                (fadeIn(tween(motionDuration(170, motionEnabled))) +
+                    slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 14 }) togetherWith
+                    (fadeOut(tween(motionDuration(120, motionEnabled))) +
+                        slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 18 })
+            },
+            label = "todo-premium-list",
+        ) {
+            Column(
+                Modifier.fillMaxWidth()
+                    .animateContentSize(tween(motionDuration(220, motionEnabled))),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (openItems.isEmpty()) {
+                    Surface(
+                        color = Color.White.copy(alpha = .035f),
+                        shape = RoundedCornerShape(22.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            Modifier.padding(horizontal = 18.dp, vertical = 22.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                if (total == 0) "Inga uppgifter ännu" else "Allt är avklarat",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                if (total == 0) "Lägg till något ovanför."
+                                else "Familjens lista är tom på måsten.",
+                                color = LuxuryTextMuted,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "ATT GÖRA",
+                            color = LuxuryTextMuted,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            openItems.size.toString(),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    openItems.forEachIndexed { index, item ->
+                        Surface(
+                            color = LuxurySurfaceElevated,
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (index == 0)
+                                    MaterialTheme.colorScheme.primary.copy(alpha = .24f)
+                                else Color.White.copy(alpha = .08f),
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .padding(horizontal = 11.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = false,
+                                    onCheckedChange = { toggleItem(item) },
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Column(
+                                    Modifier.weight(1f)
+                                        .clickable { toggleItem(item) }
+                                        .padding(vertical = 5.dp),
+                                ) {
+                                    Text(
+                                        item.title,
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        if (index == 0) "Nästa uppgift" else "Familjens To-Do",
+                                        color = LuxuryTextMuted,
+                                        fontSize = 9.sp,
+                                    )
+                                }
+                                TextButton(onClick = { deleteItem(item) }) {
+                                    Text(
+                                        "Ta bort",
+                                        color = LuxuryTextMuted,
+                                        fontSize = 10.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (completedItems.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "KLARA",
+                            color = LuxuryTextMuted,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.weight(1f),
                         )
                         TextButton(
                             onClick = {
@@ -290,37 +498,61 @@ internal fun ToDoScreen(session: FamilySession) {
                                         kotlinx.coroutines.withContext(
                                             kotlinx.coroutines.Dispatchers.IO
                                         ) {
-                                            TodoSync.delete(session, item)
+                                            TodoSync.clearChecked(session)
                                         }
+                                    }.onFailure {
+                                        error = it.message ?: "Kunde inte rensa"
                                     }
-                                        .onFailure { error = it.message ?: "Kunde inte ta bort" }
                                     refresh()
                                 }
-                            }
+                            },
                         ) {
-                            Text("Ta bort")
+                            Text("Rensa klara", fontSize = 10.sp)
                         }
                     }
-                }
-            }
 
-            if (visibleItems.any { it.checked }) {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            runCatching {
-                                kotlinx.coroutines.withContext(
-                                    kotlinx.coroutines.Dispatchers.IO
+                    Surface(
+                        color = Color.White.copy(alpha = .025f),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = .06f)),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column {
+                            completedItems.forEachIndexed { index, item ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = .05f),
+                                        thickness = .5.dp,
+                                    )
+                                }
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .clickable { toggleItem(item) }
+                                        .padding(horizontal = 11.dp, vertical = 7.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    TodoSync.clearChecked(session)
+                                    Checkbox(
+                                        checked = true,
+                                        onCheckedChange = { toggleItem(item) },
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        item.title,
+                                        color = LuxuryTextMuted,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    TextButton(onClick = { deleteItem(item) }) {
+                                        Text(
+                                            "Ta bort",
+                                            color = LuxuryTextMuted.copy(alpha = .75f),
+                                            fontSize = 9.sp,
+                                        )
+                                    }
                                 }
                             }
-                                .onFailure { error = it.message ?: "Kunde inte rensa" }
-                            refresh()
                         }
                     }
-                ) {
-                    Text("Rensa klara")
                 }
             }
         }
