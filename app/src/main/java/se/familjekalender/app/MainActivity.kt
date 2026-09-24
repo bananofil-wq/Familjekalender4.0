@@ -523,6 +523,7 @@ private fun SyncedApp(
                                 onEdit = { editEvent = it },
                                 onOpenSettings = { selectedTab = 4 },
                                 onOpenLocation = { selectedTab = 5 },
+                                themeMode = themeMode,
                             )
 
                         UiLayoutMode.HUGO_CHILD ->
