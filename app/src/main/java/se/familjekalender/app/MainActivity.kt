@@ -566,53 +566,30 @@ private fun SyncedApp(
 
                         UiLayoutMode.FULL ->
                             PremiumModeBackground(themeMode = themeMode) {
-                                Column(
-                                    Modifier.fillMaxSize()
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(horizontal = 14.dp, vertical = 12.dp)
-                                ) {
-                                    PremiumModeHeader(
-                                        title = "Familjekalender",
-                                        subtitle = "Fullständig familjeöversikt",
-                                        onSettings = { selectedTab = 4 },
-                                    )
-                                    Spacer(Modifier.height(12.dp))
-                                    FamilyAssistantCard(session, events, members, shopping) {
-                                        assistantAddRequest++
-                                    }
-                                    Spacer(Modifier.height(10.dp))
-                                    WeekOverviewCard(events, members)
-                                    Spacer(Modifier.height(10.dp))
-                                    FamilyAutopilotCard(events, members)
-                                    Spacer(Modifier.height(10.dp))
-                                    RecurringLifeCard(session = session, events = events) {
+                                FullModeDashboard(
+                                    session = session,
+                                    selectedDate = selectedDate,
+                                    onSelectDate = { selectedDate = it },
+                                    events = events,
+                                    members = members,
+                                    shopping = shopping,
+                                    palette = palette,
+                                    themeMode = themeMode,
+                                    addMenuRequest = assistantAddRequest,
+                                    onAssistantAdd = { assistantAddRequest++ },
+                                    onAdd = {
+                                        addEventInitialTitle = ""
+                                        showAddEvent = true
+                                    },
+                                    onAddLaundry = {
+                                        addEventInitialTitle = "🧺 Tvätt"
+                                        showAddEvent = true
+                                    },
+                                    onOpenSettings = { selectedTab = 4 },
+                                    onRefresh = {
                                         scope.launch { refresh() }
-                                    }
-                                    Spacer(Modifier.height(10.dp))
-                                    PremiumGlassPanel(Modifier.fillMaxWidth()) {
-                                        Box(Modifier.fillMaxWidth().height(590.dp)) {
-                                            ExactCalendarScreen(
-                                                selectedDate,
-                                                { selectedDate = it },
-                                                events,
-                                                members,
-                                                palette,
-                                                themeMode,
-                                                onAdd = {
-                                                    addEventInitialTitle = ""
-                                                    showAddEvent = true
-                                                },
-                                                onAddLaundry = {
-                                                    addEventInitialTitle = "🧺 Tvätt"
-                                                    showAddEvent = true
-                                                },
-                                                addMenuRequest = assistantAddRequest,
-                                                showSeasonalBackground = false,
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.height(16.dp))
-                                }
+                                    },
+                                )
                             }
 
                         UiLayoutMode.RUNNING ->
