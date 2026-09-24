@@ -40,8 +40,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         R.id.widget_status,
                         "Öppna appen och anslut till familjen",
                     )
-                    views.setTextViewText(R.id.widget_todo, "✓ To-Do")
-                    views.setTextViewText(R.id.widget_shopping, "🛒 Inköp")
+                    views.setTextViewText(R.id.widget_todo, "✓  To-Do    ›")
+                    views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
                     views.setTextViewText(R.id.widget_updated, "")
                     manager.updateAppWidget(widgetId, views)
                     return@forEach
@@ -82,10 +82,9 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                                 else -> true
                             }
                         }
-                        .take(4)
-                // The widget layout has two dedicated tomorrow rows. Fill both instead of
-                // truncating to one.
-                val visibleTomorrow = tomorrowsEvents.take(2)
+                        .take(3)
+                val visibleTomorrow =
+                    tomorrowsEvents.take((4 - visibleToday.size).coerceIn(0, 2))
                 val todayCount = todaysEvents.size
                 views.setTextViewText(
                     R.id.widget_status,
@@ -95,8 +94,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         else -> "✓ $todayCount aktiviteter idag"
                     },
                 )
-                views.setTextViewText(R.id.widget_todo, "✓ $openTodos To-Do")
-                views.setTextViewText(R.id.widget_shopping, "🛒 $openShopping inköp")
+                views.setTextViewText(R.id.widget_todo, "✓  $openTodos To-Do    ›")
+                views.setTextViewText(R.id.widget_shopping, "🛒  $openShopping inköp    ›")
                 views.setTextViewText(R.id.widget_updated, "")
                 val todayContainers =
                     intArrayOf(
@@ -174,8 +173,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 widgetIds.forEach { widgetId ->
                     val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
                     views.setTextViewText(R.id.widget_status, "Kunde inte uppdatera just nu")
-                    views.setTextViewText(R.id.widget_todo, "✓ To-Do")
-                    views.setTextViewText(R.id.widget_shopping, "🛒 Inköp")
+                    views.setTextViewText(R.id.widget_todo, "✓  To-Do    ›")
+                    views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
                     views.setTextViewText(R.id.widget_updated, "")
                     manager.updateAppWidget(widgetId, views)
                 }
@@ -206,10 +205,15 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 else -> members[event.memberId]?.name?.takeIf { it.isNotBlank() } ?: "Familj"
             }
         val timeText =
-            event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
+            if (event.time.isBlank()) {
+                "Ingen tid"
+            } else {
+                event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
+            }
+        val activity = cleanActivityTitle(event.title, event.time, event.endTime, who)
         return WidgetRow(
             who,
-            cleanActivityTitle(event.title, event.time, event.endTime, who),
+            widgetActivityIcon(activity) + "  " + activity,
             timeText,
         )
     }
@@ -236,15 +240,29 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 }
         }
         ranges.forEach { cleaned = cleaned.replace(it, " ", ignoreCase = true) }
+        if (startTime.isNotBlank()) {
+            cleaned = cleaned.replace(startTime, " ", ignoreCase = true)
+        }
         cleaned =
             cleaned
-                .replace(startTime, " ", ignoreCase = true)
                 .replace("  ", " ")
                 .replace("  ", " ")
                 .trim()
                 .trim('•', '·', '-', '–', '|', ':')
                 .trim()
         return cleaned.ifBlank { "Aktivitet" }
+    }
+
+    private fun widgetActivityIcon(title: String): String {
+        val value = title.lowercase()
+        return when {
+            "tvätt" in value -> "🧺"
+            "jobb" in value || "arbete" in value -> "💼"
+            "skola" in value || "förskola" in value -> "🎓"
+            "träning" in value || "innebandy" in value || "handboll" in value -> "🏃"
+            "födelsedag" in value || "kalas" in value -> "🎂"
+            else -> "•"
+        }
     }
 
     private fun parseLocalTime(value: String?): LocalTime? =
