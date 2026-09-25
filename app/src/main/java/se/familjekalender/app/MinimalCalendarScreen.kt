@@ -2033,26 +2033,31 @@ private fun CleanMonthArrow(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
+    val spec = LocalCleanThemeSpec.current
+    val theme = LocalCleanVisualTheme.current
+    val shape =
+        if (theme == CleanVisualTheme.BRUTALIST || theme == CleanVisualTheme.SWISS) {
+            RoundedCornerShape(spec.buttonRadius)
+        } else {
+            CircleShape
+        }
     Box(
         Modifier.size(40.dp)
-            .shadow(5.dp, CircleShape, clip = false)
-            .clip(CircleShape)
+            .shadow(spec.shadow.coerceAtMost(5.dp), shape, clip = false)
+            .clip(shape)
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = .25f),
-                        Color.White.copy(alpha = .07f),
-                    )
+                    listOf(spec.panelTop, spec.panelBottom)
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = .27f), CircleShape)
+            .border(1.dp, spec.border, shape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = spec.text,
             modifier = Modifier.size(24.dp),
         )
     }
