@@ -426,6 +426,11 @@ private fun SyncedApp(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(if (initialTab in 0..5) initialTab else 0) }
 
+    // Android system back should navigate inside the app before closing the activity.
+    BackHandler(enabled = selectedTab != 0) {
+        selectedTab = 0
+    }
+
     LaunchedEffect(initialTab) {
         if (initialTab in 0..5) selectedTab = initialTab
     }
