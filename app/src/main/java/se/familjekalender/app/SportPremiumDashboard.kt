@@ -142,6 +142,7 @@ internal fun SportPremiumDashboard(
                     onSelectDate = onSelectDate,
                     events = events,
                     members = realMembers,
+                    onEdit = onEdit,
                     onBack = { section = SportSection.HOME },
                     onOpenSettings = onOpenSettings,
                     onRefresh = onRefresh,
@@ -208,6 +209,7 @@ private fun SportHome(
         }
     val latestRun = remember(events) { sportRuns(events).firstOrNull() }
     val totalWeekMinutes = remember(weekEvents) { weekEvents.sumOf(::eventDurationMinutes) }
+    val activeWeekDays = remember(weekEvents) { weekEvents.map { it.date }.distinct().size }
 
     Column(
         Modifier.fillMaxSize()
@@ -237,6 +239,12 @@ private fun SportHome(
             eventsByDate = eventsByDate,
             locale = locale,
             onSelectDate = onSelectDate,
+        )
+
+        SportWeeklyPulseCard(
+            activeDays = activeWeekDays,
+            sessions = weekTrainingEvents.size,
+            totalMinutes = totalWeekMinutes,
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -571,6 +579,7 @@ private fun SportRunning(
     onSelectDate: (LocalDate) -> Unit,
     events: List<SyncEvent>,
     members: List<SyncMember>,
+    onEdit: (SyncEvent) -> Unit,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     onRefresh: suspend () -> Unit,
@@ -580,6 +589,20 @@ private fun SportRunning(
     var showRecorder by rememberSaveable { mutableStateOf(false) }
     var visibleMonth by rememberSaveable {
         mutableStateOf(YearMonth.from(latest?.event?.date ?: LocalDate.now()))
+    }
+    val visibleMonthRuns = remember(runs, visibleMonth) {
+        runs.filter { YearMonth.from(it.event.date) == visibleMonth }
+    }
+    val visibleMonthDistance = remember(visibleMonthRuns) { visibleMonthRuns.sumOf { it.distanceKm } }
+    val visibleMonthMinutes = remember(visibleMonthRuns) {
+        visibleMonthRuns.sumOf { it.durationMinutes ?: 0 }
+    }
+    val visibleMonthAveragePace = remember(visibleMonthRuns, visibleMonthDistance, visibleMonthMinutes) {
+        if (visibleMonthDistance > 0.0 && visibleMonthMinutes > 0) {
+            ((visibleMonthMinutes * 60.0) / visibleMonthDistance).roundToInt()
+        } else {
+            null
+        }
     }
 
     BackHandler(enabled = showRecorder) {
@@ -595,6 +618,14 @@ private fun SportRunning(
         RunningHeader(onBack = onBack, onSettings = onOpenSettings)
 
         RunningHero(latest)
+
+        RunningMonthStatsCard(
+            month = visibleMonth,
+            runCount = visibleMonthRuns.size,
+            distanceKm = visibleMonthDistance,
+            totalMinutes = visibleMonthMinutes,
+            averagePaceSeconds = visibleMonthAveragePace,
+        )
 
         Button(
             onClick = { showRecorder = !showRecorder },
@@ -633,7 +664,7 @@ private fun SportRunning(
             onSelectDate = onSelectDate,
         )
 
-        RecentRunsCard(runs = runs)
+        RecentRunsCard(runs = runs, onEdit = onEdit)
 
         RunningTrainingCalendar(events = events)
 
@@ -937,6 +968,66 @@ private fun WeekStrip(
 }
 
 @Composable
+private fun SportWeeklyPulseCard(
+    activeDays: Int,
+    sessions: Int,
+    totalMinutes: Int,
+) {
+    val fraction = activeDays.coerceIn(0, 7) / 7f
+
+    Surface(
+        color = SportPanel,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, SportAccent.copy(alpha = .24f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "VECKANS PULS",
+                        color = SportMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.1.sp,
+                    )
+                    Text(
+                        "$activeDays av 7 dagar med aktivitet",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Text(
+                    "$sessions pass · ${formatSportDuration(totalMinutes)}",
+                    color = SportAccent,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Box(
+                Modifier.fillMaxWidth()
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = .08f))
+            ) {
+                Box(
+                    Modifier.fillMaxWidth(fraction)
+                        .fillMaxHeight()
+                        .background(SportAccent)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SportAgendaRow(
     event: SyncEvent,
     member: SyncMember?,
@@ -1206,7 +1297,71 @@ private fun RunMonthGrid(
 }
 
 @Composable
-private fun RecentRunsCard(runs: List<SportRunSummary>) {
+private fun RunningMonthStatsCard(
+    month: YearMonth,
+    runCount: Int,
+    distanceKm: Double,
+    totalMinutes: Int,
+    averagePaceSeconds: Int?,
+) {
+    val locale = remember { Locale("sv", "SE") }
+
+    Surface(
+        color = SportPanel,
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, SportBorder),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            Modifier.padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                month.month.getDisplayName(TextStyle.FULL, locale).uppercase(locale),
+                color = SportMuted,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.1.sp,
+            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OverviewStat(
+                    "DISTANS",
+                    formatKm(distanceKm),
+                    SportAccent,
+                    Modifier.weight(1f),
+                )
+                OverviewStat(
+                    "PASS",
+                    runCount.toString(),
+                    SportBlue,
+                    Modifier.weight(1f),
+                )
+                OverviewStat(
+                    "SNITTEMPO",
+                    averagePaceSeconds?.let(::formatPaceCompact) ?: "—",
+                    SportOrange,
+                    Modifier.weight(1f),
+                )
+            }
+            if (totalMinutes > 0) {
+                Text(
+                    "Total löptid ${formatSportDuration(totalMinutes)}",
+                    color = SportMuted,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentRunsCard(
+    runs: List<SportRunSummary>,
+    onEdit: (SyncEvent) -> Unit,
+) {
     Surface(
         color = SportPanel,
         shape = RoundedCornerShape(22.dp),
@@ -1220,7 +1375,10 @@ private fun RecentRunsCard(runs: List<SportRunSummary>) {
             } else {
                 runs.take(5).forEachIndexed { index, run ->
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { onEdit(run.event) }
+                            .padding(horizontal = 4.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
