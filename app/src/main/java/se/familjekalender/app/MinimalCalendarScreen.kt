@@ -1642,25 +1642,39 @@ private fun CleanCalendarCard(
     onSelect: (LocalDate) -> Unit,
     onMonthChange: (Long) -> Unit,
 ) {
-    val calendarShape = RoundedCornerShape(32.dp)
+    val spec = LocalCleanThemeSpec.current
+    val theme = LocalCleanVisualTheme.current
+    val calendarShape = RoundedCornerShape(spec.calendarRadius)
+    val calendarColors =
+        if (theme == CleanVisualTheme.CURRENT) {
+            listOf(
+                Color.White.copy(alpha = .16f),
+                Color(0xCB23212A),
+                Color(0xE319171F),
+            )
+        } else {
+            listOf(spec.panelTop, spec.panelMid, spec.panelBottom)
+        }
+    val calendarBorder =
+        if (theme == CleanVisualTheme.CURRENT) Color.White.copy(alpha = .28f) else spec.border
     val scope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
 
     BoxWithConstraints(
         modifier =
             Modifier.fillMaxWidth()
-                .shadow(13.dp, calendarShape, clip = false)
-                .clip(calendarShape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = .16f),
-                            Color(0xCB23212A),
-                            Color(0xE319171F),
-                        )
-                    )
+                .shadow(
+                    if (theme == CleanVisualTheme.CURRENT) 13.dp else spec.shadow,
+                    calendarShape,
+                    clip = false,
                 )
-                .border(1.2.dp, Color.White.copy(alpha = .28f), calendarShape)
+                .clip(calendarShape)
+                .background(Brush.verticalGradient(calendarColors))
+                .border(
+                    if (theme == CleanVisualTheme.BRUTALIST) 1.7.dp else 1.2.dp,
+                    calendarBorder,
+                    calendarShape,
+                )
                 .clipToBounds()
                 .pointerInput(month) {
                     detectHorizontalDragGestures(
@@ -1720,7 +1734,13 @@ private fun CleanCalendarCard(
                         month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar {
                             it.uppercase(locale)
                         } + " ${month.year}",
-                        color = Color.White,
+                        color = spec.text,
+                        fontFamily =
+                            if (theme == CleanVisualTheme.LUXURY_GOLD ||
+                                theme == CleanVisualTheme.BIOPHILIC ||
+                                theme == CleanVisualTheme.RETRO_70S ||
+                                theme == CleanVisualTheme.JAPANDI
+                            ) spec.titleFont else FontFamily.Default,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
                     )
@@ -1745,7 +1765,7 @@ private fun CleanCalendarCard(
                 Row(Modifier.fillMaxWidth()) {
                     Text(
                         "V",
-                        color = Color.White.copy(alpha = .48f),
+                        color = spec.muted.copy(alpha = .72f),
                         fontSize = 9.sp,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
@@ -1754,7 +1774,7 @@ private fun CleanCalendarCard(
                     weekdays.forEach { day ->
                         Text(
                             day,
-                            color = Color.White.copy(alpha = .76f),
+                            color = spec.muted.copy(alpha = .95f),
                             fontSize = 9.sp,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold,
@@ -1776,7 +1796,7 @@ private fun CleanCalendarCard(
                         val weekDate = gridStart.plusDays((row * 7).toLong())
                         Text(
                             weekDate.get(weekFields.weekOfWeekBasedYear()).toString(),
-                            color = Color.White.copy(alpha = .46f),
+                            color = spec.muted.copy(alpha = .70f),
                             fontSize = 9.sp,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.SemiBold,
@@ -1789,42 +1809,58 @@ private fun CleanCalendarCard(
                             val isSelected = date == selectedDate
                             val isToday = date == today
                             val dayEvents = eventsByDate[date].orEmpty()
-                            val dayShape = RoundedCornerShape(16.dp)
+                            val dayShape = RoundedCornerShape(spec.dayRadius)
 
                             val glassBrush =
                                 when {
                                     isSelected ->
                                         Brush.verticalGradient(
-                                            listOf(
-                                                Color(0xFFD07BFF),
-                                                Color(0xFF9E43FF),
-                                                Color(0xFF7224E7),
-                                            )
+                                            if (theme == CleanVisualTheme.CURRENT) {
+                                                listOf(
+                                                    Color(0xFFD07BFF),
+                                                    Color(0xFF9E43FF),
+                                                    Color(0xFF7224E7),
+                                                )
+                                            } else {
+                                                listOf(spec.selectedTop, spec.selectedBottom)
+                                            }
                                         )
 
                                     isToday ->
                                         Brush.verticalGradient(
-                                            listOf(
-                                                Color.White.copy(alpha = .34f),
-                                                Color.White.copy(alpha = .16f),
-                                                Color.White.copy(alpha = .08f),
-                                            )
+                                            if (theme == CleanVisualTheme.CURRENT) {
+                                                listOf(
+                                                    Color.White.copy(alpha = .34f),
+                                                    Color.White.copy(alpha = .16f),
+                                                    Color.White.copy(alpha = .08f),
+                                                )
+                                            } else {
+                                                listOf(
+                                                    spec.accent.copy(alpha = .30f),
+                                                    spec.accent.copy(alpha = .12f),
+                                                    spec.dayBottom,
+                                                )
+                                            }
                                         )
 
                                     inMonth ->
                                         Brush.verticalGradient(
-                                            listOf(
-                                                Color.White.copy(alpha = .18f),
-                                                Color.White.copy(alpha = .075f),
-                                                Color(0x16000000),
-                                            )
+                                            if (theme == CleanVisualTheme.CURRENT) {
+                                                listOf(
+                                                    Color.White.copy(alpha = .18f),
+                                                    Color.White.copy(alpha = .075f),
+                                                    Color(0x16000000),
+                                                )
+                                            } else {
+                                                listOf(spec.dayTop, spec.dayBottom)
+                                            }
                                         )
 
                                     else ->
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color.White.copy(alpha = .07f),
-                                                Color.White.copy(alpha = .025f),
+                                                spec.dayTop.copy(alpha = .42f),
+                                                spec.dayBottom.copy(alpha = .30f),
                                                 Color.Transparent,
                                             )
                                         )
@@ -1832,10 +1868,15 @@ private fun CleanCalendarCard(
 
                             val glassBorder =
                                 when {
-                                    isSelected -> Color(0xFFF0D5FF)
-                                    isToday -> Color(0xFFB993FF).copy(alpha = .75f)
-                                    inMonth -> Color.White.copy(alpha = .25f)
-                                    else -> Color.White.copy(alpha = .10f)
+                                    isSelected -> spec.selectedBorder
+                                    isToday ->
+                                        if (theme == CleanVisualTheme.CURRENT) {
+                                            Color(0xFFB993FF).copy(alpha = .75f)
+                                        } else {
+                                            spec.accentStrong.copy(alpha = .78f)
+                                        }
+                                    inMonth -> spec.border
+                                    else -> spec.border.copy(alpha = .42f)
                                 }
 
                             Box(
@@ -1873,8 +1914,8 @@ private fun CleanCalendarCard(
                                     Modifier.fillMaxWidth(.82f)
                                         .height(1.dp)
                                         .background(
-                                            Color.White.copy(
-                                                alpha = if (isSelected) .54f else .22f
+                                            (if (isSelected) spec.selectedText else spec.text).copy(
+                                                alpha = if (isSelected) .54f else .18f
                                             )
                                         )
                                         .align(Alignment.TopCenter)
@@ -1942,8 +1983,11 @@ private fun CleanCalendarCard(
                                     Text(
                                         date.dayOfMonth.toString(),
                                         color =
-                                            if (inMonth) Color.White
-                                            else Color.White.copy(alpha = .38f),
+                                            when {
+                                                isSelected -> spec.selectedText
+                                                inMonth -> spec.text
+                                                else -> spec.muted.copy(alpha = .52f)
+                                            },
                                         fontSize = if (isSelected) 17.sp else 15.sp,
                                         fontWeight =
                                             when {
