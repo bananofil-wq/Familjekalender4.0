@@ -1466,7 +1466,8 @@ private fun ShoppingScreen(
                                 Row(
                                     modifier =
                                         Modifier.fillMaxWidth()
-                                            .padding(horizontal = 7.dp, vertical = 5.dp),
+                                            .height(56.dp)
+                                            .padding(horizontal = 7.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     ReferenceShoppingCheck(
@@ -1476,7 +1477,7 @@ private fun ShoppingScreen(
                                     Spacer(Modifier.width(5.dp))
 
                                     Surface(
-                                        modifier = Modifier.size(44.dp),
+                                        modifier = Modifier.size(42.dp),
                                         shape = RoundedCornerShape(12.dp),
                                         color = Color(0xB2264D6C),
                                         border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
@@ -1488,7 +1489,7 @@ private fun ShoppingScreen(
                                     }
 
                                     Spacer(Modifier.width(7.dp))
-                                    Column(Modifier.weight(1f)) {
+                                    Column(Modifier.weight(1f).padding(end = 4.dp)) {
                                         Text(
                                             item.name,
                                             color = Color.White,
@@ -1506,9 +1507,8 @@ private fun ShoppingScreen(
                                         )
                                     }
 
-                                    Spacer(Modifier.width(4.dp))
                                     Row(
-                                        modifier = Modifier.width(119.dp),
+                                        modifier = Modifier.width(106.dp),
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
                                         if (offers.isNotEmpty()) {
@@ -1733,34 +1733,37 @@ private fun ReferencePriceChip(
     accent: Color,
 ) {
     Surface(
-        modifier = Modifier.width(37.dp),
-        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.width(34.dp).height(40.dp),
+        shape = RoundedCornerShape(7.dp),
         color = Color(0xB91B2333),
         border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 3.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp, vertical = 3.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 store.ifBlank { " " },
                 color = Color.White.copy(alpha = .78f),
-                fontSize = 5.5.sp,
+                fontSize = 6.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
             Surface(
+                modifier = Modifier.fillMaxWidth().height(17.dp),
                 shape = RoundedCornerShape(5.dp),
                 color = if (price == "—") Color.White.copy(alpha = .08f) else accent.copy(alpha = .92f),
             ) {
-                Text(
-                    price,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                    color = if (price == "—") Color.White.copy(alpha = .36f) else Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        price,
+                        color = if (price == "—") Color.White.copy(alpha = .36f) else Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
