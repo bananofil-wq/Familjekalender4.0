@@ -2,6 +2,8 @@ package se.familjekalender.app
 
 import android.Manifest
 import android.app.DatePickerDialog
+import android.speech.RecognizerIntent
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -38,6 +40,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -666,7 +672,7 @@ private fun SyncedApp(
                 ) { tab ->
                     val tabModifier =
                         if (tab == 1) {
-                            Modifier.fillMaxSize().shoppingBackdrop()
+                            Modifier.fillMaxSize()
                         } else {
                             Modifier.fillMaxSize()
                                 .padding(18.dp)
@@ -681,19 +687,21 @@ private fun SyncedApp(
                                     session,
                                     shopping,
                                     mailOffers,
-                                    { name ->
+                                    themeMode = themeMode,
+                                    onBack = { selectedTab = 0 },
+                                    onAdd = { name ->
                                         scope.launch {
                                             SupabaseSync.addShopping(session, name)
                                             refresh()
                                         }
                                     },
-                                    { item ->
+                                    onToggle = { item ->
                                         scope.launch {
                                             SupabaseSync.toggleShopping(session, item)
                                             refresh()
                                         }
                                     },
-                                    {
+                                    onClear = {
                                         scope.launch {
                                             SupabaseSync.clearChecked(session)
                                             refresh()
@@ -1002,16 +1010,16 @@ private fun SyncedApp(
 
 private fun Modifier.shoppingBackdrop(): Modifier =
     this
-        .background(Color(0xFF06111E))
+        .background(Color(0x4406111E))
         .drawBehind {
             drawRect(
                 brush =
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFF071827),
-                            Color(0xFF10324F),
-                            Color(0xFF184B6A),
-                            Color(0xFF0A1825),
+                            Color(0x99071827),
+                            Color(0x7710324F),
+                            Color(0x44184B6A),
+                            Color(0xAA0A1825),
                         )
                     )
             )
@@ -1066,6 +1074,8 @@ private fun ShoppingScreen(
     session: FamilySession,
     items: List<SyncShoppingItem>,
     mailOffers: List<MailOffer>,
+    themeMode: ThemeMode,
+    onBack: () -> Unit,
     onAdd: (String) -> Unit,
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit,
@@ -1074,6 +1084,17 @@ private fun ShoppingScreen(
     val shoppingScope = rememberCoroutineScope()
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
+    val voiceLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data
+                    ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                    ?.firstOrNull()
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { text = it }
+            }
+        }
     var showClearConfirmation by remember { mutableStateOf(false) }
     var selectedShoppingTool by remember { mutableStateOf<String?>(null) }
     var priceComparison by remember { mutableStateOf<ShoppingPriceComparison?>(null) }
@@ -1170,8 +1191,8 @@ private fun ShoppingScreen(
     val shoppingBlue = Color(0xFF68B8FF)
     val shoppingCyan = Color(0xFF75E8F2)
     val shoppingOrange = Color(0xFFFFA33A)
-    val shoppingGlass = Color(0xB2183453)
-    val shoppingGlassStrong = Color(0xD21A3859)
+    val shoppingGlass = Color(0x7A183453)
+    val shoppingGlassStrong = Color(0xA61A3859)
     val verifiedCheapestByItem =
         openItems.mapNotNull { item ->
             mailOffers
@@ -1195,7 +1216,8 @@ private fun ShoppingScreen(
         listOf("Alla") +
             categoryOrder.filter { category -> openItems.any { categoryFor(it.name) == category } }
 
-    Box(Modifier.fillMaxSize()) {
+    PremiumModeBackground(themeMode = themeMode) {
+        Box(Modifier.fillMaxSize().shoppingBackdrop()) {
         Column(
             Modifier.fillMaxSize()
                 .padding(horizontal = 12.dp, vertical = 9.dp)
@@ -1211,25 +1233,32 @@ private fun ShoppingScreen(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(11.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier.weight(1f),
             ) {
+                ShoppingHeaderButton(
+                    icon = Icons.Default.ArrowBack,
+                    description = "Tillbaka",
+                    accent = shoppingBlue,
+                    onClick = onBack,
+                )
                 Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = shoppingOrange.copy(alpha = .18f),
+                    shape = RoundedCornerShape(17.dp),
+                    color = shoppingOrange.copy(alpha = .15f),
                     border = BorderStroke(1.dp, shoppingOrange.copy(alpha = .42f)),
+                    shadowElevation = 4.dp,
                 ) {
                     Icon(
                         Icons.Default.ShoppingCart,
                         contentDescription = null,
                         tint = shoppingOrange,
-                        modifier = Modifier.padding(10.dp).size(30.dp),
+                        modifier = Modifier.padding(9.dp).size(28.dp),
                     )
                 }
                 Column {
                     Text(
                         "Inköp",
-                        fontSize = 27.sp,
+                        fontSize = 25.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                     )
@@ -1337,13 +1366,13 @@ private fun ShoppingScreen(
 
         Surface(
             shape = RoundedCornerShape(25.dp),
-            color = Color(0xD61A3B5D),
+            color = Color(0xA81A3B5D),
             border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .26f)),
             modifier = Modifier.fillMaxWidth(),
             shadowElevation = 7.dp,
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 14.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1.15f)) {
@@ -1916,11 +1945,11 @@ private fun ShoppingScreen(
                 val categoryItems = visibleGrouped[category].orEmpty()
                 if (categoryItems.isNotEmpty()) {
                     Surface(
-                        shape = RoundedCornerShape(22.dp),
-                        color = shoppingGlassStrong,
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = .11f)),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0x941A3859),
+                        border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .18f)),
                         modifier = Modifier.fillMaxWidth(),
-                        shadowElevation = 5.dp,
+                        shadowElevation = 7.dp,
                     ) {
                         Column(Modifier.fillMaxWidth()) {
                             Row(
@@ -1940,17 +1969,28 @@ private fun ShoppingScreen(
                                         fontSize = 15.sp,
                                     )
                                 }
-                                Surface(
-                                    shape = RoundedCornerShape(99.dp),
-                                    color = shoppingBlue.copy(alpha = .14f),
-                                    border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .20f)),
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                                 ) {
-                                    Text(
-                                        "${categoryItems.size} kvar",
-                                        color = shoppingBlue,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    Surface(
+                                        shape = RoundedCornerShape(99.dp),
+                                        color = Color.Black.copy(alpha = .18f),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+                                    ) {
+                                        Text(
+                                            "${categoryItems.size} kvar",
+                                            color = Color.White.copy(alpha = .78f),
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        )
+                                    }
+                                    Icon(
+                                        Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = .72f),
+                                        modifier = Modifier.size(18.dp),
                                     )
                                 }
                             }
@@ -1976,8 +2016,9 @@ private fun ShoppingScreen(
                                     )
                                     Surface(
                                         shape = RoundedCornerShape(11.dp),
-                                        color = Color.White.copy(alpha = .075f),
-                                        border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+                                        color = Color(0x80456C86),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+                                        shadowElevation = 3.dp,
                                         modifier = Modifier.size(43.dp),
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
@@ -2053,12 +2094,19 @@ private fun ShoppingScreen(
                                             }
                                         }
                                     } else {
-                                        Text(
-                                            "—",
-                                            color = Color.White.copy(alpha = .28f),
-                                            fontSize = 16.sp,
-                                            modifier = Modifier.padding(horizontal = 5.dp),
-                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = Color.Black.copy(alpha = .15f),
+                                            border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+                                        ) {
+                                            Text(
+                                                "Pris saknas",
+                                                color = Color.White.copy(alpha = .42f),
+                                                fontSize = 7.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                            )
+                                        }
                                     }
                                 }
                                 if (index != categoryItems.lastIndex) {
@@ -2147,7 +2195,7 @@ private fun ShoppingScreen(
         }
         Surface(
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xE61A3859),
+            color = Color(0xB81A3859),
             border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .36f)),
             shadowElevation = 12.dp,
             modifier =
@@ -2196,6 +2244,22 @@ private fun ShoppingScreen(
                         ),
                 )
                 ShoppingHeaderButton(
+                    icon = Icons.Default.Mic,
+                    description = "Röstinmatning",
+                    accent = shoppingBlue,
+                ) {
+                    val speechIntent =
+                        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                            putExtra(
+                                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                            )
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "sv-SE")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Lägg till vara")
+                        }
+                    runCatching { voiceLauncher.launch(speechIntent) }
+                }
+                ShoppingHeaderButton(
                     icon = Icons.Default.LocalOffer,
                     description = "Prisjämför",
                     active = selectedShoppingTool == "price",
@@ -2217,8 +2281,17 @@ private fun ShoppingScreen(
                         }
                     }
                 }
+                ShoppingHeaderButton(
+                    icon = Icons.Default.AutoAwesome,
+                    description = "Smart planering",
+                    active = selectedShoppingTool == "plan",
+                    accent = shoppingOrange,
+                ) {
+                    selectedShoppingTool = "plan"
+                }
             }
         }
+    }
     }
 
     if (showClearConfirmation) {
@@ -2907,7 +2980,7 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
         Surface(
-            color = Color(0xE6172E46),
+            color = Color(0xB8172E46),
             shape = RoundedCornerShape(28.dp),
             border = BorderStroke(1.dp, Color(0xFF68B8FF).copy(alpha = .22f)),
             shadowElevation = 12.dp,
@@ -2915,7 +2988,7 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
         ) {
             Row(
                 Modifier.fillMaxWidth()
-                    .height(62.dp)
+                    .height(58.dp)
                     .padding(horizontal = 5.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
