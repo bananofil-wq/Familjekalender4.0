@@ -34,6 +34,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -426,10 +428,10 @@ private fun SyncedApp(
     var mailOffers by remember { mutableStateOf(emptyList<MailOffer>()) }
     var events by remember { mutableStateOf(emptyList<SyncEvent>()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var selectedTab by remember { mutableIntStateOf(if (initialTab in 0..5) initialTab else 0) }
+    var selectedTab by remember { mutableIntStateOf(if (initialTab in 0..6) initialTab else 0) }
 
     LaunchedEffect(initialTab) {
-        if (initialTab in 0..5) selectedTab = initialTab
+        if (initialTab in 0..6) selectedTab = initialTab
     }
     var showAddEvent by remember { mutableStateOf(false) }
     var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
@@ -516,7 +518,7 @@ private fun SyncedApp(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (selectedTab == 1) {
+            if (selectedTab == 1 || selectedTab == 6) {
                 ShoppingBottomNav(selectedTab) { selectedTab = it }
             } else {
                 when (uiLayoutMode) {
@@ -1092,10 +1094,14 @@ private fun ShoppingScreen(
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit,
 ) {
-    val motionEnabled = appMotionEnabled()
-    val shoppingScope = rememberCoroutineScope()
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("Alla") }
+    var searchExpanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showClearConfirmation by remember { mutableStateOf(false) }
+
     val voiceLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -1107,83 +1113,21 @@ private fun ShoppingScreen(
                     ?.let { text = it }
             }
         }
-    var showClearConfirmation by remember { mutableStateOf(false) }
-    var selectedShoppingTool by remember { mutableStateOf<String?>(null) }
-    var priceComparison by remember { mutableStateOf<ShoppingPriceComparison?>(null) }
-    var comparingPrices by remember { mutableStateOf(false) }
-    var priceComparisonError by remember { mutableStateOf("") }
-    var recipeQuery by remember { mutableStateOf("") }
-    var selectedRecipe by remember { mutableStateOf<FamilyRecipe?>(null) }
-    var selectedCategory by remember { mutableStateOf("Alla") }
-    var searchExpanded by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var shoppingMenuExpanded by remember { mutableStateOf(false) }
-    val openItems = items.filterNot { it.checked }
-    val checkedItems = items.filter { it.checked }
-    val total = items.size
-    val done = checkedItems.size
-    val progressTarget = if (total == 0) 0f else done.toFloat() / total.toFloat()
-    val animatedProgress by
-    animateFloatAsState(
-        targetValue = progressTarget,
-        animationSpec = tween(motionDuration(320, motionEnabled)),
-        label = "shopping-progress",
-    )
 
     fun categoryFor(name: String): String {
         val value = name.lowercase(Locale("sv", "SE"))
         return when {
-            listOf(
-                "äpp",
-                "banan",
-                "päron",
-                "apels",
-                "citron",
-                "gurk",
-                "tomat",
-                "sallad",
-                "lök",
-                "potatis",
-                "morot",
-                "paprika",
-                "avokado",
-                "frukt",
-                "grönsak",
-            )
+            listOf("äpp", "banan", "päron", "apels", "citron", "gurk", "tomat", "sallad", "lök", "potatis", "morot", "paprika", "avokado", "frukt", "grönsak")
                 .any { it in value } -> "Frukt & grönt"
-
-            listOf("mjölk", "fil", "yoghurt", "ost", "smör", "grädde", "ägg", "kvarg").any {
-                it in value
-            } -> "Mejeri & ägg"
-
-            listOf("kött", "kyckling", "färs", "korv", "bacon", "fisk", "lax", "skinka").any {
-                it in value
-            } -> "Kött & fisk"
-
-            listOf("fryst", "glass", "pizza", "pommes").any { it in value } -> "Frys"
-            listOf("schampo", "tvål", "tand", "deo", "blöj", "toalett", "hygien").any {
-                it in value
-            } -> "Hygien"
-
-            listOf("disk", "tvätt", "soppås", "hushåll", "folie", "bakplåt", "rengör").any {
-                it in value
-            } -> "Hushåll"
-
-            listOf(
-                "bröd",
-                "kaffe",
-                "te",
-                "pasta",
-                "ris",
-                "mjöl",
-                "socker",
-                "fling",
-                "konserv",
-                "sås",
-                "krydd",
-            )
+            listOf("mjölk", "fil", "yoghurt", "ost", "smör", "grädde", "ägg", "kvarg")
+                .any { it in value } -> "Mejeri"
+            listOf("kött", "kyckling", "färs", "korv", "bacon", "fisk", "lax", "skinka")
+                .any { it in value } -> "Kött & fisk"
+            listOf("bröd", "kaffe", "te", "pasta", "ris", "mjöl", "socker", "fling", "konserv", "sås", "krydd")
                 .any { it in value } -> "Skafferi"
-
+            listOf("fryst", "glass", "pizza", "pommes").any { it in value } -> "Frys"
+            listOf("schampo", "tvål", "tand", "deo", "blöj", "toalett", "hygien").any { it in value } -> "Hygien"
+            listOf("disk", "tvätt", "soppås", "hushåll", "folie", "bakplåt", "rengör").any { it in value } -> "Hushåll"
             else -> "Övrigt"
         }
     }
@@ -1191,7 +1135,7 @@ private fun ShoppingScreen(
     val categoryOrder =
         listOf(
             "Frukt & grönt",
-            "Mejeri & ägg",
+            "Mejeri",
             "Kött & fisk",
             "Skafferi",
             "Frys",
@@ -1199,24 +1143,10 @@ private fun ShoppingScreen(
             "Hushåll",
             "Övrigt",
         )
-    val grouped = openItems.groupBy { categoryFor(it.name) }
-    val shoppingBlue = Color(0xFF68B8FF)
-    val shoppingCyan = Color(0xFF75E8F2)
-    val shoppingOrange = Color(0xFFFFA33A)
-    val shoppingGlass = Color(0x7A183453)
-    val shoppingGlassStrong = Color(0xA61A3859)
-    val verifiedCheapestByItem =
-        openItems.mapNotNull { item ->
-            mailOffers
-                .filter { mailOfferMatchesItem(it, item.name) }
-                .minByOrNull { it.price }
-                ?.let { item.id to it }
-        }.toMap()
-    val estimatedTotal = verifiedCheapestByItem.values.sumOf { it.price }
     val categoryEmoji =
         mapOf(
             "Frukt & grönt" to "🍏",
-            "Mejeri & ägg" to "🥛",
+            "Mejeri" to "🥛",
             "Kött & fisk" to "🥩",
             "Skafferi" to "🥫",
             "Frys" to "❄️",
@@ -1224,1104 +1154,534 @@ private fun ShoppingScreen(
             "Hushåll" to "🧽",
             "Övrigt" to "🛒",
         )
+
+    val openItems = items.filterNot { it.checked }
+    val checkedItems = items.filter { it.checked }
+    val total = items.size
+    val done = checkedItems.size
+
     val availableCategories =
         listOf("Alla") +
             categoryOrder.filter { category -> openItems.any { categoryFor(it.name) == category } }
 
+    val filteredOpen =
+        openItems.filter { item ->
+            (selectedCategory == "Alla" || categoryFor(item.name) == selectedCategory) &&
+                (searchQuery.isBlank() || item.name.contains(searchQuery.trim(), ignoreCase = true))
+        }
+    val visibleGroups =
+        categoryOrder.mapNotNull { category ->
+            filteredOpen.filter { categoryFor(it.name) == category }
+                .takeIf { it.isNotEmpty() }
+                ?.let { category to it }
+        }
+
+    val cheapestOffers =
+        openItems.mapNotNull { item ->
+            mailOffers
+                .filter { mailOfferMatchesItem(it, item.name) }
+                .minByOrNull { it.price }
+                ?.let { item.id to it }
+        }.toMap()
+    val estimatedTotal = cheapestOffers.values.sumOf { it.price }
+
+    val blue = Color(0xFF2EA7FF)
+    val cyan = Color(0xFF6CE9F4)
+    val orange = Color(0xFFFFA13A)
+    val glass = Color(0xA4142D49)
+    val border = Color(0xFF65BFFF).copy(alpha = .42f)
+
     PremiumModeBackground(themeMode = themeMode) {
         Box(Modifier.fillMaxSize()) {
-        Column(
-            Modifier.fillMaxSize()
-                .padding(horizontal = 11.dp, vertical = 7.dp)
-                .padding(bottom = 72.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                ShoppingHeaderButton(
-                    icon = Icons.Default.ArrowBack,
-                    description = "Tillbaka",
-                    accent = shoppingBlue,
-                    onClick = onBack,
-                )
-                Surface(
-                    shape = RoundedCornerShape(17.dp),
-                    color = shoppingOrange.copy(alpha = .15f),
-                    border = BorderStroke(1.dp, shoppingOrange.copy(alpha = .42f)),
-                    shadowElevation = 4.dp,
-                ) {
-                    Icon(
-                        Icons.Default.ShoppingCart,
-                        contentDescription = null,
-                        tint = shoppingOrange,
-                        modifier = Modifier.padding(8.dp).size(30.dp),
-                    )
-                }
-                Column {
-                    Text(
-                        "Inköp",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                    )
-                    Text(
-                        "${openItems.size} kvar · $done klara",
-                        color = Color.White.copy(alpha = .68f),
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-
-            Box {
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    ShoppingHeaderButton(
-                        icon = Icons.Default.Search,
-                        description = "Sök",
-                        active = searchExpanded,
-                        accent = shoppingBlue,
-                    ) {
-                        searchExpanded = !searchExpanded
-                        if (!searchExpanded) searchQuery = ""
-                    }
-                    ShoppingHeaderButton(
-                        icon = Icons.Default.QrCodeScanner,
-                        description = "Scanner",
-                        accent = shoppingCyan,
-                    ) {
-                        selectedShoppingTool = "price"
-                        priceComparisonError = ""
-                        if (openItems.isEmpty()) {
-                            priceComparison = null
-                            priceComparisonError = "Lägg till minst en vara först."
-                        } else {
-                            shoppingScope.launch {
-                                comparingPrices = true
-                                runCatching { ShoppingPriceService.compare(openItems.map { it.name }) }
-                                    .onSuccess { priceComparison = it }
-                                    .onFailure {
-                                        priceComparison = null
-                                        priceComparisonError =
-                                            it.message ?: "Kunde inte hämta prisjämförelsen."
-                                    }
-                                comparingPrices = false
-                            }
-                        }
-                    }
-                    ShoppingHeaderButton(
-                        icon = Icons.Default.MoreVert,
-                        description = "Mer",
-                        accent = shoppingBlue,
-                    ) { shoppingMenuExpanded = true }
-                }
-                DropdownMenu(
-                    expanded = shoppingMenuExpanded,
-                    onDismissRequest = { shoppingMenuExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Planera handlingen") },
-                        onClick = {
-                            shoppingMenuExpanded = false
-                            selectedShoppingTool = "plan"
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Recept") },
-                        onClick = {
-                            shoppingMenuExpanded = false
-                            selectedShoppingTool = "recipes"
-                        },
-                    )
-                    if (checkedItems.isNotEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text("Rensa bockade") },
-                            onClick = {
-                                shoppingMenuExpanded = false
-                                showClearConfirmation = true
-                            },
-                        )
-                    }
-                }
-            }
-        }
-
-        if (searchExpanded) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Sök i inköpslistan…") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = shoppingBlue)
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.fillMaxWidth(),
-                colors =
-                    OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = shoppingBlue.copy(alpha = .72f),
-                        unfocusedBorderColor = Color.White.copy(alpha = .12f),
-                        focusedContainerColor = shoppingGlass.copy(alpha = .74f),
-                        unfocusedContainerColor = shoppingGlass.copy(alpha = .60f),
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        start = 14.dp,
+                        end = 14.dp,
+                        top = 10.dp,
+                        bottom = 96.dp,
                     ),
-            )
-        }
-
-        Surface(
-            shape = RoundedCornerShape(19.dp),
-            color = Color(0xA81A3B5D),
-            border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .26f)),
-            modifier = Modifier.fillMaxWidth(),
-            shadowElevation = 7.dp,
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Column(Modifier.weight(1.15f)) {
-                    Text(
-                        "Totalt (est.)",
-                        color = Color.White.copy(alpha = .62f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        if (verifiedCheapestByItem.isEmpty()) "—"
-                        else "${"%.0f".format(Locale("sv", "SE"), estimatedTotal)} kr",
-                        color = Color.White,
-                        fontSize = 25.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    if (verifiedCheapestByItem.isNotEmpty()) {
-                        Text(
-                            "${verifiedCheapestByItem.size}/${openItems.size} verifierade",
-                            color = shoppingCyan.copy(alpha = .84f),
-                            fontSize = 9.sp,
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ShoppingHeaderButton(
+                            icon = Icons.Default.ArrowBack,
+                            description = "Tillbaka",
+                            accent = blue,
+                            onClick = onBack,
                         )
-                    }
-                }
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0x99263A4A),
+                            border = BorderStroke(1.dp, orange.copy(alpha = .72f)),
+                            shadowElevation = 5.dp,
+                        ) {
+                            Icon(
+                                Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                tint = orange,
+                                modifier = Modifier.padding(10.dp).size(31.dp),
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Inköp",
+                                color = Color.White,
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = 32.sp,
+                            )
+                            Text(
+                                "${openItems.size} kvar · $done klara",
+                                color = Color.White.copy(alpha = .74f),
+                                fontSize = 12.sp,
+                            )
+                        }
 
-                VerticalDivider(
-                    modifier = Modifier.height(44.dp),
-                    color = Color.White.copy(alpha = .10f),
-                )
-
-                ShoppingSummaryStat(
-                    value = openItems.size,
-                    label = "kvar",
-                    progress =
-                        if (total == 0) 0f
-                        else openItems.size.toFloat() / total.toFloat(),
-                    accent = shoppingOrange,
-                    modifier = Modifier.weight(.80f),
-                )
-
-                VerticalDivider(
-                    modifier = Modifier.height(44.dp),
-                    color = Color.White.copy(alpha = .10f),
-                )
-
-                ShoppingSummaryStat(
-                    value = done,
-                    label = "klara",
-                    progress = animatedProgress,
-                    accent = shoppingCyan,
-                    modifier = Modifier.weight(.80f),
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            availableCategories.forEach { category ->
-                val selected = selectedCategory == category
-                Surface(
-                    modifier = Modifier.clickable { selectedCategory = category },
-                    shape = RoundedCornerShape(99.dp),
-                    color =
-                        if (selected) shoppingBlue.copy(alpha = .28f)
-                        else shoppingGlass.copy(alpha = .72f),
-                    border =
-                        BorderStroke(
-                            1.dp,
-                            if (selected) shoppingBlue.copy(alpha = .88f)
-                            else Color.White.copy(alpha = .10f),
-                        ),
-                    shadowElevation = if (selected) 4.dp else 0.dp,
-                ) {
-                    Text(
-                        if (category == "Alla") "▦  Alla"
-                        else "${categoryEmoji[category] ?: "•"}  $category",
-                        color = if (selected) Color.White else Color.White.copy(alpha = .72f),
-                        fontSize = 11.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
-                    )
-                }
-            }
-        }
-
-        selectedShoppingTool?.let { tool ->
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .88f)),
-            shape = RoundedCornerShape(20.dp),
-            border =
-                BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = .20f),
-                ),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                Modifier.fillMaxWidth().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(9.dp),
-            ) {
-                when (tool) {
-                    "price" -> {
-                        Text(
-                            "Prisjämförelse",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                        Text(
-                            "Endast verifierade priser från ansluten prisdata visas. Inga uppskattade priser.",
-                            color = Muted,
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                        )
-                        when {
-                            comparingPrices -> {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                    )
-                                    Spacer(Modifier.width(9.dp))
-                                    Text("Jämför priser…", color = Muted, fontSize = 12.sp)
-                                }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            ShoppingHeaderButton(
+                                icon = Icons.Default.Search,
+                                description = "Sök",
+                                active = searchExpanded,
+                                accent = blue,
+                            ) {
+                                searchExpanded = !searchExpanded
+                                if (!searchExpanded) searchQuery = ""
                             }
-                            priceComparisonError.isNotBlank() -> {
-                                Text(
-                                    priceComparisonError,
-                                    color = MaterialTheme.colorScheme.error,
-                                    fontSize = 12.sp,
-                                )
+                            ShoppingHeaderButton(
+                                icon = Icons.Default.QrCodeScanner,
+                                description = "Scanner",
+                                accent = cyan,
+                            ) {
+                                searchExpanded = true
                             }
-                            priceComparison != null -> {
-                                val result = priceComparison!!
-                                result.bestCompleteStore?.let { basket ->
-                                    Text(
-                                        "Billigaste kompletta butik: ${basket.store} · ${"%.2f".format(Locale("sv", "SE"), basket.total)} kr",
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.sp,
-                                    )
-                                }
-                                result.splitBasketTotal?.let { total ->
-                                    Text(
-                                        "Billigast om köpet delas upp: ${"%.2f".format(Locale("sv", "SE"), total)} kr",
-                                        color = Color.White.copy(alpha = .84f),
-                                        fontSize = 12.sp,
-                                    )
-                                }
-                                result.splitSavingsAgainstBestCompleteStore?.let { saving ->
-                                    Text(
-                                        "Möjlig besparing: ${"%.2f".format(Locale("sv", "SE"), saving)} kr",
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontSize = 12.sp,
-                                    )
-                                }
-                                HorizontalDivider(color = Color.White.copy(alpha = .07f))
-                                result.items.forEach { pricedItem ->
-                                    val cheapest = pricedItem.cheapest
-                                    if (cheapest == null) {
-                                        Text(
-                                            "${pricedItem.query}: inget verifierat pris hittades",
-                                            color = Muted,
-                                            fontSize = 11.sp,
+                            Box {
+                                ShoppingHeaderButton(
+                                    icon = Icons.Default.MoreVert,
+                                    description = "Mer",
+                                    accent = blue,
+                                ) { menuExpanded = true }
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false },
+                                ) {
+                                    if (checkedItems.isNotEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text("Rensa bockade") },
+                                            onClick = {
+                                                menuExpanded = false
+                                                showClearConfirmation = true
+                                            },
                                         )
-                                    } else {
-                                        val detail =
-                                            listOfNotNull(
-                                                cheapest.brand,
-                                                cheapest.packageText,
-                                            ).joinToString(" · ")
-                                        Text(
-                                            "${pricedItem.query}: ${cheapest.store} · ${"%.2f".format(Locale("sv", "SE"), cheapest.price)} kr",
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                        if (detail.isNotBlank()) {
-                                            Text(detail, color = Muted, fontSize = 10.sp)
-                                        }
                                     }
                                 }
                             }
-                            else -> {
-                                Text(
-                                    "Tryck på prislappen uppe till höger för att jämföra varorna som inte är avbockade.",
-                                    color = Muted,
-                                    fontSize = 12.sp,
-                                )
-                            }
                         }
                     }
+                }
 
-                    "recipes" -> {
-                        val recipeResults =
-                            remember(recipeQuery) {
-                                FamilyRecipeCatalog.search(recipeQuery).take(30)
+                if (searchExpanded) {
+                    item {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Sök i inköpslistan…") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null, tint = blue)
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            colors =
+                                OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = blue.copy(alpha = .75f),
+                                    unfocusedBorderColor = Color.White.copy(alpha = .14f),
+                                    focusedContainerColor = Color(0xA616304D),
+                                    unfocusedContainerColor = Color(0x8C16304D),
+                                ),
+                        )
+                    }
+                }
+
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        color = Color(0xA91B3858),
+                        border = BorderStroke(1.dp, border),
+                        shadowElevation = 8.dp,
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1.15f)) {
+                                Text(
+                                    "Totalt (est.)",
+                                    color = Color.White.copy(alpha = .75f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    if (cheapestOffers.isEmpty()) "—"
+                                    else "${"%.0f".format(Locale("sv", "SE"), estimatedTotal)} kr",
+                                    color = Color.White,
+                                    fontSize = 25.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
                             }
+                            VerticalDivider(Modifier.height(52.dp), color = Color.White.copy(alpha = .14f))
+                            ShoppingSummaryStat(
+                                value = openItems.size,
+                                label = "kvar",
+                                progress = if (total == 0) 0f else openItems.size.toFloat() / total,
+                                accent = orange,
+                                modifier = Modifier.weight(.9f),
+                            )
+                            VerticalDivider(Modifier.height(52.dp), color = Color.White.copy(alpha = .14f))
+                            ShoppingSummaryStat(
+                                value = done,
+                                label = "klara",
+                                progress = if (total == 0) 0f else done.toFloat() / total,
+                                accent = cyan,
+                                modifier = Modifier.weight(.9f),
+                            )
+                        }
+                    }
+                }
 
-                        Text(
-                            "Familjens recept",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                        Text(
-                            "Sök bland recepten direkt i Familjekalendern. Allt visas och hanteras inne i appen.",
-                            color = Muted,
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                        )
-
-                        selectedRecipe?.let { recipe ->
-                            BackHandler { selectedRecipe = null }
-
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        availableCategories.forEach { category ->
+                            val selected = selectedCategory == category
                             Surface(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = .10f),
-                                shape = RoundedCornerShape(18.dp),
+                                modifier = Modifier.clickable { selectedCategory = category },
+                                shape = RoundedCornerShape(17.dp),
+                                color =
+                                    if (selected) Color(0xE52B9DF1)
+                                    else Color(0xA4173350),
                                 border =
                                     BorderStroke(
                                         1.dp,
-                                        MaterialTheme.colorScheme.primary.copy(alpha = .28f),
+                                        if (selected) Color(0xFF74CAFF)
+                                        else Color.White.copy(alpha = .12f),
                                     ),
-                            ) {
-                                Column(
-                                    Modifier.fillMaxWidth().padding(15.dp),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        TextButton(onClick = { selectedRecipe = null }) {
-                                            Text("← Alla recept")
-                                        }
-                                        Text(
-                                            "${recipe.timeMinutes} min · ${recipe.servings} port",
-                                            color = Muted,
-                                            fontSize = 11.sp,
-                                        )
-                                    }
-
-                                    Text(
-                                        recipe.title,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                    )
-                                    Text(
-                                        recipe.description,
-                                        color = Color.White.copy(alpha = .78f),
-                                        fontSize = 12.sp,
-                                        lineHeight = 17.sp,
-                                    )
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = .13f),
-                                        shape = RoundedCornerShape(99.dp),
-                                    ) {
-                                        Text(
-                                            recipe.category,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                        )
-                                    }
-
-                                    HorizontalDivider(color = Color.White.copy(alpha = .08f))
-                                    Text(
-                                        "Ingredienser",
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                    )
-                                    recipe.ingredients.forEach { ingredient ->
-                                        Row(
-                                            Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            Text(
-                                                ingredient.amount,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.width(76.dp),
-                                            )
-                                            Text(
-                                                ingredient.name,
-                                                color = Color.White.copy(alpha = .90f),
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.weight(1f),
-                                            )
-                                        }
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            recipe.ingredients.forEach { ingredient ->
-                                                onAdd("${ingredient.amount} ${ingredient.name}")
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) {
-                                        Text("Lägg ingredienser i inköpslistan")
-                                    }
-
-                                    HorizontalDivider(color = Color.White.copy(alpha = .08f))
-                                    Text(
-                                        "Gör så här",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                    )
-                                    recipe.steps.forEachIndexed { index, step ->
-                                        Row(
-                                            Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            verticalAlignment = Alignment.Top,
-                                        ) {
-                                            Surface(
-                                                color = MaterialTheme.colorScheme.primary.copy(alpha = .16f),
-                                                shape = CircleShape,
-                                            ) {
-                                                Text(
-                                                    "${index + 1}",
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 11.sp,
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                )
-                                            }
-                                            Text(
-                                                step,
-                                                color = Color.White.copy(alpha = .88f),
-                                                fontSize = 12.sp,
-                                                lineHeight = 17.sp,
-                                                modifier = Modifier.weight(1f),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (selectedRecipe == null) {
-                            OutlinedTextField(
-                                value = recipeQuery,
-                                onValueChange = { recipeQuery = it },
-                                label = { Text("Sök recept") },
-                                placeholder = { Text("t.ex. kyckling, pasta, kladdkaka") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-
-                            Text(
-                                if (recipeQuery.isBlank()) {
-                                    "${FamilyRecipeCatalog.all.size} recept i Familjekalendern"
-                                } else {
-                                    "${recipeResults.size} träffar"
-                                },
-                                color = Muted,
-                                fontSize = 11.sp,
-                            )
-
-                            if (recipeResults.isEmpty()) {
-                                Text(
-                                    "Inga recept matchade sökningen. Prova en rätt, råvara eller kategori.",
-                                    color = Muted,
-                                    fontSize = 12.sp,
-                                )
-                            } else {
-                                recipeResults.forEach { recipe ->
-                                    Surface(
-                                        modifier =
-                                            Modifier.fillMaxWidth().clickable {
-                                                selectedRecipe = recipe
-                                            },
-                                        color = Color.White.copy(alpha = .045f),
-                                        shape = RoundedCornerShape(14.dp),
-                                        border =
-                                            BorderStroke(
-                                                1.dp,
-                                                Color.White.copy(alpha = .07f),
-                                            ),
-                                    ) {
-                                        Column(
-                                            Modifier.fillMaxWidth().padding(13.dp),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                                        ) {
-                                            Row(
-                                                Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                Text(
-                                                    recipe.title,
-                                                    color = Color.White,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontSize = 14.sp,
-                                                    modifier = Modifier.weight(1f),
-                                                )
-                                                Text(
-                                                    "${recipe.timeMinutes} min",
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    fontSize = 11.sp,
-                                                )
-                                            }
-                                            Text(
-                                                recipe.description,
-                                                color = Muted,
-                                                fontSize = 11.sp,
-                                                maxLines = 2,
-                                            )
-                                            Text(
-                                                "${recipe.category} · ${recipe.servings} portioner",
-                                                color = Color.White.copy(alpha = .55f),
-                                                fontSize = 10.sp,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    "plan" -> {
-                        Text(
-                            "Planera handlingen",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                        if (openItems.isEmpty()) {
-                            Text(
-                                "Inga varor kvar att planera.",
-                                color = Muted,
-                                fontSize = 12.sp,
-                            )
-                        } else {
-                            Text(
-                                "${openItems.size} varor kvar · grupperade i en smidigare butiksordning.",
-                                color = Muted,
-                                fontSize = 11.sp,
-                            )
-                            categoryOrder.forEach { category ->
-                                val categoryItems = grouped[category].orEmpty()
-                                if (categoryItems.isNotEmpty()) {
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            category,
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                        Text(
-                                            "${categoryItems.size}",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                TextButton(
-                    onClick = { selectedShoppingTool = null },
-                    modifier = Modifier.align(Alignment.End),
-                ) {
-                    Text("Stäng")
-                }
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-    }
-
-    AnimatedContent(
-        targetState = items,
-        transitionSpec = {
-            (fadeIn(tween(motionDuration(LuxuryMotion.Standard, motionEnabled))) +
-                    slideInVertically(tween(motionDuration(210, motionEnabled))) { it / 16 }) togetherWith
-                    (fadeOut(tween(motionDuration(LuxuryMotion.Fast, motionEnabled))) +
-                            slideOutVertically(tween(motionDuration(170, motionEnabled))) { -it / 18 })
-        },
-        label = "shopping-items",
-    ) { visibleItems ->
-        val visibleOpenAll =
-            visibleItems
-                .filterNot { it.checked }
-                .filter {
-                    searchQuery.isBlank() ||
-                        it.name.contains(searchQuery.trim(), ignoreCase = true)
-                }
-        val visibleCheckedAll =
-            visibleItems
-                .filter { it.checked }
-                .filter {
-                    searchQuery.isBlank() ||
-                        it.name.contains(searchQuery.trim(), ignoreCase = true)
-                }
-        val visibleOpen =
-            if (selectedCategory == "Alla") visibleOpenAll
-            else visibleOpenAll.filter { categoryFor(it.name) == selectedCategory }
-        val visibleChecked =
-            if (selectedCategory == "Alla") visibleCheckedAll
-            else visibleCheckedAll.filter { categoryFor(it.name) == selectedCategory }
-        val visibleGrouped = visibleOpen.groupBy { categoryFor(it.name) }
-
-        Column(
-            Modifier.fillMaxWidth().animateContentSize(tween(motionDuration(220, motionEnabled))),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            if (visibleItems.isEmpty()) {
-                Surface(
-                    color = shoppingGlassStrong,
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = .10f)),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        Modifier.padding(25.dp).fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Icon(
-                            Icons.Default.ShoppingCart,
-                            contentDescription = null,
-                            tint = shoppingBlue,
-                            modifier = Modifier.size(40.dp),
-                        )
-                        Spacer(Modifier.height(7.dp))
-                        Text(
-                            "Dags att fylla listan",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                        )
-                        Text("Lägg till första varan nedan", color = Muted, fontSize = 11.sp)
-                    }
-                }
-            } else if (visibleOpen.isEmpty() && visibleChecked.isEmpty()) {
-                Surface(
-                    color = shoppingGlass.copy(alpha = .74f),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        if (searchQuery.isBlank()) "Inga varor i den här kategorin."
-                        else "Ingen vara matchar “$searchQuery”.",
-                        color = Color.White.copy(alpha = .65f),
-                        modifier = Modifier.padding(17.dp),
-                        fontSize = 11.sp,
-                    )
-                }
-            }
-
-            categoryOrder.forEach { category ->
-                val categoryItems = visibleGrouped[category].orEmpty()
-                if (categoryItems.isNotEmpty()) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = Color(0x941A3859),
-                        border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .18f)),
-                        modifier = Modifier.fillMaxWidth(),
-                        shadowElevation = 7.dp,
-                    ) {
-                        Column(Modifier.fillMaxWidth()) {
-                            Row(
-                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                                shadowElevation = if (selected) 8.dp else 0.dp,
                             ) {
                                 Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(7.dp),
                                 ) {
-                                    Text(categoryEmoji[category] ?: "🛒", fontSize = 19.sp)
+                                    Text(
+                                        if (category == "Alla") "▦" else categoryEmoji[category] ?: "•",
+                                        fontSize = 15.sp,
+                                    )
                                     Text(
                                         category,
                                         color = Color.White,
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 17.sp,
-                                    )
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(99.dp),
-                                        color = Color.Black.copy(alpha = .18f),
-                                        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
-                                    ) {
-                                        Text(
-                                            "${categoryItems.size} kvar",
-                                            color = Color.White.copy(alpha = .78f),
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        )
-                                    }
-                                    Icon(
-                                        Icons.Default.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = .72f),
-                                        modifier = Modifier.size(18.dp),
+                                        maxLines = 1,
                                     )
                                 }
                             }
-                            HorizontalDivider(color = Color.White.copy(alpha = .065f))
+                        }
+                    }
+                }
+
+                if (visibleGroups.isEmpty()) {
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(22.dp),
+                            color = glass,
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .10f)),
+                        ) {
+                            Text(
+                                if (items.isEmpty()) "Lägg till första varan nedan."
+                                else "Inga varor matchar filtret.",
+                                modifier = Modifier.padding(22.dp),
+                                color = Color.White.copy(alpha = .7f),
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+
+                items(
+                    items = visibleGroups,
+                    key = { it.first },
+                ) { (category, categoryItems) ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = glass,
+                        border = BorderStroke(1.dp, border.copy(alpha = .72f)),
+                        shadowElevation = 8.dp,
+                    ) {
+                        Column(Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(categoryEmoji[category] ?: "🛒", fontSize = 21.sp)
+                                Spacer(Modifier.width(9.dp))
+                                Text(
+                                    category,
+                                    modifier = Modifier.weight(1f),
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color.Black.copy(alpha = .20f),
+                                ) {
+                                    Text(
+                                        "${categoryItems.size} kvar",
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        color = Color.White.copy(alpha = .88f),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                                Spacer(Modifier.width(3.dp))
+                                Icon(
+                                    Icons.Default.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = .8f),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+
+                            HorizontalDivider(color = Color.White.copy(alpha = .10f))
 
                             categoryItems.forEachIndexed { index, item ->
-                                val offersForItem =
+                                val offers =
                                     mailOffers
                                         .filter { mailOfferMatchesItem(it, item.name) }
                                         .sortedBy { it.price }
                                         .take(3)
+
                                 Row(
-                                    Modifier.fillMaxWidth()
-                                        .clickable { onToggle(item) }
-                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                            .clickable { onToggle(item) }
+                                            .padding(horizontal = 9.dp, vertical = 7.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                                 ) {
                                     Checkbox(
                                         checked = false,
                                         onCheckedChange = { onToggle(item) },
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(35.dp),
                                     )
+                                    Spacer(Modifier.width(7.dp))
+
                                     Surface(
-                                        shape = RoundedCornerShape(11.dp),
-                                        color = Color(0x80456C86),
-                                        border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
-                                        shadowElevation = 3.dp,
-                                        modifier = Modifier.size(46.dp),
+                                        modifier = Modifier.size(50.dp),
+                                        shape = RoundedCornerShape(13.dp),
+                                        color = Color(0xB2264D6C),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
+                                        shadowElevation = 4.dp,
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text(
-                                                shoppingProductEmoji(item.name),
-                                                fontSize = 24.sp,
-                                            )
+                                            Text(shoppingProductEmoji(item.name), fontSize = 28.sp)
                                         }
                                     }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(1.dp),
-                                    ) {
+
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(Modifier.weight(1f)) {
                                         Text(
                                             item.name,
                                             color = Color.White,
                                             fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Bold,
                                             maxLines = 2,
                                         )
                                         Text(
                                             shoppingItemMeta(item.name),
-                                            color = Color.White.copy(alpha = .48f),
-                                            fontSize = 9.sp,
+                                            color = Color.White.copy(alpha = .58f),
+                                            fontSize = 10.sp,
                                         )
                                     }
 
-                                    if (offersForItem.isNotEmpty()) {
-                                        Row(
-                                            modifier = Modifier.widthIn(max = 164.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            offersForItem.forEach { offer ->
-                                                val formattedPrice =
-                                                    "%.2f"
-                                                        .format(Locale.US, offer.price)
-                                                        .replace('.', ',')
-                                                val storeColor = shoppingStoreColor(offer.store)
-                                                Surface(
-                                                    shape = RoundedCornerShape(7.dp),
-                                                    color = storeColor.copy(alpha = .22f),
-                                                    border =
-                                                        BorderStroke(
-                                                            1.dp,
-                                                            storeColor.copy(alpha = .42f),
-                                                        ),
-                                                    modifier = Modifier.width(49.dp),
-                                                ) {
-                                                    Column(
-                                                        modifier =
-                                                            Modifier.padding(
-                                                                horizontal = 4.dp,
-                                                                vertical = 3.dp,
-                                                            ),
-                                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                                    ) {
-                                                        Text(
-                                                            shoppingStoreShortName(offer.store),
-                                                            color = Color.White.copy(alpha = .72f),
-                                                            fontSize = 7.sp,
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            maxLines = 1,
-                                                        )
-                                                        Text(
-                                                            formattedPrice,
-                                                            color = Color.White,
-                                                            fontSize = 9.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            maxLines = 1,
-                                                        )
-                                                    }
-                                                }
+                                    Spacer(Modifier.width(6.dp))
+                                    Row(
+                                        modifier = Modifier.width(159.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        if (offers.isNotEmpty()) {
+                                            offers.forEach { offer ->
+                                                ReferencePriceChip(
+                                                    store = shoppingStoreShortName(offer.store),
+                                                    price =
+                                                        "%.2f"
+                                                            .format(Locale.US, offer.price)
+                                                            .replace('.', ','),
+                                                    accent = shoppingStoreColor(offer.store),
+                                                )
                                             }
-                                        }
-                                    } else {
-                                        Row(
-                                            modifier = Modifier.width(153.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                        ) {
-                                            repeat(3) {
-                                                Surface(
-                                                    shape = RoundedCornerShape(7.dp),
-                                                    color = Color.Black.copy(alpha = .12f),
-                                                    border = BorderStroke(1.dp, Color.White.copy(alpha = .055f)),
-                                                    modifier = Modifier.width(49.dp),
-                                                ) {
-                                                    Text(
-                                                        "—",
-                                                        color = Color.White.copy(alpha = .22f),
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        modifier = Modifier.padding(vertical = 9.dp),
-                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                                    )
-                                                }
+                                            repeat(3 - offers.size) {
+                                                ReferencePriceChip(store = "", price = "—", accent = Color.White)
                                             }
+                                        } else {
+                                            ReferencePriceChip(store = "Willys", price = "—", accent = Color(0xFFE83448))
+                                            ReferencePriceChip(store = "Coop", price = "—", accent = Color(0xFF26B96C))
+                                            ReferencePriceChip(store = "City", price = "—", accent = Color(0xFF2C9AF4))
                                         }
                                     }
+
                                     IconButton(
-                                        onClick = { selectedShoppingTool = "price" },
+                                        onClick = { },
                                         modifier = Modifier.size(28.dp),
                                     ) {
                                         Icon(
                                             Icons.Default.MoreVert,
                                             contentDescription = "Mer för ${item.name}",
-                                            tint = Color.White.copy(alpha = .72f),
+                                            tint = Color.White.copy(alpha = .78f),
                                             modifier = Modifier.size(18.dp),
                                         )
                                     }
                                 }
+
                                 if (index != categoryItems.lastIndex) {
                                     HorizontalDivider(
-                                        color = Color.White.copy(alpha = .045f),
-                                        modifier = Modifier.padding(start = 68.dp),
+                                        color = Color.White.copy(alpha = .08f),
+                                        modifier = Modifier.padding(start = 64.dp),
                                     )
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            if (visibleChecked.isNotEmpty()) {
-                Surface(
-                    shape = RoundedCornerShape(21.dp),
-                    color = shoppingGlass.copy(alpha = .58f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(Modifier.fillMaxWidth()) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                if (checkedItems.isNotEmpty()) {
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = Color(0x8C142A43),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
                         ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = shoppingCyan,
-                                    modifier = Modifier.size(17.dp),
-                                )
-                                Text(
-                                    "Klara (${visibleChecked.size})",
-                                    color = Color.White.copy(alpha = .70f),
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 13.sp,
-                                )
-                            }
-                            TextButton(onClick = { showClearConfirmation = true }) {
-                                Text("Rensa", color = shoppingBlue)
-                            }
-                        }
-                        visibleChecked.forEachIndexed { index, item ->
-                            if (index > 0) {
-                                HorizontalDivider(
-                                    color = Color.White.copy(alpha = .04f),
-                                    modifier = Modifier.padding(start = 58.dp),
-                                )
-                            }
-                            Row(
-                                Modifier.fillMaxWidth()
-                                    .clickable { onToggle(item) }
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Checkbox(
-                                    checked = true,
-                                    onCheckedChange = { onToggle(item) },
-                                )
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = cyan)
+                                Spacer(Modifier.width(8.dp))
                                 Text(
-                                    shoppingProductEmoji(item.name),
-                                    fontSize = 18.sp,
-                                    modifier = Modifier.padding(end = 7.dp),
-                                )
-                                Text(
-                                    item.name,
-                                    color = Color.White.copy(alpha = .44f),
-                                    fontSize = 13.sp,
+                                    "${checkedItems.size} klara",
                                     modifier = Modifier.weight(1f),
+                                    color = Color.White.copy(alpha = .78f),
+                                    fontWeight = FontWeight.SemiBold,
                                 )
+                                TextButton(onClick = { showClearConfirmation = true }) {
+                                    Text("Rensa", color = blue)
+                                }
                             }
                         }
                     }
                 }
             }
 
-        }
-    }
-
-        }
-        Surface(
-            shape = RoundedCornerShape(21.dp),
-            color = Color(0xB81A3859),
-            border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .36f)),
-            shadowElevation = 12.dp,
-            modifier =
-                Modifier.align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            Surface(
+                modifier =
+                    Modifier.align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xE2173552),
+                border = BorderStroke(1.dp, Color(0xFF5CB9F6).copy(alpha = .66f)),
+                shadowElevation = 14.dp,
             ) {
-                FilledIconButton(
-                    onClick = {
-                        text
-                            .split(',', ';', '\n')
-                            .map { it.trim() }
-                            .filter { it.isNotBlank() }
-                            .forEach(onAdd)
-                        text = ""
-                    },
-                    enabled = text.isNotBlank(),
-                    modifier = Modifier.size(46.dp),
-                    shape = CircleShape,
-                    colors =
-                        IconButtonDefaults.filledIconButtonColors(
-                            containerColor = shoppingBlue,
-                            contentColor = Color(0xFF061525),
-                        ),
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Lägg till")
-                }
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    placeholder = { Text("Lägg till vara …") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    colors =
-                        OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedContainerColor = Color.White.copy(alpha = .045f),
-                            unfocusedContainerColor = Color.White.copy(alpha = .035f),
-                        ),
-                )
-                ShoppingHeaderButton(
-                    icon = Icons.Default.Mic,
-                    description = "Röstinmatning",
-                    accent = shoppingBlue,
-                ) {
-                    val speechIntent =
-                        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(
-                                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
-                            )
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "sv-SE")
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Lägg till vara")
-                        }
-                    runCatching { voiceLauncher.launch(speechIntent) }
-                }
-                ShoppingHeaderButton(
-                    icon = Icons.Default.QrCodeScanner,
-                    description = "Prisjämför",
-                    active = selectedShoppingTool == "price",
-                    accent = shoppingCyan,
-                ) {
-                    selectedShoppingTool = "price"
-                    priceComparisonError = ""
-                    if (openItems.isNotEmpty()) {
-                        shoppingScope.launch {
-                            comparingPrices = true
-                            runCatching { ShoppingPriceService.compare(openItems.map { it.name }) }
-                                .onSuccess { priceComparison = it }
-                                .onFailure {
-                                    priceComparison = null
-                                    priceComparisonError =
-                                        it.message ?: "Kunde inte hämta prisjämförelsen."
-                                }
-                            comparingPrices = false
-                        }
+                    FilledIconButton(
+                        onClick = {
+                            text
+                                .split(',', ';', '\n')
+                                .map { it.trim() }
+                                .filter { it.isNotBlank() }
+                                .forEach(onAdd)
+                            text = ""
+                        },
+                        enabled = text.isNotBlank(),
+                        modifier = Modifier.size(50.dp),
+                        shape = CircleShape,
+                        colors =
+                            IconButtonDefaults.filledIconButtonColors(
+                                containerColor = Color(0xFF23A7FF),
+                                contentColor = Color.White,
+                                disabledContainerColor = Color(0xFF4A6680),
+                                disabledContentColor = Color.White.copy(alpha = .42f),
+                            ),
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Lägg till", modifier = Modifier.size(27.dp))
                     }
-                }
-                ShoppingHeaderButton(
-                    icon = Icons.Default.AutoAwesome,
-                    description = "Smart planering",
-                    active = selectedShoppingTool == "plan",
-                    accent = shoppingOrange,
-                ) {
-                    selectedShoppingTool = "plan"
+
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        placeholder = { Text("Lägg till vara …") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.White.copy(alpha = .055f),
+                                unfocusedContainerColor = Color.White.copy(alpha = .045f),
+                            ),
+                    )
+
+                    ShoppingHeaderButton(
+                        icon = Icons.Default.Mic,
+                        description = "Röstinmatning",
+                        accent = blue,
+                    ) {
+                        val speechIntent =
+                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(
+                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                                )
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "sv-SE")
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Lägg till vara")
+                            }
+                        runCatching { voiceLauncher.launch(speechIntent) }
+                    }
+                    ShoppingHeaderButton(
+                        icon = Icons.Default.QrCodeScanner,
+                        description = "Scanner",
+                        accent = cyan,
+                    ) {
+                        searchExpanded = true
+                    }
+                    ShoppingHeaderButton(
+                        icon = Icons.Default.AutoAwesome,
+                        description = "Smart",
+                        accent = blue,
+                    ) {
+                        searchExpanded = true
+                    }
                 }
             }
         }
-    }
     }
 
     if (showClearConfirmation) {
@@ -2349,6 +1709,46 @@ private fun ShoppingScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun ReferencePriceChip(
+    store: String,
+    price: String,
+    accent: Color,
+) {
+    Surface(
+        modifier = Modifier.width(50.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xB91B2333),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 3.dp, vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                store.ifBlank { " " },
+                color = Color.White.copy(alpha = .78f),
+                fontSize = 7.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+            Surface(
+                shape = RoundedCornerShape(5.dp),
+                color = if (price == "—") Color.White.copy(alpha = .08f) else accent.copy(alpha = .92f),
+            ) {
+                Text(
+                    price,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    color = if (price == "—") Color.White.copy(alpha = .36f) else Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -3103,7 +2503,7 @@ private fun AnimatedNavIcon(icon: ImageVector, label: String, selected: Boolean)
 
 @Composable
 private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    val items =
+    val navItems =
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
             Triple(2, Icons.Default.CheckCircle, "Att göra"),
@@ -3114,69 +2514,49 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
 
     Box(
         Modifier.fillMaxWidth()
-            .background(Color(0xFF06101A))
+            .background(Color(0xFF050B13))
             .navigationBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
         Surface(
-            color = Color(0xB8172E46),
-            shape = RoundedCornerShape(28.dp),
-            border = BorderStroke(1.dp, Color(0xFF68B8FF).copy(alpha = .22f)),
-            shadowElevation = 12.dp,
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(25.dp),
+            color = Color(0xE3132941),
+            border = BorderStroke(1.dp, Color(0xFF55B8F7).copy(alpha = .42f)),
+            shadowElevation = 12.dp,
         ) {
             Row(
-                Modifier.fillMaxWidth()
-                    .height(56.dp)
-                    .padding(horizontal = 5.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 5.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                items.forEach { (tab, icon, label) ->
-                    val isSelected = selected == tab
-                    Box(
-                        Modifier.weight(1f)
-                            .fillMaxHeight()
-                            .padding(horizontal = 2.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .then(
-                                if (isSelected) {
-                                    Modifier.background(
-                                        Brush.verticalGradient(
-                                            listOf(
-                                                Color(0xFF2B9EFF),
-                                                Color(0xFF0969B8),
-                                            )
-                                        )
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .clickable { onSelect(tab) },
-                        contentAlignment = Alignment.Center,
+                navItems.forEach { (tab, icon, label) ->
+                    val active = selected == tab
+                    Surface(
+                        modifier =
+                            Modifier.weight(1f)
+                                .fillMaxHeight()
+                                .padding(horizontal = 2.dp)
+                                .clickable { onSelect(tab) },
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (active) Color(0xFF138FE7) else Color.Transparent,
                     ) {
                         Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Icon(
                                 icon,
                                 contentDescription = label,
-                                tint =
-                                    if (isSelected) Color.White
-                                    else Color.White.copy(alpha = .58f),
-                                modifier = Modifier.size(if (isSelected) 24.dp else 21.dp),
+                                tint = if (active) Color.White else Color.White.copy(alpha = .62f),
+                                modifier = Modifier.size(if (active) 25.dp else 22.dp),
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 label,
-                                color =
-                                    if (isSelected) Color.White
-                                    else Color.White.copy(alpha = .52f),
+                                color = if (active) Color.White else Color.White.copy(alpha = .58f),
                                 fontSize = 9.sp,
-                                fontWeight =
-                                    if (isSelected) FontWeight.Bold
-                                    else FontWeight.Medium,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                                 maxLines = 1,
                             )
                         }
