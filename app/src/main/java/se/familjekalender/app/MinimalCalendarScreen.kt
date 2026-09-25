@@ -1541,6 +1541,17 @@ private fun CleanSummaryEventRow(
 
 @Composable
 private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
+    val spec = LocalCleanThemeSpec.current
+    val theme = LocalCleanVisualTheme.current
+    val actionShape =
+        if (theme == CleanVisualTheme.BRUTALIST || theme == CleanVisualTheme.SWISS) {
+            RoundedCornerShape(spec.buttonRadius)
+        } else {
+            CircleShape
+        }
+    val title =
+        if (theme == CleanVisualTheme.BRUTALIST) "FAMILJEKALENDER" else "Familjekalender"
+
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1549,20 +1560,27 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Familjekalender",
-                    color = Color.White,
-                    fontFamily = FontFamily.Cursive,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    title,
+                    color = spec.text,
+                    fontFamily = spec.titleFont,
+                    fontSize = if (theme == CleanVisualTheme.BRUTALIST) 25.sp else 30.sp,
+                    fontWeight = spec.titleWeight,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("♡", color = CleanPurpleBright, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "♡",
+                    color = spec.accentStrong,
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
             Text(
                 "TILLSAMMANS VARJE DAG",
-                color = Color.White.copy(alpha = .80f),
+                color = spec.muted.copy(alpha = .95f),
                 fontSize = 9.sp,
-                letterSpacing = 2.sp,
+                letterSpacing = if (theme == CleanVisualTheme.BRUTALIST) 2.5.sp else 2.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -1572,44 +1590,41 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
         ) {
             Box(
                 Modifier.size(42.dp)
-                    .shadow(7.dp, CircleShape, clip = false)
-                    .clip(CircleShape)
+                    .shadow(spec.shadow.coerceAtMost(7.dp), actionShape, clip = false)
+                    .clip(actionShape)
                     .background(
                         Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = .24f),
-                                Color(0xB91D1B23),
-                            )
+                            listOf(spec.panelTop, spec.panelBottom)
                         )
                     )
-                    .border(1.dp, Color.White.copy(alpha = .28f), CircleShape)
+                    .border(1.dp, spec.border, actionShape)
                     .clickable(onClick = onSearch),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Default.Search,
                     contentDescription = "Sök",
-                    tint = Color.White,
+                    tint = spec.text,
                     modifier = Modifier.size(21.dp),
                 )
             }
             Box(
                 Modifier.size(50.dp)
-                    .shadow(11.dp, CircleShape, clip = false)
-                    .clip(CircleShape)
+                    .shadow(spec.shadow, actionShape, clip = false)
+                    .clip(actionShape)
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFFC777FF), Color(0xFF8A43FF), Color(0xFF6A24DB))
+                            listOf(spec.selectedTop, spec.selectedBottom)
                         )
                     )
-                    .border(1.2.dp, Color(0xFFE2C2FF), CircleShape)
+                    .border(1.2.dp, spec.selectedBorder, actionShape)
                     .clickable(onClick = onAdd),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "Lägg till aktivitet",
-                    tint = Color.White,
+                    tint = spec.selectedText,
                     modifier = Modifier.size(28.dp),
                 )
             }
