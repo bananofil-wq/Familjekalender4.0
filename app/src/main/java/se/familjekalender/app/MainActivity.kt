@@ -695,7 +695,11 @@ private fun SyncedApp(
                                     onBack = { selectedTab = 0 },
                                     onAdd = { name ->
                                         scope.launch {
-                                            SupabaseSync.addShopping(session, name)
+                                            SupabaseSync.addShopping(
+                                                session,
+                                                name,
+                                                appPrefs.getString("push_device_id", null),
+                                            )
                                             refresh()
                                         }
                                     },
@@ -822,7 +826,11 @@ private fun SyncedApp(
                                 RecipesMainScreen(
                                     onAddIngredient = { ingredient ->
                                         scope.launch {
-                                            SupabaseSync.addShopping(session, ingredient)
+                                            SupabaseSync.addShopping(
+                                                session,
+                                                ingredient,
+                                                appPrefs.getString("push_device_id", null),
+                                            )
                                             refresh()
                                         }
                                     },
@@ -1477,48 +1485,49 @@ private fun ShoppingScreen(
                                 Row(
                                     modifier =
                                         Modifier.fillMaxWidth()
-                                            .clickable { onToggle(item) }
-                                            .padding(horizontal = 9.dp, vertical = 7.dp),
+                                            .padding(horizontal = 7.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Checkbox(
+                                    ReferenceShoppingCheck(
                                         checked = false,
-                                        onCheckedChange = { onToggle(item) },
-                                        modifier = Modifier.size(35.dp),
+                                        onClick = { onToggle(item) },
                                     )
-                                    Spacer(Modifier.width(7.dp))
+                                    Spacer(Modifier.width(5.dp))
 
                                     Surface(
-                                        modifier = Modifier.size(50.dp),
-                                        shape = RoundedCornerShape(13.dp),
+                                        modifier = Modifier.size(44.dp),
+                                        shape = RoundedCornerShape(12.dp),
                                         color = Color(0xB2264D6C),
                                         border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
-                                        shadowElevation = 4.dp,
+                                        shadowElevation = 3.dp,
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text(shoppingProductEmoji(item.name), fontSize = 28.sp)
+                                            Text(shoppingProductEmoji(item.name), fontSize = 24.sp)
                                         }
                                     }
 
-                                    Spacer(Modifier.width(10.dp))
+                                    Spacer(Modifier.width(7.dp))
                                     Column(Modifier.weight(1f)) {
                                         Text(
                                             item.name,
                                             color = Color.White,
-                                            fontSize = 14.sp,
+                                            fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            maxLines = 2,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                         )
+                                        Spacer(Modifier.height(1.dp))
                                         Text(
                                             shoppingItemMeta(item.name),
                                             color = Color.White.copy(alpha = .58f),
-                                            fontSize = 10.sp,
+                                            fontSize = 8.sp,
+                                            maxLines = 1,
                                         )
                                     }
 
-                                    Spacer(Modifier.width(6.dp))
+                                    Spacer(Modifier.width(4.dp))
                                     Row(
-                                        modifier = Modifier.width(159.dp),
+                                        modifier = Modifier.width(119.dp),
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
                                         if (offers.isNotEmpty()) {
@@ -1544,13 +1553,13 @@ private fun ShoppingScreen(
 
                                     IconButton(
                                         onClick = { },
-                                        modifier = Modifier.size(28.dp),
+                                        modifier = Modifier.size(24.dp),
                                     ) {
                                         Icon(
                                             Icons.Default.MoreVert,
                                             contentDescription = "Mer för ${item.name}",
                                             tint = Color.White.copy(alpha = .78f),
-                                            modifier = Modifier.size(18.dp),
+                                            modifier = Modifier.size(17.dp),
                                         )
                                     }
                                 }
@@ -1558,7 +1567,7 @@ private fun ShoppingScreen(
                                 if (index != categoryItems.lastIndex) {
                                     HorizontalDivider(
                                         color = Color.White.copy(alpha = .08f),
-                                        modifier = Modifier.padding(start = 64.dp),
+                                        modifier = Modifier.padding(start = 55.dp),
                                     )
                                 }
                             }
@@ -1713,13 +1722,37 @@ private fun ShoppingScreen(
 }
 
 @Composable
+private fun ReferenceShoppingCheck(
+    checked: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.size(30.dp).clickable(onClick = onClick),
+        shape = CircleShape,
+        color = if (checked) Color(0xFF269DFF) else Color.Transparent,
+        border = BorderStroke(2.dp, Color.White.copy(alpha = if (checked) .95f else .82f)),
+    ) {
+        if (checked) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ReferencePriceChip(
     store: String,
     price: String,
     accent: Color,
 ) {
     Surface(
-        modifier = Modifier.width(50.dp),
+        modifier = Modifier.width(37.dp),
         shape = RoundedCornerShape(8.dp),
         color = Color(0xB91B2333),
         border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
@@ -1731,7 +1764,7 @@ private fun ReferencePriceChip(
             Text(
                 store.ifBlank { " " },
                 color = Color.White.copy(alpha = .78f),
-                fontSize = 7.sp,
+                fontSize = 5.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
