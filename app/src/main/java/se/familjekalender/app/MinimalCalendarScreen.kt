@@ -2281,22 +2281,42 @@ private fun CleanWeatherCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(30.dp)
+    val spec = LocalCleanThemeSpec.current
+    val theme = LocalCleanVisualTheme.current
+    val shape =
+        RoundedCornerShape(
+            if (theme == CleanVisualTheme.CURRENT) 30.dp else spec.cardRadius
+        )
+    val cardColors =
+        if (theme == CleanVisualTheme.CURRENT) {
+            listOf(
+                Color.White.copy(alpha = .20f),
+                Color(0xDB25232D),
+                Color(0xEC19171F),
+            )
+        } else {
+            listOf(spec.panelTop, spec.panelMid, spec.panelBottom)
+        }
+
     Box(
         modifier
             .heightIn(min = 88.dp)
-            .shadow(10.dp, shape, clip = false)
-            .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = .20f),
-                        Color(0xDB25232D),
-                        Color(0xEC19171F),
-                    )
-                )
+            .shadow(
+                if (theme == CleanVisualTheme.CURRENT) 10.dp else spec.shadow,
+                shape,
+                clip = false,
             )
-            .border(1.dp, Color.White.copy(alpha = .26f), shape)
+            .clip(shape)
+            .background(Brush.verticalGradient(cardColors))
+            .border(
+                if (theme == CleanVisualTheme.BRUTALIST) 1.7.dp else 1.dp,
+                if (theme == CleanVisualTheme.CURRENT) {
+                    Color.White.copy(alpha = .26f)
+                } else {
+                    spec.border
+                },
+                shape,
+            )
             .clickable(onClick = onClick)
     ) {
         Row(
@@ -2306,7 +2326,12 @@ private fun CleanWeatherCard(
             Icon(
                 Icons.Default.Cloud,
                 contentDescription = null,
-                tint = Color.White,
+                tint =
+                    when (theme) {
+                        CleanVisualTheme.RETRO_70S -> spec.warning
+                        CleanVisualTheme.MEMPHIS -> Color(0xFFFFB928)
+                        else -> spec.accentStrong
+                    },
                 modifier = Modifier.size(34.dp),
             )
             Spacer(Modifier.width(12.dp))
@@ -2317,13 +2342,13 @@ private fun CleanWeatherCard(
                         loading -> "…"
                         else -> "—°"
                     },
-                    color = Color.White,
+                    color = spec.text,
                     fontSize = 27.sp,
                     fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
                     "Väder",
-                    color = Color.White,
+                    color = spec.text,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -2334,33 +2359,43 @@ private fun CleanWeatherCard(
                         hasLocationPermission -> "Tryck för aktuell prognos"
                         else -> "Aktivera plats"
                     },
-                    color = Color.White.copy(alpha = .58f),
+                    color = spec.muted,
                     fontSize = 9.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            val arrowShape =
+                if (theme == CleanVisualTheme.BRUTALIST ||
+                    theme == CleanVisualTheme.SWISS ||
+                    theme == CleanVisualTheme.CYBERPUNK
+                ) {
+                    RoundedCornerShape(spec.buttonRadius)
+                } else {
+                    CircleShape
+                }
             Box(
                 Modifier.size(38.dp)
-                    .clip(CircleShape)
+                    .clip(arrowShape)
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = .24f),
-                                Color.White.copy(alpha = .07f),
+                                spec.accent.copy(alpha = .24f),
+                                spec.panelBottom,
                             )
                         )
                     )
-                    .border(1.dp, Color.White.copy(alpha = .25f), CircleShape),
+                    .border(1.dp, spec.border, arrowShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = spec.text,
                     modifier = Modifier.size(21.dp),
                 )
             }
         }
     }
 }
+
