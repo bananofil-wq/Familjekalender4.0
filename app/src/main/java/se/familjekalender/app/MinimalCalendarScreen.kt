@@ -960,6 +960,7 @@ private fun CleanSummaryStrip(
     onConflicts: () -> Unit,
     onReminders: () -> Unit,
 ) {
+    val spec = LocalCleanThemeSpec.current
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -976,7 +977,7 @@ private fun CleanSummaryStrip(
                 selectedDate.format(DateTimeFormatter.ofPattern("d/M")) +
                     if (dayCount == 1) " · aktivitet" else " · aktiviteter",
             icon = Icons.Default.CalendarMonth,
-            accent = CleanPurpleBright,
+            accent = spec.accentStrong,
             onClick = onToday,
             modifier = Modifier.weight(1f),
         )
@@ -985,7 +986,7 @@ private fun CleanSummaryStrip(
             value = weekCount.toString(),
             helper = if (weekCount == 1) "aktivitet" else "aktiviteter",
             icon = Icons.Default.BarChart,
-            accent = Color(0xFF78AFFF),
+            accent = spec.secondary,
             onClick = onWeek,
             modifier = Modifier.weight(1f),
         )
@@ -994,7 +995,7 @@ private fun CleanSummaryStrip(
             value = conflictCount.toString(),
             helper = if (conflictCount == 0) "lugnt" else "att se över",
             icon = Icons.Default.WarningAmber,
-            accent = if (conflictCount > 0) Color(0xFFFFB35C) else CleanPurpleBright,
+            accent = if (conflictCount > 0) spec.warning else spec.accentStrong,
             onClick = onConflicts,
             modifier = Modifier.weight(1f),
         )
@@ -1003,7 +1004,7 @@ private fun CleanSummaryStrip(
             value = reminderCount.toString(),
             helper = if (reminderCount == 1) "påminnelse" else "påminnelser",
             icon = Icons.Default.Notifications,
-            accent = Color(0xFF8FC9FF),
+            accent = spec.info,
             onClick = onReminders,
             modifier = Modifier.weight(1f),
         )
