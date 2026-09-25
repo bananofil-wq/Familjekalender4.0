@@ -1035,8 +1035,8 @@ private fun Modifier.shoppingBackdrop(): Modifier =
                     Brush.radialGradient(
                         colors =
                             listOf(
-                                Color(0x55FF9D61),
-                                Color(0x18FF9D61),
+                                Color(0x88FF9D61),
+                                Color(0x28FF9D61),
                                 Color.Transparent,
                             ),
                         center = Offset(size.width * .88f, size.height * .58f),
@@ -1169,6 +1169,7 @@ private fun ShoppingScreen(
     val grouped = openItems.groupBy { categoryFor(it.name) }
     val shoppingBlue = Color(0xFF68B8FF)
     val shoppingCyan = Color(0xFF75E8F2)
+    val shoppingOrange = Color(0xFFFFA33A)
     val shoppingGlass = Color(0xB2183453)
     val shoppingGlassStrong = Color(0xD21A3859)
     val verifiedCheapestByItem =
@@ -1215,13 +1216,13 @@ private fun ShoppingScreen(
             ) {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
-                    color = shoppingBlue.copy(alpha = .18f),
-                    border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .34f)),
+                    color = shoppingOrange.copy(alpha = .18f),
+                    border = BorderStroke(1.dp, shoppingOrange.copy(alpha = .42f)),
                 ) {
                     Icon(
                         Icons.Default.ShoppingCart,
                         contentDescription = null,
-                        tint = shoppingBlue,
+                        tint = shoppingOrange,
                         modifier = Modifier.padding(10.dp).size(30.dp),
                     )
                 }
@@ -1336,8 +1337,8 @@ private fun ShoppingScreen(
 
         Surface(
             shape = RoundedCornerShape(25.dp),
-            color = shoppingGlassStrong,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+            color = Color(0xD61A3B5D),
+            border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .26f)),
             modifier = Modifier.fillMaxWidth(),
             shadowElevation = 7.dp,
         ) {
@@ -1379,7 +1380,7 @@ private fun ShoppingScreen(
                     progress =
                         if (total == 0) 0f
                         else openItems.size.toFloat() / total.toFloat(),
-                    accent = shoppingBlue,
+                    accent = shoppingOrange,
                     modifier = Modifier.weight(.80f),
                 )
 
@@ -1430,10 +1431,9 @@ private fun ShoppingScreen(
             }
         }
 
-    }
-    Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(2.dp))
 
-    selectedShoppingTool?.let { tool ->
+        selectedShoppingTool?.let { tool ->
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = .88f)),
             shape = RoundedCornerShape(20.dp),
