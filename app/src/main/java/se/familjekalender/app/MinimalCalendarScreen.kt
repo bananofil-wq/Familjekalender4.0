@@ -1594,10 +1594,25 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     .clip(actionShape)
                     .background(
                         Brush.verticalGradient(
-                            listOf(spec.panelTop, spec.panelBottom)
+                            if (theme == CleanVisualTheme.CURRENT) {
+                                listOf(
+                                    Color.White.copy(alpha = .24f),
+                                    Color(0xB91D1B23),
+                                )
+                            } else {
+                                listOf(spec.panelTop, spec.panelBottom)
+                            }
                         )
                     )
-                    .border(1.dp, spec.border, actionShape)
+                    .border(
+                        1.dp,
+                        if (theme == CleanVisualTheme.CURRENT) {
+                            Color.White.copy(alpha = .28f)
+                        } else {
+                            spec.border
+                        },
+                        actionShape,
+                    )
                     .clickable(onClick = onSearch),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1614,10 +1629,26 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                     .clip(actionShape)
                     .background(
                         Brush.verticalGradient(
-                            listOf(spec.selectedTop, spec.selectedBottom)
+                            if (theme == CleanVisualTheme.CURRENT) {
+                                listOf(
+                                    Color(0xFFC777FF),
+                                    Color(0xFF8A43FF),
+                                    Color(0xFF6A24DB),
+                                )
+                            } else {
+                                listOf(spec.selectedTop, spec.selectedBottom)
+                            }
                         )
                     )
-                    .border(1.2.dp, spec.selectedBorder, actionShape)
+                    .border(
+                        1.2.dp,
+                        if (theme == CleanVisualTheme.CURRENT) {
+                            Color(0xFFE2C2FF)
+                        } else {
+                            spec.selectedBorder
+                        },
+                        actionShape,
+                    )
                     .clickable(onClick = onAdd),
                 contentAlignment = Alignment.Center,
             ) {
@@ -2328,6 +2359,7 @@ private fun CleanWeatherCard(
                 contentDescription = null,
                 tint =
                     when (theme) {
+                        CleanVisualTheme.CURRENT -> Color.White
                         CleanVisualTheme.RETRO_70S -> spec.warning
                         CleanVisualTheme.MEMPHIS -> Color(0xFFFFB928)
                         else -> spec.accentStrong
@@ -2379,13 +2411,28 @@ private fun CleanWeatherCard(
                     .clip(arrowShape)
                     .background(
                         Brush.verticalGradient(
-                            listOf(
-                                spec.accent.copy(alpha = .24f),
-                                spec.panelBottom,
-                            )
+                            if (theme == CleanVisualTheme.CURRENT) {
+                                listOf(
+                                    Color.White.copy(alpha = .24f),
+                                    Color.White.copy(alpha = .07f),
+                                )
+                            } else {
+                                listOf(
+                                    spec.accent.copy(alpha = .24f),
+                                    spec.panelBottom,
+                                )
+                            }
                         )
                     )
-                    .border(1.dp, spec.border, arrowShape),
+                    .border(
+                        1.dp,
+                        if (theme == CleanVisualTheme.CURRENT) {
+                            Color.White.copy(alpha = .25f)
+                        } else {
+                            spec.border
+                        },
+                        arrowShape,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
