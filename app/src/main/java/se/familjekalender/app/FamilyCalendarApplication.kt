@@ -41,6 +41,7 @@ class FamilyCalendarApplication : Application() {
                 OneSignal.User.addTags(
                     mapOf(
                         "family_id" to familyId,
+                        "device_id" to deviceId,
                         "platform" to "android",
                     )
                 )
