@@ -1217,13 +1217,13 @@ private fun ShoppingScreen(
             categoryOrder.filter { category -> openItems.any { categoryFor(it.name) == category } }
 
     PremiumModeBackground(themeMode = themeMode) {
-        Box(Modifier.fillMaxSize().shoppingBackdrop()) {
+        Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 9.dp)
-                .padding(bottom = 76.dp)
+                .padding(horizontal = 11.dp, vertical = 7.dp)
+                .padding(bottom = 72.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
 
         Row(
@@ -1252,13 +1252,13 @@ private fun ShoppingScreen(
                         Icons.Default.ShoppingCart,
                         contentDescription = null,
                         tint = shoppingOrange,
-                        modifier = Modifier.padding(9.dp).size(28.dp),
+                        modifier = Modifier.padding(8.dp).size(30.dp),
                     )
                 }
                 Column {
                     Text(
                         "Inköp",
-                        fontSize = 25.sp,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                     )
@@ -1283,15 +1283,14 @@ private fun ShoppingScreen(
                     }
                     ShoppingHeaderButton(
                         icon = Icons.Default.LocalOffer,
-                        description = "Prisjämför",
-                        active = selectedShoppingTool == "price",
+                        description = "Scanner",
                         accent = shoppingCyan,
                     ) {
                         selectedShoppingTool = "price"
                         priceComparisonError = ""
                         if (openItems.isEmpty()) {
                             priceComparison = null
-                            priceComparisonError = "Lägg till minst en vara för att jämföra priser."
+                            priceComparisonError = "Lägg till minst en vara först."
                         } else {
                             shoppingScope.launch {
                                 comparingPrices = true
@@ -1365,14 +1364,14 @@ private fun ShoppingScreen(
         }
 
         Surface(
-            shape = RoundedCornerShape(25.dp),
+            shape = RoundedCornerShape(19.dp),
             color = Color(0xA81A3B5D),
             border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .26f)),
             modifier = Modifier.fillMaxWidth(),
             shadowElevation = 7.dp,
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1.15f)) {
@@ -1399,7 +1398,7 @@ private fun ShoppingScreen(
                 }
 
                 VerticalDivider(
-                    modifier = Modifier.height(50.dp),
+                    modifier = Modifier.height(44.dp),
                     color = Color.White.copy(alpha = .10f),
                 )
 
@@ -1414,7 +1413,7 @@ private fun ShoppingScreen(
                 )
 
                 VerticalDivider(
-                    modifier = Modifier.height(50.dp),
+                    modifier = Modifier.height(44.dp),
                     color = Color.White.copy(alpha = .10f),
                 )
 
@@ -1454,13 +1453,11 @@ private fun ShoppingScreen(
                         color = if (selected) Color.White else Color.White.copy(alpha = .72f),
                         fontSize = 11.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
                     )
                 }
             }
         }
-
-        Spacer(Modifier.height(2.dp))
 
         selectedShoppingTool?.let { tool ->
         Card(
@@ -1648,7 +1645,7 @@ private fun ShoppingScreen(
                                     HorizontalDivider(color = Color.White.copy(alpha = .08f))
                                     Text(
                                         "Ingredienser",
-                                        fontSize = 15.sp,
+                                        fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
                                     )
@@ -1945,7 +1942,7 @@ private fun ShoppingScreen(
                 val categoryItems = visibleGrouped[category].orEmpty()
                 if (categoryItems.isNotEmpty()) {
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(18.dp),
                         color = Color(0x941A3859),
                         border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .18f)),
                         modifier = Modifier.fillMaxWidth(),
@@ -1953,7 +1950,7 @@ private fun ShoppingScreen(
                     ) {
                         Column(Modifier.fillMaxWidth()) {
                             Row(
-                                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -1981,7 +1978,7 @@ private fun ShoppingScreen(
                                         Text(
                                             "${categoryItems.size} kvar",
                                             color = Color.White.copy(alpha = .78f),
-                                            fontSize = 9.sp,
+                                            fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                         )
@@ -2005,21 +2002,21 @@ private fun ShoppingScreen(
                                 Row(
                                     Modifier.fillMaxWidth()
                                         .clickable { onToggle(item) }
-                                        .padding(horizontal = 8.dp, vertical = 7.dp),
+                                        .padding(horizontal = 8.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                                 ) {
                                     Checkbox(
                                         checked = false,
                                         onCheckedChange = { onToggle(item) },
-                                        modifier = Modifier.size(34.dp),
+                                        modifier = Modifier.size(32.dp),
                                     )
                                     Surface(
                                         shape = RoundedCornerShape(11.dp),
                                         color = Color(0x80456C86),
                                         border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
                                         shadowElevation = 3.dp,
-                                        modifier = Modifier.size(43.dp),
+                                        modifier = Modifier.size(46.dp),
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Text(
@@ -2035,7 +2032,7 @@ private fun ShoppingScreen(
                                         Text(
                                             item.name,
                                             color = Color.White,
-                                            fontSize = 13.sp,
+                                            fontSize = 14.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             maxLines = 2,
                                         )
@@ -2048,6 +2045,7 @@ private fun ShoppingScreen(
 
                                     if (offersForItem.isNotEmpty()) {
                                         Row(
+                                            modifier = Modifier.widthIn(max = 164.dp),
                                             horizontalArrangement = Arrangement.spacedBy(3.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
@@ -2065,7 +2063,7 @@ private fun ShoppingScreen(
                                                             1.dp,
                                                             storeColor.copy(alpha = .42f),
                                                         ),
-                                                    modifier = Modifier.widthIn(min = 40.dp, max = 49.dp),
+                                                    modifier = Modifier.width(49.dp),
                                                 ) {
                                                     Column(
                                                         modifier =
@@ -2078,14 +2076,14 @@ private fun ShoppingScreen(
                                                         Text(
                                                             shoppingStoreShortName(offer.store),
                                                             color = Color.White.copy(alpha = .72f),
-                                                            fontSize = 6.sp,
+                                                            fontSize = 7.sp,
                                                             fontWeight = FontWeight.SemiBold,
                                                             maxLines = 1,
                                                         )
                                                         Text(
                                                             formattedPrice,
                                                             color = Color.White,
-                                                            fontSize = 8.sp,
+                                                            fontSize = 9.sp,
                                                             fontWeight = FontWeight.Bold,
                                                             maxLines = 1,
                                                         )
@@ -2093,20 +2091,51 @@ private fun ShoppingScreen(
                                                 }
                                             }
                                         }
-                                    } else {
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = Color.Black.copy(alpha = .15f),
-                                            border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+                                        IconButton(
+                                            onClick = { selectedShoppingTool = "price" },
+                                            modifier = Modifier.size(28.dp),
                                         ) {
-                                            Text(
-                                                "Pris saknas",
-                                                color = Color.White.copy(alpha = .42f),
-                                                fontSize = 7.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                            Icon(
+                                                Icons.Default.MoreVert,
+                                                contentDescription = "Mer för ${item.name}",
+                                                tint = Color.White.copy(alpha = .72f),
+                                                modifier = Modifier.size(18.dp),
                                             )
                                         }
+                                    } else {
+                                        Row(
+                                            modifier = Modifier.width(153.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                        ) {
+                                            repeat(3) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(7.dp),
+                                                    color = Color.Black.copy(alpha = .12f),
+                                                    border = BorderStroke(1.dp, Color.White.copy(alpha = .055f)),
+                                                    modifier = Modifier.width(49.dp),
+                                                ) {
+                                                    Text(
+                                                        "—",
+                                                        color = Color.White.copy(alpha = .22f),
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(vertical = 9.dp),
+                                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    IconButton(
+                                        onClick = { selectedShoppingTool = "price" },
+                                        modifier = Modifier.size(28.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.MoreVert,
+                                            contentDescription = "Mer för ${item.name}",
+                                            tint = Color.White.copy(alpha = .72f),
+                                            modifier = Modifier.size(18.dp),
+                                        )
                                     }
                                 }
                                 if (index != categoryItems.lastIndex) {
@@ -2194,7 +2223,7 @@ private fun ShoppingScreen(
 
         }
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(21.dp),
             color = Color(0xB81A3859),
             border = BorderStroke(1.dp, shoppingBlue.copy(alpha = .36f)),
             shadowElevation = 12.dp,
@@ -2218,7 +2247,7 @@ private fun ShoppingScreen(
                         text = ""
                     },
                     enabled = text.isNotBlank(),
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(46.dp),
                     shape = CircleShape,
                     colors =
                         IconButtonDefaults.filledIconButtonColors(
@@ -2234,7 +2263,7 @@ private fun ShoppingScreen(
                     placeholder = { Text("Lägg till vara …") },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors =
                         OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color.Transparent,
@@ -2967,10 +2996,10 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val items =
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
-            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
             Triple(2, Icons.Default.CheckCircle, "Att göra"),
+            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
+            Triple(3, Icons.Default.People, "Recept"),
             Triple(4, Icons.Default.Settings, "Inställningar"),
-            Triple(5, Icons.Default.LocationOn, "Plats"),
         )
 
     Box(
@@ -2988,7 +3017,7 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
         ) {
             Row(
                 Modifier.fillMaxWidth()
-                    .height(58.dp)
+                    .height(56.dp)
                     .padding(horizontal = 5.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -3026,7 +3055,7 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                                 tint =
                                     if (isSelected) Color.White
                                     else Color.White.copy(alpha = .58f),
-                                modifier = Modifier.size(if (isSelected) 25.dp else 23.dp),
+                                modifier = Modifier.size(if (isSelected) 24.dp else 21.dp),
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
