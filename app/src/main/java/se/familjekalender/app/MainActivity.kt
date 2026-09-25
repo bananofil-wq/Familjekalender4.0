@@ -2496,6 +2496,21 @@ private fun MinimalBottomNav(
     onSelect: (Int) -> Unit,
 ) {
     val spec = cleanThemeSpec(cleanVisualTheme)
+    val navShape =
+        when (cleanVisualTheme) {
+            CleanVisualTheme.CURRENT -> RoundedCornerShape(30.dp)
+            CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
+                RoundedCornerShape(4.dp)
+            CleanVisualTheme.CYBERPUNK -> RoundedCornerShape(10.dp)
+            else -> RoundedCornerShape(spec.cardRadius)
+        }
+    val activeShape =
+        when (cleanVisualTheme) {
+            CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
+                RoundedCornerShape(2.dp)
+            CleanVisualTheme.CYBERPUNK -> RoundedCornerShape(8.dp)
+            else -> RoundedCornerShape(18.dp)
+        }
     val items =
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
@@ -2512,13 +2527,10 @@ private fun MinimalBottomNav(
     ) {
         Surface(
             color = spec.navSurface,
-            shape = RoundedCornerShape(
-                if (cleanVisualTheme == CleanVisualTheme.BRUTALIST ||
-                    cleanVisualTheme == CleanVisualTheme.SWISS
-                ) 4.dp else 30.dp
-            ),
+            shape = navShape,
             border = BorderStroke(1.dp, spec.navBorder),
-            shadowElevation = spec.shadow,
+            shadowElevation =
+                if (cleanVisualTheme == CleanVisualTheme.CURRENT) 12.dp else spec.shadow,
             tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -2534,15 +2546,22 @@ private fun MinimalBottomNav(
                         Modifier.weight(1f)
                             .fillMaxHeight()
                             .padding(horizontal = 2.dp)
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(activeShape)
                             .then(
                                 if (isSelected) {
                                     Modifier.background(
                                         Brush.verticalGradient(
-                                            listOf(
-                                                spec.selectedTop,
-                                                spec.selectedBottom,
-                                            )
+                                            if (cleanVisualTheme == CleanVisualTheme.CURRENT) {
+                                                listOf(
+                                                    Color(0xFF9D5CFF),
+                                                    Color(0xFF6E34C9),
+                                                )
+                                            } else {
+                                                listOf(
+                                                    spec.selectedTop,
+                                                    spec.selectedBottom,
+                                                )
+                                            }
                                         )
                                     )
                                 } else {
