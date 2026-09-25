@@ -50,7 +50,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -82,7 +81,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.QrCodeScanner
 
 internal val Bg = LuxuryBackground
 internal val CardBg = PremiumGlass
@@ -424,7 +422,6 @@ private fun SyncedApp(
         remember(personalLayoutRevision) { PersonalLayoutStore.activeProfile(appPrefs) }
     var members by remember { mutableStateOf(emptyList<SyncMember>()) }
     var shopping by remember { mutableStateOf(emptyList<SyncShoppingItem>()) }
-    var mailOffers by remember { mutableStateOf(emptyList<MailOffer>()) }
     var events by remember { mutableStateOf(emptyList<SyncEvent>()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(if (initialTab in 0..5) initialTab else 0) }
@@ -443,7 +440,6 @@ private fun SyncedApp(
         runCatching {
             members = SupabaseSync.loadMembers(session)
             shopping = SupabaseSync.loadShopping(session)
-            mailOffers = SupabaseSync.loadMailOffers(session)
             val loadedEvents = SupabaseSync.loadEvents(session)
             events = RecurringScheduleSync.filterPausedScheduleEvents(session, loadedEvents)
         }
@@ -685,7 +681,6 @@ private fun SyncedApp(
                                 ShoppingScreen(
                                     session,
                                     shopping,
-                                    mailOffers,
                                     themeMode = themeMode,
                                     onBack = { selectedTab = 0 },
                                     onAdd = { name ->
@@ -1076,7 +1071,6 @@ private fun Modifier.shoppingBackdrop(): Modifier =
 private fun ShoppingScreen(
     session: FamilySession,
     items: List<SyncShoppingItem>,
-    mailOffers: List<MailOffer>,
     themeMode: ThemeMode,
     onBack: () -> Unit,
     onAdd: (String) -> Unit,
@@ -1165,15 +1159,6 @@ private fun ShoppingScreen(
                 ?.let { category to it }
         }
 
-    val cheapestOffers =
-        openItems.mapNotNull { item ->
-            mailOffers
-                .filter { mailOfferMatchesItem(it, item.name) }
-                .minByOrNull { it.price }
-                ?.let { item.id to it }
-        }.toMap()
-    val estimatedTotal = cheapestOffers.values.sumOf { it.price }
-
     val blue = Color(0xFF2EA7FF)
     val cyan = Color(0xFF6CE9F4)
     val orange = Color(0xFFFFA13A)
@@ -1244,13 +1229,6 @@ private fun ShoppingScreen(
                                 searchExpanded = !searchExpanded
                                 if (!searchExpanded) searchQuery = ""
                             }
-                            ShoppingHeaderButton(
-                                icon = Icons.Default.QrCodeScanner,
-                                description = "Scanner",
-                                accent = cyan,
-                            ) {
-                                searchExpanded = true
-                            }
                             Box {
                                 ShoppingHeaderButton(
                                     icon = Icons.Default.MoreVert,
@@ -1308,39 +1286,23 @@ private fun ShoppingScreen(
                         shadowElevation = 8.dp,
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(Modifier.weight(1.15f)) {
-                                Text(
-                                    "Totalt (est.)",
-                                    color = Color.White.copy(alpha = .75f),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                Text(
-                                    if (cheapestOffers.isEmpty()) "—"
-                                    else "${"%.0f".format(Locale("sv", "SE"), estimatedTotal)} kr",
-                                    color = Color.White,
-                                    fontSize = 25.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                            VerticalDivider(Modifier.height(52.dp), color = Color.White.copy(alpha = .14f))
                             ShoppingSummaryStat(
                                 value = openItems.size,
                                 label = "kvar",
                                 progress = if (total == 0) 0f else openItems.size.toFloat() / total,
                                 accent = orange,
-                                modifier = Modifier.weight(.9f),
+                                modifier = Modifier.weight(1f),
                             )
-                            VerticalDivider(Modifier.height(52.dp), color = Color.White.copy(alpha = .14f))
+                            VerticalDivider(Modifier.height(48.dp), color = Color.White.copy(alpha = .14f))
                             ShoppingSummaryStat(
                                 value = done,
                                 label = "klara",
                                 progress = if (total == 0) 0f else done.toFloat() / total,
                                 accent = cyan,
-                                modifier = Modifier.weight(.9f),
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
@@ -1457,12 +1419,6 @@ private fun ShoppingScreen(
                             HorizontalDivider(color = Color.White.copy(alpha = .10f))
 
                             categoryItems.forEachIndexed { index, item ->
-                                val offers =
-                                    mailOffers
-                                        .filter { mailOfferMatchesItem(it, item.name) }
-                                        .sortedBy { it.price }
-                                        .take(3)
-
                                 Row(
                                     modifier =
                                         Modifier.fillMaxWidth()
@@ -1507,31 +1463,7 @@ private fun ShoppingScreen(
                                         )
                                     }
 
-                                    Row(
-                                        modifier = Modifier.width(106.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        if (offers.isNotEmpty()) {
-                                            offers.forEach { offer ->
-                                                ReferencePriceChip(
-                                                    store = shoppingStoreShortName(offer.store),
-                                                    price =
-                                                        "%.2f"
-                                                            .format(Locale.US, offer.price)
-                                                            .replace('.', ','),
-                                                    accent = shoppingStoreColor(offer.store),
-                                                )
-                                            }
-                                            repeat(3 - offers.size) {
-                                                ReferencePriceChip(store = "", price = "—", accent = Color.White)
-                                            }
-                                        } else {
-                                            ReferencePriceChip(store = "Willys", price = "—", accent = Color(0xFFE83448))
-                                            ReferencePriceChip(store = "Coop", price = "—", accent = Color(0xFF26B96C))
-                                            ReferencePriceChip(store = "City", price = "—", accent = Color(0xFF2C9AF4))
-                                        }
-                                    }
-
+                                    Spacer(Modifier.width(6.dp))
                                     IconButton(
                                         onClick = { },
                                         modifier = Modifier.size(24.dp),
@@ -1656,13 +1588,6 @@ private fun ShoppingScreen(
                         runCatching { voiceLauncher.launch(speechIntent) }
                     }
                     ShoppingHeaderButton(
-                        icon = Icons.Default.QrCodeScanner,
-                        description = "Scanner",
-                        accent = cyan,
-                    ) {
-                        searchExpanded = true
-                    }
-                    ShoppingHeaderButton(
                         icon = Icons.Default.AutoAwesome,
                         description = "Smart",
                         accent = blue,
@@ -1721,49 +1646,6 @@ private fun ReferenceShoppingCheck(
                     tint = Color.White,
                     modifier = Modifier.size(18.dp),
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReferencePriceChip(
-    store: String,
-    price: String,
-    accent: Color,
-) {
-    Surface(
-        modifier = Modifier.width(34.dp).height(40.dp),
-        shape = RoundedCornerShape(7.dp),
-        color = Color(0xB91B2333),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp, vertical = 3.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                store.ifBlank { " " },
-                color = Color.White.copy(alpha = .78f),
-                fontSize = 6.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-            Surface(
-                modifier = Modifier.fillMaxWidth().height(17.dp),
-                shape = RoundedCornerShape(5.dp),
-                color = if (price == "—") Color.White.copy(alpha = .08f) else accent.copy(alpha = .92f),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        price,
-                        color = if (price == "—") Color.White.copy(alpha = .36f) else Color.White,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                }
             }
         }
     }
@@ -1884,28 +1766,6 @@ private fun shoppingItemMeta(name: String): String {
             ?.value
             ?.trim()
     return quantity?.takeIf { it.isNotBlank() } ?: "1 st"
-}
-
-private fun shoppingStoreShortName(store: String): String {
-    val clean = store.trim()
-    return when {
-        clean.equals("City Gross", ignoreCase = true) -> "City"
-        clean.length <= 6 -> clean
-        else -> clean.take(5)
-    }
-}
-
-private fun shoppingStoreColor(store: String): Color {
-    val value = store.lowercase(Locale("sv", "SE"))
-    return when {
-        "willys" in value -> Color(0xFF75D978)
-        "ica" in value -> Color(0xFFFF6B6B)
-        "coop" in value -> Color(0xFF75D8D1)
-        "city gross" in value -> Color(0xFFFFB55F)
-        "hemköp" in value -> Color(0xFFFF7F92)
-        "lidl" in value -> Color(0xFFFFD86B)
-        else -> Color(0xFF73B8FF)
-    }
 }
 
 @Composable
