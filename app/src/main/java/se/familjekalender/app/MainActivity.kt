@@ -52,6 +52,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -813,6 +815,16 @@ private fun SyncedApp(
                                     session,
                                     members.filter { it.id != ALL_FAMILY_MEMBER_ID },
                                 )
+
+                            6 ->
+                                RecipesMainScreen(
+                                    onAddIngredient = { ingredient ->
+                                        scope.launch {
+                                            SupabaseSync.addShopping(session, ingredient)
+                                            refresh()
+                                        }
+                                    },
+                                )
                         }
                     }
                 }
@@ -1282,7 +1294,7 @@ private fun ShoppingScreen(
                         if (!searchExpanded) searchQuery = ""
                     }
                     ShoppingHeaderButton(
-                        icon = Icons.Default.LocalOffer,
+                        icon = Icons.Default.QrCodeScanner,
                         description = "Scanner",
                         accent = shoppingCyan,
                     ) {
@@ -1963,7 +1975,7 @@ private fun ShoppingScreen(
                                         category,
                                         color = Color.White,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
+                                        fontSize = 17.sp,
                                     )
                                 }
                                 Row(
@@ -2090,17 +2102,6 @@ private fun ShoppingScreen(
                                                     }
                                                 }
                                             }
-                                        }
-                                        IconButton(
-                                            onClick = { selectedShoppingTool = "price" },
-                                            modifier = Modifier.size(28.dp),
-                                        ) {
-                                            Icon(
-                                                Icons.Default.MoreVert,
-                                                contentDescription = "Mer för ${item.name}",
-                                                tint = Color.White.copy(alpha = .72f),
-                                                modifier = Modifier.size(18.dp),
-                                            )
                                         }
                                     } else {
                                         Row(
@@ -2289,7 +2290,7 @@ private fun ShoppingScreen(
                     runCatching { voiceLauncher.launch(speechIntent) }
                 }
                 ShoppingHeaderButton(
-                    icon = Icons.Default.LocalOffer,
+                    icon = Icons.Default.QrCodeScanner,
                     description = "Prisjämför",
                     active = selectedShoppingTool == "price",
                     accent = shoppingCyan,
@@ -2562,6 +2563,115 @@ private fun openNotificationSettings(context: Context) {
             putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
         }
     )
+}
+
+@Composable
+private fun RecipesMainScreen(
+    onAddIngredient: (String) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    var selected by remember { mutableStateOf<FamilyRecipe?>(null) }
+    val results = remember(query) { FamilyRecipeCatalog.search(query).take(40) }
+
+    Column(
+        Modifier.fillMaxSize().padding(18.dp).verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("Recept", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Familjens recept direkt i appen", color = Muted, fontSize = 12.sp)
+
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text("Sök recept…") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        selected?.let { recipe ->
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = PremiumGlassRaised.copy(alpha = .92f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .10f)),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    TextButton(onClick = { selected = null }) { Text("← Alla recept") }
+                    Text(recipe.title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text("${recipe.timeMinutes} min · ${recipe.servings} port", color = Muted, fontSize = 11.sp)
+                    Text(recipe.description, color = Color.White.copy(alpha = .82f), fontSize = 12.sp)
+                    HorizontalDivider(color = Color.White.copy(alpha = .08f))
+                    Text("Ingredienser", color = Color.White, fontWeight = FontWeight.Bold)
+                    recipe.ingredients.forEach { ingredient ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "${ingredient.amount} ${ingredient.name}",
+                                color = Color.White.copy(alpha = .88f),
+                                fontSize = 12.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(
+                                onClick = { onAddIngredient("${ingredient.amount} ${ingredient.name}") }
+                            ) { Text("+ Inköp") }
+                        }
+                    }
+                    HorizontalDivider(color = Color.White.copy(alpha = .08f))
+                    Text("Gör så här", color = Color.White, fontWeight = FontWeight.Bold)
+                    recipe.steps.forEachIndexed { index, step ->
+                        Text(
+                            "${index + 1}. $step",
+                            color = Color.White.copy(alpha = .84f),
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                        )
+                    }
+                }
+            }
+        }
+
+        if (selected == null) {
+            results.forEach { recipe ->
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = PremiumGlass.copy(alpha = .86f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
+                    modifier = Modifier.fillMaxWidth().clickable { selected = recipe },
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = .15f),
+                        ) {
+                            Icon(
+                                Icons.Default.RestaurantMenu,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(10.dp).size(22.dp),
+                            )
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(recipe.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("${recipe.category} · ${recipe.timeMinutes} min", color = Muted, fontSize = 10.sp)
+                        }
+                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = Muted)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -2998,7 +3108,7 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
             Triple(2, Icons.Default.CheckCircle, "Att göra"),
             Triple(1, Icons.Default.ShoppingCart, "Inköp"),
-            Triple(3, Icons.Default.People, "Recept"),
+            Triple(6, Icons.Default.RestaurantMenu, "Recept"),
             Triple(4, Icons.Default.Settings, "Inställningar"),
         )
 
