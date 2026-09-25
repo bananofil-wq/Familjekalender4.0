@@ -1020,28 +1020,37 @@ private fun CleanSummaryTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val spec = LocalCleanThemeSpec.current
+    val theme = LocalCleanVisualTheme.current
+    val shape = RoundedCornerShape(spec.cardRadius)
+    val brutalAccentCard =
+        theme == CleanVisualTheme.BRUTALIST && (label == "IDAG" || label == "KROCKAR")
+    val tileColors =
+        if (brutalAccentCard) {
+            listOf(spec.accent, spec.accent, spec.accent)
+        } else {
+            listOf(spec.panelTop, spec.panelMid, spec.panelBottom)
+        }
+    val effectiveAccent = if (brutalAccentCard) spec.text else accent
+    val tileText = spec.text
+
     Box(
         modifier
             .height(96.dp)
-            .shadow(8.dp, shape, clip = false)
+            .shadow(spec.shadow, shape, clip = false)
             .clip(shape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = .20f),
-                        Color(0xD9292731),
-                        Color(0xE61A1821),
-                    )
-                )
+            .background(Brush.verticalGradient(tileColors))
+            .border(
+                width = if (theme == CleanVisualTheme.BRUTALIST) 1.6.dp else 1.dp,
+                color = spec.border,
+                shape = shape,
             )
-            .border(1.dp, Color.White.copy(alpha = .26f), shape)
             .clickable(onClick = onClick)
     ) {
         Box(
             Modifier.fillMaxWidth()
-                .height(1.dp)
-                .background(Color.White.copy(alpha = .36f))
+                .height(if (theme == CleanVisualTheme.BRUTALIST) 2.dp else 1.dp)
+                .background(tileText.copy(alpha = if (theme == CleanVisualTheme.CURRENT) .36f else .14f))
                 .align(Alignment.TopCenter)
         )
         Column(
@@ -1054,7 +1063,7 @@ private fun CleanSummaryTile(
             ) {
                 Text(
                     label,
-                    color = Color.White.copy(alpha = .80f),
+                    color = tileText.copy(alpha = .82f),
                     fontSize = 8.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = .7.sp,
@@ -1063,29 +1072,37 @@ private fun CleanSummaryTile(
                 )
                 Box(
                     Modifier.size(24.dp)
-                        .clip(CircleShape)
-                        .background(accent.copy(alpha = .18f))
-                        .border(1.dp, accent.copy(alpha = .40f), CircleShape),
+                        .clip(if (theme == CleanVisualTheme.BRUTALIST || theme == CleanVisualTheme.SWISS) RoundedCornerShape(2.dp) else CircleShape)
+                        .background(effectiveAccent.copy(alpha = .16f))
+                        .border(
+                            1.dp,
+                            effectiveAccent.copy(alpha = .44f),
+                            if (theme == CleanVisualTheme.BRUTALIST || theme == CleanVisualTheme.SWISS) RoundedCornerShape(2.dp) else CircleShape,
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         icon,
                         contentDescription = null,
-                        tint = accent,
+                        tint = effectiveAccent,
                         modifier = Modifier.size(14.dp),
                     )
                 }
             }
             Text(
                 value,
-                color = if (label == "KROCKAR" && value == "0") CleanPurpleBright else Color.White,
+                color =
+                    if (theme != CleanVisualTheme.BRUTALIST &&
+                        label == "KROCKAR" &&
+                        value == "0"
+                    ) spec.accentStrong else tileText,
                 fontSize = 25.sp,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
             )
             Text(
                 helper,
-                color = Color.White.copy(alpha = .66f),
+                color = tileText.copy(alpha = .66f),
                 fontSize = 8.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
