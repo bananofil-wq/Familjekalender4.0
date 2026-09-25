@@ -641,6 +641,7 @@ private fun SyncedApp(
                                         addEventInitialTitle = ""
                                         showAddEvent = true
                                     },
+                                    onEdit = { editEvent = it },
                                     onOpenSettings = { selectedTab = 4 },
                                     onOpenLocation = { selectedTab = 5 },
                                     onRefresh = {
