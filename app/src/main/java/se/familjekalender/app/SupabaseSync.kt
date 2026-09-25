@@ -177,10 +177,20 @@ object SupabaseSync {
             }
         }
 
-    suspend fun addShopping(session: FamilySession, name: String) =
+    suspend fun addShopping(
+        session: FamilySession,
+        name: String,
+        sourceDeviceId: String? = null,
+    ) =
         withContext(Dispatchers.IO) {
             val body =
-                JSONObject().put("family_id", session.id).put("name", name).put("checked", false)
+                JSONObject()
+                    .put("family_id", session.id)
+                    .put("name", name)
+                    .put("checked", false)
+            if (!sourceDeviceId.isNullOrBlank()) {
+                body.put("created_by_device_id", sourceDeviceId)
+            }
             request(
                 "POST",
                 "/rest/v1/shopping_items",
