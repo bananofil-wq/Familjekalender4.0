@@ -125,6 +125,7 @@ internal fun MinimalCalendarScreen(
     onOpenSettings: () -> Unit,
     onOpenLocation: () -> Unit,
     themeMode: ThemeMode = ThemeMode.AUTO,
+    cleanVisualTheme: CleanVisualTheme = CleanVisualTheme.CURRENT,
 ) {
     val context = LocalContext.current
     val locale = remember { Locale("sv", "SE") }
@@ -233,37 +234,55 @@ internal fun MinimalCalendarScreen(
         weatherLoading = false
     }
 
-    Box(Modifier.fillMaxSize()) {
-        val customBackground = rememberCustomBackgroundBitmap()
-        if (customBackground != null) {
-            Image(
-                bitmap = customBackground,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        } else {
-            cleanSeasonDrawable(month, themeMode)?.let { backgroundRes ->
-                Image(
-                    painter = painterResource(backgroundRes),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
-        Box(
-            Modifier.fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0x33120B16),
-                            Color(0x4D120C19),
-                            Color(0x77110D18),
-                        )
+    CleanThemeProvider(cleanVisualTheme) {
+        val cleanSpec = LocalCleanThemeSpec.current
+
+        Box(Modifier.fillMaxSize()) {
+            if (cleanVisualTheme == CleanVisualTheme.CURRENT) {
+                val customBackground = rememberCustomBackgroundBitmap()
+                if (customBackground != null) {
+                    Image(
+                        bitmap = customBackground,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
                     )
+                } else {
+                    cleanSeasonDrawable(month, themeMode)?.let { backgroundRes ->
+                        Image(
+                            painter = painterResource(backgroundRes),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    Modifier.fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(cleanSpec.backgroundTop, cleanSpec.backgroundBottom)
+                            )
+                        )
                 )
-        )
+                CleanThemeBackdrop(cleanVisualTheme, Modifier.fillMaxSize())
+            }
+
+            val overlayColors =
+                if (cleanVisualTheme == CleanVisualTheme.CURRENT) {
+                    listOf(
+                        Color(0x33120B16),
+                        Color(0x4D120C19),
+                        Color(0x77110D18),
+                    )
+                } else {
+                    listOf(cleanSpec.overlayTop, cleanSpec.overlayBottom)
+                }
+            Box(
+                Modifier.fillMaxSize()
+                    .background(Brush.verticalGradient(overlayColors))
+            )
 
         Column(
             Modifier.fillMaxSize()
@@ -924,6 +943,7 @@ internal fun MinimalCalendarScreen(
                 }
             },
         )
+    }
     }
 }
 
