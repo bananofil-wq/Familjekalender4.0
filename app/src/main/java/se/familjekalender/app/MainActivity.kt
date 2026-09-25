@@ -294,6 +294,17 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
                 .getOrDefault(UiLayoutMode.MINIMAL)
         )
     }
+    var cleanVisualTheme by remember {
+        mutableStateOf(
+            runCatching {
+                CleanVisualTheme.valueOf(
+                    prefs.getString("clean_visual_theme", CleanVisualTheme.CURRENT.name)
+                        ?: CleanVisualTheme.CURRENT.name
+                )
+            }
+                .getOrDefault(CleanVisualTheme.CURRENT)
+        )
+    }
     val palette = paletteFor(themeMode)
     FamiljekalenderLuxuryTheme(palette) {
         Surface(
@@ -319,6 +330,7 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
                         prefs.getString("sport_member_id", null),
                         themeMode,
                         uiLayoutMode,
+                        cleanVisualTheme,
                         { url, memberId ->
                             prefs
                                 .edit()
@@ -333,6 +345,10 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
                         {
                             uiLayoutMode = it
                             prefs.edit().putString("ui_layout_mode", it.name).apply()
+                        },
+                        {
+                            cleanVisualTheme = it
+                            prefs.edit().putString("clean_visual_theme", it.name).apply()
                         },
                         initialTab = initialTab,
                     )
@@ -407,9 +423,11 @@ private fun SyncedApp(
     sportMemberId: String?,
     themeMode: ThemeMode,
     uiLayoutMode: UiLayoutMode,
+    cleanVisualTheme: CleanVisualTheme,
     onSportSettingsSaved: (String, String?) -> Unit,
     onThemeModeSaved: (ThemeMode) -> Unit,
     onUiLayoutModeSaved: (UiLayoutMode) -> Unit,
+    onCleanVisualThemeSaved: (CleanVisualTheme) -> Unit,
     initialTab: Int = -1,
 ) {
     val scope = rememberCoroutineScope()
@@ -519,7 +537,8 @@ private fun SyncedApp(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             when (uiLayoutMode) {
-                UiLayoutMode.MINIMAL -> MinimalBottomNav(selectedTab) { selectedTab = it }
+                UiLayoutMode.MINIMAL ->
+                    MinimalBottomNav(selectedTab, cleanVisualTheme) { selectedTab = it }
                 UiLayoutMode.HUGO_CHILD -> HugoBottomNav(selectedTab) { selectedTab = it }
                 UiLayoutMode.RUNNING -> SportBottomNav(selectedTab) { selectedTab = it }
                 else -> BottomNav(selectedTab) { selectedTab = it }
@@ -560,6 +579,7 @@ private fun SyncedApp(
                                 onOpenSettings = { selectedTab = 4 },
                                 onOpenLocation = { selectedTab = 5 },
                                 themeMode = themeMode,
+                                cleanVisualTheme = cleanVisualTheme,
                             )
 
                         UiLayoutMode.HUGO_CHILD ->
@@ -785,10 +805,12 @@ private fun SyncedApp(
                                     sportMemberId,
                                     themeMode,
                                     uiLayoutMode,
+                                    cleanVisualTheme,
                                     personalProfile,
                                     personalLayoutRevision,
                                     onThemeModeSaved,
                                     onUiLayoutModeSaved,
+                                    onCleanVisualThemeSaved,
                                     { profile ->
                                         PersonalLayoutStore.setActiveProfile(appPrefs, profile)
                                         personalLayoutRevision++
@@ -1856,10 +1878,12 @@ private fun SettingsScreen(
     initialSportMemberId: String?,
     themeMode: ThemeMode,
     uiLayoutMode: UiLayoutMode,
+    cleanVisualTheme: CleanVisualTheme,
     personalProfile: Int,
     personalLayoutRevision: Int,
     onThemeChanged: (ThemeMode) -> Unit,
     onUiLayoutChanged: (UiLayoutMode) -> Unit,
+    onCleanVisualThemeChanged: (CleanVisualTheme) -> Unit,
     onPersonalProfileChanged: (Int) -> Unit,
     onPersonalLayoutChanged: () -> Unit,
     onOpenFamily: () -> Unit,
@@ -1995,6 +2019,109 @@ private fun SettingsScreen(
                 onActiveProfileChanged = onPersonalProfileChanged,
                 onChanged = onPersonalLayoutChanged,
             )
+        }
+
+        if (uiLayoutMode == UiLayoutMode.MINIMAL) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Clean-tema",
+                color = LuxuryTextMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                "11 helt olika utseenden. Nuvarande behåller exakt den Clean-stil du redan använder.",
+                color = LuxuryTextMuted.copy(alpha = .78f),
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+                modifier = Modifier.padding(top = 2.dp, bottom = 7.dp),
+            )
+
+            CleanVisualTheme.values().toList().chunked(2).forEach { rowThemes ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    rowThemes.forEach { cleanTheme ->
+                        val selected = cleanVisualTheme == cleanTheme
+                        val spec = cleanThemeSpec(cleanTheme)
+                        Surface(
+                            color = spec.panelMid,
+                            contentColor = spec.text,
+                            shape = RoundedCornerShape(
+                                if (cleanTheme == CleanVisualTheme.BRUTALIST ||
+                                    cleanTheme == CleanVisualTheme.SWISS
+                                ) 4.dp else 16.dp
+                            ),
+                            border = BorderStroke(
+                                if (selected) 2.dp else 1.dp,
+                                if (selected) spec.accentStrong else spec.border,
+                            ),
+                            shadowElevation = if (selected) 5.dp else 0.dp,
+                            modifier = Modifier.weight(1f)
+                                .heightIn(min = 92.dp)
+                                .clickable { onCleanVisualThemeChanged(cleanTheme) },
+                        ) {
+                            Column(
+                                Modifier.fillMaxWidth().padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        cleanTheme.emoji,
+                                        color = spec.accentStrong,
+                                        fontSize = 16.sp,
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        cleanTheme.label,
+                                        color = spec.text,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (selected) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = "Valt",
+                                            tint = spec.accentStrong,
+                                            modifier = Modifier.size(17.dp),
+                                        )
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    listOf(
+                                        spec.accentStrong,
+                                        spec.secondary,
+                                        spec.info,
+                                        spec.warning,
+                                    ).forEach { swatch ->
+                                        Box(
+                                            Modifier.size(13.dp)
+                                                .clip(CircleShape)
+                                                .background(swatch)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    cleanTheme.description,
+                                    color = spec.muted,
+                                    fontSize = 8.sp,
+                                    lineHeight = 11.sp,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                    if (rowThemes.size == 1) Spacer(Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(8.dp))
+            }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -2362,7 +2489,12 @@ private fun ShoppingBottomNav(selected: Int, onSelect: (Int) -> Unit) {
 }
 
 @Composable
-private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
+private fun MinimalBottomNav(
+    selected: Int,
+    cleanVisualTheme: CleanVisualTheme,
+    onSelect: (Int) -> Unit,
+) {
+    val spec = cleanThemeSpec(cleanVisualTheme)
     val items =
         listOf(
             Triple(0, Icons.Default.CalendarMonth, "Kalender"),
@@ -2378,10 +2510,14 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
         Surface(
-            color = Color(0xEE1B1727),
-            shape = RoundedCornerShape(30.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
-            shadowElevation = 12.dp,
+            color = spec.navSurface,
+            shape = RoundedCornerShape(
+                if (cleanVisualTheme == CleanVisualTheme.BRUTALIST ||
+                    cleanVisualTheme == CleanVisualTheme.SWISS
+                ) 4.dp else 30.dp
+            ),
+            border = BorderStroke(1.dp, spec.navBorder),
+            shadowElevation = spec.shadow,
             tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -2403,8 +2539,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                                     Modifier.background(
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color(0xFF9D5CFF),
-                                                Color(0xFF6E34C9),
+                                                spec.selectedTop,
+                                                spec.selectedBottom,
                                             )
                                         )
                                     )
@@ -2423,8 +2559,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                                 icon,
                                 contentDescription = label,
                                 tint =
-                                    if (isSelected) Color.White
-                                    else LuxuryTextMuted.copy(alpha = .72f),
+                                    if (isSelected) spec.selectedText
+                                    else spec.muted.copy(alpha = .82f),
                                 modifier =
                                     Modifier.size(if (isSelected) 26.dp else 24.dp)
                                         .graphicsLayer {
@@ -2436,8 +2572,8 @@ private fun MinimalBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                             Text(
                                 label,
                                 color =
-                                    if (isSelected) Color.White
-                                    else LuxuryTextMuted.copy(alpha = .78f),
+                                    if (isSelected) spec.selectedText
+                                    else spec.muted.copy(alpha = .88f),
                                 fontSize = 9.sp,
                                 fontWeight =
                                     if (isSelected) FontWeight.Bold else FontWeight.Medium,
