@@ -1,5 +1,6 @@
 package se.familjekalender.app
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -84,12 +85,17 @@ internal fun SportPremiumDashboard(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     onAdd: () -> Unit,
+    onEdit: (SyncEvent) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenLocation: () -> Unit,
     onRefresh: suspend () -> Unit,
 ) {
     var section by rememberSaveable { mutableStateOf(SportSection.HOME) }
     val realMembers = remember(members) { members.filter { it.id != ALL_FAMILY_MEMBER_ID } }
+
+    BackHandler(enabled = section != SportSection.HOME) {
+        section = SportSection.HOME
+    }
 
     Box(
         Modifier.fillMaxSize()
@@ -111,6 +117,7 @@ internal fun SportPremiumDashboard(
                     events = events,
                     members = realMembers,
                     onAdd = onAdd,
+                    onEdit = onEdit,
                     onOpenSettings = onOpenSettings,
                     onOpenTraining = { section = SportSection.TRAINING },
                     onOpenRunning = { section = SportSection.RUNNING },
@@ -125,6 +132,7 @@ internal fun SportPremiumDashboard(
                     members = realMembers,
                     onBack = { section = SportSection.HOME },
                     onAdd = onAdd,
+                    onEdit = onEdit,
                 )
 
             SportSection.RUNNING ->
@@ -156,6 +164,7 @@ private fun SportHome(
     events: List<SyncEvent>,
     members: List<SyncMember>,
     onAdd: () -> Unit,
+    onEdit: (SyncEvent) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenTraining: () -> Unit,
     onOpenRunning: () -> Unit,
@@ -219,6 +228,7 @@ private fun SportHome(
         NextSportActivityCard(
             event = nextActivity,
             member = nextActivity?.memberId?.let(memberById::get),
+            onClick = nextActivity?.let { event -> { onEdit(event) } },
         )
 
         WeekStrip(
@@ -257,6 +267,7 @@ private fun SportHome(
                     SportAgendaRow(
                         event = event,
                         member = event.memberId?.let(memberById::get),
+                        onClick = { onEdit(event) },
                     )
                 }
             }
@@ -307,6 +318,7 @@ private fun SportTraining(
     members: List<SyncMember>,
     onBack: () -> Unit,
     onAdd: () -> Unit,
+    onEdit: (SyncEvent) -> Unit,
 ) {
     val today = LocalDate.now()
     val locale = remember { Locale("sv", "SE") }
@@ -364,7 +376,7 @@ private fun SportTraining(
                 color = SportAccent,
                 contentColor = Color(0xFF101213),
                 shape = CircleShape,
-                modifier = Modifier.size(44.dp).clickable(onClick = onAdd),
+                modifier = Modifier.size(48.dp).clickable(onClick = onAdd),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Add, "Lägg till träning", modifier = Modifier.size(24.dp))
@@ -493,6 +505,7 @@ private fun SportTraining(
                     ),
                     modifier = Modifier.fillMaxWidth().clickable {
                         onSelectDate(event.date)
+                        onEdit(event)
                     },
                 ) {
                     Row(
@@ -567,6 +580,10 @@ private fun SportRunning(
     var showRecorder by rememberSaveable { mutableStateOf(false) }
     var visibleMonth by rememberSaveable {
         mutableStateOf(YearMonth.from(latest?.event?.date ?: LocalDate.now()))
+    }
+
+    BackHandler(enabled = showRecorder) {
+        showRecorder = false
     }
 
     Column(
@@ -747,7 +764,7 @@ private fun SportHeader(
             color = SportAccent,
             contentColor = Color(0xFF07120D),
             shape = CircleShape,
-            modifier = Modifier.size(46.dp).clickable(onClick = onAdd),
+            modifier = Modifier.size(48.dp).clickable(onClick = onAdd),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.Add, "Lägg till aktivitet", modifier = Modifier.size(26.dp))
@@ -786,7 +803,7 @@ private fun SportRoundIcon(
         color = SportPanelRaised,
         shape = CircleShape,
         border = BorderStroke(1.dp, SportBorder),
-        modifier = Modifier.size(42.dp).clickable(onClick = onClick),
+        modifier = Modifier.size(48.dp).clickable(onClick = onClick),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, description, tint = Color.White, modifier = Modifier.size(21.dp))
@@ -795,12 +812,20 @@ private fun SportRoundIcon(
 }
 
 @Composable
-private fun NextSportActivityCard(event: SyncEvent?, member: SyncMember?) {
+private fun NextSportActivityCard(
+    event: SyncEvent?,
+    member: SyncMember?,
+    onClick: (() -> Unit)? = null,
+) {
     Surface(
         color = SportPanel,
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(1.dp, SportBorder),
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth().then(
+                if (event != null && onClick != null) Modifier.clickable(onClick = onClick)
+                else Modifier
+            ),
     ) {
         if (event == null) {
             Column(Modifier.padding(17.dp)) {
@@ -912,13 +937,17 @@ private fun WeekStrip(
 }
 
 @Composable
-private fun SportAgendaRow(event: SyncEvent, member: SyncMember?) {
+private fun SportAgendaRow(
+    event: SyncEvent,
+    member: SyncMember?,
+    onClick: () -> Unit,
+) {
     val accent = member?.let(::memberColor) ?: SportBlue
     Surface(
         color = SportPanel,
         shape = RoundedCornerShape(17.dp),
         border = BorderStroke(1.dp, SportBorder),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Row(
             Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
