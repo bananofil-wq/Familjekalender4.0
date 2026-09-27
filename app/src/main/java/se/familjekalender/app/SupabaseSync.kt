@@ -295,6 +295,7 @@ object SupabaseSync {
         date: LocalDate,
         time: String,
         memberId: String?,
+        seriesId: String? = null,
     ) =
         withContext(Dispatchers.IO) {
             val noTime = time.isBlank()
@@ -312,6 +313,7 @@ object SupabaseSync {
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
+            if (seriesId != null) body.put("series_id", seriesId)
             request(
                 "POST",
                 "/rest/v1/calendar_events",
