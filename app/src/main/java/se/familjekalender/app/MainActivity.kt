@@ -2771,7 +2771,6 @@ private fun AddEventDialog(
                         isReminder = !isReminder
                         if (isReminder) {
                             isBirthday = false
-                            recurrence = RecurrenceMode.NONE
                             if (dates.size > 1) {
                                 val first = dates.first()
                                 dates.clear()
@@ -2787,7 +2786,6 @@ private fun AddEventDialog(
                             isReminder = checked
                             if (checked) {
                                 isBirthday = false
-                                recurrence = RecurrenceMode.NONE
                                 if (dates.size > 1) {
                                     val first = dates.first()
                                     dates.clear()
@@ -2799,7 +2797,7 @@ private fun AddEventDialog(
                     Text("Påminnelse – krockar inte med aktiviteter")
                 }
 
-                if (!isBirthday && !isReminder) {
+                if (!isBirthday) {
                     Spacer(Modifier.height(6.dp))
                     Text("Upprepning", fontWeight = FontWeight.Bold)
                     RecurrenceMode.values().forEach { mode ->
