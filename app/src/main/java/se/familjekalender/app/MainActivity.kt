@@ -978,13 +978,29 @@ private fun SyncedApp(
                                         recurrence ->
             scope.launch {
                 if (reminder) {
-                    SupabaseSync.addReminder(
-                        session,
-                        title,
-                        dates.first(),
-                        startTime,
-                        memberId,
-                    )
+                    val targetDates =
+                        if (recurrence == RecurrenceMode.NONE) {
+                            dates.sorted()
+                        } else {
+                            dates
+                                .sorted()
+                                .flatMap { recurringDates(it, recurrence) }
+                                .distinct()
+                                .sorted()
+                        }
+                    val seriesId =
+                        if (recurrence == RecurrenceMode.NONE) null
+                        else java.util.UUID.randomUUID().toString()
+                    targetDates.forEach { date ->
+                        SupabaseSync.addReminder(
+                            session,
+                            title,
+                            date,
+                            startTime,
+                            memberId,
+                            seriesId,
+                        )
+                    }
                 } else if (birthday) {
                     val today = LocalDate.now()
                     val month = dates.first().monthValue
