@@ -164,6 +164,30 @@
         <TextView android:id="@+id/widget_event_4_time" style="@style/WidgetEventTime" />
     </LinearLayout>
 
+    <LinearLayout android:id="@+id/widget_event_5" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_5_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_5_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_5_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_event_6" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_6_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_6_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_6_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_event_7" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_7_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_7_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_7_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_event_8" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_event_8_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_event_8_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_event_8_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/widget_tomorrow_header"
         android:layout_width="match_parent"
@@ -186,6 +210,42 @@
         <TextView android:id="@+id/widget_tomorrow_2_who" style="@style/WidgetEventWho" />
         <TextView android:id="@+id/widget_tomorrow_2_activity" style="@style/WidgetEventActivity" />
         <TextView android:id="@+id/widget_tomorrow_2_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_tomorrow_3" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_3_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_3_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_3_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_tomorrow_4" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_4_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_4_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_4_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_tomorrow_5" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_5_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_5_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_5_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_tomorrow_6" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_6_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_6_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_6_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_tomorrow_7" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_7_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_7_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_7_time" style="@style/WidgetEventTime" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/widget_tomorrow_8" style="@style/WidgetEventRow">
+        <TextView android:id="@+id/widget_tomorrow_8_who" style="@style/WidgetEventWho" />
+        <TextView android:id="@+id/widget_tomorrow_8_activity" style="@style/WidgetEventActivity" />
+        <TextView android:id="@+id/widget_tomorrow_8_time" style="@style/WidgetEventTime" />
     </LinearLayout>
 
 </LinearLayout>
