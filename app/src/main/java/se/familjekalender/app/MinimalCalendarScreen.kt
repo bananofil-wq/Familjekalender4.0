@@ -526,23 +526,44 @@ internal fun MinimalCalendarScreen(
         var collapsedMemberKeys by
             remember(selectedDate) { mutableStateOf(emptySet<String>()) }
 
+        val useNordicLightDialog =
+            cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER
+        val dialogContainer =
+            if (useNordicLightDialog) Color(0xFFFFFEFA) else Color(0xE61A1624)
+        val dialogText =
+            if (useNordicLightDialog) Color(0xFF17334A) else Color.White
+        val dialogMuted =
+            if (useNordicLightDialog) Color(0xFF71808B) else CleanMuted
+        val dialogSurface =
+            if (useNordicLightDialog) Color(0xFFF8F5ED) else Color.White.copy(alpha = .045f)
+        val dialogBorder =
+            if (useNordicLightDialog) Color(0x1F24425D) else Color.White.copy(alpha = .08f)
+        val dialogDivider =
+            if (useNordicLightDialog) Color(0x18243F55) else Color.White.copy(alpha = .07f)
+        val dialogSubDivider =
+            if (useNordicLightDialog) Color(0x12243F55) else Color.White.copy(alpha = .05f)
+        val dialogConflict =
+            if (useNordicLightDialog) Color(0xFFB94752) else Color(0xFFFFA0A8)
+        val dialogCloseAccent =
+            if (useNordicLightDialog) Color(0xFF0875A8) else CleanPurpleBright
+
         AlertDialog(
             onDismissRequest = { showAllDayActivities = false },
-            containerColor = Color(0xE61A1624),
+            containerColor = dialogContainer,
             shape = RoundedCornerShape(28.dp),
             tonalElevation = 0.dp,
             title = {
                 Column {
                     Text(
                         dateText,
-                        color = Color.White,
+                        color = dialogText,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         if (selectedEvents.size == 1) "1 aktivitet"
                         else "${selectedEvents.size} aktiviteter",
-                        color = CleanMuted,
+                        color = dialogMuted,
                         fontSize = 12.sp,
                     )
                 }
@@ -555,7 +576,7 @@ internal fun MinimalCalendarScreen(
                     verticalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
                     if (selectedEvents.isEmpty()) {
-                        Text("Inga aktiviteter planerade", color = CleanMuted)
+                        Text("Inga aktiviteter planerade", color = dialogMuted)
                     } else {
                         groupedEvents.forEach { (memberKey, personEventsRaw) ->
                             val personEvents =
@@ -578,13 +599,13 @@ internal fun MinimalCalendarScreen(
                                         it.first.id == event.id || it.second.id == event.id
                                     }
                                 Surface(
-                                    color = Color.White.copy(alpha = .045f),
+                                    color = dialogSurface,
                                     shape = RoundedCornerShape(18.dp),
                                     border =
                                         BorderStroke(
                                             1.dp,
-                                            if (hasConflict) Color(0xFFFF8A94).copy(alpha = .35f)
-                                            else Color.White.copy(alpha = .08f),
+                                            if (hasConflict) dialogConflict.copy(alpha = .35f)
+                                            else dialogBorder,
                                         ),
                                     modifier =
                                         Modifier.fillMaxWidth().clickable {
@@ -605,7 +626,7 @@ internal fun MinimalCalendarScreen(
                                         Spacer(Modifier.width(10.dp))
                                         Text(
                                             cleanEventTime(event),
-                                            color = Color.White.copy(alpha = .70f),
+                                            color = dialogText.copy(alpha = .70f),
                                             fontSize = 12.sp,
                                             modifier = Modifier.width(78.dp),
                                         )
@@ -625,7 +646,7 @@ internal fun MinimalCalendarScreen(
                                         Column(Modifier.weight(1f)) {
                                             Text(
                                                 cleanEventTitle(event),
-                                                color = Color.White,
+                                                color = dialogText,
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 maxLines = 1,
@@ -637,13 +658,13 @@ internal fun MinimalCalendarScreen(
                                             ) {
                                                 Text(
                                                     memberName,
-                                                    color = CleanMuted,
+                                                    color = dialogMuted,
                                                     fontSize = 11.sp,
                                                 )
                                                 if (hasConflict) {
                                                     Text(
                                                         "Krock",
-                                                        color = Color(0xFFFFA0A8),
+                                                        color = dialogConflict,
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold,
                                                     )
@@ -653,7 +674,7 @@ internal fun MinimalCalendarScreen(
                                         Icon(
                                             Icons.Default.ChevronRight,
                                             contentDescription = "Öppna aktivitet",
-                                            tint = Color.White.copy(alpha = .38f),
+                                            tint = dialogText.copy(alpha = .38f),
                                             modifier = Modifier.size(19.dp),
                                         )
                                     }
@@ -677,13 +698,13 @@ internal fun MinimalCalendarScreen(
                                     }
 
                                 Surface(
-                                    color = Color.White.copy(alpha = .045f),
+                                    color = dialogSurface,
                                     shape = RoundedCornerShape(20.dp),
                                     border =
                                         BorderStroke(
                                             1.dp,
                                             if (personHasConflict)
-                                                Color(0xFFFF8A94).copy(alpha = .30f)
+                                                dialogConflict.copy(alpha = .30f)
                                             else accent.copy(alpha = .22f),
                                         ),
                                     modifier = Modifier.fillMaxWidth(),
@@ -722,14 +743,14 @@ internal fun MinimalCalendarScreen(
                                                 ) {
                                                     Text(
                                                         memberName,
-                                                        color = Color.White,
+                                                        color = dialogText,
                                                         fontSize = 15.sp,
                                                         fontWeight = FontWeight.Bold,
                                                     )
                                                     if (personHasConflict) {
                                                         Text(
                                                             "Krock",
-                                                            color = Color(0xFFFFA0A8),
+                                                            color = dialogConflict,
                                                             fontSize = 10.sp,
                                                             fontWeight = FontWeight.Bold,
                                                         )
@@ -737,7 +758,7 @@ internal fun MinimalCalendarScreen(
                                                 }
                                                 Text(
                                                     "${personEvents.size} aktiviteter · $daySpan",
-                                                    color = CleanMuted,
+                                                    color = dialogMuted,
                                                     fontSize = 11.sp,
                                                 )
                                             }
@@ -747,14 +768,14 @@ internal fun MinimalCalendarScreen(
                                                 contentDescription =
                                                     if (collapsed) "Visa aktiviteter"
                                                     else "Dölj aktiviteter",
-                                                tint = Color.White.copy(alpha = .48f),
+                                                tint = dialogText.copy(alpha = .48f),
                                                 modifier = Modifier.size(22.dp),
                                             )
                                         }
 
                                         if (!collapsed) {
                                             HorizontalDivider(
-                                                color = Color.White.copy(alpha = .07f),
+                                                color = dialogDivider,
                                                 thickness = .5.dp,
                                             )
                                             Column(
@@ -781,7 +802,7 @@ internal fun MinimalCalendarScreen(
                                                     ) {
                                                         Text(
                                                             cleanEventTime(event),
-                                                            color = Color.White.copy(alpha = .68f),
+                                                            color = dialogText.copy(alpha = .68f),
                                                             fontSize = 11.sp,
                                                             modifier = Modifier.width(82.dp),
                                                         )
@@ -808,7 +829,7 @@ internal fun MinimalCalendarScreen(
                                                         Column(Modifier.weight(1f)) {
                                                             Text(
                                                                 cleanEventTitle(event),
-                                                                color = Color.White,
+                                                                color = dialogText,
                                                                 fontSize = 13.sp,
                                                                 fontWeight = FontWeight.SemiBold,
                                                                 maxLines = 1,
@@ -817,7 +838,7 @@ internal fun MinimalCalendarScreen(
                                                             if (hasConflict) {
                                                                 Text(
                                                                     "Överlappning / dubbelbokning",
-                                                                    color = Color(0xFFFFA0A8),
+                                                                    color = dialogConflict,
                                                                     fontSize = 9.sp,
                                                                     fontWeight = FontWeight.SemiBold,
                                                                 )
@@ -826,13 +847,13 @@ internal fun MinimalCalendarScreen(
                                                         Icon(
                                                             Icons.Default.ChevronRight,
                                                             contentDescription = "Öppna aktivitet",
-                                                            tint = Color.White.copy(alpha = .32f),
+                                                            tint = dialogText.copy(alpha = .32f),
                                                             modifier = Modifier.size(18.dp),
                                                         )
                                                     }
                                                     if (index < personEvents.lastIndex) {
                                                         HorizontalDivider(
-                                                            color = Color.White.copy(alpha = .05f),
+                                                            color = dialogSubDivider,
                                                             thickness = .5.dp,
                                                             modifier = Modifier.padding(start = 89.dp),
                                                         )
@@ -849,7 +870,7 @@ internal fun MinimalCalendarScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAllDayActivities = false }) {
-                    Text("Stäng", color = CleanPurpleBright, fontWeight = FontWeight.SemiBold)
+                    Text("Stäng", color = dialogCloseAccent, fontWeight = FontWeight.SemiBold)
                 }
             },
         )
