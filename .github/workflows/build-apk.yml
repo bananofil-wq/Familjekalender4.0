@@ -35,4 +35,4 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-# Trigger build after workflow installation.
+# Trigger APK build after Clean theme refresh.
