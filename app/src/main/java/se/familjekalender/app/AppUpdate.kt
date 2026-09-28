@@ -335,7 +335,7 @@ internal fun AppUpdateSettingsCard() {
     var statusIsError by remember { mutableStateOf(false) }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = LuxurySurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
@@ -347,11 +347,11 @@ internal fun AppUpdateSettingsCard() {
                         "Appuppdatering",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = LuxuryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         "Installerad version · $currentVersion",
-                        color = LuxuryTextMuted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                     )
                 }
@@ -364,14 +364,14 @@ internal fun AppUpdateSettingsCard() {
             }
             Spacer(Modifier.height(12.dp))
             Card(
-                colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     statusText,
                     modifier = Modifier.padding(12.dp),
-                    color = if (statusIsError) MaterialTheme.colorScheme.error else LuxuryTextMuted,
+                    color = if (statusIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     lineHeight = 17.sp,
                 )
