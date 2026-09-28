@@ -217,7 +217,7 @@ internal fun MailSettingsCard(session: FamilySession) {
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = LuxurySurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
@@ -229,11 +229,11 @@ internal fun MailSettingsCard(session: FamilySession) {
                         "E-post",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 18.sp,
-                        color = LuxuryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         "Kalenderinbjudningar och erbjudanden kan läggas in automatiskt.",
-                        color = LuxuryTextMuted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                     )
                 }
@@ -246,7 +246,7 @@ internal fun MailSettingsCard(session: FamilySession) {
             }
             Spacer(Modifier.height(8.dp))
             if (accounts.isEmpty()) {
-                Text("Ingen e-post är ansluten ännu.", color = LuxuryTextMuted, fontSize = 12.sp)
+                Text("Ingen e-post är ansluten ännu.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             } else {
                 accounts.forEach { account ->
                     Row(
@@ -348,14 +348,14 @@ internal fun MailSettingsCard(session: FamilySession) {
             if (status.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = LuxurySurfaceElevated),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         status,
                         modifier = Modifier.padding(12.dp),
-                        color = LuxuryTextMuted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                     )
                 }
@@ -363,14 +363,14 @@ internal fun MailSettingsCard(session: FamilySession) {
             Spacer(Modifier.height(10.dp))
             Text(
                 "Privat och säkert",
-                color = LuxuryText,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 "Google-inloggning används för Gmail och inget Gmail-lösenord sparas. Övriga IMAP-konton skyddas med Android Keystore på den här telefonen.",
-                color = LuxuryTextMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 lineHeight = 16.sp,
             )
@@ -451,13 +451,13 @@ private fun GmailAppPasswordDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     "Använd ett Google app-lösenord. Det fungerar utan den Google OAuth-koppling som blockerar knappen ovan.",
-                    color = LuxuryTextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     lineHeight = 17.sp,
                 )
                 Text(
                     "App-lösenord kräver att 2-stegsverifiering är aktiverad på Google-kontot.",
-                    color = LuxuryTextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     lineHeight = 16.sp,
                 )
