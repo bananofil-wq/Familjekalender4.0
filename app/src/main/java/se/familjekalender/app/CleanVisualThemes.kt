@@ -22,6 +22,11 @@ enum class CleanVisualTheme(
         "Din nuvarande Clean-design med glas, lila accent och vald bakgrund.",
         "💜",
     ),
+    NORDIC_DAY_PLANNER(
+        "Nordic Day Planner",
+        "Ljus skandinavisk dagsvy med blå tidslinje, dagspår och snabbkort för familjen.",
+        "▤",
+    ),
     BRUTALIST(
         "Industrial Pro",
         "Mörk industriell design i stål, grafit och varningsgult med tydlig struktur.",
@@ -141,6 +146,40 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 dayRadius = 16.dp,
                 buttonRadius = 50.dp,
                 shadow = 10.dp,
+            )
+
+        CleanVisualTheme.NORDIC_DAY_PLANNER ->
+            CleanThemeSpec(
+                backgroundTop = Color(0xFFF9F7F1),
+                backgroundBottom = Color(0xFFF1EEE6),
+                overlayTop = Color.Transparent,
+                overlayBottom = Color.Transparent,
+                panelTop = Color(0xFFFFFEFA),
+                panelMid = Color(0xFFF8F5ED),
+                panelBottom = Color(0xFFF1EDE3),
+                border = Color(0x1F24425D),
+                text = Color(0xFF18324A),
+                muted = Color(0xFF6D7C88),
+                accent = Color(0xFF1A8FC5),
+                accentStrong = Color(0xFF0D7DB3),
+                secondary = Color(0xFF46B5D8),
+                info = Color(0xFF5AA4C8),
+                warning = Color(0xFFD99B2B),
+                selectedTop = Color.Transparent,
+                selectedBottom = Color.Transparent,
+                selectedBorder = Color(0xFF0D7DB3),
+                selectedText = Color(0xFF0D7DB3),
+                dayTop = Color(0xFF27A1D2),
+                dayBottom = Color(0xFF0878AD),
+                navSurface = Color(0xFFFFFEFA),
+                navBorder = Color(0x1F24425D),
+                titleFont = FontFamily.SansSerif,
+                titleWeight = FontWeight.SemiBold,
+                cardRadius = 14.dp,
+                calendarRadius = 14.dp,
+                dayRadius = 8.dp,
+                buttonRadius = 12.dp,
+                shadow = 2.dp,
             )
 
         CleanVisualTheme.BRUTALIST ->
@@ -408,6 +447,14 @@ internal fun CleanThemeBackdrop(
     Canvas(modifier) {
         when (theme) {
             CleanVisualTheme.CURRENT -> Unit
+
+            CleanVisualTheme.NORDIC_DAY_PLANNER -> {
+                drawCircle(
+                    color = Color.White.copy(alpha = .18f),
+                    radius = size.width * .34f,
+                    center = Offset(size.width * .86f, size.height * .10f),
+                )
+            }
 
             CleanVisualTheme.BRUTALIST -> {
                 drawRect(
