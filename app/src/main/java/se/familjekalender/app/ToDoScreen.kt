@@ -273,13 +273,13 @@ internal fun ToDoScreen(
             Column(Modifier.weight(1f)) {
                 Text(
                     "To-Do",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Black,
                 )
                 Text(
                     "Familjens gemensamma uppgifter",
-                    color = LuxuryTextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
             }
@@ -304,7 +304,7 @@ internal fun ToDoScreen(
         }
 
         Surface(
-            color = LuxurySurfaceElevated,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(26.dp),
             border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
             modifier = Modifier.fillMaxWidth(),
@@ -318,7 +318,7 @@ internal fun ToDoScreen(
                         Text(
                             if (openItems.isEmpty() && total > 0) "Allt klart"
                             else "${openItems.size} kvar",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -328,7 +328,7 @@ internal fun ToDoScreen(
                                 completed == 0 -> "$total uppgifter totalt"
                                 else -> "$completed av $total avklarade"
                             },
-                            color = LuxuryTextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                         )
                     }
@@ -353,14 +353,14 @@ internal fun ToDoScreen(
                         progress = { progress },
                         modifier = Modifier.fillMaxWidth().height(7.dp),
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.White.copy(alpha = .08f),
+                        trackColor = MaterialTheme.colorScheme.outlineVariant,
                     )
                 }
             }
         }
 
         Surface(
-            color = LuxurySurfaceElevated,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(24.dp),
             border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
             modifier = Modifier.fillMaxWidth(),
@@ -368,7 +368,7 @@ internal fun ToDoScreen(
             Column(Modifier.padding(14.dp)) {
                 Text(
                     "NY UPPGIFT",
-                    color = LuxuryTextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -395,7 +395,7 @@ internal fun ToDoScreen(
                         colors =
                             IconButtonDefaults.filledIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = Color.Black.copy(alpha = .82f),
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
                                 disabledContainerColor =
                                     MaterialTheme.colorScheme.primary.copy(alpha = .28f),
                             ),
@@ -407,7 +407,7 @@ internal fun ToDoScreen(
                 Spacer(Modifier.height(10.dp))
                 Text(
                     "ANSVARIG",
-                    color = LuxuryTextMuted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = .8.sp,
@@ -458,9 +458,9 @@ internal fun ToDoScreen(
             ) {
                 if (openItems.isEmpty()) {
                     Surface(
-                        color = Color.White.copy(alpha = .035f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f),
                         shape = RoundedCornerShape(22.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
@@ -469,14 +469,14 @@ internal fun ToDoScreen(
                         ) {
                             Text(
                                 if (total == 0) "Inga uppgifter ännu" else "Allt är avklarat",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
                                 if (total == 0) "Lägg till något ovanför."
                                 else "Familjens lista är tom på måsten.",
-                                color = LuxuryTextMuted,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp,
                             )
                         }
@@ -488,7 +488,7 @@ internal fun ToDoScreen(
                     ) {
                         Text(
                             "ATT GÖRA",
-                            color = LuxuryTextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -505,14 +505,14 @@ internal fun ToDoScreen(
                     openItems.forEachIndexed { index, item ->
                         val assignee = item.memberId?.let(memberById::get)
                         Surface(
-                            color = LuxurySurfaceElevated,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(20.dp),
                             border =
                                 BorderStroke(
                                     1.dp,
                                     if (index == 0)
                                         MaterialTheme.colorScheme.primary.copy(alpha = .24f)
-                                    else Color.White.copy(alpha = .08f),
+                                    else MaterialTheme.colorScheme.outlineVariant,
                                 ),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -528,7 +528,7 @@ internal fun ToDoScreen(
                                     Spacer(Modifier.width(4.dp))
                                     Text(
                                         item.title,
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         modifier = Modifier.weight(1f),
@@ -536,7 +536,7 @@ internal fun ToDoScreen(
                                     TextButton(onClick = { deleteItem(item) }) {
                                         Text(
                                             "Ta bort",
-                                            color = LuxuryTextMuted,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 10.sp,
                                         )
                                     }
@@ -574,7 +574,7 @@ internal fun ToDoScreen(
                     ) {
                         Text(
                             "KLARA",
-                            color = LuxuryTextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -601,9 +601,9 @@ internal fun ToDoScreen(
                     }
 
                     Surface(
-                        color = Color.White.copy(alpha = .025f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .42f),
                         shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = .06f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column {
@@ -611,7 +611,7 @@ internal fun ToDoScreen(
                                 val assignee = item.memberId?.let(memberById::get)
                                 if (index > 0) {
                                     HorizontalDivider(
-                                        color = Color.White.copy(alpha = .05f),
+                                        color = MaterialTheme.colorScheme.outlineVariant,
                                         thickness = .5.dp,
                                     )
                                 }
@@ -630,14 +630,14 @@ internal fun ToDoScreen(
                                         Spacer(Modifier.width(4.dp))
                                         Text(
                                             item.title,
-                                            color = LuxuryTextMuted,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 13.sp,
                                             modifier = Modifier.weight(1f),
                                         )
                                         TextButton(onClick = { deleteItem(item) }) {
                                             Text(
                                                 "Ta bort",
-                                                color = LuxuryTextMuted.copy(alpha = .75f),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .75f),
                                                 fontSize = 9.sp,
                                             )
                                         }
@@ -696,7 +696,7 @@ private fun TodoAssigneeChip(
     val label = member?.name ?: "Hela familjen"
 
     Surface(
-        color = if (muted) Color.White.copy(alpha = .025f) else accent.copy(alpha = .10f),
+        color = if (muted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f) else accent.copy(alpha = .10f),
         shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, accent.copy(alpha = if (muted) .15f else .28f)),
         modifier = modifier.clickable(onClick = onClick),
@@ -748,7 +748,7 @@ private fun TodoAssigneeChip(
             Spacer(Modifier.width(5.dp))
             Text(
                 label,
-                color = if (muted) LuxuryTextMuted else Color.White,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 fontSize = if (compact) 10.sp else 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f, fill = false),
@@ -771,12 +771,12 @@ private fun TodoAssigneeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = LuxurySurfaceElevated,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(26.dp),
         title = {
             Text(
                 title,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 fontSize = 21.sp,
             )
@@ -818,11 +818,11 @@ private fun TodoAssigneeOption(
     onClick: () -> Unit,
 ) {
     Surface(
-        color = if (selected) accent.copy(alpha = .14f) else Color.White.copy(alpha = .035f),
+        color = if (selected) accent.copy(alpha = .14f) else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(
             1.dp,
-            if (selected) accent.copy(alpha = .55f) else Color.White.copy(alpha = .08f),
+            if (selected) accent.copy(alpha = .55f) else MaterialTheme.colorScheme.outlineVariant,
         ),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
@@ -843,7 +843,7 @@ private fun TodoAssigneeOption(
             Spacer(Modifier.width(10.dp))
             Text(
                 label,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 modifier = Modifier.weight(1f),
             )
