@@ -572,11 +572,15 @@ private fun SyncedApp(
                                 onSelect = { selectedDate = it },
                                 events = events,
                                 members = members,
+                                shopping = shopping,
                                 onAdd = {
                                     addEventInitialTitle = ""
                                     showAddEvent = true
                                 },
                                 onEdit = { editEvent = it },
+                                onOpenShopping = { selectedTab = 1 },
+                                onOpenTodo = { selectedTab = 2 },
+                                onOpenFamily = { selectedTab = 3 },
                                 onOpenSettings = { selectedTab = 4 },
                                 onOpenLocation = { selectedTab = 5 },
                                 themeMode = themeMode,
@@ -2047,7 +2051,7 @@ private fun SettingsScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "11 helt olika utseenden. Nuvarande behåller exakt den Clean-stil du redan använder.",
+                "12 helt olika utseenden. Nuvarande behåller exakt den Clean-stil du redan använder.",
                 color = LuxuryTextMuted.copy(alpha = .78f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp,
@@ -2515,6 +2519,7 @@ private fun MinimalBottomNav(
     val navShape =
         when (cleanVisualTheme) {
             CleanVisualTheme.CURRENT -> RoundedCornerShape(30.dp)
+            CleanVisualTheme.NORDIC_DAY_PLANNER -> RoundedCornerShape(0.dp)
             CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
                 RoundedCornerShape(4.dp)
             CleanVisualTheme.CYBERPUNK -> RoundedCornerShape(10.dp)
@@ -2528,13 +2533,22 @@ private fun MinimalBottomNav(
             else -> RoundedCornerShape(18.dp)
         }
     val items =
-        listOf(
-            Triple(0, Icons.Default.CalendarMonth, "Kalender"),
-            Triple(1, Icons.Default.ShoppingCart, "Inköp"),
-            Triple(2, Icons.Default.CheckCircle, "Att göra"),
-            Triple(4, Icons.Default.Settings, "Inställningar"),
-            Triple(5, Icons.Default.LocationOn, "Plats"),
-        )
+        if (cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER) {
+            listOf(
+                Triple(0, Icons.Default.CalendarMonth, "Kalender"),
+                Triple(2, Icons.Default.CheckCircle, "Att göra"),
+                Triple(3, Icons.Default.People, "Familj"),
+                Triple(4, Icons.Default.MoreHoriz, "Mer"),
+            )
+        } else {
+            listOf(
+                Triple(0, Icons.Default.CalendarMonth, "Kalender"),
+                Triple(1, Icons.Default.ShoppingCart, "Inköp"),
+                Triple(2, Icons.Default.CheckCircle, "Att göra"),
+                Triple(4, Icons.Default.Settings, "Inställningar"),
+                Triple(5, Icons.Default.LocationOn, "Plats"),
+            )
+        }
 
     Box(
         Modifier.fillMaxWidth()
