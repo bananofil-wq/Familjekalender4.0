@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.Constraints
@@ -45,16 +46,36 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH) {
-            showUpdating(context)
-            enqueueRefresh(context)
+        when (intent.action) {
+            ACTION_REFRESH -> {
+                showUpdating(context)
+                enqueueRefresh(context)
+            }
+
+            ACTION_TOGGLE_GROUP -> {
+                val appWidgetId = intent.getIntExtra(EXTRA_WIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+                val groupKey = intent.getStringExtra(EXTRA_GROUP_KEY)
+                if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID && !groupKey.isNullOrBlank()) {
+                    val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
+                    val prefKey = expandedGroupPrefKey(appWidgetId)
+                    val current = prefs.getString(prefKey, null)
+                    prefs.edit().putString(prefKey, if (current == groupKey) null else groupKey).apply()
+                    enqueueRefresh(context)
+                }
+            }
         }
     }
 
     companion object {
         private const val ACTION_REFRESH = "se.familjekalender.app.WIDGET_REFRESH"
+        private const val ACTION_TOGGLE_GROUP = "se.familjekalender.app.WIDGET_TOGGLE_GROUP"
+        private const val EXTRA_WIDGET_ID = "widget_id"
+        private const val EXTRA_GROUP_KEY = "group_key"
+        internal const val WIDGET_PREFS = "family_calendar_widget"
         private const val IMMEDIATE_WORK_NAME = "family_calendar_widget_refresh"
         private const val PERIODIC_WORK_NAME = "family_calendar_widget_periodic_refresh"
+
+        internal fun expandedGroupPrefKey(appWidgetId: Int) = "expanded_group_$appWidgetId"
 
         private fun networkConstraints() =
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
@@ -110,7 +131,56 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             }
         }
 
+        internal fun openCalendarPendingIntent(
+            context: Context,
+            appWidgetId: Int,
+            requestOffset: Int,
+        ): PendingIntent {
+            val intent =
+                Intent(context, MainActivity::class.java).apply {
+                    putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+            return PendingIntent.getActivity(
+                context,
+                appWidgetId + requestOffset,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        internal fun toggleGroupPendingIntent(
+            context: Context,
+            appWidgetId: Int,
+            groupKey: String,
+            requestOffset: Int,
+        ): PendingIntent {
+            val intent =
+                Intent(context, FamilyCalendarWidget::class.java).apply {
+                    action = ACTION_TOGGLE_GROUP
+                    data =
+                        Uri.parse(
+                            "familjekalender://widget/group/$appWidgetId/${Uri.encode(groupKey)}",
+                        )
+                    putExtra(EXTRA_WIDGET_ID, appWidgetId)
+                    putExtra(EXTRA_GROUP_KEY, groupKey)
+                }
+            return PendingIntent.getBroadcast(
+                context,
+                appWidgetId + requestOffset,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
         private fun bindActions(context: Context, views: RemoteViews, appWidgetId: Int) {
+            val openCalendar = openCalendarPendingIntent(context, appWidgetId, 0)
+            views.setOnClickPendingIntent(R.id.widget_root, openCalendar)
+            views.setOnClickPendingIntent(R.id.widget_badge_day, openCalendarPendingIntent(context, appWidgetId, 1_000))
+            views.setOnClickPendingIntent(R.id.widget_badge_number, openCalendarPendingIntent(context, appWidgetId, 1_001))
+            views.setOnClickPendingIntent(R.id.widget_date, openCalendarPendingIntent(context, appWidgetId, 1_002))
+            views.setOnClickPendingIntent(R.id.widget_status, openCalendarPendingIntent(context, appWidgetId, 1_003))
+
             fun openTabPendingIntent(tab: Int, requestOffset: Int): PendingIntent {
                 val intent =
                     Intent(context, MainActivity::class.java).apply {
@@ -125,7 +195,6 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )
             }
 
-            views.setOnClickPendingIntent(R.id.widget_root, openTabPendingIntent(0, 0))
             views.setOnClickPendingIntent(R.id.widget_todo, openTabPendingIntent(2, 20_000))
             views.setOnClickPendingIntent(R.id.widget_shopping, openTabPendingIntent(1, 30_000))
 

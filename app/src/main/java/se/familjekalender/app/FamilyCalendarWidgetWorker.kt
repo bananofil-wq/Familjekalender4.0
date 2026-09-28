@@ -23,6 +23,12 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
     CoroutineWorker(appContext, params) {
     private data class WidgetRow(val who: String, val activity: String, val time: String)
 
+    private data class DisplayRow(
+        val row: WidgetRow,
+        val groupKey: String? = null,
+        val canToggle: Boolean = false,
+    )
+
     override suspend fun doWork(): Result {
         val manager = AppWidgetManager.getInstance(applicationContext)
         val component = ComponentName(applicationContext, FamilyCalendarWidget::class.java)
@@ -48,10 +54,11 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 }
                 val session = FamilySession(id, name ?: "Min familj", code)
                 val today = LocalDate.now()
+                val now = LocalTime.now()
                 val allEvents = SupabaseSync.loadEvents(session)
                 val todaysEvents =
                     allEvents
-                        .filter { it.date == today }
+                        .filter { it.date == today && isStillRelevantToday(it, now) }
                         .sortedWith(
                             compareBy<SyncEvent> { parseMinute(it.time) ?: Int.MAX_VALUE }
                                 .thenBy { it.title }
@@ -70,30 +77,52 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     SupabaseSync.loadShopping(session).count { !it.checked }
                 }.getOrDefault(0)
                 val openTodos = runCatching { loadOpenTodoCount(session) }.getOrDefault(0)
-                // Use the available widget space for the actual day lists instead of
-                // hiding rows after two items. Keep the split balanced when both days are busy.
+                val widgetPrefs =
+                    applicationContext.getSharedPreferences(
+                        FamilyCalendarWidget.WIDGET_PREFS,
+                        Context.MODE_PRIVATE,
+                    )
+                val expandedGroup =
+                    widgetPrefs.getString(
+                        FamilyCalendarWidget.expandedGroupPrefKey(widgetId),
+                        null,
+                    )
+                val todayRows = buildDayRows(todaysEvents, today, members, expandedGroup)
+                val tomorrowRows =
+                    buildDayRows(tomorrowsEvents, today.plusDays(1), members, expandedGroup)
                 val totalVisibleSlots = 8
-                var todaySlots = minOf(todaysEvents.size, 4)
-                var tomorrowSlots = minOf(tomorrowsEvents.size, 4)
+                val expandedToday = expandedGroup?.startsWith("$today|") == true
+                val expandedTomorrow = expandedGroup?.startsWith("${today.plusDays(1)}|") == true
+                var todaySlots =
+                    when {
+                        expandedToday -> minOf(todayRows.size, 6)
+                        expandedTomorrow -> minOf(todayRows.size, 2)
+                        else -> minOf(todayRows.size, 4)
+                    }
+                var tomorrowSlots =
+                    when {
+                        expandedTomorrow -> minOf(tomorrowRows.size, 6)
+                        expandedToday -> minOf(tomorrowRows.size, 2)
+                        else -> minOf(tomorrowRows.size, 4)
+                    }
                 var remainingSlots = totalVisibleSlots - todaySlots - tomorrowSlots
                 if (remainingSlots > 0) {
-                    val extraToday = minOf(remainingSlots, todaysEvents.size - todaySlots)
+                    val extraToday = minOf(remainingSlots, todayRows.size - todaySlots)
                     todaySlots += extraToday
                     remainingSlots -= extraToday
                 }
                 if (remainingSlots > 0) {
-                    val extraTomorrow = minOf(remainingSlots, tomorrowsEvents.size - tomorrowSlots)
-                    tomorrowSlots += extraTomorrow
+                    tomorrowSlots += minOf(remainingSlots, tomorrowRows.size - tomorrowSlots)
                 }
-                val visibleToday = todaysEvents.take(todaySlots)
-                val visibleTomorrow = tomorrowsEvents.take(tomorrowSlots)
+                val visibleToday = todayRows.take(todaySlots)
+                val visibleTomorrow = tomorrowRows.take(tomorrowSlots)
                 val todayCount = todaysEvents.size
                 views.setTextViewText(
                     R.id.widget_status,
                     when (todayCount) {
-                        0 -> "Ingen aktivitet idag"
-                        1 -> "✓ 1 aktivitet idag"
-                        else -> "✓ $todayCount aktiviteter idag"
+                        0 -> "Inga aktiviteter kvar idag"
+                        1 -> "✓ 1 aktivitet kvar idag"
+                        else -> "✓ $todayCount aktiviteter kvar idag"
                     },
                 )
                 views.setTextViewText(R.id.widget_todo, "✓  $openTodos To-Do    ›")
@@ -143,14 +172,16 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         R.id.widget_event_7_time,
                         R.id.widget_event_8_time,
                     )
-                visibleToday.forEachIndexed { index, event ->
+                visibleToday.forEachIndexed { index, displayRow ->
                     bindRow(
                         views,
                         todayContainers[index],
                         todayWho[index],
                         todayActivity[index],
                         todayTime[index],
-                        toWidgetRow(event, members),
+                        displayRow,
+                        widgetId,
+                        60_000 + index * 10,
                     )
                 }
                 if (visibleToday.isEmpty() && visibleTomorrow.isEmpty())
@@ -160,7 +191,9 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         R.id.widget_event_1_who,
                         R.id.widget_event_1_activity,
                         R.id.widget_event_1_time,
-                        WidgetRow("Idag", "Lugnt i kalendern", ""),
+                        DisplayRow(WidgetRow("Idag", "Lugnt i kalendern", "")),
+                        widgetId,
+                        60_000,
                     )
                 if (visibleTomorrow.isNotEmpty()) {
                     views.setViewVisibility(R.id.widget_tomorrow_header, View.VISIBLE)
@@ -174,6 +207,14 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                                 else -> "Imorgon • ${tomorrowsEvents.size} aktiviteter"
                             }
                         },
+                    )
+                    views.setOnClickPendingIntent(
+                        R.id.widget_tomorrow_header,
+                        FamilyCalendarWidget.openCalendarPendingIntent(
+                            applicationContext,
+                            widgetId,
+                            70_900,
+                        ),
                     )
                     val tomorrowContainers =
                         intArrayOf(
@@ -219,14 +260,16 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                             R.id.widget_tomorrow_7_time,
                             R.id.widget_tomorrow_8_time,
                         )
-                    visibleTomorrow.forEachIndexed { index, event ->
+                    visibleTomorrow.forEachIndexed { index, displayRow ->
                         bindRow(
                             views,
                             tomorrowContainers[index],
                             tomorrowWho[index],
                             tomorrowActivity[index],
                             tomorrowTime[index],
-                            toWidgetRow(event, members),
+                            displayRow,
+                            widgetId,
+                            70_000 + index * 10,
                         )
                     }
                 }
@@ -253,14 +296,132 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
         whoId: Int,
         activityId: Int,
         timeId: Int,
-        row: WidgetRow,
+        displayRow: DisplayRow,
+        appWidgetId: Int,
+        requestOffset: Int,
     ) {
+        val row = displayRow.row
         views.setViewVisibility(containerId, View.VISIBLE)
         views.setTextViewText(whoId, row.who)
         views.setTextViewText(activityId, row.activity)
         views.setTextViewText(timeId, row.time)
+
+        val openCalendar =
+            FamilyCalendarWidget.openCalendarPendingIntent(
+                applicationContext,
+                appWidgetId,
+                requestOffset,
+            )
+        views.setOnClickPendingIntent(containerId, openCalendar)
+        views.setOnClickPendingIntent(activityId, openCalendar)
+        views.setOnClickPendingIntent(timeId, openCalendar)
+
+        if (displayRow.canToggle && !displayRow.groupKey.isNullOrBlank()) {
+            val groupKey = displayRow.groupKey
+            val hashOffset = groupKey.hashCode().and(0x3fff)
+            views.setOnClickPendingIntent(
+                whoId,
+                FamilyCalendarWidget.toggleGroupPendingIntent(
+                    applicationContext,
+                    appWidgetId,
+                    groupKey,
+                    50_000 + hashOffset,
+                ),
+            )
+        } else {
+            views.setOnClickPendingIntent(whoId, openCalendar)
+        }
     }
 
+    private fun buildDayRows(
+        events: List<SyncEvent>,
+        date: LocalDate,
+        members: Map<String, SyncMember>,
+        expandedGroup: String?,
+    ): List<DisplayRow> {
+        if (events.isEmpty()) return emptyList()
+
+        val groups =
+            events
+                .groupBy { it.memberId ?: ALL_FAMILY_MEMBER_ID }
+                .entries
+                .sortedWith(
+                    compareBy<Map.Entry<String, List<SyncEvent>>> { entry ->
+                        entry.value.minOfOrNull { parseMinute(it.time) ?: Int.MAX_VALUE }
+                            ?: Int.MAX_VALUE
+                    }.thenBy { entry -> memberName(entry.key, members) },
+                )
+
+        return buildList {
+            groups.forEach { entry ->
+                val memberKey = entry.key
+                val groupEvents = entry.value.sortedWith(eventComparator())
+                val who = memberName(memberKey, members)
+                val groupKey = "$date|$memberKey"
+
+                if (groupEvents.size == 1) {
+                    add(DisplayRow(toWidgetRow(groupEvents.first(), members)))
+                } else {
+                    val expanded = expandedGroup == groupKey
+                    val firstTime =
+                        groupEvents.mapNotNull { timeTextOrNull(it) }.firstOrNull().orEmpty()
+                    add(
+                        DisplayRow(
+                            row =
+                                WidgetRow(
+                                    who = "$who ${if (expanded) "▴" else "▾"}",
+                                    activity = "${groupEvents.size} aktiviteter",
+                                    time = if (expanded) "" else firstTime,
+                                ),
+                            groupKey = groupKey,
+                            canToggle = true,
+                        ),
+                    )
+                    if (expanded) {
+                        groupEvents.forEach { event ->
+                            val row = toWidgetRow(event, members)
+                            add(
+                                DisplayRow(
+                                    WidgetRow(
+                                        who = "↳",
+                                        activity = row.activity,
+                                        time = row.time,
+                                    ),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isStillRelevantToday(event: SyncEvent, now: LocalTime): Boolean {
+        if (event.time.isBlank()) return true
+        val end = parseLocalTime(event.endTime)
+        if (end != null) return !now.isAfter(end)
+        val start = parseLocalTime(event.time) ?: return true
+        return !now.isAfter(start.plusMinutes(15))
+    }
+
+    private fun eventComparator(): Comparator<SyncEvent> =
+        compareBy<SyncEvent> { parseMinute(it.time) ?: Int.MAX_VALUE }
+            .thenBy { it.title }
+
+    private fun memberName(memberKey: String, members: Map<String, SyncMember>): String =
+        if (memberKey == ALL_FAMILY_MEMBER_ID) {
+            "Alla"
+        } else {
+            members[memberKey]?.name?.takeIf { it.isNotBlank() } ?: "Familj"
+        }
+
+    private fun timeTextOrNull(event: SyncEvent): String? {
+        if (event.time.isBlank()) return null
+        return event.endTime
+            ?.takeIf { it.isNotBlank() }
+            ?.let { "${event.time}–$it" }
+            ?: event.time
+    }
     private fun toWidgetRow(event: SyncEvent, members: Map<String, SyncMember>): WidgetRow {
         val who =
             when (event.memberId) {
@@ -269,12 +430,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
 
                 else -> members[event.memberId]?.name?.takeIf { it.isNotBlank() } ?: "Familj"
             }
-        val timeText =
-            if (event.time.isBlank()) {
-                "Ingen tid"
-            } else {
-                event.endTime?.takeIf { it.isNotBlank() }?.let { "${event.time}–$it" } ?: event.time
-            }
+        val timeText = timeTextOrNull(event) ?: "Ingen tid"
         val activity = cleanActivityTitle(event.title, event.time, event.endTime, who)
         return WidgetRow(
             who,
