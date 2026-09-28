@@ -335,7 +335,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBg),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -404,7 +404,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                         Text(
                             if (locationAlertsEnabled) "Aktiverat · välj personer nedan"
                             else "Avstängt",
-                            color = Muted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp,
                         )
                     }
@@ -423,7 +423,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                 if (locationAlertsEnabled) {
                     Text(
                         "Välj vilka personer du vill få ankomst- och avresenotiser om",
-                        color = Muted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp),
                     )
@@ -450,7 +450,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                                 )
                                 Text(
                                     "Meddela när ${member.name} kommer eller lämnar",
-                                    color = Muted,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp,
                                 )
                             }
@@ -510,7 +510,7 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Batterinivå", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Visa batterinivå (valfritt)", color = Muted, fontSize = 13.sp)
+                        Text("Visa batterinivå (valfritt)", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     }
                     Switch(
                         checked = batteryVisible,
@@ -546,14 +546,14 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         if (places.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { showAddPlace = true },
-                colors = CardDefaults.cardColors(containerColor = CardBg),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(18.dp),
             ) {
                 Column(Modifier.padding(18.dp)) {
                     Text("Inga destinationer ännu", fontWeight = FontWeight.Bold)
                     Text(
                         "Lägg till till exempel Hemma, Skola eller Jobb för ankomst- och avresenotiser.",
-                        color = Muted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                     )
                 }
@@ -664,13 +664,13 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (locations.isEmpty()) {
-                        Text("Ingen platsdata finns ännu.", color = Muted)
+                        Text("Ingen platsdata finns ännu.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         locations.take(10).forEach { item ->
                             val member = familyMembers.firstOrNull { it.id == item.memberId }
                             Column {
                                 Text(member?.name ?: "Familjemedlem", fontWeight = FontWeight.Bold)
-                                Text(formatUpdated(item.updatedAt), color = Muted, fontSize = 12.sp)
+                                Text(formatUpdated(item.updatedAt), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             }
                         }
                     }
@@ -758,7 +758,7 @@ internal fun LocationMapCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Box(Modifier.fillMaxWidth().height(mapHeight)) {
             AndroidView(
@@ -877,7 +877,7 @@ internal fun LocationMapCard(
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(member?.name ?: "Familjemedlem", fontWeight = FontWeight.Bold)
-                            Text(formatUpdated(item.updatedAt), color = Muted, fontSize = 12.sp)
+                            Text(formatUpdated(item.updatedAt), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             if (batteryVisible && item.batteryPercent != null) {
                                 Text(
                                     "Batteri ${item.batteryPercent}%",
@@ -926,13 +926,13 @@ private fun LocationQuickAction(
     ) {
         Icon(icon, contentDescription = text, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(5.dp))
-        Text(text, color = Muted, fontSize = 12.sp)
+        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
 }
 
 @Composable
 private fun LocationIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Surface(shape = CircleShape, color = Color(0xFF292634)) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
         Icon(
             icon,
             contentDescription = null,
@@ -961,9 +961,9 @@ private fun LocationSettingRow(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text(subtitle, color = Muted, fontSize = 13.sp)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Muted)
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -977,7 +977,7 @@ private fun DestinationCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -985,10 +985,10 @@ private fun DestinationCard(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(place.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Radie ${place.radiusM} m", color = Muted, fontSize = 12.sp)
+                    Text("Radie ${place.radiusM} m", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Ta bort", tint = Muted)
+                    Icon(Icons.Default.DeleteOutline, contentDescription = "Ta bort", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1037,7 +1037,7 @@ private fun AddDestinationDialog(
                 )
                 Text(
                     "Ankomst- och avresenotiser är aktiverade för nya destinationer. De kan stängas av per destination eller person.",
-                    color = Muted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
             }
