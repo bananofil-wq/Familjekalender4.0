@@ -46,12 +46,12 @@ internal fun EditableFamilyScreen(
     var agendaMember by remember { mutableStateOf<SyncMember?>(null) }
 
     Text("Familjen", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-    Text("Tryck på en person för att se planeringen framöver", color = Muted, fontSize = 12.sp)
+    Text("Tryck på en person för att se planeringen framöver", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     Spacer(Modifier.height(8.dp))
 
     members.forEach { member ->
         Card(
-            colors = CardDefaults.cardColors(containerColor = CardBg),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             modifier =
                 Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
                     agendaMember = member
@@ -69,7 +69,7 @@ internal fun EditableFamilyScreen(
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(member.name)
-                    if (member.role.isNotBlank()) Text(member.role, color = Muted, fontSize = 11.sp)
+                    if (member.role.isNotBlank()) Text(member.role, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
                 TextButton(onClick = { editingMember = member }) { Text("Färg", fontSize = 11.sp) }
             }
@@ -160,6 +160,6 @@ private fun ColorChoice(colorArgb: Long, selected: Boolean, onClick: () -> Unit)
         shape = CircleShape,
         color = Color(colorArgb.toInt()),
         border =
-            if (selected) androidx.compose.foundation.BorderStroke(3.dp, Color.White) else null,
+            if (selected) androidx.compose.foundation.BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface) else null,
     ) {}
 }
