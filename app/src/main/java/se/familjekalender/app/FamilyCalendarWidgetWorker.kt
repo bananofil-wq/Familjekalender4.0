@@ -48,7 +48,6 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 }
                 val session = FamilySession(id, name ?: "Min familj", code)
                 val today = LocalDate.now()
-                val now = LocalTime.now()
                 val allEvents = SupabaseSync.loadEvents(session)
                 val todaysEvents =
                     allEvents
@@ -71,20 +70,23 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     SupabaseSync.loadShopping(session).count { !it.checked }
                 }.getOrDefault(0)
                 val openTodos = runCatching { loadOpenTodoCount(session) }.getOrDefault(0)
-                val upcomingToday =
-                    todaysEvents
-                        .filter { event ->
-                            val end = event.endTime?.let(::parseLocalTime)
-                            val start = parseLocalTime(event.time)
-                            when {
-                                end != null -> !end.isBefore(now.minusMinutes(15))
-                                start != null -> !start.isBefore(now.minusMinutes(15))
-                                else -> true
-                            }
-                        }
-                val visibleTomorrow = tomorrowsEvents.take(2)
-                val visibleToday =
-                    upcomingToday.take(if (visibleTomorrow.isNotEmpty()) 2 else 4)
+                // Use the available widget space for the actual day lists instead of
+                // hiding rows after two items. Keep the split balanced when both days are busy.
+                val totalVisibleSlots = 8
+                var todaySlots = minOf(todaysEvents.size, 4)
+                var tomorrowSlots = minOf(tomorrowsEvents.size, 4)
+                var remainingSlots = totalVisibleSlots - todaySlots - tomorrowSlots
+                if (remainingSlots > 0) {
+                    val extraToday = minOf(remainingSlots, todaysEvents.size - todaySlots)
+                    todaySlots += extraToday
+                    remainingSlots -= extraToday
+                }
+                if (remainingSlots > 0) {
+                    val extraTomorrow = minOf(remainingSlots, tomorrowsEvents.size - tomorrowSlots)
+                    tomorrowSlots += extraTomorrow
+                }
+                val visibleToday = todaysEvents.take(todaySlots)
+                val visibleTomorrow = tomorrowsEvents.take(tomorrowSlots)
                 val todayCount = todaysEvents.size
                 views.setTextViewText(
                     R.id.widget_status,
@@ -103,6 +105,10 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         R.id.widget_event_2,
                         R.id.widget_event_3,
                         R.id.widget_event_4,
+                        R.id.widget_event_5,
+                        R.id.widget_event_6,
+                        R.id.widget_event_7,
+                        R.id.widget_event_8,
                     )
                 val todayWho =
                     intArrayOf(
@@ -110,6 +116,10 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         R.id.widget_event_2_who,
                         R.id.widget_event_3_who,
                         R.id.widget_event_4_who,
+                        R.id.widget_event_5_who,
+                        R.id.widget_event_6_who,
+                        R.id.widget_event_7_who,
+                        R.id.widget_event_8_who,
                     )
                 val todayActivity =
                     intArrayOf(
@@ -117,6 +127,10 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         R.id.widget_event_2_activity,
                         R.id.widget_event_3_activity,
                         R.id.widget_event_4_activity,
+                        R.id.widget_event_5_activity,
+                        R.id.widget_event_6_activity,
+                        R.id.widget_event_7_activity,
+                        R.id.widget_event_8_activity,
                     )
                 val todayTime =
                     intArrayOf(
@@ -124,6 +138,10 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         R.id.widget_event_2_time,
                         R.id.widget_event_3_time,
                         R.id.widget_event_4_time,
+                        R.id.widget_event_5_time,
+                        R.id.widget_event_6_time,
+                        R.id.widget_event_7_time,
+                        R.id.widget_event_8_time,
                     )
                 visibleToday.forEachIndexed { index, event ->
                     bindRow(
@@ -146,14 +164,61 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     )
                 if (visibleTomorrow.isNotEmpty()) {
                     views.setViewVisibility(R.id.widget_tomorrow_header, View.VISIBLE)
+                    views.setTextViewText(
+                        R.id.widget_tomorrow_header,
+                        if (tomorrowsEvents.size > visibleTomorrow.size) {
+                            "Imorgon • visar ${visibleTomorrow.size} av ${tomorrowsEvents.size}"
+                        } else {
+                            when (tomorrowsEvents.size) {
+                                1 -> "Imorgon • 1 aktivitet"
+                                else -> "Imorgon • ${tomorrowsEvents.size} aktiviteter"
+                            }
+                        },
+                    )
                     val tomorrowContainers =
-                        intArrayOf(R.id.widget_tomorrow_1, R.id.widget_tomorrow_2)
+                        intArrayOf(
+                            R.id.widget_tomorrow_1,
+                            R.id.widget_tomorrow_2,
+                            R.id.widget_tomorrow_3,
+                            R.id.widget_tomorrow_4,
+                            R.id.widget_tomorrow_5,
+                            R.id.widget_tomorrow_6,
+                            R.id.widget_tomorrow_7,
+                            R.id.widget_tomorrow_8,
+                        )
                     val tomorrowWho =
-                        intArrayOf(R.id.widget_tomorrow_1_who, R.id.widget_tomorrow_2_who)
+                        intArrayOf(
+                            R.id.widget_tomorrow_1_who,
+                            R.id.widget_tomorrow_2_who,
+                            R.id.widget_tomorrow_3_who,
+                            R.id.widget_tomorrow_4_who,
+                            R.id.widget_tomorrow_5_who,
+                            R.id.widget_tomorrow_6_who,
+                            R.id.widget_tomorrow_7_who,
+                            R.id.widget_tomorrow_8_who,
+                        )
                     val tomorrowActivity =
-                        intArrayOf(R.id.widget_tomorrow_1_activity, R.id.widget_tomorrow_2_activity)
+                        intArrayOf(
+                            R.id.widget_tomorrow_1_activity,
+                            R.id.widget_tomorrow_2_activity,
+                            R.id.widget_tomorrow_3_activity,
+                            R.id.widget_tomorrow_4_activity,
+                            R.id.widget_tomorrow_5_activity,
+                            R.id.widget_tomorrow_6_activity,
+                            R.id.widget_tomorrow_7_activity,
+                            R.id.widget_tomorrow_8_activity,
+                        )
                     val tomorrowTime =
-                        intArrayOf(R.id.widget_tomorrow_1_time, R.id.widget_tomorrow_2_time)
+                        intArrayOf(
+                            R.id.widget_tomorrow_1_time,
+                            R.id.widget_tomorrow_2_time,
+                            R.id.widget_tomorrow_3_time,
+                            R.id.widget_tomorrow_4_time,
+                            R.id.widget_tomorrow_5_time,
+                            R.id.widget_tomorrow_6_time,
+                            R.id.widget_tomorrow_7_time,
+                            R.id.widget_tomorrow_8_time,
+                        )
                     visibleTomorrow.forEachIndexed { index, event ->
                         bindRow(
                             views,
