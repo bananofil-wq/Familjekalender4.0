@@ -71,7 +71,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     SupabaseSync.loadShopping(session).count { !it.checked }
                 }.getOrDefault(0)
                 val openTodos = runCatching { loadOpenTodoCount(session) }.getOrDefault(0)
-                val visibleToday =
+                val upcomingToday =
                     todaysEvents
                         .filter { event ->
                             val end = event.endTime?.let(::parseLocalTime)
@@ -82,9 +82,9 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                                 else -> true
                             }
                         }
-                        .take(4)
-                val visibleTomorrow =
-                    tomorrowsEvents.take((4 - visibleToday.size).coerceIn(0, 2))
+                val visibleTomorrow = tomorrowsEvents.take(2)
+                val visibleToday =
+                    upcomingToday.take(if (visibleTomorrow.isNotEmpty()) 2 else 4)
                 val todayCount = todaysEvents.size
                 views.setTextViewText(
                     R.id.widget_status,
