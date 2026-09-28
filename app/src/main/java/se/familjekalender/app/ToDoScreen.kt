@@ -43,7 +43,7 @@ data class SyncTodoItem(
     val memberId: String?,
 )
 
-private object TodoSync {
+internal object TodoSync {
     fun load(session: FamilySession): List<SyncTodoItem> {
         val result =
             request(
