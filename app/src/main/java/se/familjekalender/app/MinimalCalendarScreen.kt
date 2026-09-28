@@ -27,6 +27,10 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.WarningAmber
@@ -120,8 +124,12 @@ internal fun MinimalCalendarScreen(
     onSelect: (LocalDate) -> Unit,
     events: List<SyncEvent>,
     members: List<SyncMember>,
+    shopping: List<SyncShoppingItem> = emptyList(),
     onAdd: () -> Unit,
     onEdit: (SyncEvent) -> Unit,
+    onOpenShopping: () -> Unit = {},
+    onOpenTodo: () -> Unit = {},
+    onOpenFamily: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onOpenLocation: () -> Unit,
     themeMode: ThemeMode = ThemeMode.AUTO,
@@ -142,6 +150,7 @@ internal fun MinimalCalendarScreen(
     var weatherError by remember { mutableStateOf<String?>(null) }
     var weatherRefreshRequest by remember { mutableIntStateOf(0) }
     var forceWeatherRefresh by remember { mutableStateOf(false) }
+    var todoPreview by remember { mutableStateOf(emptyList<SyncTodoItem>()) }
 
     fun hasWeatherLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -234,9 +243,62 @@ internal fun MinimalCalendarScreen(
         weatherLoading = false
     }
 
+    LaunchedEffect(session.id, cleanVisualTheme) {
+        if (cleanVisualTheme != CleanVisualTheme.NORDIC_DAY_PLANNER) {
+            todoPreview = emptyList()
+            return@LaunchedEffect
+        }
+        while (true) {
+            runCatching {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    TodoSync.load(session)
+                }
+            }.onSuccess { todoPreview = it }
+            kotlinx.coroutines.delay(60_000L)
+        }
+    }
+
     CleanThemeProvider(cleanVisualTheme) {
         val cleanSpec = LocalCleanThemeSpec.current
 
+        if (cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER) {
+            NordicDayPlannerScreen(
+                selectedDate = selectedDate,
+                today = today,
+                events = selectedEvents,
+                members = memberById,
+                shopping = shopping,
+                todos = todoPreview,
+                weather = weather,
+                weatherLoading = weatherLoading,
+                locale = locale,
+                onSelectDate = { date ->
+                    month = YearMonth.from(date)
+                    onSelect(date)
+                },
+                onSearch = { showSearch = true },
+                onMenu = onOpenSettings,
+                onFamily = onOpenFamily,
+                onWeather = {
+                    showWeatherDetails = true
+                    if (hasWeatherLocationPermission()) {
+                        forceWeatherRefresh = true
+                        weatherRefreshRequest++
+                    } else {
+                        weatherPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            )
+                        )
+                    }
+                },
+                onOpenEvent = { openedEvent = it },
+                onShowAll = { showAllDayActivities = true },
+                onOpenTodo = onOpenTodo,
+                onOpenShopping = onOpenShopping,
+            )
+        } else {
         Box(Modifier.fillMaxSize()) {
             if (cleanVisualTheme == CleanVisualTheme.CURRENT) {
                 val customBackground = rememberCustomBackgroundBitmap()
@@ -357,6 +419,7 @@ internal fun MinimalCalendarScreen(
             Spacer(Modifier.height(18.dp))
         }
     }
+        }
 
     summaryDetail?.let { detail ->
         CleanSummaryDialog(
@@ -944,6 +1007,398 @@ internal fun MinimalCalendarScreen(
             },
         )
     }
+    }
+}
+
+@Composable
+private fun NordicDayPlannerScreen(
+    selectedDate: LocalDate,
+    today: LocalDate,
+    events: List<SyncEvent>,
+    members: Map<String, SyncMember>,
+    shopping: List<SyncShoppingItem>,
+    todos: List<SyncTodoItem>,
+    weather: CleanWeatherSnapshot?,
+    weatherLoading: Boolean,
+    locale: Locale,
+    onSelectDate: (LocalDate) -> Unit,
+    onSearch: () -> Unit,
+    onMenu: () -> Unit,
+    onFamily: () -> Unit,
+    onWeather: () -> Unit,
+    onOpenEvent: (SyncEvent) -> Unit,
+    onShowAll: () -> Unit,
+    onOpenTodo: () -> Unit,
+    onOpenShopping: () -> Unit,
+) {
+    val paper = Color(0xFFFFFEFA)
+    val muted = Color(0xFF71808B)
+    val blueDeep = Color(0xFF0875A8)
+    val railBlue = Color(0xFF087EAF)
+    val line = Color(0x18243F55)
+    val openShopping = remember(shopping) { shopping.filterNot { it.checked } }
+    val openTodos = remember(todos) { todos.filterNot { it.checked } }
+    val railDates = remember(selectedDate) { (-2L..5L).map { selectedDate.plusDays(it) } }
+
+    Column(Modifier.fillMaxSize().background(paper)) {
+        Row(
+            Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NordicHeaderButton(Icons.Default.Menu, "Meny", onMenu)
+            Text(
+                "Familjekalender",
+                color = blueDeep,
+                fontFamily = FontFamily.SansSerif,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            NordicHeaderButton(Icons.Default.Search, "Sök", onSearch)
+            Spacer(Modifier.width(4.dp))
+            NordicHeaderButton(Icons.Default.People, "Familj", onFamily)
+        }
+
+        Row(Modifier.fillMaxSize()) {
+            Column(
+                Modifier.width(72.dp).fillMaxHeight().background(railBlue),
+            ) {
+                railDates.forEachIndexed { index, date ->
+                    val active = date == selectedDate
+                    val showMonth = index == 0 || date.dayOfMonth == 1
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .weight(1f)
+                            .background(if (active) paper else Color.Transparent)
+                            .clickable { onSelectDate(date) }
+                            .padding(vertical = 3.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        if (showMonth) {
+                            Text(
+                                date.month.getDisplayName(TextStyle.SHORT, locale).uppercase(locale),
+                                color = if (active) blueDeep else Color.White.copy(alpha = .58f),
+                                fontSize = 7.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = .8.sp,
+                            )
+                        }
+                        Text(
+                            date.dayOfMonth.toString(),
+                            color = if (active) blueDeep else Color.White,
+                            fontSize = if (active) 24.sp else 22.sp,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                        )
+                        Text(
+                            date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
+                                .uppercase(locale)
+                                .take(3),
+                            color = if (active) blueDeep else Color.White.copy(alpha = .78f),
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = .5.sp,
+                        )
+                    }
+                    if (index < railDates.lastIndex) {
+                        HorizontalDivider(color = Color.White.copy(alpha = .10f), thickness = .5.dp)
+                    }
+                }
+            }
+
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                Box(
+                    Modifier.fillMaxWidth()
+                        .height(154.dp)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF53B4D7), Color(0xFF1494C7))
+                            )
+                        )
+                        .clickable(onClick = onWeather)
+                        .padding(horizontal = 20.dp, vertical = 13.dp),
+                ) {
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(
+                            selectedDate.dayOfMonth.toString(),
+                            color = Color.White,
+                            fontSize = 64.sp,
+                            lineHeight = 64.sp,
+                            fontWeight = FontWeight.Light,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.padding(top = 9.dp)) {
+                            Text(
+                                selectedDate.month.getDisplayName(TextStyle.FULL, locale),
+                                color = Color.White.copy(alpha = .92f),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Light,
+                            )
+                            Text(
+                                selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
+                                    .replaceFirstChar { it.uppercase(locale) },
+                                color = Color.White,
+                                fontSize = 27.sp,
+                                fontWeight = FontWeight.Light,
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Cloud,
+                                contentDescription = "Väder",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp),
+                            )
+                            Text(
+                                if (weatherLoading) "…" else (weather?.temperatureC?.toString() ?: "–") + "°",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Light,
+                            )
+                            Text(
+                                weather?.description ?: "Tryck för väder",
+                                color = Color.White.copy(alpha = .82f),
+                                fontSize = 9.sp,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                    Text(
+                        if (selectedDate == today) "En ny dag, nya möjligheter  ♥"
+                        else "Familjens plan för dagen",
+                        color = Color.White.copy(alpha = .88f),
+                        fontSize = 11.sp,
+                        modifier = Modifier.align(Alignment.BottomStart),
+                    )
+                }
+
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    if (events.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Inga aktiviteter den här dagen", color = muted, fontSize = 12.sp)
+                        }
+                    } else {
+                        val visible = events.take(5)
+                        visible.forEachIndexed { index, event ->
+                            NordicAgendaRow(
+                                event = event,
+                                member = event.memberId?.let(members::get),
+                                onClick = { onOpenEvent(event) },
+                            )
+                            if (index < visible.lastIndex) {
+                                HorizontalDivider(color = line, thickness = .7.dp)
+                            }
+                        }
+                        if (events.size > visible.size) {
+                            TextButton(
+                                onClick = onShowAll,
+                                modifier = Modifier.align(Alignment.End),
+                            ) {
+                                Text(
+                                    "Visa alla " + events.size + " aktiviteter",
+                                    color = blueDeep,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    NordicQuickCard(
+                        title = "Att göra",
+                        count = openTodos.size,
+                        icon = Icons.Default.CheckCircle,
+                        rows = openTodos.take(3).map { it.title },
+                        tint = Color(0xFFE9F5FA),
+                        accent = blueDeep,
+                        onClick = onOpenTodo,
+                        modifier = Modifier.weight(1f),
+                    )
+                    NordicQuickCard(
+                        title = "Inköp",
+                        count = openShopping.size,
+                        icon = Icons.Default.ShoppingCart,
+                        rows = openShopping.take(3).map { it.name },
+                        tint = Color(0xFFFFF2DD),
+                        accent = Color(0xFF9D7729),
+                        onClick = onOpenShopping,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NordicHeaderButton(
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(38.dp)) {
+        Icon(
+            icon,
+            contentDescription = description,
+            tint = Color(0xFF17334A),
+            modifier = Modifier.size(23.dp),
+        )
+    }
+}
+
+@Composable
+private fun NordicAgendaRow(
+    event: SyncEvent,
+    member: SyncMember?,
+    onClick: () -> Unit,
+) {
+    val accent =
+        when {
+            event.memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFDFB522)
+            member != null -> Color(member.colorArgb.toInt())
+            isCleanReminderEvent(event) -> Color(0xFFCE75A2)
+            else -> Color(0xFF218FC3)
+        }
+    val subtitle =
+        when {
+            event.memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
+            member != null -> member.name
+            isCleanReminderEvent(event) -> "Påminnelse"
+            else -> "Familjen"
+        }
+
+    Row(
+        Modifier.fillMaxWidth()
+            .heightIn(min = 49.dp)
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            cleanEventTime(event).replace("Ingen tid", "—"),
+            color = Color(0xFF385269),
+            fontSize = 11.sp,
+            modifier = Modifier.width(56.dp),
+        )
+        Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
+        Spacer(Modifier.width(9.dp))
+        Box(
+            Modifier.size(34.dp).clip(CircleShape).background(accent.copy(alpha = .14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Default.CalendarMonth,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                cleanEventTitle(event).ifBlank { "Aktivitet" },
+                color = Color(0xFF17334A),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                subtitle,
+                color = Color(0xFF7A878E),
+                fontSize = 9.sp,
+                maxLines = 1,
+            )
+        }
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = "Öppna aktivitet",
+            tint = Color(0xFF17334A).copy(alpha = .48f),
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
+private fun NordicQuickCard(
+    title: String,
+    count: Int,
+    icon: ImageVector,
+    rows: List<String>,
+    tint: Color,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.height(118.dp).clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = tint,
+        border = BorderStroke(1.dp, accent.copy(alpha = .10f)),
+        shadowElevation = 1.dp,
+    ) {
+        Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    title,
+                    color = Color(0xFF17334A),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                Surface(shape = CircleShape, color = accent) {
+                    Text(
+                        count.toString(),
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                    )
+                }
+                Spacer(Modifier.width(3.dp))
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Öppna " + title,
+                    tint = Color(0xFF17334A).copy(alpha = .58f),
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            if (rows.isEmpty()) {
+                Text("Inget kvar", color = Color(0xFF77828A), fontSize = 9.sp)
+            } else {
+                rows.forEach { row ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(10.dp).border(1.dp, Color(0xFF5D6B74), CircleShape))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            row,
+                            color = Color(0xFF3A4B58),
+                            fontSize = 9.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
