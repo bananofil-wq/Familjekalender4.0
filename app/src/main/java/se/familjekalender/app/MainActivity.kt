@@ -2011,8 +2011,8 @@ private fun SettingsScreen(
         )
     }
 
-    Text("Inställningar", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText)
-    Text("Familj, utseende och anslutningar", color = LuxuryTextMuted, fontSize = 13.sp)
+    Text("Inställningar", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    Text("Familj, utseende och anslutningar", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
     Spacer(Modifier.height(18.dp))
 
     SettingsSectionCard(
@@ -2072,7 +2072,7 @@ private fun SettingsScreen(
                 Surface(
                     color =
                         if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f)
-                        else LuxurySurfaceElevated,
+                        else MaterialTheme.colorScheme.surfaceVariant,
                     shape = MaterialTheme.shapes.medium,
                     modifier =
                         Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable {
@@ -2086,10 +2086,10 @@ private fun SettingsScreen(
                         RadioButton(selected = selected, onClick = { onUiLayoutChanged(mode) })
                         Spacer(Modifier.width(4.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(mode.label, fontWeight = FontWeight.SemiBold, color = LuxuryText)
+                            Text(mode.label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                             Text(
                                 mode.description,
-                                color = LuxuryTextMuted,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp,
                                 lineHeight = 16.sp,
                             )
@@ -2113,13 +2113,13 @@ private fun SettingsScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 "Clean-tema",
-                color = LuxuryTextMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 "12 helt olika utseenden. Nuvarande behåller exakt den Clean-stil du redan använder.",
-                color = LuxuryTextMuted.copy(alpha = .78f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .78f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 7.dp),
@@ -2215,7 +2215,7 @@ private fun SettingsScreen(
         Spacer(Modifier.height(8.dp))
         Text(
             "Färgtema",
-            color = LuxuryTextMuted,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -2237,7 +2237,7 @@ private fun SettingsScreen(
                     Spacer(Modifier.width(4.dp))
                     Text(
                         mode.label,
-                        color = LuxuryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                     )
                 }
@@ -2247,16 +2247,16 @@ private fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
         Text(
             "Egen bakgrund",
-            color = LuxuryTextMuted,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(7.dp))
 
         Surface(
-            color = LuxurySurfaceElevated,
+            color = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth().height(170.dp),
         ) {
             Box(Modifier.fillMaxSize()) {
@@ -2288,13 +2288,13 @@ private fun SettingsScreen(
                     ) {
                         Text(
                             "Ingen egen bakgrund vald",
-                            color = LuxuryText,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             "Säsongsbakgrunden används tills du väljer en bild.",
-                            color = LuxuryTextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                         )
                     }
@@ -2330,7 +2330,7 @@ private fun SettingsScreen(
             Spacer(Modifier.height(7.dp))
             Text(
                 customBackgroundMessage,
-                color = LuxuryTextMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
             )
         }
@@ -2338,7 +2338,7 @@ private fun SettingsScreen(
         Spacer(Modifier.height(6.dp))
         Text(
             "Den egna bilden används före säsongsbakgrunden i Clean och fullständigt/personligt läge. Bilden sparas lokalt på telefonen.",
-            color = LuxuryTextMuted,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 10.sp,
             lineHeight = 14.sp,
         )
@@ -2361,7 +2361,7 @@ private fun SettingsScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 "Gäller för",
-                color = LuxuryTextMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -2369,7 +2369,7 @@ private fun SettingsScreen(
             members.forEach { member ->
                 val selected = memberId == member.id
                 Surface(
-                    color = if (selected) LuxurySurfaceHigh else Color.Transparent,
+                    color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
                     shape = MaterialTheme.shapes.small,
                     modifier = Modifier.fillMaxWidth().clickable { memberId = member.id },
                 ) {
@@ -2384,7 +2384,7 @@ private fun SettingsScreen(
                                 .background(Color(member.colorArgb.toInt()))
                         )
                         Spacer(Modifier.width(9.dp))
-                        Text(member.name, color = LuxuryText, fontWeight = FontWeight.Medium)
+                        Text(member.name, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -2400,8 +2400,8 @@ private fun SettingsScreen(
             shape = MaterialTheme.shapes.medium,
             colors =
                 ButtonDefaults.buttonColors(
-                    disabledContainerColor = LuxurySurfaceHigh,
-                    disabledContentColor = LuxuryTextMuted.copy(alpha = .55f),
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .55f),
                 ),
         ) {
             Text("Spara och synka")
@@ -2446,16 +2446,26 @@ private fun SettingsSectionCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = LuxurySurface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp)) {
-            Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = LuxuryText)
+            Text(
+                title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             if (!subtitle.isNullOrBlank()) {
                 Spacer(Modifier.height(3.dp))
-                Text(subtitle, color = LuxuryTextMuted, fontSize = 12.sp, lineHeight = 17.sp)
+                Text(
+                    subtitle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
             }
             Spacer(Modifier.height(14.dp))
             content()
