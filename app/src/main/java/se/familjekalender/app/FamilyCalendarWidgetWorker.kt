@@ -82,7 +82,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                                 else -> true
                             }
                         }
-                        .take(3)
+                        .take(4)
                 val visibleTomorrow =
                     tomorrowsEvents.take((4 - visibleToday.size).coerceIn(0, 2))
                 val todayCount = todaysEvents.size
