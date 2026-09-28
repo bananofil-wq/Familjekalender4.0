@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
@@ -90,6 +91,7 @@ internal val LuxuryShapes =
 @Composable
 internal fun FamiljekalenderLuxuryTheme(
     palette: SeasonPalette,
+    lightMode: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val motionEnabled = appMotionEnabled()
@@ -104,8 +106,36 @@ internal fun FamiljekalenderLuxuryTheme(
         label = "luxury-theme-accent",
     )
 
-    MaterialTheme(
-        colorScheme =
+    val scheme =
+        if (lightMode) {
+            lightColorScheme(
+                primary = Color(0xFF0875A8),
+                onPrimary = Color.White,
+                primaryContainer = Color(0xFFE9F5FA),
+                onPrimaryContainer = Color(0xFF17334A),
+                secondary = Color(0xFF46B5D8),
+                onSecondary = Color.White,
+                secondaryContainer = Color(0xFFDFF2F8),
+                onSecondaryContainer = Color(0xFF17334A),
+                tertiary = Color(0xFFD99B2B),
+                onTertiary = Color.White,
+                tertiaryContainer = Color(0xFFFFF2DD),
+                onTertiaryContainer = Color(0xFF4A3A13),
+                background = Color(0xFFFFFEFA),
+                onBackground = Color(0xFF17334A),
+                surface = Color(0xFFFFFFFF),
+                onSurface = Color(0xFF17334A),
+                surfaceVariant = Color(0xFFF8F5ED),
+                onSurfaceVariant = Color(0xFF71808B),
+                surfaceTint = Color.Transparent,
+                inverseSurface = Color(0xFF17334A),
+                inverseOnSurface = Color(0xFFFFFEFA),
+                outline = Color(0xFFB8C4CC),
+                outlineVariant = Color(0xFFDDE4E8),
+                error = Color(0xFFB94752),
+                onError = Color.White,
+            )
+        } else {
             darkColorScheme(
                 primary = accent,
                 onPrimary = Color(0xFF130F18),
@@ -132,7 +162,11 @@ internal fun FamiljekalenderLuxuryTheme(
                 outlineVariant = LuxuryOutlineSoft,
                 error = LuxuryError,
                 onError = Color(0xFF24070C),
-            ),
+            )
+        }
+
+    MaterialTheme(
+        colorScheme = scheme,
         typography = LuxuryTypography,
         shapes = LuxuryShapes,
         content = content,
