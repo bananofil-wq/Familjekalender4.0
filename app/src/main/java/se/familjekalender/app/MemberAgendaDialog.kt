@@ -68,7 +68,7 @@ internal fun MemberAgendaDialog(
                 Text(
                     if (upcoming.size == 1) "1 planerad aktivitet"
                     else "${upcoming.size} planerade aktiviteter",
-                    color = Muted,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
             }
@@ -91,10 +91,10 @@ internal fun MemberAgendaDialog(
                     }
                 }
                 if (upcoming.isEmpty()) {
-                    Text("Inget är planerat framöver för ${member.name}.", color = Muted)
+                    Text("Inget är planerat framöver för ${member.name}.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 upcoming.forEach { event ->
-                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF222027))) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (selectionMode && event.source != "sportadmin") {
@@ -115,7 +115,7 @@ internal fun MemberAgendaDialog(
                                     )
                                     Text(
                                         "${event.date.format(formatter)} · ${event.time}",
-                                        color = Muted,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 12.sp,
                                     )
                                 }
@@ -138,7 +138,7 @@ internal fun MemberAgendaDialog(
                     }
                 }
                 if (upcoming.size != deletableUpcoming.size) {
-                    Text("SportAdmin-aktiviteter påverkas inte.", color = Muted, fontSize = 11.sp)
+                    Text("SportAdmin-aktiviteter påverkas inte.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
             }
         },
