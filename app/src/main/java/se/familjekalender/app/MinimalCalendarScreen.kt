@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -1106,7 +1107,7 @@ private fun NordicDayPlannerScreen(
         )
     val pagerScope = rememberCoroutineScope()
     val displayedMonth =
-        pagerStartMonth.plusMonths(monthPagerState.currentPage.toLong())
+        pagerStartMonth.plusMonths(monthPagerState.settledPage.toLong())
     val monthTitle =
         displayedMonth.month
             .getDisplayName(TextStyle.FULL, locale)
@@ -1122,13 +1123,44 @@ private fun NordicDayPlannerScreen(
         }
     }
 
-    LaunchedEffect(monthPagerState.currentPage, monthPagerState.isScrollInProgress) {
-        if (!monthPagerState.isScrollInProgress) {
-            val pageMonth = pagerStartMonth.plusMonths(monthPagerState.currentPage.toLong())
-            if (YearMonth.from(selectedDate) != pageMonth) {
-                val day = minOf(selectedDate.dayOfMonth, pageMonth.lengthOfMonth())
-                onSelectDate(pageMonth.atDay(day))
+    LaunchedEffect(monthPagerState.settledPage) {
+        val pageMonth = pagerStartMonth.plusMonths(monthPagerState.settledPage.toLong())
+        if (YearMonth.from(selectedDate) != pageMonth) {
+            val day = minOf(selectedDate.dayOfMonth, pageMonth.lengthOfMonth())
+            onSelectDate(pageMonth.atDay(day))
+        }
+    }
+
+    val settledGridStart =
+        remember(displayedMonth) {
+            val first = displayedMonth.atDay(1)
+            first.minusDays((first.dayOfWeek.value - 1).toLong())
+        }
+    val settledWeekStarts =
+        remember(settledGridStart) {
+            List(6) { weekIndex -> settledGridStart.plusWeeks(weekIndex.toLong()) }
+        }
+    val selectedWeekIndex =
+        remember(selectedDate, displayedMonth, settledGridStart) {
+            if (YearMonth.from(selectedDate) == displayedMonth) {
+                (ChronoUnit.DAYS.between(settledGridStart, selectedDate).toInt() / 7)
+                    .coerceIn(0, 5)
+            } else {
+                0
             }
+        }
+    val weekRailState =
+        rememberLazyListState(
+            initialFirstVisibleItemIndex = (selectedWeekIndex - 1).coerceAtLeast(0)
+        )
+    val density = LocalDensity.current
+    val weekRowHeightPx = with(density) { 56.dp.toPx() }
+
+    LaunchedEffect(selectedDate, displayedMonth) {
+        if (YearMonth.from(selectedDate) == displayedMonth) {
+            weekRailState.animateScrollToItem((selectedWeekIndex - 1).coerceAtLeast(0))
+        } else {
+            weekRailState.scrollToItem(0)
         }
     }
 
@@ -1239,143 +1271,137 @@ private fun NordicDayPlannerScreen(
             }
         }
 
-        Column(
-            Modifier.weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+        // Månadshuvudet är fast. Bara veckorna får vertikal scroll och bara den
+        // vita månadsvyn deltar i sidbytet. Resten av sidan rör sig inte med kalendern.
+        Row(
+            Modifier.fillMaxWidth().height(42.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                Modifier.width(54.dp).fillMaxHeight().background(railBlue),
+            )
+            IconButton(
+                onClick = {
+                    pagerScope.launch {
+                        monthPagerState.animateScrollToPage(
+                            (monthPagerState.settledPage - 1).coerceAtLeast(0)
+                        )
+                    }
+                },
+                enabled = monthPagerState.settledPage > 0,
+                modifier = Modifier.size(38.dp),
+            ) {
+                Icon(
+                    Icons.Default.ChevronLeft,
+                    contentDescription = "Föregående månad",
+                    tint = Color(0xFF657A89),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Text(
+                monthTitle,
+                color = Color(0xFF17334A),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(
+                onClick = {
+                    pagerScope.launch {
+                        monthPagerState.animateScrollToPage(
+                            (monthPagerState.settledPage + 1)
+                                .coerceAtMost(pagerMonthCount - 1)
+                        )
+                    }
+                },
+                enabled = monthPagerState.settledPage < pagerMonthCount - 1,
+                modifier = Modifier.size(38.dp),
+            ) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Nästa månad",
+                    tint = Color(0xFF17334A),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+
+        Row(Modifier.fillMaxWidth().height(24.dp)) {
+            Box(Modifier.width(54.dp).fillMaxHeight().background(railBlue))
             Row(
-                Modifier.fillMaxWidth().height(42.dp),
+                Modifier.weight(1f).fillMaxHeight(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    Modifier.width(54.dp).fillMaxHeight().background(railBlue),
-                )
-                IconButton(
-                    onClick = {
-                        pagerScope.launch {
-                            monthPagerState.animateScrollToPage(
-                                (monthPagerState.currentPage - 1).coerceAtLeast(0)
-                            )
-                        }
-                    },
-                    enabled = monthPagerState.currentPage > 0,
-                    modifier = Modifier.size(38.dp),
-                ) {
-                    Icon(
-                        Icons.Default.ChevronLeft,
-                        contentDescription = "Föregående månad",
-                        tint = Color(0xFF657A89),
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Text(
-                    monthTitle,
-                    color = Color(0xFF17334A),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    onClick = {
-                        pagerScope.launch {
-                            monthPagerState.animateScrollToPage(
-                                (monthPagerState.currentPage + 1)
-                                    .coerceAtMost(pagerMonthCount - 1)
-                            )
-                        }
-                    },
-                    enabled = monthPagerState.currentPage < pagerMonthCount - 1,
-                    modifier = Modifier.size(38.dp),
-                ) {
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = "Nästa månad",
-                        tint = Color(0xFF17334A),
-                        modifier = Modifier.size(22.dp),
+                listOf("MÅ", "TI", "ON", "TO", "FR", "LÖ", "SÖ").forEach { label ->
+                    Text(
+                        label,
+                        color = Color(0xFF8A97A3),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
+        }
 
-            Row(Modifier.fillMaxWidth().height(24.dp)) {
-                Box(Modifier.width(54.dp).fillMaxHeight().background(railBlue))
-                Row(
-                    Modifier.weight(1f).fillMaxHeight(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    listOf("MÅ", "TI", "ON", "TO", "FR", "LÖ", "SÖ").forEach { label ->
+        Row(
+            Modifier.fillMaxWidth().height(238.dp),
+        ) {
+            // Den blå veckokolumnen ligger UTANFÖR HorizontalPager.
+            // Därmed står den helt still när man sveper mellan månader.
+            LazyColumn(
+                modifier = Modifier.width(54.dp).fillMaxHeight().background(railBlue),
+                state = weekRailState,
+            ) {
+                itemsIndexed(
+                    items = settledWeekStarts,
+                    key = { _, weekStart -> weekStart.toEpochDay() },
+                ) { _, weekStart ->
+                    val weekNumber =
+                        weekStart.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear())
+                    Box(
+                        Modifier.fillMaxWidth().height(56.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text(
-                            label,
-                            color = Color(0xFF8A97A3),
+                            "v$weekNumber",
+                            color = Color.White.copy(alpha = .72f),
                             fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.weight(1f),
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
             }
 
+            // Bara själva månadens dagrutor glider sidledes.
             HorizontalPager(
                 state = monthPagerState,
-                modifier = Modifier.fillMaxWidth().height(238.dp),
+                modifier = Modifier.weight(1f).fillMaxHeight().clipToBounds(),
+                pageSpacing = 6.dp,
             ) { page ->
                 val pageMonth = pagerStartMonth.plusMonths(page.toLong())
                 val firstOfMonth = pageMonth.atDay(1)
                 val gridStart =
                     firstOfMonth.minusDays((firstOfMonth.dayOfWeek.value - 1).toLong())
-                val weekStarts =
-                    remember(pageMonth) {
-                        List(6) { weekIndex -> gridStart.plusWeeks(weekIndex.toLong()) }
-                    }
-                val selectedWeekIndex =
-                    if (YearMonth.from(selectedDate) == pageMonth) {
-                        (ChronoUnit.DAYS.between(gridStart, selectedDate).toInt() / 7)
-                            .coerceIn(0, 5)
-                    } else {
-                        0
-                    }
-                val weekListState =
-                    rememberLazyListState(
-                        initialFirstVisibleItemIndex = (selectedWeekIndex - 1).coerceAtLeast(0)
+
+                val verticalOffsetPx =
+                    -(
+                        weekRailState.firstVisibleItemIndex * weekRowHeightPx +
+                            weekRailState.firstVisibleItemScrollOffset
                     )
 
-                LaunchedEffect(selectedDate, pageMonth) {
-                    if (YearMonth.from(selectedDate) == pageMonth) {
-                        val weekIndex =
-                            (ChronoUnit.DAYS.between(gridStart, selectedDate).toInt() / 7)
-                                .coerceIn(0, 5)
-                        weekListState.animateScrollToItem((weekIndex - 1).coerceAtLeast(0))
-                    }
-                }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    state = weekListState,
+                Box(
+                    Modifier.fillMaxSize().clipToBounds(),
                 ) {
-                    itemsIndexed(
-                        items = weekStarts,
-                        key = { _, weekStart -> weekStart.toEpochDay() },
-                    ) { _, weekStart ->
-                        val weekNumber =
-                            weekStart.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear())
-                        Row(Modifier.fillMaxWidth().height(56.dp)) {
-                            Box(
-                                Modifier.width(54.dp)
-                                    .fillMaxHeight()
-                                    .background(railBlue),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    "v$weekNumber",
-                                    color = Color.White.copy(alpha = .72f),
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            }
-
-                            Row(Modifier.weight(1f).fillMaxHeight()) {
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .graphicsLayer { translationY = verticalOffsetPx }
+                    ) {
+                        repeat(6) { weekIndex ->
+                            val weekStart = gridStart.plusWeeks(weekIndex.toLong())
+                            Row(Modifier.fillMaxWidth().height(56.dp)) {
                                 repeat(7) { column ->
                                     val date = weekStart.plusDays(column.toLong())
                                     val inMonth = YearMonth.from(date) == pageMonth
@@ -1485,7 +1511,15 @@ private fun NordicDayPlannerScreen(
                     }
                 }
             }
+        }
 
+        // Aktiviteter och snabbkort får en egen scroll-yta. Den är helt frikopplad
+        // från veckoscrollen ovan, så ett svep i kalendern kan inte dra med hela sidan.
+        Column(
+            Modifier.weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+        ) {
             Surface(
                 color = Color.White,
                 shape = RoundedCornerShape(16.dp),
