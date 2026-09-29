@@ -12,6 +12,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.rememberScrollState
@@ -62,6 +65,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlinx.coroutines.launch
 
@@ -1060,7 +1064,32 @@ private fun NordicDayPlannerScreen(
     val line = Color(0x18243F55)
     val openShopping = remember(shopping) { shopping.filterNot { it.checked } }
     val openTodos = remember(todos) { todos.filterNot { it.checked } }
-    val railDates = remember(selectedDate) { (-2L..5L).map { selectedDate.plusDays(it) } }
+
+    // Scrollbar datumrail: fem år bakåt och fem år framåt, utan att resten av sidan flyttar sig.
+    val railStart = remember(today) { today.minusYears(5) }
+    val railEnd = remember(today) { today.plusYears(5) }
+    val railDates =
+        remember(railStart, railEnd) {
+            val dayCount = ChronoUnit.DAYS.between(railStart, railEnd).toInt()
+            List(dayCount + 1) { offset -> railStart.plusDays(offset.toLong()) }
+        }
+    val selectedRailIndex =
+        remember(selectedDate, railStart, railDates.size) {
+            ChronoUnit.DAYS.between(railStart, selectedDate)
+                .toInt()
+                .coerceIn(0, railDates.lastIndex)
+        }
+    val railListState =
+        rememberLazyListState(
+            initialFirstVisibleItemIndex = (selectedRailIndex - 2).coerceAtLeast(0),
+        )
+
+    LaunchedEffect(selectedDate, selectedRailIndex) {
+        val selectedIsInRange = !selectedDate.isBefore(railStart) && !selectedDate.isAfter(railEnd)
+        if (selectedIsInRange) {
+            railListState.animateScrollToItem((selectedRailIndex - 2).coerceAtLeast(0))
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(paper)) {
         Row(
@@ -1083,15 +1112,20 @@ private fun NordicDayPlannerScreen(
         }
 
         Row(Modifier.fillMaxSize()) {
-            Column(
-                Modifier.width(72.dp).fillMaxHeight().background(railBlue),
+            LazyColumn(
+                modifier = Modifier.width(72.dp).fillMaxHeight().background(railBlue),
+                state = railListState,
             ) {
-                railDates.forEachIndexed { index, date ->
+                itemsIndexed(
+                    items = railDates,
+                    key = { _, date -> date.toEpochDay() },
+                ) { index, date ->
                     val active = date == selectedDate
-                    val showMonth = index == 0 || date.dayOfMonth == 1
+                    val showMonth =
+                        date.dayOfMonth == 1 || index == railListState.firstVisibleItemIndex
                     Column(
                         Modifier.fillMaxWidth()
-                            .weight(1f)
+                            .height(84.dp)
                             .background(if (active) paper else Color.Transparent)
                             .clickable { onSelectDate(date) }
                             .padding(vertical = 3.dp),
