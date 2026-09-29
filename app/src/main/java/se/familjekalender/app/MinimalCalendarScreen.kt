@@ -55,7 +55,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -1155,9 +1154,6 @@ private fun NordicDayPlannerScreen(
         rememberLazyListState(
             initialFirstVisibleItemIndex = (selectedWeekIndex - 1).coerceAtLeast(0)
         )
-    val density = LocalDensity.current
-    val weekRowHeightPx = with(density) { 56.dp.toPx() }
-
     LaunchedEffect(selectedDate, displayedMonth) {
         if (YearMonth.from(selectedDate) == displayedMonth) {
             weekRailState.animateScrollToItem((selectedWeekIndex - 1).coerceAtLeast(0))
@@ -1354,7 +1350,7 @@ private fun NordicDayPlannerScreen(
             Modifier.fillMaxWidth().height(224.dp),
         ) {
             // Den blå veckokolumnen ligger UTANFÖR HorizontalPager.
-            // Därmed står den helt still när man sveper mellan månader.
+            // Den scrollar vertikalt helt självständigt och står still vid månadsbyte.
             LazyColumn(
                 modifier = Modifier.width(54.dp).fillMaxHeight().background(railBlue),
                 state = weekRailState,
@@ -1390,18 +1386,13 @@ private fun NordicDayPlannerScreen(
                 val gridStart =
                     firstOfMonth.minusDays((firstOfMonth.dayOfWeek.value - 1).toLong())
 
-                val verticalOffsetPx =
-                    -(
-                        weekRailState.firstVisibleItemIndex * weekRowHeightPx +
-                            weekRailState.firstVisibleItemScrollOffset
-                    )
-
                 Box(
                     Modifier.fillMaxSize().clipToBounds(),
                 ) {
+                    // Veckokolumnen får scrolla helt fristående. Själva månadsvyn
+                    // ligger fast vertikalt och rör sig bara vid sidledes månadsbyte.
                     Column(
                         Modifier.fillMaxWidth()
-                            .graphicsLayer { translationY = verticalOffsetPx }
                     ) {
                         repeat(12) { weekIndex ->
                             val weekStart = gridStart.plusWeeks(weekIndex.toLong())
