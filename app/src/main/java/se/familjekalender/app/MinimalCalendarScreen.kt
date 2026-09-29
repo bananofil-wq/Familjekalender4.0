@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.rememberScrollState
@@ -1087,36 +1089,48 @@ private fun NordicDayPlannerScreen(
                 .flatten()
         }
 
-    var displayedMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    // Månadsvyn är en riktig sidledes pager. Varje sida har i sin tur en
+    // vertikalt scrollbar veckolista, där veckonummer och dagar alltid hålls ihop.
+    val pagerStartMonth = remember(today) { YearMonth.from(today).minusYears(10) }
+    val pagerMonthCount = 241
+    val initialPagerPage =
+        remember(selectedDate, pagerStartMonth) {
+            ChronoUnit.MONTHS.between(pagerStartMonth, YearMonth.from(selectedDate))
+                .toInt()
+                .coerceIn(0, pagerMonthCount - 1)
+        }
+    val monthPagerState =
+        rememberPagerState(
+            initialPage = initialPagerPage,
+            pageCount = { pagerMonthCount },
+        )
+    val pagerScope = rememberCoroutineScope()
+    val displayedMonth =
+        pagerStartMonth.plusMonths(monthPagerState.currentPage.toLong())
+    val monthTitle =
+        displayedMonth.month
+            .getDisplayName(TextStyle.FULL, locale)
+            .replaceFirstChar { it.uppercase(locale) } + " " + displayedMonth.year
 
     LaunchedEffect(selectedDate) {
-        val selectedMonth = YearMonth.from(selectedDate)
-        if (selectedMonth != displayedMonth) displayedMonth = selectedMonth
+        val targetPage =
+            ChronoUnit.MONTHS.between(pagerStartMonth, YearMonth.from(selectedDate))
+                .toInt()
+                .coerceIn(0, pagerMonthCount - 1)
+        if (targetPage != monthPagerState.currentPage) {
+            monthPagerState.animateScrollToPage(targetPage)
+        }
     }
 
-    fun changeMonth(delta: Long) {
-        val targetMonth = displayedMonth.plusMonths(delta)
-        displayedMonth = targetMonth
-        val targetDay = minOf(selectedDate.dayOfMonth, targetMonth.lengthOfMonth())
-        onSelectDate(targetMonth.atDay(targetDay))
+    LaunchedEffect(monthPagerState.currentPage, monthPagerState.isScrollInProgress) {
+        if (!monthPagerState.isScrollInProgress) {
+            val pageMonth = pagerStartMonth.plusMonths(monthPagerState.currentPage.toLong())
+            if (YearMonth.from(selectedDate) != pageMonth) {
+                val day = minOf(selectedDate.dayOfMonth, pageMonth.lengthOfMonth())
+                onSelectDate(pageMonth.atDay(day))
+            }
+        }
     }
-
-    val firstOfMonth = remember(displayedMonth) { displayedMonth.atDay(1) }
-    val gridStart =
-        remember(firstOfMonth) {
-            firstOfMonth.minusDays((firstOfMonth.dayOfWeek.value - 1).toLong())
-        }
-    val gridDays =
-        remember(gridStart) {
-            List(42) { offset -> gridStart.plusDays(offset.toLong()) }
-        }
-    val monthTitle =
-        remember(displayedMonth, locale) {
-            displayedMonth.month
-                .getDisplayName(TextStyle.FULL, locale)
-                .replaceFirstChar { it.uppercase(locale) } + " " + displayedMonth.year
-        }
-    val weekFields = java.time.temporal.WeekFields.ISO
 
     Column(Modifier.fillMaxSize().background(paper)) {
         Row(
@@ -1230,181 +1244,239 @@ private fun NordicDayPlannerScreen(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            Row(Modifier.fillMaxWidth()) {
-                Column(
-                    Modifier.width(54.dp)
-                        .height(342.dp)
-                        .background(railBlue),
+            Row(
+                Modifier.fillMaxWidth().height(42.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.width(54.dp).fillMaxHeight().background(railBlue),
+                )
+                IconButton(
+                    onClick = {
+                        pagerScope.launch {
+                            monthPagerState.animateScrollToPage(
+                                (monthPagerState.currentPage - 1).coerceAtLeast(0)
+                            )
+                        }
+                    },
+                    enabled = monthPagerState.currentPage > 0,
+                    modifier = Modifier.size(38.dp),
                 ) {
-                    Spacer(Modifier.height(66.dp))
-                    repeat(6) { row ->
-                        val weekDate = gridStart.plusDays((row * 7).toLong())
-                        Box(
-                            Modifier.fillMaxWidth().height(46.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "v" + weekDate.get(weekFields.weekOfWeekBasedYear()),
-                                color = Color.White.copy(alpha = .68f),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
+                    Icon(
+                        Icons.Default.ChevronLeft,
+                        contentDescription = "Föregående månad",
+                        tint = Color(0xFF657A89),
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
-
-                Column(Modifier.weight(1f).height(342.dp)) {
-                    Row(
-                        Modifier.fillMaxWidth().height(42.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(
-                            onClick = { changeMonth(-1) },
-                            modifier = Modifier.size(38.dp),
-                        ) {
-                            Icon(
-                                Icons.Default.ChevronLeft,
-                                contentDescription = "Föregående månad",
-                                tint = Color(0xFF657A89),
-                                modifier = Modifier.size(22.dp),
+                Text(
+                    monthTitle,
+                    color = Color(0xFF17334A),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = {
+                        pagerScope.launch {
+                            monthPagerState.animateScrollToPage(
+                                (monthPagerState.currentPage + 1)
+                                    .coerceAtMost(pagerMonthCount - 1)
                             )
                         }
+                    },
+                    enabled = monthPagerState.currentPage < pagerMonthCount - 1,
+                    modifier = Modifier.size(38.dp),
+                ) {
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = "Nästa månad",
+                        tint = Color(0xFF17334A),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            Row(Modifier.fillMaxWidth().height(24.dp)) {
+                Box(Modifier.width(54.dp).fillMaxHeight().background(railBlue))
+                Row(
+                    Modifier.weight(1f).fillMaxHeight(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    listOf("MÅ", "TI", "ON", "TO", "FR", "LÖ", "SÖ").forEach { label ->
                         Text(
-                            monthTitle,
-                            color = Color(0xFF17334A),
-                            fontSize = 17.sp,
+                            label,
+                            color = Color(0xFF8A97A3),
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.weight(1f),
                         )
-                        IconButton(
-                            onClick = { changeMonth(1) },
-                            modifier = Modifier.size(38.dp),
-                        ) {
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                contentDescription = "Nästa månad",
-                                tint = Color(0xFF17334A),
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
                     }
+                }
+            }
 
-                    Row(
-                        Modifier.fillMaxWidth().height(24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        listOf("MÅ", "TI", "ON", "TO", "FR", "LÖ", "SÖ").forEach { label ->
-                            Text(
-                                label,
-                                color = Color(0xFF8A97A3),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
+            HorizontalPager(
+                state = monthPagerState,
+                modifier = Modifier.fillMaxWidth().height(238.dp),
+            ) { page ->
+                val pageMonth = pagerStartMonth.plusMonths(page.toLong())
+                val firstOfMonth = pageMonth.atDay(1)
+                val gridStart =
+                    firstOfMonth.minusDays((firstOfMonth.dayOfWeek.value - 1).toLong())
+                val weekStarts =
+                    remember(pageMonth) {
+                        List(6) { weekIndex -> gridStart.plusWeeks(weekIndex.toLong()) }
                     }
+                val selectedWeekIndex =
+                    if (YearMonth.from(selectedDate) == pageMonth) {
+                        (ChronoUnit.DAYS.between(gridStart, selectedDate).toInt() / 7)
+                            .coerceIn(0, 5)
+                    } else {
+                        0
+                    }
+                val weekListState =
+                    rememberLazyListState(
+                        initialFirstVisibleItemIndex = (selectedWeekIndex - 1).coerceAtLeast(0)
+                    )
 
-                    repeat(6) { row ->
-                        Row(Modifier.fillMaxWidth().height(46.dp)) {
-                            repeat(7) { column ->
-                                val date = gridDays[row * 7 + column]
-                                val inMonth = YearMonth.from(date) == displayedMonth
-                                val isSelected = date == selectedDate
-                                val isToday = date == today
-                                val dayEvents = eventsByDate[date].orEmpty()
-                                val eventColors =
-                                    dayEvents
-                                        .map { event ->
-                                            when {
-                                                event.memberId == ALL_FAMILY_MEMBER_ID ->
-                                                    Color(0xFFDFB522)
-                                                event.memberId?.let(members::get) != null ->
-                                                    Color(
-                                                        members.getValue(event.memberId!!).colorArgb.toInt()
-                                                    )
-                                                isCleanReminderEvent(event) -> Color(0xFFCE75A2)
-                                                else -> Color(0xFF218FC3)
-                                            }
-                                        }
-                                        .distinct()
-                                val visibleColors = eventColors.take(3)
-                                val extraCount = (eventColors.size - visibleColors.size).coerceAtLeast(0)
+                LaunchedEffect(selectedDate, pageMonth) {
+                    if (YearMonth.from(selectedDate) == pageMonth) {
+                        val weekIndex =
+                            (ChronoUnit.DAYS.between(gridStart, selectedDate).toInt() / 7)
+                                .coerceIn(0, 5)
+                        weekListState.animateScrollToItem((weekIndex - 1).coerceAtLeast(0))
+                    }
+                }
 
-                                Box(
-                                    Modifier.weight(1f)
-                                        .fillMaxHeight()
-                                        .padding(1.5.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(
-                                            when {
-                                                isSelected -> Color(0xFFE5F2FC)
-                                                isToday -> Color(0xFFF2F8FC)
-                                                else -> Color.Transparent
-                                            }
-                                        )
-                                        .border(
-                                            width = if (isSelected || isToday) 1.dp else 0.dp,
-                                            color =
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = weekListState,
+                ) {
+                    itemsIndexed(
+                        items = weekStarts,
+                        key = { _, weekStart -> weekStart.toEpochDay() },
+                    ) { _, weekStart ->
+                        val weekNumber =
+                            weekStart.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear())
+                        Row(Modifier.fillMaxWidth().height(56.dp)) {
+                            Box(
+                                Modifier.width(54.dp)
+                                    .fillMaxHeight()
+                                    .background(railBlue),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "v$weekNumber",
+                                    color = Color.White.copy(alpha = .72f),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+
+                            Row(Modifier.weight(1f).fillMaxHeight()) {
+                                repeat(7) { column ->
+                                    val date = weekStart.plusDays(column.toLong())
+                                    val inMonth = YearMonth.from(date) == pageMonth
+                                    val isSelected = date == selectedDate
+                                    val isToday = date == today
+                                    val dayEvents = eventsByDate[date].orEmpty()
+                                    val eventColors =
+                                        dayEvents
+                                            .map { event ->
                                                 when {
-                                                    isSelected -> Color(0xFF8ECBF0)
-                                                    isToday -> Color(0xFF1494C7)
+                                                    event.memberId == ALL_FAMILY_MEMBER_ID ->
+                                                        Color(0xFFDFB522)
+                                                    event.memberId?.let(members::get) != null ->
+                                                        Color(
+                                                            members.getValue(event.memberId!!).colorArgb.toInt()
+                                                        )
+                                                    isCleanReminderEvent(event) ->
+                                                        Color(0xFFCE75A2)
+                                                    else -> Color(0xFF218FC3)
+                                                }
+                                            }
+                                            .distinct()
+                                    val visibleColors = eventColors.take(3)
+                                    val extraCount =
+                                        (eventColors.size - visibleColors.size).coerceAtLeast(0)
+
+                                    Box(
+                                        Modifier.weight(1f)
+                                            .fillMaxHeight()
+                                            .padding(1.5.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(
+                                                when {
+                                                    isSelected -> Color(0xFFE5F2FC)
+                                                    isToday -> Color(0xFFF2F8FC)
                                                     else -> Color.Transparent
-                                                },
-                                            shape = RoundedCornerShape(10.dp),
-                                        )
-                                        .clickable { onSelectDate(date) },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                    ) {
-                                        Text(
-                                            date.dayOfMonth.toString(),
-                                            color =
-                                                when {
-                                                    isSelected -> blueDeep
-                                                    isToday -> Color(0xFF0875A8)
-                                                    inMonth -> Color(0xFF17334A)
-                                                    else -> Color(0xFFA9B2BA)
-                                                },
-                                            fontSize = if (isSelected) 15.sp else 13.sp,
-                                            fontWeight =
-                                                if (isSelected || isToday) FontWeight.Bold
-                                                else FontWeight.Medium,
-                                        )
-                                        if (visibleColors.isNotEmpty()) {
-                                            Spacer(Modifier.height(3.dp))
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                visibleColors.forEach { dotColor ->
-                                                    Box(
-                                                        Modifier.size(5.dp)
-                                                            .clip(CircleShape)
-                                                            .background(dotColor)
-                                                    )
                                                 }
-                                                if (extraCount > 0) {
-                                                    Text(
-                                                        "+$extraCount",
-                                                        color = muted,
-                                                        fontSize = 6.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                }
-                                            }
-                                        } else if (isToday) {
-                                            Spacer(Modifier.height(3.dp))
-                                            Box(
-                                                Modifier.width(13.dp)
-                                                    .height(2.dp)
-                                                    .clip(RoundedCornerShape(50))
-                                                    .background(blueDeep)
                                             )
+                                            .border(
+                                                width = if (isSelected || isToday) 1.dp else 0.dp,
+                                                color =
+                                                    when {
+                                                        isSelected -> Color(0xFF8ECBF0)
+                                                        isToday -> Color(0xFF1494C7)
+                                                        else -> Color.Transparent
+                                                    },
+                                                shape = RoundedCornerShape(10.dp),
+                                            )
+                                            .clickable { onSelectDate(date) },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                        ) {
+                                            Text(
+                                                date.dayOfMonth.toString(),
+                                                color =
+                                                    when {
+                                                        isSelected -> blueDeep
+                                                        isToday -> blueDeep
+                                                        inMonth -> Color(0xFF17334A)
+                                                        else -> Color(0xFFA9B2BA)
+                                                    },
+                                                fontSize = if (isSelected) 15.sp else 13.sp,
+                                                fontWeight =
+                                                    if (isSelected || isToday) FontWeight.Bold
+                                                    else FontWeight.Medium,
+                                            )
+                                            if (visibleColors.isNotEmpty()) {
+                                                Spacer(Modifier.height(3.dp))
+                                                Row(
+                                                    horizontalArrangement =
+                                                        Arrangement.spacedBy(3.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    visibleColors.forEach { dotColor ->
+                                                        Box(
+                                                            Modifier.size(5.dp)
+                                                                .clip(CircleShape)
+                                                                .background(dotColor)
+                                                        )
+                                                    }
+                                                    if (extraCount > 0) {
+                                                        Text(
+                                                            "+$extraCount",
+                                                            color = muted,
+                                                            fontSize = 6.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                        )
+                                                    }
+                                                }
+                                            } else if (isToday) {
+                                                Spacer(Modifier.height(3.dp))
+                                                Box(
+                                                    Modifier.width(13.dp)
+                                                        .height(2.dp)
+                                                        .clip(RoundedCornerShape(50))
+                                                        .background(blueDeep)
+                                                )
+                                            }
                                         }
                                     }
                                 }
