@@ -270,7 +270,7 @@ internal fun MinimalCalendarScreen(
             NordicDayPlannerScreen(
                 selectedDate = selectedDate,
                 today = today,
-                events = selectedEvents,
+                events = events,
                 members = memberById,
                 shopping = shopping,
                 todos = todoPreview,
@@ -1064,32 +1064,59 @@ private fun NordicDayPlannerScreen(
     val line = Color(0x18243F55)
     val openShopping = remember(shopping) { shopping.filterNot { it.checked } }
     val openTodos = remember(todos) { todos.filterNot { it.checked } }
+    val eventsByDate = remember(events) { events.groupBy { it.date } }
+    val selectedDayEvents =
+        remember(events, selectedDate) {
+            events
+                .filter { it.date == selectedDate }
+                .sortedWith(compareBy<SyncEvent> { it.time }.thenBy { it.title })
+        }
+    val selectedGroupedEvents =
+        remember(selectedDayEvents) {
+            selectedDayEvents
+                .groupBy { it.memberId ?: ALL_FAMILY_MEMBER_ID }
+                .values
+                .map { personEvents ->
+                    personEvents.sortedWith(
+                        compareBy<SyncEvent> { it.time }.thenBy { it.title }
+                    )
+                }
+                .sortedBy { personEvents ->
+                    personEvents.minOfOrNull { it.time } ?: "99:99"
+                }
+                .flatten()
+        }
 
-    // Scrollbar datumrail: fem år bakåt och fem år framåt, utan att resten av sidan flyttar sig.
-    val railStart = remember(today) { today.minusYears(5) }
-    val railEnd = remember(today) { today.plusYears(5) }
-    val railDates =
-        remember(railStart, railEnd) {
-            val dayCount = ChronoUnit.DAYS.between(railStart, railEnd).toInt()
-            List(dayCount + 1) { offset -> railStart.plusDays(offset.toLong()) }
-        }
-    val selectedRailIndex =
-        remember(selectedDate, railStart, railDates.size) {
-            ChronoUnit.DAYS.between(railStart, selectedDate)
-                .toInt()
-                .coerceIn(0, railDates.lastIndex)
-        }
-    val railListState =
-        rememberLazyListState(
-            initialFirstVisibleItemIndex = (selectedRailIndex - 2).coerceAtLeast(0),
-        )
+    var displayedMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
 
-    LaunchedEffect(selectedDate, selectedRailIndex) {
-        val selectedIsInRange = !selectedDate.isBefore(railStart) && !selectedDate.isAfter(railEnd)
-        if (selectedIsInRange) {
-            railListState.animateScrollToItem((selectedRailIndex - 2).coerceAtLeast(0))
-        }
+    LaunchedEffect(selectedDate) {
+        val selectedMonth = YearMonth.from(selectedDate)
+        if (selectedMonth != displayedMonth) displayedMonth = selectedMonth
     }
+
+    fun changeMonth(delta: Long) {
+        val targetMonth = displayedMonth.plusMonths(delta)
+        displayedMonth = targetMonth
+        val targetDay = minOf(selectedDate.dayOfMonth, targetMonth.lengthOfMonth())
+        onSelectDate(targetMonth.atDay(targetDay))
+    }
+
+    val firstOfMonth = remember(displayedMonth) { displayedMonth.atDay(1) }
+    val gridStart =
+        remember(firstOfMonth) {
+            firstOfMonth.minusDays((firstOfMonth.dayOfWeek.value - 1).toLong())
+        }
+    val gridDays =
+        remember(gridStart) {
+            List(42) { offset -> gridStart.plusDays(offset.toLong()) }
+        }
+    val monthTitle =
+        remember(displayedMonth, locale) {
+            displayedMonth.month
+                .getDisplayName(TextStyle.FULL, locale)
+                .replaceFirstChar { it.uppercase(locale) } + " " + displayedMonth.year
+        }
+    val weekFields = java.time.temporal.WeekFields.ISO
 
     Column(Modifier.fillMaxSize().background(paper)) {
         Row(
@@ -1111,215 +1138,361 @@ private fun NordicDayPlannerScreen(
             NordicHeaderButton(Icons.Default.People, "Familj", onFamily)
         }
 
-        Row(Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier.width(72.dp).fillMaxHeight().background(railBlue),
-                state = railListState,
+        Row(Modifier.fillMaxWidth().height(136.dp)) {
+            Box(
+                Modifier.width(54.dp).fillMaxHeight().background(railBlue),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                itemsIndexed(
-                    items = railDates,
-                    key = { _, date -> date.toEpochDay() },
-                ) { index, date ->
-                    val active = date == selectedDate
-                    val isToday = date == today
-                    val showMonth =
-                        date.dayOfMonth == 1 || index == railListState.firstVisibleItemIndex
+                Text(
+                    selectedDate.month.getDisplayName(TextStyle.SHORT, locale)
+                        .uppercase(locale)
+                        .removeSuffix("."),
+                    color = Color.White.copy(alpha = .72f),
+                    fontSize = 7.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = .7.sp,
+                    modifier = Modifier.padding(top = 20.dp),
+                )
+            }
+
+            Box(
+                Modifier.weight(1f)
+                    .fillMaxHeight()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(Color(0xFF53B4D7), Color(0xFF1494C7))
+                        )
+                    )
+                    .clickable(onClick = onWeather)
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+            ) {
+                Row(Modifier.fillMaxWidth()) {
+                    Text(
+                        selectedDate.dayOfMonth.toString(),
+                        color = Color.White,
+                        fontSize = 58.sp,
+                        lineHeight = 58.sp,
+                        fontWeight = FontWeight.Light,
+                    )
+                    Spacer(Modifier.width(9.dp))
+                    Column(Modifier.padding(top = 7.dp)) {
+                        Text(
+                            selectedDate.month.getDisplayName(TextStyle.FULL, locale),
+                            color = Color.White.copy(alpha = .92f),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Light,
+                        )
+                        Text(
+                            selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
+                                .replaceFirstChar { it.uppercase(locale) },
+                            color = Color.White,
+                            fontSize = 25.sp,
+                            fontWeight = FontWeight.Light,
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
                     Column(
-                        Modifier.fillMaxWidth()
-                            .height(84.dp)
-                            .background(
-                                when {
-                                    active -> paper
-                                    isToday -> Color.White.copy(alpha = .18f)
-                                    else -> Color.Transparent
-                                }
-                            )
-                            .clickable { onSelectDate(date) }
-                            .padding(vertical = 3.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(top = 6.dp),
                     ) {
-                        if (showMonth) {
+                        Icon(
+                            Icons.Default.Cloud,
+                            contentDescription = "Väder",
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp),
+                        )
+                        Text(
+                            if (weatherLoading) "…" else (weather?.temperatureC?.toString() ?: "–") + "°",
+                            color = Color.White,
+                            fontSize = 23.sp,
+                            fontWeight = FontWeight.Light,
+                        )
+                        Text(
+                            weather?.description ?: "Tryck för väder",
+                            color = Color.White.copy(alpha = .82f),
+                            fontSize = 9.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                Text(
+                    if (selectedDate == today) "En ny dag, nya möjligheter  ♥"
+                    else "Familjens plan för dagen",
+                    color = Color.White.copy(alpha = .88f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.align(Alignment.BottomStart),
+                )
+            }
+        }
+
+        Column(
+            Modifier.weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+        ) {
+            Row(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.width(54.dp)
+                        .height(342.dp)
+                        .background(railBlue),
+                ) {
+                    Spacer(Modifier.height(66.dp))
+                    repeat(6) { row ->
+                        val weekDate = gridStart.plusDays((row * 7).toLong())
+                        Box(
+                            Modifier.fillMaxWidth().height(46.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             Text(
-                                date.month.getDisplayName(TextStyle.SHORT, locale).uppercase(locale),
-                                color =
-                                    when {
-                                        active -> blueDeep
-                                        isToday -> Color.White
-                                        else -> Color.White.copy(alpha = .58f)
-                                    },
-                                fontSize = 7.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = .8.sp,
-                            )
-                        }
-                        Text(
-                            date.dayOfMonth.toString(),
-                            color = if (active) blueDeep else Color.White,
-                            fontSize = if (active || isToday) 24.sp else 22.sp,
-                            fontWeight =
-                                if (active || isToday) FontWeight.Bold else FontWeight.Medium,
-                        )
-                        Text(
-                            date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
-                                .uppercase(locale)
-                                .take(3),
-                            color =
-                                when {
-                                    active -> blueDeep
-                                    isToday -> Color.White
-                                    else -> Color.White.copy(alpha = .78f)
-                                },
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = .5.sp,
-                        )
-                        if (isToday) {
-                            Spacer(Modifier.height(3.dp))
-                            Box(
-                                Modifier.width(18.dp)
-                                    .height(3.dp)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(if (active) blueDeep else Color.White)
+                                "v" + weekDate.get(weekFields.weekOfWeekBasedYear()),
+                                color = Color.White.copy(alpha = .68f),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.SemiBold,
                             )
                         }
                     }
-                    if (index < railDates.lastIndex) {
-                        HorizontalDivider(color = Color.White.copy(alpha = .10f), thickness = .5.dp)
+                }
+
+                Column(Modifier.weight(1f).height(342.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().height(42.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(
+                            onClick = { changeMonth(-1) },
+                            modifier = Modifier.size(38.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.ChevronLeft,
+                                contentDescription = "Föregående månad",
+                                tint = Color(0xFF657A89),
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                        Text(
+                            monthTitle,
+                            color = Color(0xFF17334A),
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(
+                            onClick = { changeMonth(1) },
+                            modifier = Modifier.size(38.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = "Nästa månad",
+                                tint = Color(0xFF17334A),
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                    }
+
+                    Row(
+                        Modifier.fillMaxWidth().height(24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        listOf("MÅ", "TI", "ON", "TO", "FR", "LÖ", "SÖ").forEach { label ->
+                            Text(
+                                label,
+                                color = Color(0xFF8A97A3),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+
+                    repeat(6) { row ->
+                        Row(Modifier.fillMaxWidth().height(46.dp)) {
+                            repeat(7) { column ->
+                                val date = gridDays[row * 7 + column]
+                                val inMonth = YearMonth.from(date) == displayedMonth
+                                val isSelected = date == selectedDate
+                                val isToday = date == today
+                                val dayEvents = eventsByDate[date].orEmpty()
+                                val eventColors =
+                                    dayEvents
+                                        .map { event ->
+                                            when {
+                                                event.memberId == ALL_FAMILY_MEMBER_ID ->
+                                                    Color(0xFFDFB522)
+                                                event.memberId?.let(members::get) != null ->
+                                                    Color(
+                                                        members.getValue(event.memberId!!).colorArgb.toInt()
+                                                    )
+                                                isCleanReminderEvent(event) -> Color(0xFFCE75A2)
+                                                else -> Color(0xFF218FC3)
+                                            }
+                                        }
+                                        .distinct()
+                                val visibleColors = eventColors.take(3)
+                                val extraCount = (eventColors.size - visibleColors.size).coerceAtLeast(0)
+
+                                Box(
+                                    Modifier.weight(1f)
+                                        .fillMaxHeight()
+                                        .padding(1.5.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            when {
+                                                isSelected -> Color(0xFFE5F2FC)
+                                                isToday -> Color(0xFFF2F8FC)
+                                                else -> Color.Transparent
+                                            }
+                                        )
+                                        .border(
+                                            width = if (isSelected || isToday) 1.dp else 0.dp,
+                                            color =
+                                                when {
+                                                    isSelected -> Color(0xFF8ECBF0)
+                                                    isToday -> Color(0xFF1494C7)
+                                                    else -> Color.Transparent
+                                                },
+                                            shape = RoundedCornerShape(10.dp),
+                                        )
+                                        .clickable { onSelectDate(date) },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center,
+                                    ) {
+                                        Text(
+                                            date.dayOfMonth.toString(),
+                                            color =
+                                                when {
+                                                    isSelected -> blueDeep
+                                                    isToday -> Color(0xFF0875A8)
+                                                    inMonth -> Color(0xFF17334A)
+                                                    else -> Color(0xFFA9B2BA)
+                                                },
+                                            fontSize = if (isSelected) 15.sp else 13.sp,
+                                            fontWeight =
+                                                if (isSelected || isToday) FontWeight.Bold
+                                                else FontWeight.Medium,
+                                        )
+                                        if (visibleColors.isNotEmpty()) {
+                                            Spacer(Modifier.height(3.dp))
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                visibleColors.forEach { dotColor ->
+                                                    Box(
+                                                        Modifier.size(5.dp)
+                                                            .clip(CircleShape)
+                                                            .background(dotColor)
+                                                    )
+                                                }
+                                                if (extraCount > 0) {
+                                                    Text(
+                                                        "+$extraCount",
+                                                        color = muted,
+                                                        fontSize = 6.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+                                                }
+                                            }
+                                        } else if (isToday) {
+                                            Spacer(Modifier.height(3.dp))
+                                            Box(
+                                                Modifier.width(13.dp)
+                                                    .height(2.dp)
+                                                    .clip(RoundedCornerShape(50))
+                                                    .background(blueDeep)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            Column(Modifier.weight(1f).fillMaxHeight()) {
-                Box(
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0x1A24425D)),
+                shadowElevation = 1.dp,
+                modifier =
                     Modifier.fillMaxWidth()
-                        .height(154.dp)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(Color(0xFF53B4D7), Color(0xFF1494C7))
-                            )
-                        )
-                        .clickable(onClick = onWeather)
-                        .padding(horizontal = 20.dp, vertical = 13.dp),
-                ) {
-                    Row(Modifier.fillMaxWidth()) {
+                        .padding(start = 12.dp, end = 12.dp, top = 9.dp),
+            ) {
+                Column(Modifier.padding(horizontal = 13.dp, vertical = 10.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             selectedDate.dayOfMonth.toString(),
-                            color = Color.White,
-                            fontSize = 64.sp,
-                            lineHeight = 64.sp,
-                            fontWeight = FontWeight.Light,
+                            color = blueDeep,
+                            fontSize = 27.sp,
+                            fontWeight = FontWeight.Bold,
                         )
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.padding(top = 9.dp)) {
-                            Text(
-                                selectedDate.month.getDisplayName(TextStyle.FULL, locale),
-                                color = Color.White.copy(alpha = .92f),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Light,
-                            )
-                            Text(
-                                selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
-                                    .replaceFirstChar { it.uppercase(locale) },
-                                color = Color.White,
-                                fontSize = 27.sp,
-                                fontWeight = FontWeight.Light,
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            modifier = Modifier.padding(top = 8.dp),
-                        ) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
+                                .replaceFirstChar { it.uppercase(locale) },
+                            color = Color(0xFF17334A),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            if (selectedDayEvents.size == 1) "1 aktivitet"
+                            else "${selectedDayEvents.size} aktiviteter",
+                            color = muted,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (selectedDayEvents.size > 3) {
+                            Spacer(Modifier.width(4.dp))
                             Icon(
-                                Icons.Default.Cloud,
-                                contentDescription = "Väder",
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp),
-                            )
-                            Text(
-                                if (weatherLoading) "…" else (weather?.temperatureC?.toString() ?: "–") + "°",
-                                color = Color.White,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Light,
-                            )
-                            Text(
-                                weather?.description ?: "Tryck för väder",
-                                color = Color.White.copy(alpha = .82f),
-                                fontSize = 9.sp,
-                                maxLines = 1,
+                                Icons.Default.ChevronRight,
+                                contentDescription = "Visa alla aktiviteter",
+                                tint = Color(0xFF6E7E89),
+                                modifier =
+                                    Modifier.size(18.dp)
+                                        .clickable(onClick = onShowAll),
                             )
                         }
                     }
-                    Text(
-                        if (selectedDate == today) "En ny dag, nya möjligheter  ♥"
-                        else "Familjens plan för dagen",
-                        color = Color.White.copy(alpha = .88f),
-                        fontSize = 11.sp,
-                        modifier = Modifier.align(Alignment.BottomStart),
-                    )
-                }
 
-                Column(
-                    Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    if (events.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Inga aktiviteter den här dagen", color = muted, fontSize = 12.sp)
+                    if (selectedDayEvents.isEmpty()) {
+                        Box(
+                            Modifier.fillMaxWidth().height(52.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            Text(
+                                "Inga aktiviteter den här dagen",
+                                color = muted,
+                                fontSize = 11.sp,
+                            )
                         }
                     } else {
-                        // Håll samma persons aktiviteter tillsammans. Nordic-vyn renderade tidigare
-                        // bara events.take(5), vilket gjorde att t.ex. Hugos skola och simning
-                        // kunde hamna på olika ställen när andra familjemedlemmars tider låg emellan.
-                        val groupedEvents =
-                            events
-                                .groupBy { it.memberId ?: ALL_FAMILY_MEMBER_ID }
-                                .values
-                                .map { personEvents ->
-                                    personEvents.sortedWith(
-                                        compareBy<SyncEvent> { it.time }.thenBy { it.title }
-                                    )
-                                }
-                                .sortedBy { personEvents ->
-                                    personEvents.minOfOrNull { it.time } ?: "99:99"
-                                }
-
-                        val visibleGroups = mutableListOf<List<SyncEvent>>()
-                        var visibleEventCount = 0
-                        groupedEvents.forEach { group ->
-                            if (visibleEventCount < 5 || visibleGroups.isEmpty()) {
-                                visibleGroups += group
-                                visibleEventCount += group.size
+                        val visible = selectedGroupedEvents.take(3)
+                        visible.forEachIndexed { index, event ->
+                            NordicAgendaRow(
+                                event = event,
+                                member = event.memberId?.let(members::get),
+                                onClick = { onOpenEvent(event) },
+                            )
+                            if (index < visible.lastIndex) {
+                                HorizontalDivider(color = line, thickness = .7.dp)
                             }
                         }
-                        val visible = visibleGroups.flatten()
-
-                        visibleGroups.forEachIndexed { groupIndex, group ->
-                            group.forEachIndexed { eventIndex, event ->
-                                NordicAgendaRow(
-                                    event = event,
-                                    member = event.memberId?.let(members::get),
-                                    onClick = { onOpenEvent(event) },
-                                )
-                                if (eventIndex < group.lastIndex) {
-                                    HorizontalDivider(
-                                        color = line.copy(alpha = .55f),
-                                        thickness = .5.dp,
-                                    )
-                                }
-                            }
-                            if (groupIndex < visibleGroups.lastIndex) {
-                                HorizontalDivider(color = line, thickness = 1.dp)
-                            }
-                        }
-
-                        if (events.size > visible.size) {
+                        if (selectedDayEvents.size > visible.size) {
                             TextButton(
                                 onClick = onShowAll,
                                 modifier = Modifier.align(Alignment.End),
                             ) {
                                 Text(
-                                    "Visa alla " + events.size + " aktiviteter",
+                                    "Visa alla ${selectedDayEvents.size} aktiviteter",
                                     color = blueDeep,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1328,32 +1501,33 @@ private fun NordicDayPlannerScreen(
                         }
                     }
                 }
+            }
 
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    NordicQuickCard(
-                        title = "Att göra",
-                        count = openTodos.size,
-                        icon = Icons.Default.CheckCircle,
-                        rows = openTodos.take(3).map { it.title },
-                        tint = Color(0xFFE9F5FA),
-                        accent = blueDeep,
-                        onClick = onOpenTodo,
-                        modifier = Modifier.weight(1f),
-                    )
-                    NordicQuickCard(
-                        title = "Inköp",
-                        count = openShopping.size,
-                        icon = Icons.Default.ShoppingCart,
-                        rows = openShopping.take(3).map { it.name },
-                        tint = Color(0xFFFFF2DD),
-                        accent = Color(0xFF9D7729),
-                        onClick = onOpenShopping,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+            Row(
+                Modifier.fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                NordicQuickCard(
+                    title = "Att göra",
+                    count = openTodos.size,
+                    icon = Icons.Default.CheckCircle,
+                    rows = openTodos.take(3).map { it.title },
+                    tint = Color(0xFFE9F5FA),
+                    accent = blueDeep,
+                    onClick = onOpenTodo,
+                    modifier = Modifier.weight(1f),
+                )
+                NordicQuickCard(
+                    title = "Inköp",
+                    count = openShopping.size,
+                    icon = Icons.Default.ShoppingCart,
+                    rows = openShopping.take(3).map { it.name },
+                    tint = Color(0xFFFFF2DD),
+                    accent = Color(0xFF9D7729),
+                    onClick = onOpenShopping,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
