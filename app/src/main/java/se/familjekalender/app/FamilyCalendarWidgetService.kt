@@ -143,7 +143,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                                 group.forEach { event ->
                                     items +=
                                         Item.Event(
-                                            who = "↳",
+                                            who = "",
                                             activity = event.activity,
                                             time = event.time,
                                         )
