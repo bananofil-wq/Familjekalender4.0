@@ -290,6 +290,7 @@ internal fun MinimalCalendarScreen(
                     onSelect(date)
                 },
                 onSearch = { showSearch = true },
+                onAdd = onAdd,
                 onMenu = onOpenSettings,
                 onFamily = onOpenFamily,
                 onWeather = {
@@ -1057,6 +1058,7 @@ private fun NordicDayPlannerScreen(
     locale: Locale,
     onSelectDate: (LocalDate) -> Unit,
     onSearch: () -> Unit,
+    onAdd: () -> Unit,
     onMenu: () -> Unit,
     onFamily: () -> Unit,
     onWeather: () -> Unit,
@@ -1161,7 +1163,9 @@ private fun NordicDayPlannerScreen(
                 modifier = Modifier.weight(1f),
             )
             NordicHeaderButton(Icons.Default.Search, "Sök", onSearch)
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(2.dp))
+            NordicHeaderButton(Icons.Default.Add, "Lägg till", onAdd)
+            Spacer(Modifier.width(2.dp))
             NordicHeaderButton(Icons.Default.People, "Familj", onFamily)
         }
 
