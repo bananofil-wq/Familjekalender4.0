@@ -1138,7 +1138,9 @@ private fun NordicDayPlannerScreen(
         }
     val settledWeekStarts =
         remember(settledGridStart) {
-            List(6) { weekIndex -> settledGridStart.plusWeeks(weekIndex.toLong()) }
+            // Tolv veckor ger utrymme att fortsätta scrolla nedanför den sista
+            // klassiska månadsraden utan att datum kapas vid botten.
+            List(12) { weekIndex -> settledGridStart.plusWeeks(weekIndex.toLong()) }
         }
     val selectedWeekIndex =
         remember(selectedDate, displayedMonth, settledGridStart) {
@@ -1347,7 +1349,9 @@ private fun NordicDayPlannerScreen(
         }
 
         Row(
-            Modifier.fillMaxWidth().height(238.dp),
+            // Exakt fyra hela veckor syns samtidigt: 4 × 56 dp.
+            // Då lämnas ingen halv rad kapad i över- eller underkant.
+            Modifier.fillMaxWidth().height(224.dp),
         ) {
             // Den blå veckokolumnen ligger UTANFÖR HorizontalPager.
             // Därmed står den helt still när man sveper mellan månader.
@@ -1399,7 +1403,7 @@ private fun NordicDayPlannerScreen(
                         Modifier.fillMaxWidth()
                             .graphicsLayer { translationY = verticalOffsetPx }
                     ) {
-                        repeat(6) { weekIndex ->
+                        repeat(12) { weekIndex ->
                             val weekStart = gridStart.plusWeeks(weekIndex.toLong())
                             Row(Modifier.fillMaxWidth().height(56.dp)) {
                                 repeat(7) { column ->
