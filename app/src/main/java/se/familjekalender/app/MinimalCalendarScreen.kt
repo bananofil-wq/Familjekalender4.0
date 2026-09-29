@@ -1121,12 +1121,19 @@ private fun NordicDayPlannerScreen(
                     key = { _, date -> date.toEpochDay() },
                 ) { index, date ->
                     val active = date == selectedDate
+                    val isToday = date == today
                     val showMonth =
                         date.dayOfMonth == 1 || index == railListState.firstVisibleItemIndex
                     Column(
                         Modifier.fillMaxWidth()
                             .height(84.dp)
-                            .background(if (active) paper else Color.Transparent)
+                            .background(
+                                when {
+                                    active -> paper
+                                    isToday -> Color.White.copy(alpha = .18f)
+                                    else -> Color.Transparent
+                                }
+                            )
                             .clickable { onSelectDate(date) }
                             .padding(vertical = 3.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1135,7 +1142,12 @@ private fun NordicDayPlannerScreen(
                         if (showMonth) {
                             Text(
                                 date.month.getDisplayName(TextStyle.SHORT, locale).uppercase(locale),
-                                color = if (active) blueDeep else Color.White.copy(alpha = .58f),
+                                color =
+                                    when {
+                                        active -> blueDeep
+                                        isToday -> Color.White
+                                        else -> Color.White.copy(alpha = .58f)
+                                    },
                                 fontSize = 7.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = .8.sp,
@@ -1144,18 +1156,33 @@ private fun NordicDayPlannerScreen(
                         Text(
                             date.dayOfMonth.toString(),
                             color = if (active) blueDeep else Color.White,
-                            fontSize = if (active) 24.sp else 22.sp,
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = if (active || isToday) 24.sp else 22.sp,
+                            fontWeight =
+                                if (active || isToday) FontWeight.Bold else FontWeight.Medium,
                         )
                         Text(
                             date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
                                 .uppercase(locale)
                                 .take(3),
-                            color = if (active) blueDeep else Color.White.copy(alpha = .78f),
+                            color =
+                                when {
+                                    active -> blueDeep
+                                    isToday -> Color.White
+                                    else -> Color.White.copy(alpha = .78f)
+                                },
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = .5.sp,
                         )
+                        if (isToday) {
+                            Spacer(Modifier.height(3.dp))
+                            Box(
+                                Modifier.width(18.dp)
+                                    .height(3.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (active) blueDeep else Color.White)
+                            )
+                        }
                     }
                     if (index < railDates.lastIndex) {
                         HorizontalDivider(color = Color.White.copy(alpha = .10f), thickness = .5.dp)
