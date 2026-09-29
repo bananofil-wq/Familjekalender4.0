@@ -312,28 +312,27 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 appWidgetId,
                 requestOffset,
             )
+        views.setOnClickPendingIntent(containerId, openCalendar)
+        views.setOnClickPendingIntent(activityId, openCalendar)
+        views.setOnClickPendingIntent(timeId, openCalendar)
 
         if (displayRow.canToggle && !displayRow.groupKey.isNullOrBlank()) {
             val groupKey = displayRow.groupKey
             val hashOffset = groupKey.hashCode().and(0x3fff)
-            val toggle =
+            views.setOnClickPendingIntent(
+                whoId,
                 FamilyCalendarWidget.toggleGroupPendingIntent(
                     applicationContext,
                     appWidgetId,
                     groupKey,
                     50_000 + hashOffset,
-                )
-            views.setOnClickPendingIntent(containerId, toggle)
-            views.setOnClickPendingIntent(whoId, toggle)
-            views.setOnClickPendingIntent(activityId, toggle)
-            views.setOnClickPendingIntent(timeId, toggle)
+                ),
+            )
         } else {
-            views.setOnClickPendingIntent(containerId, openCalendar)
             views.setOnClickPendingIntent(whoId, openCalendar)
-            views.setOnClickPendingIntent(activityId, openCalendar)
-            views.setOnClickPendingIntent(timeId, openCalendar)
         }
     }
+
     private fun buildDayRows(
         events: List<SyncEvent>,
         date: LocalDate,
@@ -370,7 +369,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         DisplayRow(
                             row =
                                 WidgetRow(
-                                    who = who,
+                                    who = "$who ${if (expanded) "▴" else "▾"}",
                                     activity = "${groupEvents.size} aktiviteter",
                                     time = if (expanded) "" else firstTime,
                                 ),
@@ -384,7 +383,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                             add(
                                 DisplayRow(
                                     WidgetRow(
-                                        who = "",
+                                        who = "↳",
                                         activity = row.activity,
                                         time = row.time,
                                     ),
