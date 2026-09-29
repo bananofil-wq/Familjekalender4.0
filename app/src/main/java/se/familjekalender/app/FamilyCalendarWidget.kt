@@ -47,18 +47,6 @@ class FamilyCalendarWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         when (intent.action) {
-            Intent.ACTION_MY_PACKAGE_REPLACED -> {
-                val manager = AppWidgetManager.getInstance(context)
-                val component = ComponentName(context, FamilyCalendarWidget::class.java)
-                manager.getAppWidgetIds(component).forEach { appWidgetId ->
-                    val views = baseViews(context, appWidgetId)
-                    views.setTextViewText(R.id.widget_status, "Uppdaterar…")
-                    manager.updateAppWidget(appWidgetId, views)
-                }
-                schedulePeriodicRefresh(context)
-                enqueueRefresh(context)
-            }
-
             ACTION_REFRESH -> {
                 showUpdating(context)
                 enqueueRefresh(context)
