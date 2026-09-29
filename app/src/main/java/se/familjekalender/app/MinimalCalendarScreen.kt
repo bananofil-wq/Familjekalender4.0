@@ -1268,17 +1268,51 @@ private fun NordicDayPlannerScreen(
                             Text("Inga aktiviteter den här dagen", color = muted, fontSize = 12.sp)
                         }
                     } else {
-                        val visible = events.take(5)
-                        visible.forEachIndexed { index, event ->
-                            NordicAgendaRow(
-                                event = event,
-                                member = event.memberId?.let(members::get),
-                                onClick = { onOpenEvent(event) },
-                            )
-                            if (index < visible.lastIndex) {
-                                HorizontalDivider(color = line, thickness = .7.dp)
+                        // Håll samma persons aktiviteter tillsammans. Nordic-vyn renderade tidigare
+                        // bara events.take(5), vilket gjorde att t.ex. Hugos skola och simning
+                        // kunde hamna på olika ställen när andra familjemedlemmars tider låg emellan.
+                        val groupedEvents =
+                            events
+                                .groupBy { it.memberId ?: ALL_FAMILY_MEMBER_ID }
+                                .values
+                                .map { personEvents ->
+                                    personEvents.sortedWith(
+                                        compareBy<SyncEvent> { it.time }.thenBy { it.title }
+                                    )
+                                }
+                                .sortedBy { personEvents ->
+                                    personEvents.minOfOrNull { it.time } ?: "99:99"
+                                }
+
+                        val visibleGroups = mutableListOf<List<SyncEvent>>()
+                        var visibleEventCount = 0
+                        groupedEvents.forEach { group ->
+                            if (visibleEventCount < 5 || visibleGroups.isEmpty()) {
+                                visibleGroups += group
+                                visibleEventCount += group.size
                             }
                         }
+                        val visible = visibleGroups.flatten()
+
+                        visibleGroups.forEachIndexed { groupIndex, group ->
+                            group.forEachIndexed { eventIndex, event ->
+                                NordicAgendaRow(
+                                    event = event,
+                                    member = event.memberId?.let(members::get),
+                                    onClick = { onOpenEvent(event) },
+                                )
+                                if (eventIndex < group.lastIndex) {
+                                    HorizontalDivider(
+                                        color = line.copy(alpha = .55f),
+                                        thickness = .5.dp,
+                                    )
+                                }
+                            }
+                            if (groupIndex < visibleGroups.lastIndex) {
+                                HorizontalDivider(color = line, thickness = 1.dp)
+                            }
+                        }
+
                         if (events.size > visible.size) {
                             TextButton(
                                 onClick = onShowAll,
