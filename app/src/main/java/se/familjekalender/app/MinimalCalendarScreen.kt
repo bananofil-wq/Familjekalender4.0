@@ -121,7 +121,7 @@ private fun isCleanReminderEvent(event: SyncEvent): Boolean {
     return source.contains("reminder") || title.startsWith("🔔")
 }
 
-private fun isBirthdayEvent(event: SyncEvent): Boolean {
+private fun isNordicBirthdayEvent(event: SyncEvent): Boolean {
     val source = event.source.trim().lowercase()
     val title = event.title.trimStart()
     return title.startsWith("🌈") ||
@@ -1378,10 +1378,10 @@ private fun NordicDayPlannerScreen(
                                     val isSelected = date == selectedDate
                                     val isToday = date == today
                                     val dayEvents = eventsByDate[date].orEmpty()
-                                    val hasBirthday = dayEvents.any(::isBirthdayEvent)
+                                    val hasBirthday = dayEvents.any(::isNordicBirthdayEvent)
                                     val eventColors =
                                         dayEvents
-                                            .filterNot(::isBirthdayEvent)
+                                            .filterNot(::isNordicBirthdayEvent)
                                             .map { event ->
                                                 when {
                                                     event.memberId == ALL_FAMILY_MEMBER_ID ->
