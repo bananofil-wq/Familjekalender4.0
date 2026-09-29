@@ -104,7 +104,6 @@ internal object TodoSync {
                 .put("family_id", session.id)
                 .put("title", "Ny To-Do")
                 .put("body", "Ny To-Do: $title")
-                .put("dedupe_key", "todo-assigned:$todoId:$memberId")
                 .put("target_member_id", memberId)
 
         val connection =
