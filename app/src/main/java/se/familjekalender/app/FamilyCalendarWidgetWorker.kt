@@ -3,6 +3,7 @@ package se.familjekalender.app
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.os.Build
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import java.net.HttpURLConnection
@@ -47,7 +48,12 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
                     views.setTextViewText(R.id.widget_updated, "")
                     manager.updateAppWidget(widgetId, views)
-                    manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                        manager.notifyAppWidgetViewDataChanged(
+                            widgetId,
+                            R.id.widget_event_list,
+                        )
+                    }
                 }
                 return Result.success()
             }
@@ -120,7 +126,12 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 )
                 views.setTextViewText(R.id.widget_updated, "")
                 manager.updateAppWidget(widgetId, views)
-                manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                    manager.notifyAppWidgetViewDataChanged(
+                        widgetId,
+                        R.id.widget_event_list,
+                    )
+                }
             }
 
             Result.success()
