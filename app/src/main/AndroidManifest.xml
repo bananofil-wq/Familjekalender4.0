@@ -66,11 +66,17 @@
                 android:resource="@xml/hugo_home_widget_info" />
         </receiver>
 
+        <service
+            android:name=".FamilyCalendarWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="true" />
+
         <receiver
             android:name=".FamilyCalendarWidget"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
