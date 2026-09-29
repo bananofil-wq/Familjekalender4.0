@@ -981,7 +981,9 @@ private fun SyncedApp(
             members,
             selectedDate,
             addEventInitialTitle,
-            { showAddEvent = false }) { title,
+            lightStyle = uiLayoutMode == UiLayoutMode.MINIMAL &&
+                cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER,
+            onDismiss = { showAddEvent = false }) { title,
                                         startTime,
                                         endTime,
                                         memberId,
@@ -2749,10 +2751,17 @@ private fun AddEventDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
     initialTitle: String = "",
+    lightStyle: Boolean = false,
     onDismiss: () -> Unit,
     onAdd: (String, String, String, String?, List<LocalDate>, Boolean, Boolean, RecurrenceMode) -> Unit,
 ) {
     val context = LocalContext.current
+    val dialogBackground = if (lightStyle) Color(0xFFFFFEFA) else LuxurySurfaceElevated
+    val dialogText = if (lightStyle) Color(0xFF17334A) else Color.White
+    val dialogMuted = if (lightStyle) Color(0xFF667782) else Muted
+    val dialogAccent = if (lightStyle) Color(0xFF0875A8) else Purple
+    val dialogField = if (lightStyle) Color(0xFFFFFFFF) else Color.Transparent
+    val dialogBorder = if (lightStyle) Color(0xFFB9C8D1) else Color.White.copy(alpha = .28f)
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
@@ -2822,13 +2831,14 @@ private fun AddEventDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.fillMaxWidth(0.94f),
         shape = RoundedCornerShape(26.dp),
-        containerColor = LuxurySurfaceElevated,
-        titleContentColor = Color.White,
-        textContentColor = Color.White,
+        containerColor = dialogBackground,
+        titleContentColor = dialogText,
+        textContentColor = dialogText,
         title = {
             Text(when { isBirthday -> "Ny födelsedag"; isReminder -> "Ny påminnelse"; else -> "Ny aktivitet" }, fontWeight = FontWeight.Bold)
         },
         text = {
+            CompositionLocalProvider(LocalContentColor provides dialogText) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Row(
                     Modifier.fillMaxWidth().clickable {
@@ -2910,6 +2920,18 @@ private fun AddEventDialog(
                     { title = it },
                     label = { Text(when { isBirthday -> "Namn"; isReminder -> "Påminnelse"; else -> "Aktivitet" }) },
                     modifier = Modifier.fillMaxWidth(),
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = dialogText,
+                            unfocusedTextColor = dialogText,
+                            focusedLabelColor = dialogAccent,
+                            unfocusedLabelColor = dialogMuted,
+                            cursorColor = dialogAccent,
+                            focusedBorderColor = dialogAccent,
+                            unfocusedBorderColor = dialogBorder,
+                            focusedContainerColor = dialogField,
+                            unfocusedContainerColor = dialogField,
+                        ),
                 )
 
                 if (!isBirthday) {
@@ -2917,13 +2939,14 @@ private fun AddEventDialog(
                     Text(if (isReminder) "Påminn mig" else "Tid", fontWeight = FontWeight.Bold)
 
                     Surface(
-                        color = if (!hasTime) MaterialTheme.colorScheme.primary.copy(alpha = .12f)
-                            else Color.White.copy(alpha = .03f),
+                        color =
+                            if (!hasTime) dialogAccent.copy(alpha = if (lightStyle) .10f else .12f)
+                            else if (lightStyle) Color(0xFFF5F8FA) else Color.White.copy(alpha = .03f),
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(
                             1.dp,
-                            if (!hasTime) MaterialTheme.colorScheme.primary.copy(alpha = .45f)
-                            else Color.White.copy(alpha = .08f),
+                            if (!hasTime) dialogAccent.copy(alpha = .45f)
+                            else if (lightStyle) Color(0xFFD4DFE6) else Color.White.copy(alpha = .08f),
                         ),
                         modifier = Modifier.fillMaxWidth().clickable {
                             hasTime = !hasTime
@@ -2952,7 +2975,7 @@ private fun AddEventDialog(
                                 Text("Ingen tid", fontWeight = FontWeight.SemiBold)
                                 Text(
                                     "Visas på dagen utan klockslag",
-                                    color = Muted,
+                                    color = dialogMuted,
                                     fontSize = 11.sp,
                                 )
                             }
@@ -2988,13 +3011,13 @@ private fun AddEventDialog(
                         if (startTime == null || (!isReminder && endTime == null)) {
                             Text(
                                 if (isReminder) "Välj tid för påminnelsen." else "Välj både start- och sluttid.",
-                                color = Muted,
+                                color = dialogMuted,
                                 fontSize = 12.sp,
                             )
                         } else if (!isReminder && endTime != null && startTime != null && !endTime!!.isAfter(startTime)) {
                             Text(
                                 "Sluttiden räknas som nästa dag.",
-                                color = Muted,
+                                color = dialogMuted,
                                 fontSize = 12.sp,
                             )
                         }
@@ -3042,14 +3065,14 @@ private fun AddEventDialog(
                 if (!isBirthday && dates.size > 1) {
                     Text(
                         "Samma aktivitet sparas på ${dates.size} dagar samtidigt.",
-                        color = Muted,
+                        color = dialogMuted,
                         fontSize = 12.sp,
                     )
                 }
                 if (isBirthday) {
                     Text(
                         "Födelsedagen läggs in årligen i kalendern.",
-                        color = Muted,
+                        color = dialogMuted,
                         fontSize = 12.sp,
                     )
                 }
@@ -3080,6 +3103,7 @@ private fun AddEventDialog(
                     }
                 }
             }
+            }
         },
         confirmButton = {
             Button(
@@ -3105,14 +3129,19 @@ private fun AddEventDialog(
                             (isBirthday || !hasTime || (isReminder && startTime != null) || (startTime != null && endTime != null)),
                 colors =
                     ButtonDefaults.buttonColors(
-                        containerColor = Purple,
+                        containerColor = dialogAccent,
                         contentColor = Color.White,
                     ),
             ) {
                 Text("Färdig")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Avbryt") } },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = dialogAccent),
+            ) { Text("Avbryt") }
+        },
     )
 
     if (showStartTimePicker) {
