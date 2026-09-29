@@ -1163,9 +1163,7 @@ private fun NordicDayPlannerScreen(
                 modifier = Modifier.weight(1f),
             )
             NordicHeaderButton(Icons.Default.Search, "Sök", onSearch)
-            Spacer(Modifier.width(2.dp))
-            NordicHeaderButton(Icons.Default.Add, "Lägg till", onAdd)
-            Spacer(Modifier.width(2.dp))
+            Spacer(Modifier.width(4.dp))
             NordicHeaderButton(Icons.Default.People, "Familj", onFamily)
         }
 
@@ -1194,7 +1192,6 @@ private fun NordicDayPlannerScreen(
                             listOf(Color(0xFF53B4D7), Color(0xFF1494C7))
                         )
                     )
-                    .clickable(onClick = onWeather)
                     .padding(horizontal = 18.dp, vertical = 12.dp),
             ) {
                 Row(Modifier.fillMaxWidth()) {
@@ -1222,28 +1219,54 @@ private fun NordicDayPlannerScreen(
                         )
                     }
                     Spacer(Modifier.weight(1f))
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(top = 6.dp),
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(
-                            Icons.Default.Cloud,
-                            contentDescription = "Väder",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp),
-                        )
-                        Text(
-                            if (weatherLoading) "…" else (weather?.temperatureC?.toString() ?: "–") + "°",
-                            color = Color.White,
-                            fontSize = 23.sp,
-                            fontWeight = FontWeight.Light,
-                        )
-                        Text(
-                            weather?.description ?: "Tryck för väder",
-                            color = Color.White.copy(alpha = .82f),
-                            fontSize = 9.sp,
-                            maxLines = 1,
-                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = .16f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .24f)),
+                            modifier =
+                                Modifier.padding(top = 8.dp)
+                                    .size(42.dp)
+                                    .clickable(onClick = onAdd),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Lägg till",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            }
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            modifier =
+                                Modifier.padding(top = 6.dp)
+                                    .clickable(onClick = onWeather),
+                        ) {
+                            Icon(
+                                Icons.Default.Cloud,
+                                contentDescription = "Väder",
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp),
+                            )
+                            Text(
+                                if (weatherLoading) "…" else (weather?.temperatureC?.toString() ?: "–") + "°",
+                                color = Color.White,
+                                fontSize = 23.sp,
+                                fontWeight = FontWeight.Light,
+                            )
+                            Text(
+                                weather?.description ?: "Tryck för väder",
+                                color = Color.White.copy(alpha = .82f),
+                                fontSize = 9.sp,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
                 Text(
