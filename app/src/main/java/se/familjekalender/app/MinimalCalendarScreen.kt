@@ -12,9 +12,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.animation.core.Animatable
@@ -122,6 +119,15 @@ private fun isCleanReminderEvent(event: SyncEvent): Boolean {
     val source = event.source.trim().lowercase()
     val title = event.title.trimStart()
     return source.contains("reminder") || title.startsWith("🔔")
+}
+
+private fun isBirthdayEvent(event: SyncEvent): Boolean {
+    val source = event.source.trim().lowercase()
+    val title = event.title.trimStart()
+    return title.startsWith("🌈") ||
+        title.contains("födelsedag", ignoreCase = true) ||
+        source.contains("birthday") ||
+        source.contains("födelsedag")
 }
 
 @Composable
@@ -1089,8 +1095,7 @@ private fun NordicDayPlannerScreen(
                 .flatten()
         }
 
-    // Månadsvyn är en riktig sidledes pager. Varje sida har i sin tur en
-    // vertikalt scrollbar veckolista, där veckonummer och dagar alltid hålls ihop.
+    // Månadsvyn är en sidledes pager med sex fasta veckor så hela månaden syns samtidigt.
     val pagerStartMonth = remember(today) { YearMonth.from(today).minusYears(10) }
     val pagerMonthCount = 241
     val initialPagerPage =
@@ -1137,30 +1142,8 @@ private fun NordicDayPlannerScreen(
         }
     val settledWeekStarts =
         remember(settledGridStart) {
-            // Tolv veckor ger utrymme att fortsätta scrolla nedanför den sista
-            // klassiska månadsraden utan att datum kapas vid botten.
-            List(12) { weekIndex -> settledGridStart.plusWeeks(weekIndex.toLong()) }
+            List(6) { weekIndex -> settledGridStart.plusWeeks(weekIndex.toLong()) }
         }
-    val selectedWeekIndex =
-        remember(selectedDate, displayedMonth, settledGridStart) {
-            if (YearMonth.from(selectedDate) == displayedMonth) {
-                (ChronoUnit.DAYS.between(settledGridStart, selectedDate).toInt() / 7)
-                    .coerceIn(0, 5)
-            } else {
-                0
-            }
-        }
-    val weekRailState =
-        rememberLazyListState(
-            initialFirstVisibleItemIndex = (selectedWeekIndex - 1).coerceAtLeast(0)
-        )
-    LaunchedEffect(selectedDate, displayedMonth) {
-        if (YearMonth.from(selectedDate) == displayedMonth) {
-            weekRailState.animateScrollToItem((selectedWeekIndex - 1).coerceAtLeast(0))
-        } else {
-            weekRailState.scrollToItem(0)
-        }
-    }
 
     Column(Modifier.fillMaxSize().background(paper)) {
         Row(
@@ -1269,8 +1252,7 @@ private fun NordicDayPlannerScreen(
             }
         }
 
-        // Månadshuvudet är fast. Bara veckorna får vertikal scroll och bara den
-        // vita månadsvyn deltar i sidbytet. Resten av sidan rör sig inte med kalendern.
+        // Månadshuvudet är fast och bara själva månadsvyn deltar i sidbytet.
         Row(
             Modifier.fillMaxWidth().height(42.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1345,24 +1327,18 @@ private fun NordicDayPlannerScreen(
         }
 
         Row(
-            // Exakt fyra hela veckor syns samtidigt: 4 × 56 dp.
-            // Då lämnas ingen halv rad kapad i över- eller underkant.
-            Modifier.fillMaxWidth().height(224.dp),
+            // Sex kompakta veckor ryms samtidigt, så hela månaden är alltid synlig.
+            Modifier.fillMaxWidth().height(264.dp),
         ) {
-            // Den blå veckokolumnen ligger UTANFÖR HorizontalPager.
-            // Den scrollar vertikalt helt självständigt och står still vid månadsbyte.
-            LazyColumn(
+            // Veckonumren ligger fast och matchar exakt de sex synliga kalenderveckorna.
+            Column(
                 modifier = Modifier.width(54.dp).fillMaxHeight().background(railBlue),
-                state = weekRailState,
             ) {
-                itemsIndexed(
-                    items = settledWeekStarts,
-                    key = { _, weekStart -> weekStart.toEpochDay() },
-                ) { _, weekStart ->
+                settledWeekStarts.forEach { weekStart ->
                     val weekNumber =
                         weekStart.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear())
                     Box(
-                        Modifier.fillMaxWidth().height(56.dp),
+                        Modifier.fillMaxWidth().height(44.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -1389,22 +1365,23 @@ private fun NordicDayPlannerScreen(
                 Box(
                     Modifier.fillMaxSize().clipToBounds(),
                 ) {
-                    // Veckokolumnen får scrolla helt fristående. Själva månadsvyn
-                    // ligger fast vertikalt och rör sig bara vid sidledes månadsbyte.
+                    // Sex fasta veckor. Datumrutorna rör sig bara vid sidledes månadsbyte.
                     Column(
                         Modifier.fillMaxWidth()
                     ) {
-                        repeat(12) { weekIndex ->
+                        repeat(6) { weekIndex ->
                             val weekStart = gridStart.plusWeeks(weekIndex.toLong())
-                            Row(Modifier.fillMaxWidth().height(56.dp)) {
+                            Row(Modifier.fillMaxWidth().height(44.dp)) {
                                 repeat(7) { column ->
                                     val date = weekStart.plusDays(column.toLong())
                                     val inMonth = YearMonth.from(date) == pageMonth
                                     val isSelected = date == selectedDate
                                     val isToday = date == today
                                     val dayEvents = eventsByDate[date].orEmpty()
+                                    val hasBirthday = dayEvents.any(::isBirthdayEvent)
                                     val eventColors =
                                         dayEvents
+                                            .filterNot(::isBirthdayEvent)
                                             .map { event ->
                                                 when {
                                                     event.memberId == ALL_FAMILY_MEMBER_ID ->
@@ -1448,56 +1425,109 @@ private fun NordicDayPlannerScreen(
                                             .clickable { onSelectDate(date) },
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center,
-                                        ) {
-                                            Text(
-                                                date.dayOfMonth.toString(),
-                                                color =
-                                                    when {
-                                                        isSelected -> blueDeep
-                                                        isToday -> blueDeep
-                                                        inMonth -> Color(0xFF17334A)
-                                                        else -> Color(0xFFA9B2BA)
-                                                    },
-                                                fontSize = if (isSelected) 15.sp else 13.sp,
-                                                fontWeight =
-                                                    if (isSelected || isToday) FontWeight.Bold
-                                                    else FontWeight.Medium,
-                                            )
-                                            if (visibleColors.isNotEmpty()) {
-                                                Spacer(Modifier.height(3.dp))
-                                                Row(
-                                                    horizontalArrangement =
-                                                        Arrangement.spacedBy(3.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                ) {
-                                                    visibleColors.forEach { dotColor ->
-                                                        Box(
-                                                            Modifier.size(5.dp)
-                                                                .clip(CircleShape)
-                                                                .background(dotColor)
-                                                        )
-                                                    }
-                                                    if (extraCount > 0) {
-                                                        Text(
-                                                            "+$extraCount",
-                                                            color = muted,
-                                                            fontSize = 6.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                        )
-                                                    }
+                                        if (hasBirthday) {
+                                            Canvas(
+                                                modifier =
+                                                    Modifier.align(Alignment.TopCenter)
+                                                        .padding(top = 2.dp)
+                                                        .width(20.dp)
+                                                        .height(8.dp)
+                                            ) {
+                                                val stroke = 1.35.dp.toPx()
+                                                val inset = stroke / 2f
+                                                val arcBox =
+                                                    androidx.compose.ui.geometry.Rect(
+                                                        inset,
+                                                        inset,
+                                                        size.width - inset,
+                                                        size.height * 1.9f,
+                                                    )
+                                                listOf(
+                                                    Color(0xFFFF5A67),
+                                                    Color(0xFFFFA63D),
+                                                    Color(0xFFFFE45C),
+                                                    Color(0xFF55D98B),
+                                                    Color(0xFF55B8FF),
+                                                    Color(0xFFA66CFF),
+                                                ).forEachIndexed { index, color ->
+                                                    val offset = index * stroke * .72f
+                                                    drawArc(
+                                                        color = color,
+                                                        startAngle = 180f,
+                                                        sweepAngle = 180f,
+                                                        useCenter = false,
+                                                        topLeft =
+                                                            androidx.compose.ui.geometry.Offset(
+                                                                arcBox.left + offset,
+                                                                arcBox.top + offset,
+                                                            ),
+                                                        size =
+                                                            androidx.compose.ui.geometry.Size(
+                                                                (arcBox.width - offset * 2f)
+                                                                    .coerceAtLeast(0f),
+                                                                (arcBox.height - offset * 2f)
+                                                                    .coerceAtLeast(0f),
+                                                            ),
+                                                        style =
+                                                            androidx.compose.ui.graphics.drawscope.Stroke(
+                                                                width = stroke
+                                                            ),
+                                                    )
                                                 }
-                                            } else if (isToday) {
-                                                Spacer(Modifier.height(3.dp))
-                                                Box(
-                                                    Modifier.width(13.dp)
-                                                        .height(2.dp)
-                                                        .clip(RoundedCornerShape(50))
-                                                        .background(blueDeep)
-                                                )
                                             }
+                                        }
+
+                                        Text(
+                                            date.dayOfMonth.toString(),
+                                            color =
+                                                when {
+                                                    isSelected -> blueDeep
+                                                    isToday -> blueDeep
+                                                    inMonth -> Color(0xFF17334A)
+                                                    else -> Color(0xFFA9B2BA)
+                                                },
+                                            fontSize = if (isSelected) 15.sp else 13.sp,
+                                            fontWeight =
+                                                if (isSelected || isToday) FontWeight.Bold
+                                                else FontWeight.Medium,
+                                            modifier =
+                                                Modifier.align(Alignment.Center)
+                                                    .offset(y = (-2).dp),
+                                        )
+
+                                        if (visibleColors.isNotEmpty()) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(2.5.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier =
+                                                    Modifier.align(Alignment.BottomCenter)
+                                                        .padding(bottom = 3.dp),
+                                            ) {
+                                                visibleColors.forEach { dotColor ->
+                                                    Box(
+                                                        Modifier.size(4.5.dp)
+                                                            .clip(CircleShape)
+                                                            .background(dotColor)
+                                                    )
+                                                }
+                                                if (extraCount > 0) {
+                                                    Text(
+                                                        "+$extraCount",
+                                                        color = muted,
+                                                        fontSize = 5.5.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                    )
+                                                }
+                                            }
+                                        } else if (isToday) {
+                                            Box(
+                                                Modifier.align(Alignment.BottomCenter)
+                                                    .padding(bottom = 4.dp)
+                                                    .width(13.dp)
+                                                    .height(2.dp)
+                                                    .clip(RoundedCornerShape(50))
+                                                    .background(blueDeep)
+                                            )
                                         }
                                     }
                                 }
