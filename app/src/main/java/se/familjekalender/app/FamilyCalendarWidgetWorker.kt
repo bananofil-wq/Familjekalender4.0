@@ -48,12 +48,10 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
                     views.setTextViewText(R.id.widget_updated, "")
                     manager.updateAppWidget(widgetId, views)
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                        manager.notifyAppWidgetViewDataChanged(
-                            widgetId,
-                            R.id.widget_event_list,
-                        )
-                    }
+                    manager.notifyAppWidgetViewDataChanged(
+                        widgetId,
+                        R.id.widget_event_list,
+                    )
                 }
                 return Result.success()
             }
