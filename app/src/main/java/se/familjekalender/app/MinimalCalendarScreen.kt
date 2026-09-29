@@ -1429,9 +1429,9 @@ private fun NordicDayPlannerScreen(
                                             Canvas(
                                                 modifier =
                                                     Modifier.align(Alignment.TopCenter)
-                                                        .padding(top = 2.dp)
-                                                        .width(20.dp)
-                                                        .height(8.dp)
+                                                        .padding(top = 1.dp)
+                                                        .width(19.dp)
+                                                        .height(7.dp)
                                             ) {
                                                 val stroke = 1.35.dp.toPx()
                                                 val inset = stroke / 2f
@@ -1477,6 +1477,10 @@ private fun NordicDayPlannerScreen(
                                             }
                                         }
 
+                                        // Datumet har en helt fast position och samma
+                                        // typografiska höjd i alla rutor. Aktiviteter,
+                                        // +antal och födelsedagsregnbåge kan därför aldrig
+                                        // flytta datumtexten.
                                         Text(
                                             date.dayOfMonth.toString(),
                                             color =
@@ -1486,13 +1490,16 @@ private fun NordicDayPlannerScreen(
                                                     inMonth -> Color(0xFF17334A)
                                                     else -> Color(0xFFA9B2BA)
                                                 },
-                                            fontSize = if (isSelected) 15.sp else 13.sp,
+                                            fontSize = 13.sp,
+                                            lineHeight = 16.sp,
                                             fontWeight =
                                                 if (isSelected || isToday) FontWeight.Bold
                                                 else FontWeight.Medium,
+                                            textAlign = TextAlign.Center,
                                             modifier =
-                                                Modifier.align(Alignment.Center)
-                                                    .offset(y = (-2).dp),
+                                                Modifier.align(Alignment.TopCenter)
+                                                    .padding(top = 10.dp)
+                                                    .height(16.dp),
                                         )
 
                                         if (visibleColors.isNotEmpty()) {
@@ -1501,7 +1508,8 @@ private fun NordicDayPlannerScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier =
                                                     Modifier.align(Alignment.BottomCenter)
-                                                        .padding(bottom = 3.dp),
+                                                        .height(9.dp)
+                                                        .padding(bottom = 2.dp),
                                             ) {
                                                 visibleColors.forEach { dotColor ->
                                                     Box(
@@ -1522,7 +1530,7 @@ private fun NordicDayPlannerScreen(
                                         } else if (isToday) {
                                             Box(
                                                 Modifier.align(Alignment.BottomCenter)
-                                                    .padding(bottom = 4.dp)
+                                                    .padding(bottom = 3.dp)
                                                     .width(13.dp)
                                                     .height(2.dp)
                                                     .clip(RoundedCornerShape(50))
