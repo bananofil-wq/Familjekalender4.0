@@ -1373,10 +1373,13 @@ private fun NordicAgendaRow(
             cleanEventTime(event).replace("Ingen tid", "—"),
             color = Color(0xFF385269),
             fontSize = 11.sp,
-            modifier = Modifier.width(56.dp),
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.width(82.dp),
         )
         Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
-        Spacer(Modifier.width(9.dp))
+        Spacer(Modifier.width(7.dp))
         Box(
             Modifier.size(34.dp).clip(CircleShape).background(accent.copy(alpha = .14f)),
             contentAlignment = Alignment.Center,
