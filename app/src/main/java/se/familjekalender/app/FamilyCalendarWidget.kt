@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.widget.RemoteViews
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -19,6 +20,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import org.json.JSONArray
 
 class FamilyCalendarWidget : AppWidgetProvider() {
 
@@ -46,6 +48,12 @@ class FamilyCalendarWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         when (intent.action) {
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                refreshAllWidgetsFromCache(context)
+                schedulePeriodicRefresh(context)
+                enqueueRefresh(context)
+            }
+
             ACTION_REFRESH -> {
                 showUpdating(context)
                 enqueueRefresh(context)
@@ -152,12 +160,19 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_badge_number, today.dayOfMonth.toString())
             views.setTextViewText(R.id.widget_date, dateText)
 
-            val serviceIntent =
-                Intent(context, FamilyCalendarWidgetService::class.java).apply {
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                    data = Uri.parse("familjekalender://widget/list/$appWidgetId")
-                }
-            views.setRemoteAdapter(R.id.widget_event_list, serviceIntent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                views.setRemoteAdapter(
+                    R.id.widget_event_list,
+                    buildInlineCollection(context, appWidgetId),
+                )
+            } else {
+                val serviceIntent =
+                    Intent(context, FamilyCalendarWidgetService::class.java).apply {
+                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                        data = Uri.parse("familjekalender://widget/list/$appWidgetId")
+                    }
+                views.setRemoteAdapter(R.id.widget_event_list, serviceIntent)
+            }
 
             val templateIntent =
                 Intent(context, FamilyCalendarWidget::class.java).apply {
@@ -183,8 +198,12 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val current = prefs.getString(prefKey, null)
             prefs.edit().putString(prefKey, if (current == groupKey) null else groupKey).apply()
 
-            AppWidgetManager.getInstance(context)
-                .notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
+            val manager = AppWidgetManager.getInstance(context)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                manager.updateAppWidget(appWidgetId, baseViews(context, appWidgetId))
+            } else {
+                manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
+            }
         }
 
         private fun openCalendar(context: Context) {
@@ -197,6 +216,215 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                             Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
             )
+        }
+
+        private data class CachedWidgetEvent(
+            val date: String,
+            val memberKey: String,
+            val who: String,
+            val activity: String,
+            val time: String,
+        )
+
+        private sealed interface CachedWidgetItem {
+            data class Header(val text: String) : CachedWidgetItem
+
+            data class Event(
+                val who: String,
+                val activity: String,
+                val time: String,
+                val groupKey: String? = null,
+                val canToggle: Boolean = false,
+            ) : CachedWidgetItem
+        }
+
+        private fun cachedItems(context: Context, appWidgetId: Int): List<CachedWidgetItem> {
+            val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
+            val expanded = prefs.getString(expandedGroupPrefKey(appWidgetId), null)
+            val raw = prefs.getString(cachedRowsPrefKey(appWidgetId), "[]") ?: "[]"
+
+            val rows =
+                buildList {
+                    runCatching {
+                        val array = JSONArray(raw)
+                        repeat(array.length()) { index ->
+                            val obj = array.optJSONObject(index) ?: return@repeat
+                            add(
+                                CachedWidgetEvent(
+                                    date = obj.optString("date"),
+                                    memberKey = obj.optString("memberKey"),
+                                    who = obj.optString("who"),
+                                    activity = obj.optString("activity"),
+                                    time = obj.optString("time"),
+                                )
+                            )
+                        }
+                    }
+                }
+
+            if (rows.isEmpty()) return emptyList()
+
+            return buildList {
+                rows.map { it.date }.distinct().forEachIndexed { dateIndex, date ->
+                    if (dateIndex > 0) add(CachedWidgetItem.Header("Imorgon"))
+
+                    rows.filter { it.date == date }
+                        .groupBy { it.memberKey }
+                        .values
+                        .sortedBy { group ->
+                            group.firstOrNull { it.time.isNotBlank() }?.time ?: "99:99"
+                        }
+                        .forEach { group ->
+                            val first = group.first()
+                            if (group.size == 1) {
+                                add(
+                                    CachedWidgetItem.Event(
+                                        who = first.who,
+                                        activity = first.activity,
+                                        time = first.time,
+                                    )
+                                )
+                            } else {
+                                val groupKey = "$date|${first.memberKey}"
+                                val isExpanded = expanded == groupKey
+                                add(
+                                    CachedWidgetItem.Event(
+                                        who = first.who,
+                                        activity = "${group.size} aktiviteter",
+                                        time =
+                                            if (isExpanded) {
+                                                ""
+                                            } else {
+                                                group.firstOrNull { it.time.isNotBlank() }
+                                                    ?.time
+                                                    .orEmpty()
+                                            },
+                                        groupKey = groupKey,
+                                        canToggle = true,
+                                    )
+                                )
+                                if (isExpanded) {
+                                    group.forEach { event ->
+                                        add(
+                                            CachedWidgetItem.Event(
+                                                who = "",
+                                                activity = event.activity,
+                                                time = event.time,
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                }
+            }
+        }
+
+        @android.annotation.TargetApi(31)
+        private fun buildInlineCollection(
+            context: Context,
+            appWidgetId: Int,
+        ): RemoteViews.RemoteCollectionItems {
+            val builder =
+                RemoteViews.RemoteCollectionItems.Builder()
+                    .setHasStableIds(true)
+                    .setViewTypeCount(2)
+
+            val items = cachedItems(context, appWidgetId)
+            if (items.isEmpty()) {
+                val empty =
+                    RemoteViews(context.packageName, R.layout.widget_event_item).apply {
+                        setTextViewText(R.id.widget_item_who, "Idag")
+                        setTextViewText(R.id.widget_item_activity, "Uppdaterar kalendern…")
+                        setTextViewText(R.id.widget_item_time, "")
+                        setOnClickFillInIntent(
+                            R.id.widget_item_root,
+                            Intent().apply {
+                                putExtra(EXTRA_ITEM_ACTION, ITEM_ACTION_OPEN)
+                                putExtra(EXTRA_WIDGET_ID, appWidgetId)
+                            },
+                        )
+                    }
+                builder.addItem(1L, empty)
+            } else {
+                items.forEachIndexed { index, item ->
+                    when (item) {
+                        is CachedWidgetItem.Header -> {
+                            val row =
+                                RemoteViews(
+                                    context.packageName,
+                                    R.layout.widget_event_header,
+                                ).apply {
+                                    setTextViewText(R.id.widget_list_header, item.text)
+                                    setOnClickFillInIntent(
+                                        R.id.widget_list_header,
+                                        Intent().apply {
+                                            putExtra(EXTRA_ITEM_ACTION, ITEM_ACTION_OPEN)
+                                            putExtra(EXTRA_WIDGET_ID, appWidgetId)
+                                        },
+                                    )
+                                }
+                            builder.addItem(
+                                ("header:${item.text}:$index").hashCode().toLong(),
+                                row,
+                            )
+                        }
+
+                        is CachedWidgetItem.Event -> {
+                            val row =
+                                RemoteViews(
+                                    context.packageName,
+                                    R.layout.widget_event_item,
+                                ).apply {
+                                    setTextViewText(R.id.widget_item_who, item.who)
+                                    setTextViewText(R.id.widget_item_activity, item.activity)
+                                    setTextViewText(R.id.widget_item_time, item.time)
+                                    setOnClickFillInIntent(
+                                        R.id.widget_item_root,
+                                        Intent().apply {
+                                            putExtra(
+                                                EXTRA_ITEM_ACTION,
+                                                if (item.canToggle) {
+                                                    ITEM_ACTION_TOGGLE
+                                                } else {
+                                                    ITEM_ACTION_OPEN
+                                                },
+                                            )
+                                            item.groupKey?.let {
+                                                putExtra(EXTRA_GROUP_KEY, it)
+                                            }
+                                            putExtra(EXTRA_WIDGET_ID, appWidgetId)
+                                        },
+                                    )
+                                }
+                            builder.addItem(
+                                (
+                                    "event:${item.who}:${item.activity}:${item.time}:" +
+                                        (item.groupKey ?: "") +
+                                        ":$index"
+                                ).hashCode().toLong(),
+                                row,
+                            )
+                        }
+                    }
+                }
+            }
+
+            return builder.build()
+        }
+
+        private fun refreshAllWidgetsFromCache(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val component = ComponentName(context, FamilyCalendarWidget::class.java)
+            manager.getAppWidgetIds(component).forEach { appWidgetId ->
+                manager.updateAppWidget(appWidgetId, baseViews(context, appWidgetId))
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                    manager.notifyAppWidgetViewDataChanged(
+                        appWidgetId,
+                        R.id.widget_event_list,
+                    )
+                }
+            }
         }
 
         private fun showUpdating(context: Context) {
