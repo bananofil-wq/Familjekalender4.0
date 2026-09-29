@@ -69,7 +69,7 @@ internal object TodoSync {
         }
     }
 
-    fun add(session: FamilySession, title: String, memberId: String?) {
+    fun add(session: FamilySession, title: String, memberId: String?): String {
         val body =
             JSONObject()
                 .put("family_id", session.id)
@@ -80,13 +80,50 @@ internal object TodoSync {
         } else {
             body.put("member_id", memberId)
         }
-        request(
-            "POST",
-            "/rest/v1/todo_items",
-            body,
-            session.code,
-            preferRepresentation = false,
-        )
+        val response =
+            request(
+                "POST",
+                "/rest/v1/todo_items",
+                body,
+                session.code,
+                preferRepresentation = true,
+            )
+        return JSONArray(response).getJSONObject(0).getString("id")
+    }
+
+    fun notifyAssigned(
+        session: FamilySession,
+        todoId: String,
+        title: String,
+        memberId: String?,
+    ) {
+        if (memberId.isNullOrBlank() || memberId == ALL_FAMILY_MEMBER_ID) return
+
+        val body =
+            JSONObject()
+                .put("family_id", session.id)
+                .put("title", "Ny To-Do")
+                .put("body", "Ny To-Do: $title")
+                .put("dedupe_key", "todo-assigned:$todoId:$memberId")
+                .put("target_member_id", memberId)
+
+        val connection =
+            URL("$TODO_SUPABASE_URL/functions/v1/notify-family").openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.connectTimeout = 15000
+        connection.readTimeout = 20000
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.setRequestProperty("x-family-code", session.code.uppercase())
+        connection.doOutput = true
+        connection.outputStream.use {
+            it.write(body.toString().toByteArray(StandardCharsets.UTF_8))
+        }
+        val code = connection.responseCode
+        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+        val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        if (code !in 200..299) {
+            throw IllegalStateException("Kunde inte skicka To-Do-notis ($code): $response")
+        }
     }
 
     fun toggle(session: FamilySession, item: SyncTodoItem) {
@@ -206,7 +243,10 @@ internal fun ToDoScreen(
         scope.launch {
             runCatching {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    TodoSync.add(session, title, assignee)
+                    val todoId = TodoSync.add(session, title, assignee)
+                    runCatching {
+                        TodoSync.notifyAssigned(session, todoId, title, assignee)
+                    }
                 }
             }.onFailure { error = it.message ?: "Kunde inte lägga till" }
             refresh()
@@ -230,6 +270,11 @@ internal fun ToDoScreen(
             runCatching {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     TodoSync.updateAssignee(session, item, memberId)
+                    if (memberId != item.memberId) {
+                        runCatching {
+                            TodoSync.notifyAssigned(session, item.id, item.title, memberId)
+                        }
+                    }
                 }
             }.onFailure { error = it.message ?: "Kunde inte byta ansvarig" }
             refresh()
