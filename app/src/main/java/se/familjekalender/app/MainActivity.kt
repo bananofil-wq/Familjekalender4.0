@@ -1254,7 +1254,7 @@ private fun ShoppingScreen(
         if (themedSurfaceMode) MaterialTheme.colorScheme.outlineVariant
         else Color(0xFF65BFFF).copy(alpha = .42f)
 
-    ShoppingPageBackground(themedSurfaceMode = themedSurfaceMode, themeMode = themeMode) {
+    ShoppingPageBackground(lightMode = themedSurfaceMode, themeMode = themeMode) {
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -1276,7 +1276,7 @@ private fun ShoppingScreen(
                             icon = Icons.Default.ArrowBack,
                             description = "Tillbaka",
                             accent = blue,
-                            themedSurfaceMode = themedSurfaceMode,
+                            lightMode = themedSurfaceMode,
                             onClick = onBack,
                         )
                         Spacer(Modifier.width(8.dp))
@@ -1315,7 +1315,7 @@ private fun ShoppingScreen(
                                 description = "Sök",
                                 active = searchExpanded,
                                 accent = blue,
-                                themedSurfaceMode = themedSurfaceMode,
+                                lightMode = themedSurfaceMode,
                             ) {
                                 searchExpanded = !searchExpanded
                                 if (!searchExpanded) searchQuery = ""
@@ -1325,7 +1325,7 @@ private fun ShoppingScreen(
                                     icon = Icons.Default.MoreVert,
                                     description = "Mer",
                                     accent = blue,
-                                    themedSurfaceMode = themedSurfaceMode,
+                                    lightMode = themedSurfaceMode,
                                 ) { menuExpanded = true }
                                 DropdownMenu(
                                     expanded = menuExpanded,
@@ -1386,7 +1386,7 @@ private fun ShoppingScreen(
                                 label = "kvar",
                                 progress = if (total == 0) 0f else openItems.size.toFloat() / total,
                                 accent = orange,
-                                themedSurfaceMode = themedSurfaceMode,
+                                lightMode = themedSurfaceMode,
                                 modifier = Modifier.weight(1f),
                             )
                             VerticalDivider(Modifier.height(48.dp), color = if (themedSurfaceMode) border else Color.White.copy(alpha = .14f))
@@ -1395,7 +1395,7 @@ private fun ShoppingScreen(
                                 label = "klara",
                                 progress = if (total == 0) 0f else done.toFloat() / total,
                                 accent = cyan,
-                                themedSurfaceMode = themedSurfaceMode,
+                                lightMode = themedSurfaceMode,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -1524,7 +1524,7 @@ private fun ShoppingScreen(
                                 ) {
                                     ReferenceShoppingCheck(
                                         checked = false,
-                                        themedSurfaceMode = themedSurfaceMode,
+                                        lightMode = themedSurfaceMode,
                                         onClick = { onToggle(item) },
                                     )
                                     Spacer(Modifier.width(5.dp))
@@ -1672,7 +1672,7 @@ private fun ShoppingScreen(
                         icon = Icons.Default.Mic,
                         description = "Röstinmatning",
                         accent = blue,
-                        themedSurfaceMode = themedSurfaceMode,
+                        lightMode = themedSurfaceMode,
                     ) {
                         val speechIntent =
                             Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -1689,7 +1689,7 @@ private fun ShoppingScreen(
                         icon = Icons.Default.AutoAwesome,
                         description = "Smart",
                         accent = blue,
-                        themedSurfaceMode = themedSurfaceMode,
+                        lightMode = themedSurfaceMode,
                     ) {
                         searchExpanded = true
                     }
