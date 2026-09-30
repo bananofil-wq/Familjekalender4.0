@@ -313,6 +313,9 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
         lightMode =
             uiLayoutMode == UiLayoutMode.MINIMAL &&
                 cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER,
+        nordicDarkMode =
+            uiLayoutMode == UiLayoutMode.MINIMAL &&
+                cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
     ) {
         Surface(
             color = MaterialTheme.colorScheme.background,
@@ -722,6 +725,9 @@ private fun SyncedApp(
                                     lightMode =
                                         uiLayoutMode == UiLayoutMode.MINIMAL &&
                                             cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER,
+                                    nordicDarkMode =
+                                        uiLayoutMode == UiLayoutMode.MINIMAL &&
+                                            cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
                                     onBack = { selectedTab = 0 },
                                     onAdd = { name ->
                                         scope.launch {
@@ -1133,11 +1139,13 @@ private fun ShoppingScreen(
     items: List<SyncShoppingItem>,
     themeMode: ThemeMode,
     lightMode: Boolean = false,
+    nordicDarkMode: Boolean = false,
     onBack: () -> Unit,
     onAdd: (String) -> Unit,
     onToggle: (SyncShoppingItem) -> Unit,
     onClear: () -> Unit,
 ) {
+    val themedSurfaceMode = lightMode || nordicDarkMode
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Alla") }
@@ -1220,24 +1228,33 @@ private fun ShoppingScreen(
                 ?.let { category to it }
         }
 
-    val blue = if (lightMode) Color(0xFF0875A8) else Color(0xFF2EA7FF)
-    val cyan = if (lightMode) Color(0xFF46B5D8) else Color(0xFF6CE9F4)
-    val orange = if (lightMode) Color(0xFFD99B2B) else Color(0xFFFFA13A)
-    val pageText = if (lightMode) MaterialTheme.colorScheme.onBackground else Color.White
+    val blue =
+        if (nordicDarkMode) MaterialTheme.colorScheme.primary
+        else if (themedSurfaceMode) Color(0xFF0875A8)
+        else Color(0xFF2EA7FF)
+    val cyan =
+        if (nordicDarkMode) MaterialTheme.colorScheme.secondary
+        else if (themedSurfaceMode) Color(0xFF46B5D8)
+        else Color(0xFF6CE9F4)
+    val orange =
+        if (nordicDarkMode) MaterialTheme.colorScheme.primary
+        else if (themedSurfaceMode) Color(0xFFD99B2B)
+        else Color(0xFFFFA13A)
+    val pageText = if (themedSurfaceMode) MaterialTheme.colorScheme.onBackground else Color.White
     val pageMuted =
-        if (lightMode) MaterialTheme.colorScheme.onSurfaceVariant
+        if (themedSurfaceMode) MaterialTheme.colorScheme.onSurfaceVariant
         else Color.White.copy(alpha = .68f)
     val glass =
-        if (lightMode) MaterialTheme.colorScheme.surface
+        if (themedSurfaceMode) MaterialTheme.colorScheme.surface
         else Color(0xA4142D49)
     val softSurface =
-        if (lightMode) MaterialTheme.colorScheme.surfaceVariant
+        if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant
         else Color(0xA91B3858)
     val border =
-        if (lightMode) MaterialTheme.colorScheme.outlineVariant
+        if (themedSurfaceMode) MaterialTheme.colorScheme.outlineVariant
         else Color(0xFF65BFFF).copy(alpha = .42f)
 
-    ShoppingPageBackground(lightMode = lightMode, themeMode = themeMode) {
+    ShoppingPageBackground(themedSurfaceMode = themedSurfaceMode, themeMode = themeMode) {
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -1259,13 +1276,13 @@ private fun ShoppingScreen(
                             icon = Icons.Default.ArrowBack,
                             description = "Tillbaka",
                             accent = blue,
-                            lightMode = lightMode,
+                            themedSurfaceMode = themedSurfaceMode,
                             onClick = onBack,
                         )
                         Spacer(Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = if (lightMode) MaterialTheme.colorScheme.surfaceVariant else Color(0x99263A4A),
+                            color = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else Color(0x99263A4A),
                             border = BorderStroke(1.dp, orange.copy(alpha = .72f)),
                             shadowElevation = 5.dp,
                         ) {
@@ -1287,7 +1304,7 @@ private fun ShoppingScreen(
                             )
                             Text(
                                 "${openItems.size} kvar · $done klara",
-                                color = if (lightMode) pageMuted else Color.White.copy(alpha = .74f),
+                                color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .74f),
                                 fontSize = 12.sp,
                             )
                         }
@@ -1298,7 +1315,7 @@ private fun ShoppingScreen(
                                 description = "Sök",
                                 active = searchExpanded,
                                 accent = blue,
-                                lightMode = lightMode,
+                                themedSurfaceMode = themedSurfaceMode,
                             ) {
                                 searchExpanded = !searchExpanded
                                 if (!searchExpanded) searchQuery = ""
@@ -1308,7 +1325,7 @@ private fun ShoppingScreen(
                                     icon = Icons.Default.MoreVert,
                                     description = "Mer",
                                     accent = blue,
-                                    lightMode = lightMode,
+                                    themedSurfaceMode = themedSurfaceMode,
                                 ) { menuExpanded = true }
                                 DropdownMenu(
                                     expanded = menuExpanded,
@@ -1344,9 +1361,9 @@ private fun ShoppingScreen(
                             colors =
                                 OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = blue.copy(alpha = .75f),
-                                    unfocusedBorderColor = if (lightMode) border else Color.White.copy(alpha = .14f),
-                                    focusedContainerColor = if (lightMode) MaterialTheme.colorScheme.surface else Color(0xA616304D),
-                                    unfocusedContainerColor = if (lightMode) MaterialTheme.colorScheme.surface else Color(0x8C16304D),
+                                    unfocusedBorderColor = if (themedSurfaceMode) border else Color.White.copy(alpha = .14f),
+                                    focusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else Color(0xA616304D),
+                                    unfocusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else Color(0x8C16304D),
                                 ),
                         )
                     }
@@ -1369,16 +1386,16 @@ private fun ShoppingScreen(
                                 label = "kvar",
                                 progress = if (total == 0) 0f else openItems.size.toFloat() / total,
                                 accent = orange,
-                                lightMode = lightMode,
+                                themedSurfaceMode = themedSurfaceMode,
                                 modifier = Modifier.weight(1f),
                             )
-                            VerticalDivider(Modifier.height(48.dp), color = if (lightMode) border else Color.White.copy(alpha = .14f))
+                            VerticalDivider(Modifier.height(48.dp), color = if (themedSurfaceMode) border else Color.White.copy(alpha = .14f))
                             ShoppingSummaryStat(
                                 value = done,
                                 label = "klara",
                                 progress = if (total == 0) 0f else done.toFloat() / total,
                                 accent = cyan,
-                                lightMode = lightMode,
+                                themedSurfaceMode = themedSurfaceMode,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -1397,13 +1414,13 @@ private fun ShoppingScreen(
                                 shape = RoundedCornerShape(17.dp),
                                 color =
                                     if (selected) blue
-                                    else if (lightMode) MaterialTheme.colorScheme.surfaceVariant
+                                    else if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant
                                     else Color(0xA4173350),
                                 border =
                                     BorderStroke(
                                         1.dp,
                                         if (selected) blue.copy(alpha = .45f)
-                                        else if (lightMode) border
+                                        else if (themedSurfaceMode) border
                                         else Color.White.copy(alpha = .12f),
                                     ),
                                 shadowElevation = if (selected) 8.dp else 0.dp,
@@ -1436,13 +1453,13 @@ private fun ShoppingScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(22.dp),
                             color = glass,
-                            border = BorderStroke(1.dp, if (lightMode) border else Color.White.copy(alpha = .10f)),
+                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color.White.copy(alpha = .10f)),
                         ) {
                             Text(
                                 if (items.isEmpty()) "Lägg till första varan nedan."
                                 else "Inga varor matchar filtret.",
                                 modifier = Modifier.padding(22.dp),
-                                color = if (lightMode) pageMuted else Color.White.copy(alpha = .7f),
+                                color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .7f),
                                 fontSize = 12.sp,
                             )
                         }
@@ -1476,12 +1493,12 @@ private fun ShoppingScreen(
                                 )
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),
-                                    color = if (lightMode) MaterialTheme.colorScheme.primaryContainer else Color.Black.copy(alpha = .20f),
+                                    color = if (themedSurfaceMode) MaterialTheme.colorScheme.primaryContainer else Color.Black.copy(alpha = .20f),
                                 ) {
                                     Text(
                                         "${categoryItems.size} kvar",
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        color = if (lightMode) MaterialTheme.colorScheme.onPrimaryContainer else Color.White.copy(alpha = .88f),
+                                        color = if (themedSurfaceMode) MaterialTheme.colorScheme.onPrimaryContainer else Color.White.copy(alpha = .88f),
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -1490,12 +1507,12 @@ private fun ShoppingScreen(
                                 Icon(
                                     Icons.Default.KeyboardArrowRight,
                                     contentDescription = null,
-                                    tint = if (lightMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .8f),
+                                    tint = if (themedSurfaceMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .8f),
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
 
-                            HorizontalDivider(color = if (lightMode) border else Color.White.copy(alpha = .10f))
+                            HorizontalDivider(color = if (themedSurfaceMode) border else Color.White.copy(alpha = .10f))
 
                             categoryItems.forEachIndexed { index, item ->
                                 Row(
@@ -1507,7 +1524,7 @@ private fun ShoppingScreen(
                                 ) {
                                     ReferenceShoppingCheck(
                                         checked = false,
-                                        lightMode = lightMode,
+                                        themedSurfaceMode = themedSurfaceMode,
                                         onClick = { onToggle(item) },
                                     )
                                     Spacer(Modifier.width(5.dp))
@@ -1515,8 +1532,8 @@ private fun ShoppingScreen(
                                     Surface(
                                         modifier = Modifier.size(42.dp),
                                         shape = RoundedCornerShape(12.dp),
-                                        color = if (lightMode) Color(0xFFE9F5FA) else Color(0xB2264D6C),
-                                        border = BorderStroke(1.dp, if (lightMode) border else Color.White.copy(alpha = .16f)),
+                                        color = if (themedSurfaceMode) Color(0xFFE9F5FA) else Color(0xB2264D6C),
+                                        border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color.White.copy(alpha = .16f)),
                                         shadowElevation = 3.dp,
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
@@ -1537,7 +1554,7 @@ private fun ShoppingScreen(
                                         Spacer(Modifier.height(1.dp))
                                         Text(
                                             shoppingItemMeta(item.name),
-                                            color = if (lightMode) pageMuted else Color.White.copy(alpha = .58f),
+                                            color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .58f),
                                             fontSize = 8.sp,
                                             maxLines = 1,
                                         )
@@ -1551,7 +1568,7 @@ private fun ShoppingScreen(
                                         Icon(
                                             Icons.Default.MoreVert,
                                             contentDescription = "Mer för ${item.name}",
-                                            tint = if (lightMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .78f),
+                                            tint = if (themedSurfaceMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .78f),
                                             modifier = Modifier.size(17.dp),
                                         )
                                     }
@@ -1559,7 +1576,7 @@ private fun ShoppingScreen(
 
                                 if (index != categoryItems.lastIndex) {
                                     HorizontalDivider(
-                                        color = if (lightMode) border else Color.White.copy(alpha = .08f),
+                                        color = if (themedSurfaceMode) border else Color.White.copy(alpha = .08f),
                                         modifier = Modifier.padding(start = 55.dp),
                                     )
                                 }
@@ -1573,8 +1590,8 @@ private fun ShoppingScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(18.dp),
-                            color = if (lightMode) MaterialTheme.colorScheme.surfaceVariant else Color(0x8C142A43),
-                            border = BorderStroke(1.dp, if (lightMode) border else Color.White.copy(alpha = .08f)),
+                            color = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else Color(0x8C142A43),
+                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color.White.copy(alpha = .08f)),
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
@@ -1585,7 +1602,7 @@ private fun ShoppingScreen(
                                 Text(
                                     "${checkedItems.size} klara",
                                     modifier = Modifier.weight(1f),
-                                    color = if (lightMode) pageMuted else Color.White.copy(alpha = .78f),
+                                    color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .78f),
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 TextButton(onClick = { showClearConfirmation = true }) {
@@ -1603,8 +1620,8 @@ private fun ShoppingScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 7.dp),
                 shape = RoundedCornerShape(24.dp),
-                color = if (lightMode) MaterialTheme.colorScheme.surface else Color(0xE2173552),
-                border = BorderStroke(1.dp, if (lightMode) border else Color(0xFF5CB9F6).copy(alpha = .66f)),
+                color = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else Color(0xE2173552),
+                border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color(0xFF5CB9F6).copy(alpha = .66f)),
                 shadowElevation = 14.dp,
             ) {
                 Row(
@@ -1646,8 +1663,8 @@ private fun ShoppingScreen(
                             OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent,
-                                focusedContainerColor = if (lightMode) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = .055f),
-                                unfocusedContainerColor = if (lightMode) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = .045f),
+                                focusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = .055f),
+                                unfocusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else Color.White.copy(alpha = .045f),
                             ),
                     )
 
@@ -1655,7 +1672,7 @@ private fun ShoppingScreen(
                         icon = Icons.Default.Mic,
                         description = "Röstinmatning",
                         accent = blue,
-                        lightMode = lightMode,
+                        themedSurfaceMode = themedSurfaceMode,
                     ) {
                         val speechIntent =
                             Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -1672,7 +1689,7 @@ private fun ShoppingScreen(
                         icon = Icons.Default.AutoAwesome,
                         description = "Smart",
                         accent = blue,
-                        lightMode = lightMode,
+                        themedSurfaceMode = themedSurfaceMode,
                     ) {
                         searchExpanded = true
                     }
@@ -1735,7 +1752,12 @@ private fun ReferenceShoppingCheck(
     Surface(
         modifier = Modifier.size(30.dp).clickable(onClick = onClick),
         shape = CircleShape,
-        color = if (checked) Color(0xFF269DFF) else Color.Transparent,
+        color =
+            if (checked) {
+                if (lightMode) MaterialTheme.colorScheme.primary else Color(0xFF269DFF)
+            } else {
+                Color.Transparent
+            },
         border =
             BorderStroke(
                 2.dp,
@@ -2598,7 +2620,8 @@ private fun MinimalBottomNav(
     val navShape =
         when (cleanVisualTheme) {
             CleanVisualTheme.CURRENT -> RoundedCornerShape(30.dp)
-            CleanVisualTheme.NORDIC_DAY_PLANNER -> RoundedCornerShape(0.dp)
+            CleanVisualTheme.NORDIC_DAY_PLANNER,
+            CleanVisualTheme.NORDIC_DAY_PLANNER_DARK -> RoundedCornerShape(0.dp)
             CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
                 RoundedCornerShape(4.dp)
             CleanVisualTheme.CYBERPUNK -> RoundedCornerShape(10.dp)
@@ -2612,7 +2635,7 @@ private fun MinimalBottomNav(
             else -> RoundedCornerShape(18.dp)
         }
     val items =
-        if (cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER) {
+        if (isNordicDayPlannerTheme(cleanVisualTheme)) {
             listOf(
                 Triple(0, Icons.Default.CalendarMonth, "Kalender"),
                 Triple(2, Icons.Default.CheckCircle, "Att göra"),
