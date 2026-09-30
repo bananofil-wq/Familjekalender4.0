@@ -178,8 +178,10 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                         setTextViewText(R.id.widget_item_time, item.time)
 
                         if (item.canToggle && !item.groupKey.isNullOrBlank()) {
-                            setOnClickFillInIntent(
-                                R.id.widget_item_root,
+                            // Pixel Launcher kan skicka klicket från TextView-barnet i raden
+                            // i stället för från radens root. Bind därför samma fill-in-intent
+                            // till hela raden och samtliga synliga barn.
+                            fun toggleIntent() =
                                 Intent().apply {
                                     putExtra(
                                         FamilyCalendarWidget.EXTRA_ITEM_ACTION,
@@ -193,8 +195,12 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                                         FamilyCalendarWidget.EXTRA_WIDGET_ID,
                                         widgetId,
                                     )
-                                },
-                            )
+                                }
+
+                            setOnClickFillInIntent(R.id.widget_item_root, toggleIntent())
+                            setOnClickFillInIntent(R.id.widget_item_who, toggleIntent())
+                            setOnClickFillInIntent(R.id.widget_item_activity, toggleIntent())
+                            setOnClickFillInIntent(R.id.widget_item_time, toggleIntent())
                         }
                     }
             }
