@@ -27,6 +27,11 @@ enum class CleanVisualTheme(
         "Ljus skandinavisk dagsvy med blå tidslinje, dagspår och snabbkort för familjen.",
         "▤",
     ),
+    NORDIC_DAY_PLANNER_DARK(
+        "Nordic Day Planner Dark",
+        "Samma Nordic-layout i svart och antracit, med orange accent.",
+        "▤",
+    ),
     BRUTALIST(
         "Industrial Pro",
         "Mörk industriell design i stål, grafit och varningsgult med tydlig struktur.",
@@ -173,6 +178,40 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 dayBottom = Color(0xFF0878AD),
                 navSurface = Color(0xFFFFFEFA),
                 navBorder = Color(0x1F24425D),
+                titleFont = FontFamily.SansSerif,
+                titleWeight = FontWeight.SemiBold,
+                cardRadius = 14.dp,
+                calendarRadius = 14.dp,
+                dayRadius = 8.dp,
+                buttonRadius = 12.dp,
+                shadow = 2.dp,
+            )
+
+        CleanVisualTheme.NORDIC_DAY_PLANNER_DARK ->
+            CleanThemeSpec(
+                backgroundTop = Color(0xFF0B0B0B),
+                backgroundBottom = Color(0xFF111111),
+                overlayTop = Color.Transparent,
+                overlayBottom = Color.Transparent,
+                panelTop = Color(0xFF151515),
+                panelMid = Color(0xFF121212),
+                panelBottom = Color(0xFF0E0E0E),
+                border = Color(0x2FFFFFFF),
+                text = Color(0xFFF4F4F4),
+                muted = Color(0xFF9CA3A8),
+                accent = Color(0xFFFF8A00),
+                accentStrong = Color(0xFFFF7600),
+                secondary = Color(0xFFFFA23A),
+                info = Color(0xFFFFA23A),
+                warning = Color(0xFFFFB347),
+                selectedTop = Color.Transparent,
+                selectedBottom = Color.Transparent,
+                selectedBorder = Color(0xFFFF8A00),
+                selectedText = Color(0xFFFF8A00),
+                dayTop = Color(0xFFFF8A00),
+                dayBottom = Color(0xFFD85E00),
+                navSurface = Color(0xFF101010),
+                navBorder = Color(0x2FFFFFFF),
                 titleFont = FontFamily.SansSerif,
                 titleWeight = FontWeight.SemiBold,
                 cardRadius = 14.dp,
@@ -454,6 +493,10 @@ internal fun CleanThemeBackdrop(
                     radius = size.width * .34f,
                     center = Offset(size.width * .86f, size.height * .10f),
                 )
+            }
+
+            CleanVisualTheme.NORDIC_DAY_PLANNER_DARK -> {
+                // Keep the Nordic layout unchanged. Dark mode is color-only.
             }
 
             CleanVisualTheme.BRUTALIST -> {
