@@ -1751,11 +1751,13 @@ private fun NordicHeaderButton(
     description: String,
     onClick: () -> Unit,
 ) {
+    val darkMode = LocalCleanVisualTheme.current == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
+    val spec = LocalCleanThemeSpec.current
     IconButton(onClick = onClick, modifier = Modifier.size(38.dp)) {
         Icon(
             icon,
             contentDescription = description,
-            tint = Color(0xFF17334A),
+            tint = if (darkMode) spec.text else Color(0xFF17334A),
             modifier = Modifier.size(23.dp),
         )
     }
@@ -1767,11 +1769,14 @@ private fun NordicAgendaRow(
     member: SyncMember?,
     onClick: () -> Unit,
 ) {
+    val darkMode = LocalCleanVisualTheme.current == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
+    val spec = LocalCleanThemeSpec.current
     val accent =
         when {
             event.memberId == ALL_FAMILY_MEMBER_ID -> Color(0xFFDFB522)
             member != null -> Color(member.colorArgb.toInt())
             isCleanReminderEvent(event) -> Color(0xFFCE75A2)
+            darkMode -> spec.accent
             else -> Color(0xFF218FC3)
         }
     val subtitle =
@@ -1791,7 +1796,7 @@ private fun NordicAgendaRow(
     ) {
         Text(
             cleanEventTime(event).replace("Ingen tid", "—"),
-            color = Color(0xFF385269),
+            color = if (darkMode) spec.muted else Color(0xFF385269),
             fontSize = 11.sp,
             maxLines = 1,
             softWrap = false,
@@ -1815,7 +1820,7 @@ private fun NordicAgendaRow(
         Column(Modifier.weight(1f)) {
             Text(
                 cleanEventTitle(event).ifBlank { "Aktivitet" },
-                color = Color(0xFF17334A),
+                color = if (darkMode) spec.text else Color(0xFF17334A),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -1823,7 +1828,7 @@ private fun NordicAgendaRow(
             )
             Text(
                 subtitle,
-                color = Color(0xFF7A878E),
+                color = if (darkMode) spec.muted else Color(0xFF7A878E),
                 fontSize = 9.sp,
                 maxLines = 1,
             )
@@ -1831,7 +1836,9 @@ private fun NordicAgendaRow(
         Icon(
             Icons.Default.ChevronRight,
             contentDescription = "Öppna aktivitet",
-            tint = Color(0xFF17334A).copy(alpha = .48f),
+            tint =
+                if (darkMode) spec.text.copy(alpha = .48f)
+                else Color(0xFF17334A).copy(alpha = .48f),
             modifier = Modifier.size(18.dp),
         )
     }
@@ -1848,11 +1855,17 @@ private fun NordicQuickCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val darkMode = LocalCleanVisualTheme.current == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
+    val spec = LocalCleanThemeSpec.current
+    val cardTint = if (darkMode) spec.panelTop else tint
+    val titleColor = if (darkMode) spec.text else Color(0xFF17334A)
+    val mutedColor = if (darkMode) spec.muted else Color(0xFF77828A)
+
     Surface(
         modifier = modifier.height(118.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = tint,
-        border = BorderStroke(1.dp, accent.copy(alpha = .10f)),
+        color = cardTint,
+        border = BorderStroke(1.dp, if (darkMode) spec.border else accent.copy(alpha = .10f)),
         shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
@@ -1861,7 +1874,7 @@ private fun NordicQuickCard(
                 Spacer(Modifier.width(7.dp))
                 Text(
                     title,
-                    color = Color(0xFF17334A),
+                    color = titleColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -1879,24 +1892,31 @@ private fun NordicQuickCard(
                 Icon(
                     Icons.Default.ChevronRight,
                     contentDescription = "Öppna " + title,
-                    tint = Color(0xFF17334A).copy(alpha = .58f),
+                    tint = titleColor.copy(alpha = .58f),
                     modifier = Modifier.size(16.dp),
                 )
             }
             Spacer(Modifier.height(6.dp))
             if (rows.isEmpty()) {
-                Text("Inget kvar", color = Color(0xFF77828A), fontSize = 9.sp)
+                Text("Inget kvar", color = mutedColor, fontSize = 9.sp)
             } else {
                 rows.forEach { row ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.size(10.dp).border(1.dp, Color(0xFF5D6B74), CircleShape))
+                        Box(
+                            Modifier.size(10.dp)
+                                .border(
+                                    1.dp,
+                                    if (darkMode) spec.muted else Color(0xFF5D6B74),
+                                    CircleShape,
+                                )
+                        )
                         Spacer(Modifier.width(6.dp))
                         Text(
                             row,
-                            color = Color(0xFF3A4B58),
+                            color = if (darkMode) spec.text.copy(alpha = .78f) else Color(0xFF3A4B58),
                             fontSize = 9.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
