@@ -84,6 +84,10 @@ enum class CleanVisualTheme(
     ),
 }
 
+internal fun isNordicDayPlannerTheme(theme: CleanVisualTheme): Boolean =
+    theme == CleanVisualTheme.NORDIC_DAY_PLANNER ||
+        theme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
+
 data class CleanThemeSpec(
     val backgroundTop: Color,
     val backgroundBottom: Color,
@@ -208,8 +212,8 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 selectedBottom = Color.Transparent,
                 selectedBorder = Color(0xFFFF8A00),
                 selectedText = Color(0xFFFF8A00),
-                dayTop = Color(0xFFFF8A00),
-                dayBottom = Color(0xFFD85E00),
+                dayTop = Color(0xFF151515),
+                dayBottom = Color(0xFF0E0E0E),
                 navSurface = Color(0xFF101010),
                 navBorder = Color(0x2FFFFFFF),
                 titleFont = FontFamily.SansSerif,
