@@ -257,7 +257,7 @@ internal fun MinimalCalendarScreen(
     }
 
     LaunchedEffect(session.id, cleanVisualTheme) {
-        if (cleanVisualTheme != CleanVisualTheme.NORDIC_DAY_PLANNER) {
+        if (!isNordicDayPlannerTheme(cleanVisualTheme)) {
             todoPreview = emptyList()
             return@LaunchedEffect
         }
@@ -274,7 +274,7 @@ internal fun MinimalCalendarScreen(
     CleanThemeProvider(cleanVisualTheme) {
         val cleanSpec = LocalCleanThemeSpec.current
 
-        if (cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER) {
+        if (isNordicDayPlannerTheme(cleanVisualTheme)) {
             NordicDayPlannerScreen(
                 selectedDate = selectedDate,
                 today = today,
@@ -541,24 +541,58 @@ internal fun MinimalCalendarScreen(
 
         val useNordicLightDialog =
             cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER
+        val useNordicDarkDialog =
+            cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
         val dialogContainer =
-            if (useNordicLightDialog) Color(0xFFFFFEFA) else Color(0xE61A1624)
+            when {
+                useNordicLightDialog -> Color(0xFFFFFEFA)
+                useNordicDarkDialog -> cleanSpec.backgroundTop
+                else -> Color(0xE61A1624)
+            }
         val dialogText =
-            if (useNordicLightDialog) Color(0xFF17334A) else Color.White
+            when {
+                useNordicLightDialog -> Color(0xFF17334A)
+                useNordicDarkDialog -> cleanSpec.text
+                else -> Color.White
+            }
         val dialogMuted =
-            if (useNordicLightDialog) Color(0xFF71808B) else CleanMuted
+            when {
+                useNordicLightDialog -> Color(0xFF71808B)
+                useNordicDarkDialog -> cleanSpec.muted
+                else -> CleanMuted
+            }
         val dialogSurface =
-            if (useNordicLightDialog) Color(0xFFF8F5ED) else Color.White.copy(alpha = .045f)
+            when {
+                useNordicLightDialog -> Color(0xFFF8F5ED)
+                useNordicDarkDialog -> cleanSpec.panelTop
+                else -> Color.White.copy(alpha = .045f)
+            }
         val dialogBorder =
-            if (useNordicLightDialog) Color(0x1F24425D) else Color.White.copy(alpha = .08f)
+            when {
+                useNordicLightDialog -> Color(0x1F24425D)
+                useNordicDarkDialog -> cleanSpec.border
+                else -> Color.White.copy(alpha = .08f)
+            }
         val dialogDivider =
-            if (useNordicLightDialog) Color(0x18243F55) else Color.White.copy(alpha = .07f)
+            when {
+                useNordicLightDialog -> Color(0x18243F55)
+                useNordicDarkDialog -> cleanSpec.border.copy(alpha = .75f)
+                else -> Color.White.copy(alpha = .07f)
+            }
         val dialogSubDivider =
-            if (useNordicLightDialog) Color(0x12243F55) else Color.White.copy(alpha = .05f)
+            when {
+                useNordicLightDialog -> Color(0x12243F55)
+                useNordicDarkDialog -> cleanSpec.border.copy(alpha = .52f)
+                else -> Color.White.copy(alpha = .05f)
+            }
         val dialogConflict =
             if (useNordicLightDialog) Color(0xFFB94752) else Color(0xFFFFA0A8)
         val dialogCloseAccent =
-            if (useNordicLightDialog) Color(0xFF0875A8) else CleanPurpleBright
+            when {
+                useNordicLightDialog -> Color(0xFF0875A8)
+                useNordicDarkDialog -> cleanSpec.accentStrong
+                else -> CleanPurpleBright
+            }
 
         AlertDialog(
             onDismissRequest = { showAllDayActivities = false },
@@ -1067,11 +1101,19 @@ private fun NordicDayPlannerScreen(
     onOpenTodo: () -> Unit,
     onOpenShopping: () -> Unit,
 ) {
-    val paper = Color(0xFFFFFEFA)
-    val muted = Color(0xFF71808B)
-    val blueDeep = Color(0xFF0875A8)
-    val railBlue = Color(0xFF087EAF)
-    val line = Color(0x18243F55)
+    val theme = LocalCleanVisualTheme.current
+    val spec = LocalCleanThemeSpec.current
+    val darkMode = theme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
+    val paper = if (darkMode) spec.backgroundTop else Color(0xFFFFFEFA)
+    val muted = if (darkMode) spec.muted else Color(0xFF71808B)
+    val blueDeep = if (darkMode) spec.accentStrong else Color(0xFF0875A8)
+    val railBlue = if (darkMode) spec.accentStrong else Color(0xFF087EAF)
+    val line = if (darkMode) spec.border else Color(0x18243F55)
+    val textPrimary = if (darkMode) spec.text else Color(0xFF17334A)
+    val textSecondary = if (darkMode) spec.muted else Color(0xFF8A97A3)
+    val cardSurface = if (darkMode) spec.panelTop else Color.White
+    val selectedFill = if (darkMode) spec.accent.copy(alpha = .16f) else Color(0xFFE5F2FC)
+    val todayFill = if (darkMode) spec.accent.copy(alpha = .08f) else Color(0xFFF2F8FC)
     val openShopping = remember(shopping) { shopping.filterNot { it.checked } }
     val openTodos = remember(todos) { todos.filterNot { it.checked } }
     val eventsByDate = remember(events) { events.groupBy { it.date } }
@@ -1189,7 +1231,11 @@ private fun NordicDayPlannerScreen(
                     .fillMaxHeight()
                     .background(
                         Brush.linearGradient(
-                            listOf(Color(0xFF53B4D7), Color(0xFF1494C7))
+                            if (darkMode) {
+                                listOf(spec.accent, spec.accentStrong)
+                            } else {
+                                listOf(Color(0xFF53B4D7), Color(0xFF1494C7))
+                            }
                         )
                     )
                     .padding(horizontal = 18.dp, vertical = 12.dp),
@@ -1301,13 +1347,13 @@ private fun NordicDayPlannerScreen(
                 Icon(
                     Icons.Default.ChevronLeft,
                     contentDescription = "Föregående månad",
-                    tint = Color(0xFF657A89),
+                    tint = if (darkMode) muted else Color(0xFF657A89),
                     modifier = Modifier.size(22.dp),
                 )
             }
             Text(
                 monthTitle,
-                color = Color(0xFF17334A),
+                color = textPrimary,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -1328,7 +1374,7 @@ private fun NordicDayPlannerScreen(
                 Icon(
                     Icons.Default.ChevronRight,
                     contentDescription = "Nästa månad",
-                    tint = Color(0xFF17334A),
+                    tint = textPrimary,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -1343,7 +1389,7 @@ private fun NordicDayPlannerScreen(
                 listOf("MÅ", "TI", "ON", "TO", "FR", "LÖ", "SÖ").forEach { label ->
                     Text(
                         label,
-                        color = Color(0xFF8A97A3),
+                        color = textSecondary,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
@@ -1434,8 +1480,8 @@ private fun NordicDayPlannerScreen(
                                             .clip(RoundedCornerShape(10.dp))
                                             .background(
                                                 when {
-                                                    isSelected -> Color(0xFFE5F2FC)
-                                                    isToday -> Color(0xFFF2F8FC)
+                                                    isSelected -> selectedFill
+                                                    isToday -> todayFill
                                                     else -> Color.Transparent
                                                 }
                                             )
@@ -1443,8 +1489,8 @@ private fun NordicDayPlannerScreen(
                                                 width = if (isSelected || isToday) 1.dp else 0.dp,
                                                 color =
                                                     when {
-                                                        isSelected -> Color(0xFF8ECBF0)
-                                                        isToday -> Color(0xFF1494C7)
+                                                        isSelected -> if (darkMode) spec.accentStrong else Color(0xFF8ECBF0)
+                                                        isToday -> if (darkMode) spec.accent else Color(0xFF1494C7)
                                                         else -> Color.Transparent
                                                     },
                                                 shape = RoundedCornerShape(10.dp),
@@ -1514,8 +1560,8 @@ private fun NordicDayPlannerScreen(
                                                 when {
                                                     isSelected -> blueDeep
                                                     isToday -> blueDeep
-                                                    inMonth -> Color(0xFF17334A)
-                                                    else -> Color(0xFFA9B2BA)
+                                                    inMonth -> textPrimary
+                                                    else -> if (darkMode) spec.muted.copy(alpha = .62f) else Color(0xFFA9B2BA)
                                                 },
                                             fontSize = 13.sp,
                                             lineHeight = 16.sp,
@@ -1581,7 +1627,7 @@ private fun NordicDayPlannerScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Surface(
-                color = Color.White,
+                color = cardSurface,
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, Color(0x1A24425D)),
                 shadowElevation = 1.dp,
@@ -1604,7 +1650,7 @@ private fun NordicDayPlannerScreen(
                         Text(
                             selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
                                 .replaceFirstChar { it.uppercase(locale) },
-                            color = Color(0xFF17334A),
+                            color = textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f),
@@ -1621,7 +1667,7 @@ private fun NordicDayPlannerScreen(
                             Icon(
                                 Icons.Default.ChevronRight,
                                 contentDescription = "Visa alla aktiviteter",
-                                tint = Color(0xFF6E7E89),
+                                tint = if (darkMode) muted else Color(0xFF6E7E89),
                                 modifier =
                                     Modifier.size(18.dp)
                                         .clickable(onClick = onShowAll),
