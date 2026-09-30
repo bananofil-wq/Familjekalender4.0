@@ -989,6 +989,8 @@ private fun SyncedApp(
             addEventInitialTitle,
             lightStyle = uiLayoutMode == UiLayoutMode.MINIMAL &&
                 cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER,
+            nordicDarkStyle = uiLayoutMode == UiLayoutMode.MINIMAL &&
+                cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
             onDismiss = { showAddEvent = false }) { title,
                                         startTime,
                                         endTime,
@@ -1532,7 +1534,9 @@ private fun ShoppingScreen(
                                     Surface(
                                         modifier = Modifier.size(42.dp),
                                         shape = RoundedCornerShape(12.dp),
-                                        color = if (themedSurfaceMode) Color(0xFFE9F5FA) else Color(0xB2264D6C),
+                                        color =
+                                            if (themedSurfaceMode) MaterialTheme.colorScheme.primaryContainer
+                                            else Color(0xB2264D6C),
                                         border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color.White.copy(alpha = .16f)),
                                         shadowElevation = 3.dp,
                                     ) {
@@ -2775,16 +2779,47 @@ private fun AddEventDialog(
     selectedDate: LocalDate,
     initialTitle: String = "",
     lightStyle: Boolean = false,
+    nordicDarkStyle: Boolean = false,
     onDismiss: () -> Unit,
     onAdd: (String, String, String, String?, List<LocalDate>, Boolean, Boolean, RecurrenceMode) -> Unit,
 ) {
     val context = LocalContext.current
-    val dialogBackground = if (lightStyle) Color(0xFFFFFEFA) else LuxurySurfaceElevated
-    val dialogText = if (lightStyle) Color(0xFF17334A) else Color.White
-    val dialogMuted = if (lightStyle) Color(0xFF667782) else Muted
-    val dialogAccent = if (lightStyle) Color(0xFF0875A8) else Purple
-    val dialogField = if (lightStyle) Color(0xFFFFFFFF) else Color.Transparent
-    val dialogBorder = if (lightStyle) Color(0xFFB9C8D1) else Color.White.copy(alpha = .28f)
+    val dialogBackground =
+        when {
+            lightStyle -> Color(0xFFFFFEFA)
+            nordicDarkStyle -> MaterialTheme.colorScheme.surface
+            else -> LuxurySurfaceElevated
+        }
+    val dialogText =
+        when {
+            lightStyle -> Color(0xFF17334A)
+            nordicDarkStyle -> MaterialTheme.colorScheme.onSurface
+            else -> Color.White
+        }
+    val dialogMuted =
+        when {
+            lightStyle -> Color(0xFF667782)
+            nordicDarkStyle -> MaterialTheme.colorScheme.onSurfaceVariant
+            else -> Muted
+        }
+    val dialogAccent =
+        when {
+            lightStyle -> Color(0xFF0875A8)
+            nordicDarkStyle -> MaterialTheme.colorScheme.primary
+            else -> Purple
+        }
+    val dialogField =
+        when {
+            lightStyle -> Color(0xFFFFFFFF)
+            nordicDarkStyle -> MaterialTheme.colorScheme.surfaceVariant
+            else -> Color.Transparent
+        }
+    val dialogBorder =
+        when {
+            lightStyle -> Color(0xFFB9C8D1)
+            nordicDarkStyle -> MaterialTheme.colorScheme.outlineVariant
+            else -> Color.White.copy(alpha = .28f)
+        }
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
@@ -2964,12 +2999,16 @@ private fun AddEventDialog(
                     Surface(
                         color =
                             if (!hasTime) dialogAccent.copy(alpha = if (lightStyle) .10f else .12f)
-                            else if (lightStyle) Color(0xFFF5F8FA) else Color.White.copy(alpha = .03f),
+                            else if (lightStyle) Color(0xFFF5F8FA)
+                            else if (nordicDarkStyle) MaterialTheme.colorScheme.surfaceVariant
+                            else Color.White.copy(alpha = .03f),
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(
                             1.dp,
                             if (!hasTime) dialogAccent.copy(alpha = .45f)
-                            else if (lightStyle) Color(0xFFD4DFE6) else Color.White.copy(alpha = .08f),
+                            else if (lightStyle) Color(0xFFD4DFE6)
+                            else if (nordicDarkStyle) MaterialTheme.colorScheme.outlineVariant
+                            else Color.White.copy(alpha = .08f),
                         ),
                         modifier = Modifier.fillMaxWidth().clickable {
                             hasTime = !hasTime
