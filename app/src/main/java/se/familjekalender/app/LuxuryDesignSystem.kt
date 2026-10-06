@@ -88,11 +88,191 @@ internal val LuxuryShapes =
         extraLarge = RoundedCornerShape(32.dp),
     )
 
+private fun cleanMaterialColorScheme(theme: CleanVisualTheme) =
+    cleanThemeSpec(theme).let { spec ->
+        val lightTheme =
+            when (theme) {
+                CleanVisualTheme.NORDIC_DAY_PLANNER,
+                CleanVisualTheme.JAPANDI,
+                CleanVisualTheme.MEMPHIS,
+                CleanVisualTheme.SWISS,
+                CleanVisualTheme.RETRO_70S,
+                CleanVisualTheme.CLAY -> true
+                else -> false
+            }
+
+        val buildScheme:
+            (
+                primary: Color,
+                onPrimary: Color,
+                primaryContainer: Color,
+                onPrimaryContainer: Color,
+                secondary: Color,
+                onSecondary: Color,
+                secondaryContainer: Color,
+                onSecondaryContainer: Color,
+                tertiary: Color,
+                onTertiary: Color,
+                tertiaryContainer: Color,
+                onTertiaryContainer: Color,
+                background: Color,
+                onBackground: Color,
+                surface: Color,
+                onSurface: Color,
+                surfaceVariant: Color,
+                onSurfaceVariant: Color,
+                outline: Color,
+                outlineVariant: Color,
+                error: Color,
+                onError: Color,
+            ) -> androidx.compose.material3.ColorScheme =
+            if (lightTheme) {
+                { primary,
+                    onPrimary,
+                    primaryContainer,
+                    onPrimaryContainer,
+                    secondary,
+                    onSecondary,
+                    secondaryContainer,
+                    onSecondaryContainer,
+                    tertiary,
+                    onTertiary,
+                    tertiaryContainer,
+                    onTertiaryContainer,
+                    background,
+                    onBackground,
+                    surface,
+                    onSurface,
+                    surfaceVariant,
+                    onSurfaceVariant,
+                    outline,
+                    outlineVariant,
+                    error,
+                    onError ->
+                    lightColorScheme(
+                        primary = primary,
+                        onPrimary = onPrimary,
+                        primaryContainer = primaryContainer,
+                        onPrimaryContainer = onPrimaryContainer,
+                        secondary = secondary,
+                        onSecondary = onSecondary,
+                        secondaryContainer = secondaryContainer,
+                        onSecondaryContainer = onSecondaryContainer,
+                        tertiary = tertiary,
+                        onTertiary = onTertiary,
+                        tertiaryContainer = tertiaryContainer,
+                        onTertiaryContainer = onTertiaryContainer,
+                        background = background,
+                        onBackground = onBackground,
+                        surface = surface,
+                        onSurface = onSurface,
+                        surfaceVariant = surfaceVariant,
+                        onSurfaceVariant = onSurfaceVariant,
+                        surfaceTint = Color.Transparent,
+                        inverseSurface = spec.text,
+                        inverseOnSurface = spec.panelTop,
+                        outline = outline,
+                        outlineVariant = outlineVariant,
+                        error = error,
+                        onError = onError,
+                    )
+                }
+            } else {
+                { primary,
+                    onPrimary,
+                    primaryContainer,
+                    onPrimaryContainer,
+                    secondary,
+                    onSecondary,
+                    secondaryContainer,
+                    onSecondaryContainer,
+                    tertiary,
+                    onTertiary,
+                    tertiaryContainer,
+                    onTertiaryContainer,
+                    background,
+                    onBackground,
+                    surface,
+                    onSurface,
+                    surfaceVariant,
+                    onSurfaceVariant,
+                    outline,
+                    outlineVariant,
+                    error,
+                    onError ->
+                    darkColorScheme(
+                        primary = primary,
+                        onPrimary = onPrimary,
+                        primaryContainer = primaryContainer,
+                        onPrimaryContainer = onPrimaryContainer,
+                        secondary = secondary,
+                        onSecondary = onSecondary,
+                        secondaryContainer = secondaryContainer,
+                        onSecondaryContainer = onSecondaryContainer,
+                        tertiary = tertiary,
+                        onTertiary = onTertiary,
+                        tertiaryContainer = tertiaryContainer,
+                        onTertiaryContainer = onTertiaryContainer,
+                        background = background,
+                        onBackground = onBackground,
+                        surface = surface,
+                        onSurface = onSurface,
+                        surfaceVariant = surfaceVariant,
+                        onSurfaceVariant = onSurfaceVariant,
+                        surfaceTint = Color.Transparent,
+                        inverseSurface = spec.text,
+                        inverseOnSurface = spec.panelTop,
+                        outline = outline,
+                        outlineVariant = outlineVariant,
+                        error = error,
+                        onError = onError,
+                    )
+                }
+            }
+
+        buildScheme(
+            spec.accentStrong,
+            spec.selectedText,
+            spec.dayTop,
+            spec.text,
+            spec.secondary,
+            spec.selectedText,
+            spec.panelMid,
+            spec.text,
+            spec.warning,
+            spec.selectedText,
+            spec.panelBottom,
+            spec.text,
+            spec.backgroundTop,
+            spec.text,
+            spec.panelTop,
+            spec.text,
+            spec.panelMid,
+            spec.muted,
+            spec.border,
+            spec.navBorder,
+            if (lightTheme) Color(0xFFB94752) else LuxuryError,
+            if (lightTheme) Color.White else Color(0xFF24070C),
+        )
+    }
+
+private fun cleanMaterialShapes(theme: CleanVisualTheme): Shapes {
+    val spec = cleanThemeSpec(theme)
+    return Shapes(
+        extraSmall = RoundedCornerShape((spec.buttonRadius.value * .55f).dp),
+        small = RoundedCornerShape((spec.buttonRadius.value * .75f).dp),
+        medium = RoundedCornerShape(spec.buttonRadius),
+        large = RoundedCornerShape(spec.cardRadius),
+        extraLarge = RoundedCornerShape(spec.calendarRadius),
+    )
+}
+
 @Composable
 internal fun FamiljekalenderLuxuryTheme(
     palette: SeasonPalette,
     lightMode: Boolean = false,
     nordicDarkMode: Boolean = false,
+    cleanVisualTheme: CleanVisualTheme? = null,
     content: @Composable () -> Unit,
 ) {
     val motionEnabled = appMotionEnabled()
@@ -109,6 +289,7 @@ internal fun FamiljekalenderLuxuryTheme(
 
     val scheme =
         when {
+            cleanVisualTheme != null -> cleanMaterialColorScheme(cleanVisualTheme)
             lightMode ->
                 lightColorScheme(
                     primary = Color(0xFF0875A8),
@@ -200,7 +381,9 @@ internal fun FamiljekalenderLuxuryTheme(
     MaterialTheme(
         colorScheme = scheme,
         typography = LuxuryTypography,
-        shapes = LuxuryShapes,
+        shapes =
+            cleanVisualTheme?.let(::cleanMaterialShapes)
+                ?: LuxuryShapes,
         content = content,
     )
 }
