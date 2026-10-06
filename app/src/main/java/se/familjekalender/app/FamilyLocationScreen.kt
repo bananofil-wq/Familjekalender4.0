@@ -718,12 +718,12 @@ private fun LocationMemberStrip(
                         modifier =
                             Modifier.size(if (selectedMemberId == member.id) 40.dp else 42.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF262330)),
+                                .background(MaterialTheme.colorScheme.surface),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             member.name.take(1).uppercase(),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                         )
@@ -815,12 +815,12 @@ internal fun LocationMapCard(
                 Surface(
                     modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xD917151F),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = .92f),
                 ) {
                     Text(
                         "Live · ${formatUpdated(current.updatedAt)}",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -834,15 +834,15 @@ internal fun LocationMapCard(
                 ) {
                     SmallFloatingActionButton(
                         onClick = { mapView?.controller?.zoomIn() },
-                        containerColor = Color(0xEE17151F),
-                        contentColor = Color.White,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .94f),
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Zooma in")
                     }
                     SmallFloatingActionButton(
                         onClick = { mapView?.controller?.zoomOut() },
-                        containerColor = Color(0xEE17151F),
-                        contentColor = Color.White,
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .94f),
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                     ) {
                         Icon(Icons.Default.Remove, contentDescription = "Zooma ut")
                     }
@@ -854,7 +854,10 @@ internal fun LocationMapCard(
                     val member = members.firstOrNull { it.id == item.memberId }
                 Card(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp).fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xEE17151F)),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .94f)
+                        ),
                     shape = RoundedCornerShape(18.dp),
                 ) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -881,7 +884,7 @@ internal fun LocationMapCard(
                             if (batteryVisible && item.batteryPercent != null) {
                                 Text(
                                     "Batteri ${item.batteryPercent}%",
-                                    color = Color(0xFF7EE2A8),
+                                    color = MaterialTheme.colorScheme.secondary,
                                     fontSize = 12.sp,
                                 )
                             }
