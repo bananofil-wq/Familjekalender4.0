@@ -316,6 +316,8 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
         nordicDarkMode =
             uiLayoutMode == UiLayoutMode.MINIMAL &&
                 cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
+        cleanVisualTheme =
+            cleanVisualTheme.takeIf { uiLayoutMode == UiLayoutMode.MINIMAL },
     ) {
         Surface(
             color = MaterialTheme.colorScheme.background,
@@ -722,9 +724,7 @@ private fun SyncedApp(
                                     session,
                                     shopping,
                                     themeMode = themeMode,
-                                    lightMode =
-                                        uiLayoutMode == UiLayoutMode.MINIMAL &&
-                                            cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER,
+                                    lightMode = uiLayoutMode == UiLayoutMode.MINIMAL,
                                     nordicDarkMode =
                                         uiLayoutMode == UiLayoutMode.MINIMAL &&
                                             cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
@@ -1231,16 +1231,13 @@ private fun ShoppingScreen(
         }
 
     val blue =
-        if (nordicDarkMode) MaterialTheme.colorScheme.primary
-        else if (themedSurfaceMode) Color(0xFF0875A8)
+        if (themedSurfaceMode) MaterialTheme.colorScheme.primary
         else Color(0xFF2EA7FF)
     val cyan =
-        if (nordicDarkMode) MaterialTheme.colorScheme.secondary
-        else if (themedSurfaceMode) Color(0xFF46B5D8)
+        if (themedSurfaceMode) MaterialTheme.colorScheme.secondary
         else Color(0xFF6CE9F4)
     val orange =
-        if (nordicDarkMode) MaterialTheme.colorScheme.primary
-        else if (themedSurfaceMode) Color(0xFFD99B2B)
+        if (themedSurfaceMode) MaterialTheme.colorScheme.tertiary
         else Color(0xFFFFA13A)
     val pageText = if (themedSurfaceMode) MaterialTheme.colorScheme.onBackground else Color.White
     val pageMuted =
@@ -1647,9 +1644,15 @@ private fun ShoppingScreen(
                         shape = CircleShape,
                         colors =
                             IconButtonDefaults.filledIconButtonColors(
-                                containerColor = Color(0xFF23A7FF),
-                                contentColor = Color.White,
-                                disabledContainerColor = Color(0xFF4A6680),
+                                containerColor =
+                                    if (themedSurfaceMode) MaterialTheme.colorScheme.primary
+                                    else Color(0xFF23A7FF),
+                                contentColor =
+                                    if (themedSurfaceMode) MaterialTheme.colorScheme.onPrimary
+                                    else Color.White,
+                                disabledContainerColor =
+                                    if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant
+                                    else Color(0xFF4A6680),
                                 disabledContentColor = Color.White.copy(alpha = .42f),
                             ),
                     ) {
