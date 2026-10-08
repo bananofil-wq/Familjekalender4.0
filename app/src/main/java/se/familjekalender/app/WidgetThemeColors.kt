@@ -15,8 +15,8 @@ internal object WidgetThemeColors {
         }.getOrDefault(CleanVisualTheme.CURRENT)
         val spec = cleanThemeSpec(theme)
         val accent = spec.accent.toArgb()
-        val onAccent = if (theme == CleanVisualTheme.NORDIC_DAY_PLANNER || theme == CleanVisualTheme.JAPANDI || theme == CleanVisualTheme.SWISS) 0xFFFFFFFF.toInt() else 0xFFFFFFFF.toInt()
-        return Palette(spec.backgroundTop.toArgb(), spec.panelTop.toArgb(), spec.text.toArgb(), spec.muted.toArgb(), accent, onAccent)
+        val onAccent = if (androidx.core.graphics.ColorUtils.calculateLuminance(accent) > 0.42) 0xFF171717.toInt() else 0xFFFFFFFF.toInt()
+        return Palette(spec.backgroundTop.toArgb(), spec.panelMid.toArgb(), spec.text.toArgb(), spec.muted.toArgb(), accent, onAccent)
     }
 
     fun apply(context: Context, views: RemoteViews) {
