@@ -179,8 +179,7 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )
             views.setPendingIntentTemplate(R.id.widget_event_list, templatePending)
 
-            WidgetThemeColors.apply(context, views)
-            bindActions(context, views, appWidgetId)
+                bindActions(context, views, appWidgetId)
             return views
         }
 
