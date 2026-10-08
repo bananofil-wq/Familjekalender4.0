@@ -5,10 +5,10 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:paddingLeft="14dp"
-    android:paddingTop="13dp"
-    android:paddingRight="14dp"
-    android:paddingBottom="13dp">
+    android:paddingLeft="12dp"
+    android:paddingTop="11dp"
+    android:paddingRight="12dp"
+    android:paddingBottom="11dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,14 +17,14 @@
         android:orientation="horizontal">
 
         <LinearLayout
-            android:layout_width="52dp"
-            android:layout_height="58dp"
+            android:layout_width="46dp"
+            android:layout_height="52dp"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/widget_badge_day"
                 android:layout_width="match_parent"
-                android:layout_height="19dp"
+                android:layout_height="17dp"
                 android:background="@drawable/widget_date_badge_top"
                 android:gravity="center"
                 android:textColor="#FFFFFFFF"
@@ -35,7 +35,7 @@
             <TextView
                 android:id="@+id/widget_badge_number"
                 android:layout_width="match_parent"
-                android:layout_height="39dp"
+                android:layout_height="35dp"
                 android:background="@drawable/widget_date_badge_bottom"
                 android:gravity="center"
                 android:textColor="#FF19191D"
@@ -56,7 +56,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="#FFFFFFFF"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textStyle="bold"
                 android:maxLines="2" />
 
@@ -72,8 +72,8 @@
 
         <TextView
             android:id="@+id/widget_refresh"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:layout_marginStart="9dp"
             android:gravity="center"
             android:background="@drawable/widget_refresh_bg"
@@ -86,8 +86,8 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="10dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="7dp"
         android:gravity="center"
         android:orientation="horizontal">
 
@@ -136,7 +136,7 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="10dp"
-        android:layout_marginBottom="5dp"
+        android:layout_marginBottom="3dp"
         android:background="#33FFFFFF"
         android:text="" />
 
