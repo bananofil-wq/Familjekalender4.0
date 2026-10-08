@@ -361,6 +361,7 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
                         {
                             cleanVisualTheme = it
                             prefs.edit().putString("clean_visual_theme", it.name).apply()
+                            FamilyCalendarWidget.refreshTheme(context)
                         },
                         initialTab = initialTab,
                     )
