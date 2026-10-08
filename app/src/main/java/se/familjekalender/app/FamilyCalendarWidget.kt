@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.toArgb
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -178,6 +179,7 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )
             views.setPendingIntentTemplate(R.id.widget_event_list, templatePending)
 
+            WidgetThemeColors.apply(context, views)
             bindActions(context, views, appWidgetId)
             return views
         }
@@ -193,6 +195,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             AppWidgetManager.getInstance(context)
                 .notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
         }
+
+        fun refreshTheme(context: Context) = refreshAllWidgetsFromCache(context)
 
         private fun refreshAllWidgetsFromCache(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
