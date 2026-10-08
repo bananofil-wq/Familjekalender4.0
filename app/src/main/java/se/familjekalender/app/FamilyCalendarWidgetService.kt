@@ -169,7 +169,6 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                 is Item.Header ->
                     RemoteViews(context.packageName, R.layout.widget_event_header).apply {
                         setTextViewText(R.id.widget_list_header, item.text)
-                        setTextColor(R.id.widget_list_header, WidgetThemeColors.colors(context).muted)
                     }
 
                 is Item.Event ->
@@ -177,11 +176,6 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                         setTextViewText(R.id.widget_item_who, item.who)
                         setTextViewText(R.id.widget_item_activity, item.activity)
                         setTextViewText(R.id.widget_item_time, item.time)
-                        val colors = WidgetThemeColors.colors(context)
-                        setInt(R.id.widget_item_root, "setBackgroundColor", colors.row)
-                        setTextColor(R.id.widget_item_who, colors.text)
-                        setTextColor(R.id.widget_item_activity, colors.text)
-                        setTextColor(R.id.widget_item_time, colors.muted)
 
                         if (item.canToggle && !item.groupKey.isNullOrBlank()) {
                             // Pixel Launcher kan skicka klicket från TextView-barnet i raden
