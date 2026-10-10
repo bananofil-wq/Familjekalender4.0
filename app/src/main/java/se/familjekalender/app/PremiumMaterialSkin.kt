@@ -157,6 +157,7 @@ internal fun PremiumMaterialSurface(
         if (opacity < .35f) return@Canvas
         when (theme) {
             CleanVisualTheme.COPPER -> {
+                drawRect(Brush.horizontalGradient(listOf(Color(0x00FFE4B8), Color(0x55FFD19B), Color(0x00251108), Color(0x445A210B), Color(0x00FFE4B8))))
                 var y = 1f
                 while (y < size.height) {
                     val line = if ((y.toInt() / 3) % 3 == 0) Color(0xFFDE9B65) else Color(0xFF1C0804)
@@ -192,6 +193,7 @@ internal fun PremiumMaterialSurface(
                         strokeWidth = 2.5f)
                     x += 10f
                 }
+                drawRect(Brush.horizontalGradient(listOf(Color(0x0021AFFF), Color(0x2821AFFF), Color(0x00000000), Color(0x1D3CA9FF))))
                 var x2 = 0f
                 while (x2 < size.width + size.height) {
                     drawLine(Color(0xFF6288A1).copy(alpha = opacity * .075f),
@@ -200,6 +202,7 @@ internal fun PremiumMaterialSurface(
                 }
             }
             CleanVisualTheme.TITANIUM -> {
+                drawRect(Brush.horizontalGradient(listOf(Color(0x88596470), Color(0x66FFFFFF), Color(0x004B5662), Color(0x55FFFFFF), Color(0x66536270))))
                 var y = 0f
                 while (y < size.height) {
                     drawLine(Color.White.copy(alpha = opacity * .23f),
