@@ -312,9 +312,10 @@ internal fun MinimalCalendarScreen(
                 onOpenTodo = onOpenTodo,
                 onOpenShopping = onOpenShopping,
             )
-        } else if (cleanVisualTheme == CleanVisualTheme.OAK_WOOD) {
-            // A fully bespoke photographic wood layout; the former oak recoloring is removed.
+        } else if (isPremiumMaterialTheme(cleanVisualTheme)) {
+            // Copper, carbon, titanium, hippie and oak use the SAME responsive live calendar.
             OakReferenceCalendarScreen(
+                visualTheme = cleanVisualTheme,
                 month = month,
                 selectedDate = selectedDate,
                 today = today,
