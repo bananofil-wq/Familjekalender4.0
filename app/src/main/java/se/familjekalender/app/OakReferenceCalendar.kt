@@ -32,6 +32,10 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -99,13 +104,13 @@ internal fun OakReferenceCalendarScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 PremiumWoodStat("Idag", selectedEvents.size, if (selectedEvents.size == 1) "aktivitet" else "aktiviteter",
-                    "▦", onToday, Modifier.weight(1f))
+                    Icons.Default.CalendarMonth, onToday, Modifier.weight(1f))
                 PremiumWoodStat("Veckan", weekCount, "aktiviteter",
-                    "▥", onWeek, Modifier.weight(1f))
+                    Icons.Default.BarChart, onWeek, Modifier.weight(1f))
                 PremiumWoodStat("Krockar", conflictCount, if (conflictCount == 0) "lugnt" else "krockar",
-                    "⚠", onConflicts, Modifier.weight(1f))
+                    Icons.Default.WarningAmber, onConflicts, Modifier.weight(1f))
                 PremiumWoodStat("Påminn.", reminderCount, "påminnelser",
-                    "♧", onReminders, Modifier.weight(1f))
+                    Icons.Default.Notifications, onReminders, Modifier.weight(1f))
             }
             PremiumWoodCalendar(month, selectedDate, today, locale,
                 eventsByDate, membersById, onSelect, onMonthChange)
@@ -178,17 +183,24 @@ private fun PremiumWoodButton(
             .border(.65.dp, Color(0xFFEBC48E).copy(alpha = .78f), shape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(symbol, color = WoodGold,
-            fontSize = if (symbol == "+") 31.sp else 25.sp,
-            fontFamily = FontFamily.Serif, fontWeight = FontWeight.Light,
-            textAlign = TextAlign.Center,
-        )
+        if (symbol == "⌕") {
+            Icon(
+                Icons.Default.Search, contentDescription = "Sök",
+                tint = WoodGold, modifier = Modifier.size(22.dp),
+            )
+        } else {
+            Text(
+                symbol, color = WoodGold, fontSize = 30.sp,
+                fontFamily = FontFamily.Serif, fontWeight = FontWeight.Light,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
 @Composable
 private fun PremiumWoodStat(
-    label: String, value: Int, caption: String, icon: String,
+    label: String, value: Int, caption: String, icon: ImageVector,
     onClick: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(12.dp)
@@ -225,8 +237,10 @@ private fun PremiumWoodStat(
                             .border(1.dp, Color(0xFFD9A868), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(icon, color = WoodIvory, fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold)
+                        Icon(
+                            imageVector = icon, contentDescription = label,
+                            tint = WoodIvory, modifier = Modifier.size(16.dp),
+                        )
                     }
                     Spacer(Modifier.width(3.dp))
                     Text(
