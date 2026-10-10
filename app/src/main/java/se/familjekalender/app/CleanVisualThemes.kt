@@ -113,7 +113,7 @@ enum class CleanVisualTheme(
         "Family Spectrum", "Ljus familjedesign med klara kategorifärger.", "◉",
     ),
     OAK_WOOD(
-        "Trätema", "Varm ek, äkta träådring, lövdetaljer och kalender på pergament.", "🌿",
+        "Trätema", "Fotografiskt premiumträ med mässingsdetaljer, ljus ekkalender och mörka träpaneler.", "🌿",
     ),
     GOTHAM_NIGHT(
         "DC – Gotham Night", "Månbelyst gotisk stad, mörk sten och blå nattglöd.", "🌙",
@@ -515,8 +515,8 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
             )
 
 
-        // Oak is a MATERIAL SKIN of the CURRENT layout: same 30/32/16/50dp geometry.
-        // Photo grain and surface overlays are drawn by the shared Clean composables.
+        // The oak identifier is preserved so saved preferences continue to work.
+        // Its home screen is the bespoke 2026 reference layout; this palette skins auxiliary pages.
         CleanVisualTheme.OAK_WOOD ->
             cleanThemeSpec(CleanVisualTheme.CURRENT).copy(
                 backgroundTop = Color(0xFFD7A873),
