@@ -2622,8 +2622,8 @@ private fun MinimalBottomNav(
     cleanVisualTheme: CleanVisualTheme,
     onSelect: (Int) -> Unit,
 ) {
-    if (cleanVisualTheme == CleanVisualTheme.OAK_WOOD) {
-        OakReferenceBottomNav(selected, onSelect)
+    if (isPremiumMaterialTheme(cleanVisualTheme)) {
+        OakReferenceBottomNav(selected, onSelect, cleanVisualTheme)
         return
     }
     val spec = cleanThemeSpec(cleanVisualTheme)
@@ -2788,7 +2788,8 @@ private fun MinimalBottomNav(
 
 /** Replaces the old generic wood-tinted bar with the carved five-tab reference. */
 @Composable
-private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
+private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit, visualTheme: CleanVisualTheme = CleanVisualTheme.OAK_WOOD) {
+    val skin = premiumSkin(visualTheme)
     // Native Compose vectors/text remain crisp at any screen density.
     // The reference wood atlas is used for grain only, never baked labels.
     val items = listOf(
@@ -2799,18 +2800,20 @@ private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
         Triple(5, Icons.Default.LocationOn, "Plats"),
     )
     Box(
-        Modifier.fillMaxWidth().background(Color(0xFF311B0F))
+        Modifier.fillMaxWidth().background(skin.spec.backgroundBottom)
             .navigationBarsPadding().padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
         val frame = RoundedCornerShape(25.dp)
         Surface(
             modifier = Modifier.fillMaxWidth().shadow(7.dp, frame),
             shape = frame,
-            color = Color(0xFF3D2111),
-            border = BorderStroke(1.5.dp, Color(0xFFAE7540)),
+            color = skin.spec.navSurface,
+            border = BorderStroke(1.5.dp, skin.border),
         ) {
             Box {
-                OakPhotographicSurface(Modifier.matchParentSize(), opacity = .71f)
+                androidx.compose.runtime.CompositionLocalProvider(LocalPremiumMaterialTheme provides visualTheme) {
+                    PremiumMaterialSurface(Modifier.matchParentSize(), opacity = .71f)
+                }
                 Row(
                     Modifier.fillMaxWidth().height(72.dp).padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -2826,13 +2829,13 @@ private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                                         .background(
                                             Brush.verticalGradient(
                                                 listOf(
-                                                    Color(0xFFFFDDA9),
-                                                    Color(0xFFDCAA70),
-                                                    Color(0xFFB47740),
+                                                    skin.buttonTop,
+                                                    skin.buttonMid,
+                                                    skin.buttonBottom,
                                                 )
                                             ), shape
                                         )
-                                        .border(1.dp, Color(0xFFF9D7A2), shape)
+                                        .border(1.dp, skin.border, shape)
                                     else Modifier
                                 )
                                 .clickable { onSelect(tab) },
@@ -2848,13 +2851,13 @@ private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                             ) {
                                 Icon(
                                     icon, contentDescription = label,
-                                    tint = if (active) Color(0xFF331807) else Color(0xFFF2C28C),
+                                    tint = if (active) skin.headerInk else skin.panelInk,
                                     modifier = Modifier.size(if (active) 26.dp else 23.dp),
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     label,
-                                    color = if (active) Color(0xFF321807) else Color(0xFFF3D0A4),
+                                    color = if (active) skin.headerInk else skin.panelInk,
                                     fontSize = 9.sp,
                                     fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                                     maxLines = 1,
