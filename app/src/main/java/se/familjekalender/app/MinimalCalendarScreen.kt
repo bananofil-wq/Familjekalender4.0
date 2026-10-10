@@ -312,7 +312,7 @@ internal fun MinimalCalendarScreen(
                 onOpenTodo = onOpenTodo,
                 onOpenShopping = onOpenShopping,
             )
-        } else if (isDesignedCleanTheme(cleanVisualTheme)) {
+        } else if (isDesignedCleanTheme(cleanVisualTheme) && cleanVisualTheme != CleanVisualTheme.OAK_WOOD) {
             DesignedCleanCalendarScreen(
                 theme = cleanVisualTheme,
                 month = month,
@@ -382,6 +382,9 @@ internal fun MinimalCalendarScreen(
                         )
                     }
                 }
+            } else if (cleanVisualTheme == CleanVisualTheme.OAK_WOOD) {
+                // Identical hierarchy and measured layout as Current; only the material is oak.
+                OakPhotographicBackground(Modifier.fillMaxSize())
             } else {
                 Box(
                     Modifier.fillMaxSize()
@@ -400,6 +403,12 @@ internal fun MinimalCalendarScreen(
                         Color(0x33120B16),
                         Color(0x4D120C19),
                         Color(0x77110D18),
+                    )
+                } else if (cleanVisualTheme == CleanVisualTheme.OAK_WOOD) {
+                    listOf(
+                        Color(0x251C0D04),
+                        Color(0x342A160B),
+                        Color(0x6D1C0D06),
                     )
                 } else {
                     listOf(cleanSpec.overlayTop, cleanSpec.overlayBottom)
