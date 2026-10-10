@@ -61,9 +61,11 @@ import java.time.temporal.WeekFields
 import java.util.Locale
 import kotlin.math.sin
 
+
 /**
- * Bespoke compact wood layout matching the selected reference, independent of the
- * card-based designer renderer. Functional actions and live family data are preserved.
+ * The 2026 photographic oak reference: dark raised stat/agenda boards,
+ * light carved calendar, brass hardware and a separate sunset weather panel.
+ * All dates, counts and activities are live; no screenshot is used as fake UI.
  */
 @Composable
 internal fun OakReferenceCalendarScreen(
@@ -80,72 +82,107 @@ internal fun OakReferenceCalendarScreen(
     onWeather: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
+        // A broad, uninterrupted wood backdrop beneath individually carved surfaces.
         OakPhotographicBackground(Modifier.fillMaxSize())
+        Box(
+            Modifier.fillMaxWidth().height(78.dp)
+                .background(Brush.verticalGradient(listOf(Color(0xE9E7B781), Color(0x44D9A575))))
+        )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PremiumWoodHeader(onSearch, onAdd, onFamily)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                PremiumWoodStat("Idag", selectedEvents.size, "aktivitet", "▦", onToday, Modifier.weight(1f))
-                PremiumWoodStat("Veckan", weekCount, "aktiviteter", "▥", onWeek, Modifier.weight(1f))
-                PremiumWoodStat("Krockar", conflictCount, "lugnt", "!", onConflicts, Modifier.weight(1f))
-                PremiumWoodStat("Påminn.", reminderCount, "påminnelser", "♧", onReminders, Modifier.weight(1f))
-            }
-            PremiumWoodCalendar(
-                month, selectedDate, today, locale, eventsByDate, membersById,
-                onSelect, onMonthChange,
-            )
             Row(
-                Modifier.fillMaxWidth().height(180.dp),
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                PremiumWoodStat("Idag", selectedEvents.size, if (selectedEvents.size == 1) "aktivitet" else "aktiviteter",
+                    "▦", onToday, Modifier.weight(1f))
+                PremiumWoodStat("Veckan", weekCount, "aktiviteter",
+                    "▥", onWeek, Modifier.weight(1f))
+                PremiumWoodStat("Krockar", conflictCount, if (conflictCount == 0) "lugnt" else "krockar",
+                    "⚠", onConflicts, Modifier.weight(1f))
+                PremiumWoodStat("Påminn.", reminderCount, "påminnelser",
+                    "♧", onReminders, Modifier.weight(1f))
+            }
+            PremiumWoodCalendar(month, selectedDate, today, locale,
+                eventsByDate, membersById, onSelect, onMonthChange)
+            Row(
+                Modifier.fillMaxWidth().height(158.dp),
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                PremiumWoodAgenda(selectedDate, selectedEvents, membersById,
-                    onOpenEvent, onShowAll, Modifier.weight(1.8f).fillMaxHeight())
-                PremiumWoodWeather(weather, weatherLoading, onWeather,
-                    Modifier.weight(1f).fillMaxHeight())
+                PremiumWoodAgenda(
+                    selectedDate, selectedEvents, membersById, onOpenEvent, onShowAll,
+                    Modifier.weight(1.82f).fillMaxHeight(),
+                )
+                PremiumWoodWeather(
+                    weather, weatherLoading, onWeather,
+                    Modifier.weight(1f).fillMaxHeight(),
+                )
             }
+            Spacer(Modifier.height(3.dp))
         }
     }
 }
 
-private val WoodGold = Color(0xFFEFC28B)
-private val WoodDark = Color(0xFF402210)
-private val WoodBorder = Color(0xFFBA824C)
+private val WoodGold = Color(0xFFF5CE8F)
+private val WoodDark = Color(0xFF34190C)
+private val WoodBorder = Color(0xFFBD814C)
+private val WoodIvory = Color(0xFFFCE5BF)
 
 @Composable
 private fun PremiumWoodHeader(
     onSearch: () -> Unit, onAdd: () -> Unit, onFamily: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f).clickable(onClick = onFamily)) {
-            Text("Familjekalendern ❧", color = WoodDark,
+    Row(
+        Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            Modifier.weight(1f).clickable(onClick = onFamily),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                "Familjekalendern ❧", color = Color(0xFF2D160B),
                 fontSize = 25.sp, fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold, maxLines = 1,
-                overflow = TextOverflow.Ellipsis)
-            Text("T I L L S A M M A N S   V A R J E   D A G",
-                color = Color(0xFF60391D), fontSize = 7.sp, maxLines = 1)
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "T I L L S A M M A N S   V A R J E   D A G",
+                color = Color(0xFF5B301B), fontSize = 7.5.sp,
+                fontWeight = FontWeight.Bold, maxLines = 1,
+            )
         }
-        PremiumWoodButton("⌕", onSearch)
-        Spacer(Modifier.width(6.dp))
-        PremiumWoodButton("+", onAdd)
+        PremiumWoodButton("⌕", onSearch, 40)
+        Spacer(Modifier.width(9.dp))
+        PremiumWoodButton("+", onAdd, 43)
     }
 }
 
 @Composable
-private fun PremiumWoodButton(symbol: String, onClick: () -> Unit) {
+private fun PremiumWoodButton(
+    symbol: String, onClick: () -> Unit, diameter: Int = 33,
+) {
+    val shape = CircleShape
     Box(
-        Modifier.size(40.dp).shadow(4.dp, CircleShape)
+        Modifier.size(diameter.dp).shadow(5.dp, shape)
             .background(
-                Brush.verticalGradient(listOf(Color(0xFF9B663B), Color(0xFF3B1C0D))),
-                CircleShape,
+                Brush.verticalGradient(listOf(Color(0xFFB87E48), Color(0xFF603419), Color(0xFF32180B))),
+                shape,
             )
-            .border(1.5.dp, WoodGold, CircleShape)
-            .clickable(onClick = onClick),
+            .border(1.5.dp, WoodGold, shape)
+            .clickable(onClick = onClick).padding(3.dp)
+            .border(.65.dp, Color(0xFFEBC48E).copy(alpha = .78f), shape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(symbol, color = WoodGold, fontSize = 28.sp)
+        Text(symbol, color = WoodGold,
+            fontSize = if (symbol == "+") 31.sp else 25.sp,
+            fontFamily = FontFamily.Serif, fontWeight = FontWeight.Light,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -154,26 +191,65 @@ private fun PremiumWoodStat(
     label: String, value: Int, caption: String, icon: String,
     onClick: () -> Unit, modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = modifier.height(93.dp).clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp), color = Color(0xF24D2915),
-        border = BorderStroke(1.dp, WoodBorder), shadowElevation = 5.dp,
+        modifier = modifier.height(87.dp).shadow(5.dp, shape)
+            .clickable(onClick = onClick),
+        shape = shape, color = Color(0xFF53301A),
+        border = BorderStroke(1.dp, WoodBorder),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .28f)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .52f)
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        listOf(Color(0x5431160A), Color(0x98402012), Color(0xE72A1208))
+                    )
+                )
+            )
             Column(
-                Modifier.fillMaxSize().padding(6.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
+                Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(icon + " " + label, color = WoodGold, fontSize = 10.sp,
-                    fontFamily = FontFamily.Serif, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
-                Text(value.toString(), color = Color(0xFFFFDFAC),
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(26.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFFB78553), Color(0xFF4D2710))
+                                ), CircleShape
+                            )
+                            .border(1.dp, Color(0xFFD9A868), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(icon, color = WoodIvory, fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        label, color = WoodIvory, fontFamily = FontFamily.Serif,
+                        fontSize = 11.sp, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(0.dp))
+                Text(
+                    value.toString(), color = Color(0xFFFFDCA7),
                     fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
-                    fontSize = 30.sp)
-                Text(caption, color = Color(0xFFE0BC92), fontSize = 9.sp,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    fontSize = 32.sp, maxLines = 1,
+                )
+                Text(
+                    caption, color = Color(0xFFF1D0A7), fontSize = 9.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
+            Text(
+                "›", color = WoodGold, fontSize = 17.sp,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 5.dp, bottom = 11.dp)
+            )
         }
     }
 }
@@ -185,132 +261,180 @@ private fun PremiumWoodCalendar(
     members: Map<String, SyncMember>,
     onSelect: (LocalDate) -> Unit, onChange: (Long) -> Unit,
 ) {
+    val shape = RoundedCornerShape(15.dp)
     Surface(
-        color = Color(0xFFF2CF9E), shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, Color(0xFF9C5C2A)),
-        shadowElevation = 7.dp,
-        modifier = Modifier.fillMaxWidth().pointerInput(month) {
-            var distance = 0f
-            detectHorizontalDragGestures(
-                onDragStart = { distance = 0f },
-                onHorizontalDrag = { change, amount ->
-                    change.consume()
-                    distance += amount
-                },
-                onDragEnd = {
-                    if (distance < -48.dp.toPx()) onChange(1L)
-                    else if (distance > 48.dp.toPx()) onChange(-1L)
-                    distance = 0f
-                },
-                onDragCancel = { distance = 0f },
-            )
-        },
+        modifier = Modifier.fillMaxWidth()
+            .shadow(8.dp, shape)
+            .pointerInput(month) {
+                var distance = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { distance = 0f },
+                    onHorizontalDrag = { change, amount ->
+                        change.consume()
+                        distance += amount
+                    },
+                    onDragEnd = {
+                        if (distance < -48.dp.toPx()) onChange(1L)
+                        else if (distance > 48.dp.toPx()) onChange(-1L)
+                        distance = 0f
+                    },
+                    onDragCancel = { distance = 0f },
+                )
+            },
+        shape = shape, color = Color(0xFFF1C793),
+        border = BorderStroke(2.dp, Color(0xFF8B532E)),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .15f)
-            Column(Modifier.padding(horizontal = 8.dp, vertical = 11.dp)) {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .29f)
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        listOf(Color(0x67FFE8BF), Color(0x45EEC499), Color(0x48A66D38))
+                    )
+                )
+            )
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
                 Row(
-                    Modifier.fillMaxWidth().height(43.dp),
+                    Modifier.fillMaxWidth().height(45.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         month.month.getDisplayName(TextStyle.FULL, locale)
                             .replaceFirstChar { it.uppercase(locale) } + " " + month.year,
-                        color = WoodDark, fontFamily = FontFamily.Serif,
-                        fontSize = 24.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
+                        color = WoodDark, fontFamily = FontFamily.Serif,
+                        fontSize = 26.sp, fontWeight = FontWeight.Bold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
-                    PremiumWoodButton("‹", { onChange(-1L) })
-                    Spacer(Modifier.width(5.dp))
-                    PremiumWoodButton("›", { onChange(1L) })
+                    PremiumWoodButton("‹", { onChange(-1L) }, 36)
+                    Spacer(Modifier.width(7.dp))
+                    PremiumWoodButton("›", { onChange(1L) }, 36)
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("V", Modifier.width(17.dp), color = OakMutedInk,
-                        fontSize = 9.sp, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier.fillMaxWidth().height(23.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "V", Modifier.width(26.dp),
+                        color = Color(0xFF775039), fontSize = 10.sp,
+                        textAlign = TextAlign.Center,
+                    )
                     listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN").forEach { day ->
-                        Text(day, Modifier.weight(1f), textAlign = TextAlign.Center,
-                            fontSize = 9.sp, fontWeight = FontWeight.Bold,
-                            color = OakMutedInk)
+                        Text(
+                            day, Modifier.weight(1f), textAlign = TextAlign.Center,
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                            color = Color(0xFF533320),
+                        )
                     }
                 }
                 val first = month.atDay(1)
                 val start = first.minusDays((first.dayOfWeek.value - 1).toLong())
-                val rows = (first.lengthOfMonth() + first.dayOfWeek.value + 5) / 7
-                val wf = WeekFields.of(locale)
+                val rows = maxOf(6, (first.lengthOfMonth() + first.dayOfWeek.value + 5) / 7)
+                val wf = WeekFields.ISO
                 repeat(rows) { week ->
                     Row(
-                        Modifier.fillMaxWidth().height(46.dp),
+                        Modifier.fillMaxWidth().height(43.dp),
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val weekStart = start.plusDays((week * 7).toLong())
-                        Text(weekStart.get(wf.weekOfWeekBasedYear()).toString(),
-                            Modifier.width(17.dp), textAlign = TextAlign.Center,
-                            color = OakMutedInk, fontSize = 9.sp)
+                        Text(
+                            weekStart.get(wf.weekOfWeekBasedYear()).toString(),
+                            Modifier.width(26.dp), textAlign = TextAlign.Center,
+                            color = Color(0xFF775039), fontSize = 10.sp,
+                        )
                         repeat(7) { day ->
                             val date = weekStart.plusDays(day.toLong())
-                            val selectedDay = date == selected
-                            val shape = RoundedCornerShape(9.dp)
+                            val active = date == selected
+                            val inMonth = YearMonth.from(date) == month
+                            val dayShape = RoundedCornerShape(9.dp)
+                            val events = eventsByDate[date].orEmpty()
                             Box(
-                                Modifier.weight(1f).fillMaxHeight()
-                                    .shadow(if (selectedDay) 3.dp else 1.dp, shape)
+                                Modifier.weight(1f).height(40.dp)
+                                    .shadow(if (active) 3.dp else 1.dp, dayShape)
                                     .background(
                                         Brush.verticalGradient(
-                                            if (selectedDay)
-                                                listOf(Color(0xFF8C4D26), Color(0xFF3A1B0C))
-                                            else listOf(Color(0xFFFBE5C1), Color(0xFFDCAD78))
-                                        ), shape
+                                            if (active)
+                                                listOf(Color(0xFF8F5129), Color(0xFF321608))
+                                            else
+                                                listOf(Color(0xFFFFE9C7), Color(0xFFDDB285))
+                                        ), dayShape
                                     )
                                     .border(
-                                        if (selectedDay) 1.5.dp else .5.dp,
-                                        if (selectedDay) WoodGold else Color(0x55986639),
-                                        shape,
+                                        if (active) 1.6.dp else .65.dp,
+                                        if (active) WoodGold else Color(0x66B77B44),
+                                        dayShape,
                                     )
                                     .clickable { onSelect(date) },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(date.dayOfMonth.toString(),
-                                        color = if (selectedDay) WoodGold
-                                            else if (date.month == month.month) WoodDark
-                                            else Color(0x88775536),
+                                // The selected date is a carved dark inset, not a generic purple chip.
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Text(
+                                        date.dayOfMonth.toString(),
+                                        color = if (active) WoodIvory
+                                            else if (inMonth) WoodDark
+                                            else Color(0x88725138),
                                         fontSize = 17.sp, fontFamily = FontFamily.Serif,
-                                        fontWeight = if (date == today || selectedDay)
-                                            FontWeight.Bold else FontWeight.Medium)
-                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        eventsByDate[date].orEmpty()
-                                            .filterNot {
-                                                it.title.trimStart().startsWith("🌈") ||
-                                                    it.source.contains("birthday", ignoreCase = true)
+                                        fontWeight = if (date == today || active)
+                                            FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1,
+                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        events.filterNot { oakBirthdayEvent(it) }
+                                            .distinctBy { it.memberId }
+                                            .take(4).forEach { event ->
+                                                val accent = members[event.memberId]?.let {
+                                                    Color(it.colorArgb.toInt())
+                                                } ?: Color(0xFFFFC956)
+                                                Box(
+                                                    Modifier.size(5.dp).background(accent, CircleShape)
+                                                )
                                             }
-                                            .take(3).forEach { event ->
-                                            val accent = members[event.memberId]?.let {
-                                                Color(it.colorArgb.toInt())
-                                            } ?: Color(0xFFE7B34D)
-                                            Box(Modifier.size(4.dp).background(accent, CircleShape))
-                                        }
                                     }
                                 }
-                                val birthday = eventsByDate[date].orEmpty().any {
-                                    it.title.trimStart().startsWith("🌈") ||
-                                        it.title.contains("födelsedag", ignoreCase = true) ||
-                                        it.source.contains("birthday", ignoreCase = true)
-                                }
-                                if (birthday) {
-                                    Text("🌈", fontSize = 9.sp,
-                                        modifier = Modifier.align(Alignment.TopEnd))
+                                if (events.any(::oakBirthdayEvent)) {
+                                    Text(
+                                        "🌈", fontSize = 11.sp,
+                                        modifier = Modifier.align(Alignment.TopCenter)
+                                            .padding(top = 1.dp),
+                                    )
                                 }
                             }
                         }
                     }
-                    Spacer(Modifier.height(3.dp))
+                    if (week < rows - 1) Spacer(Modifier.height(3.dp))
                 }
+            }
+            listOf(
+                Alignment.TopStart, Alignment.TopEnd,
+                Alignment.BottomStart, Alignment.BottomEnd,
+            ).forEach { pos ->
+                Box(
+                    Modifier.align(pos).padding(7.dp).size(7.dp)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(Color(0xFFFFE3AE), Color(0xFFB08355), Color(0xFF5F3215))
+                            ), CircleShape
+                        )
+                        .border(.6.dp, Color(0xFF6B3C1F), CircleShape)
+                )
             }
         }
     }
 }
+
+private fun oakBirthdayEvent(event: SyncEvent): Boolean =
+    event.title.trimStart().startsWith("🌈") ||
+        event.title.contains("födelsedag", ignoreCase = true) ||
+        event.source.contains("birthday", ignoreCase = true)
 
 @Composable
 private fun PremiumWoodAgenda(
@@ -318,44 +442,103 @@ private fun PremiumWoodAgenda(
     onEvent: (SyncEvent) -> Unit, onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(13.dp),
-        color = Color(0xF44D2713), border = BorderStroke(1.dp, WoodBorder),
-        shadowElevation = 5.dp) {
+    val shape = RoundedCornerShape(14.dp)
+    Surface(
+        modifier = modifier.shadow(6.dp, shape),
+        shape = shape, color = Color(0xFF3D2011),
+        border = BorderStroke(1.dp, WoodBorder),
+    ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .24f)
-            Column(Modifier.fillMaxSize().padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Row(Modifier.fillMaxWidth().clickable(onClick = onShowAll)) {
-                    Text("Idag", color = WoodGold, fontFamily = FontFamily.Serif,
-                        fontSize = 20.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f))
-                    Text(date.dayOfMonth.toString() + "/" + date.monthValue + " ›",
-                        color = WoodGold, fontSize = 10.sp)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .34f)
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        listOf(Color(0x554B230D), Color(0xCB2E160B))
+                    )
+                )
+            )
+            Column(
+                Modifier.fillMaxSize().padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onShowAll),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Idag", modifier = Modifier.weight(1f),
+                        color = WoodIvory, fontFamily = FontFamily.Serif,
+                        fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE")))
+                            .replaceFirstChar { it.uppercase() } + "   ›",
+                        color = WoodIvory, fontSize = 10.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 if (events.isEmpty()) {
-                    Text("Inget planerat", color = WoodGold, fontSize = 11.sp)
+                    Text("Inga aktiviteter den här dagen", color = WoodIvory, fontSize = 11.sp)
                 }
                 events.take(3).forEach { event ->
                     val accent = members[event.memberId]?.let {
                         Color(it.colorArgb.toInt())
-                    } ?: WoodGold
+                    } ?: Color(0xFFC59B66)
+                    val title = event.title.lowercase(Locale("sv", "SE"))
+                    val icon = when {
+                        "katt" in title || "hund" in title -> "🐾"
+                        "tvätt" in title -> "▣"
+                        "fotboll" in title -> "⚽"
+                        "träning" in title -> "●"
+                        else -> "•"
+                    }
                     Row(
                         Modifier.fillMaxWidth().weight(1f)
-                            .background(Color(0x88402413), RoundedCornerShape(7.dp))
-                            .border(.6.dp, Color(0x885B4029), RoundedCornerShape(7.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0x956B4229), Color(0xAA361A0D))
+                                ), RoundedCornerShape(8.dp)
+                            )
+                            .border(.65.dp, Color(0x886F4529), RoundedCornerShape(8.dp))
                             .clickable { onEvent(event) }
-                            .padding(horizontal = 5.dp),
+                            .padding(horizontal = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(event.time.ifBlank { "Heldag" },
-                            color = WoodGold, fontSize = 9.sp,
-                            modifier = Modifier.width(37.dp), maxLines = 1)
-                        Box(Modifier.size(8.dp).background(accent, CircleShape))
-                        Spacer(Modifier.width(5.dp))
-                        Text(event.title, color = Color(0xFFFFE6C2), fontSize = 10.sp,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f))
-                        Text("›", color = WoodGold, fontSize = 16.sp)
+                        Text(
+                            event.time.ifBlank { "Heldag" }, color = WoodIvory,
+                            fontSize = 10.sp, modifier = Modifier.width(39.dp),
+                            maxLines = 1,
+                        )
+                        Box(
+                            Modifier.size(24.dp)
+                                .background(accent.copy(alpha = .8f), CircleShape)
+                                .border(.8.dp, WoodGold.copy(alpha = .7f), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(icon, color = Color.White, fontSize = 14.sp)
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            event.title, color = Color(0xFFFFE7C6),
+                            fontSize = 11.sp, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        val owner = members[event.memberId]
+                        if (owner != null) {
+                            Box(
+                                Modifier.size(19.dp)
+                                    .background(accent.copy(alpha = .65f), CircleShape)
+                                    .border(.6.dp, Color(0xFFDDB889), CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    owner.name.take(1).uppercase(Locale("sv", "SE")),
+                                    color = Color.White, fontSize = 9.sp,
+                                )
+                            }
+                        }
+                        Text(" ›", color = WoodGold, fontSize = 14.sp)
                     }
                 }
             }
@@ -368,25 +551,65 @@ private fun PremiumWoodWeather(
     weather: CleanWeatherSnapshot?, loading: Boolean, onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(14.dp)
     Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(13.dp),
-        color = Color(0xF66D3D20),
-        border = BorderStroke(1.dp, WoodBorder), shadowElevation = 5.dp,
+        modifier = modifier.shadow(6.dp, shape).clickable(onClick = onClick),
+        shape = shape, color = Color(0xFF90542A),
+        border = BorderStroke(1.dp, WoodBorder),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .22f)
-            Column(Modifier.fillMaxSize().padding(8.dp),
-                verticalArrangement = Arrangement.SpaceBetween) {
-                Text("Väder  ›", color = WoodGold, fontFamily = FontFamily.Serif,
-                    fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(oakWeatherEmoji(weather?.weatherCode), fontSize = 27.sp)
-                Text(weather?.temperatureC?.toString()?.plus("°") ?: "—°",
-                    color = WoodGold, fontFamily = FontFamily.Serif,
-                    fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                Text(weather?.description ?: if (loading) "Hämtar…" else "Visa vädret",
-                    color = Color(0xFFFFD6A4), fontSize = 10.sp,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .31f)
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        listOf(Color(0x44934D1B), Color(0x447C3C17), Color(0xDD2D1D13))
+                    )
+                )
+            )
+            // Golden-hour horizon is decorative; weather figures come from the service.
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(
+                    color = Color(0x59FFD092),
+                    radius = size.width * .32f,
+                    center = Offset(size.width * .74f, size.height * .76f),
+                )
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        listOf(Color(0x00D88945), Color(0xA52B1C13)),
+                        startY = size.height * .64f, endY = size.height,
+                    ),
+                    topLeft = Offset(0f, size.height * .64f),
+                    size = Size(size.width, size.height * .36f),
+                )
+            }
+            Column(
+                Modifier.fillMaxSize().padding(9.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Väder", modifier = Modifier.weight(1f),
+                        color = WoodIvory, fontSize = 19.sp,
+                        fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
+                    )
+                    Text("›", color = WoodGold, fontSize = 19.sp)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(oakWeatherEmoji(weather?.weatherCode), fontSize = 27.sp)
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        weather?.temperatureC?.toString()?.plus("°") ?: "—°",
+                        color = WoodIvory, fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Bold, fontSize = 35.sp,
+                    )
+                }
+                Text(
+                    weather?.description ?: if (loading) "Hämtar vädret…" else "Visa vädret",
+                    color = Color(0xFFF7E0C4), fontSize = 10.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
