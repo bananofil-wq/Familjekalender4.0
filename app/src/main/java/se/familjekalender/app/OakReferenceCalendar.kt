@@ -215,6 +215,30 @@ private fun PremiumWoodStat(
 }
 
 @Composable
+private fun PremiumWoodButton(
+    symbol: String, onClick: () -> Unit, diameter: Int = 33,
+) {
+    Box(
+        Modifier.size(diameter.dp)
+            .shadow(4.dp, CircleShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFBA8753), Color(0xFF6A3618), Color(0xFF2F170B))
+                ), CircleShape
+            )
+            .border(1.5.dp, WoodGold, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            symbol, color = WoodGold,
+            fontFamily = FontFamily.Serif, fontSize = 25.sp,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
 private fun PremiumWoodCalendar(
     month: YearMonth, selected: LocalDate, today: LocalDate, locale: Locale,
     eventsByDate: Map<LocalDate, List<SyncEvent>>,
