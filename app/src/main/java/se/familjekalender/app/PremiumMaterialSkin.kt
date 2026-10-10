@@ -1,6 +1,11 @@
 package se.familjekalender.app
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -161,6 +167,21 @@ internal fun PremiumMaterialSurface(
                 }
             }
             CleanVisualTheme.CARBON_FIBER -> {
+                // Cross-woven threads with alternating highlights, not a single diagonal hatch.
+                val cell = 14f
+                var yy = 0f
+                while (yy < size.height) {
+                    var xx = 0f
+                    while (xx < size.width) {
+                        val even = ((xx / cell).toInt() + (yy / cell).toInt()) % 2 == 0
+                        drawLine((if (even) Color(0xFF8FAFC4) else Color(0xFF03070D)).copy(alpha = opacity * .23f),
+                            Offset(xx, yy + 2f), Offset(xx + cell - 2f, yy + cell - 2f), strokeWidth = 3.5f)
+                        drawLine(Color(0xFF02070D).copy(alpha = opacity * .28f),
+                            Offset(xx + cell - 3f, yy), Offset(xx, yy + cell - 3f), strokeWidth = 2f)
+                        xx += cell
+                    }
+                    yy += cell
+                }
                 var x = -size.height
                 while (x < size.width + size.height) {
                     drawLine(Color(0xFFB1C4D5).copy(alpha = opacity * .12f),
@@ -191,6 +212,26 @@ internal fun PremiumMaterialSurface(
                 }
             }
             CleanVisualTheme.HIPPIE -> {
+                // Dense illustrated border flowers, leaving the centre legible.
+                val petalColors = listOf(Color(0xFFFFC72E), Color(0xFFFF5784), Color(0xFFFF8839), Color(0xFFFDDB62))
+                val flowerRadius = (size.width * .024f).coerceIn(4f, 15f)
+                repeat(16) { n ->
+                    val side = n % 4
+                    val fraction = ((n / 4f) + .5f) / 4f
+                    val center = when (side) {
+                        0 -> Offset(size.width * fraction, size.height * .035f)
+                        1 -> Offset(size.width * fraction, size.height * .965f)
+                        2 -> Offset(size.width * .035f, size.height * fraction)
+                        else -> Offset(size.width * .965f, size.height * fraction)
+                    }
+                    repeat(7) { p ->
+                        val angle = p * Math.PI * 2 / 7
+                        drawCircle(petalColors[n % petalColors.size].copy(alpha = opacity * .83f), flowerRadius * .67f,
+                            center + Offset((kotlin.math.cos(angle) * flowerRadius).toFloat(),
+                                (kotlin.math.sin(angle) * flowerRadius).toFloat()))
+                    }
+                    drawCircle(Color(0xFF71382A).copy(alpha = opacity), flowerRadius * .38f, center)
+                }
                 // Subtle hand-drawn flower motifs; keep central content contrast.
                 val centers = listOf(
                     Offset(size.width * .07f, size.height * .18f),
@@ -231,22 +272,31 @@ internal fun PremiumMaterialDecoration(modifier: Modifier) {
     val theme = LocalPremiumMaterialTheme.current
     when (theme) {
         CleanVisualTheme.OAK_WOOD -> OakLeafDecoration(modifier)
-        CleanVisualTheme.HIPPIE ->
-            Box(modifier, contentAlignment = Alignment.Center) {
-                Text("✿", color = Color(0xFFFFCB42), fontSize = 29.sp,
-                    fontWeight = FontWeight.Bold)
+        CleanVisualTheme.HIPPIE -> Canvas(modifier) {
+            val centers = listOf(
+                Offset(size.width * .32f, size.height * .20f),
+                Offset(size.width * .62f, size.height * .50f),
+                Offset(size.width * .22f, size.height * .82f),
+            )
+            val petals = listOf(Color(0xFFFFA22E), Color(0xFFFF408B), Color(0xFFFFD42B))
+            centers.forEachIndexed { index, center ->
+                val radius = size.minDimension * (if (index == 1) .25f else .18f)
+                repeat(6) { n ->
+                    val angle = n * Math.PI / 3
+                    drawCircle(petals[index], radius * .55f,
+                        center + Offset((kotlin.math.cos(angle) * radius).toFloat(),
+                            (kotlin.math.sin(angle) * radius).toFloat()))
+                }
+                drawCircle(Color(0xFF58311D), radius * .42f, center)
             }
-        CleanVisualTheme.CARBON_FIBER ->
+        }
+        CleanVisualTheme.CARBON_FIBER, CleanVisualTheme.TITANIUM, CleanVisualTheme.COPPER ->
             Box(modifier, contentAlignment = Alignment.Center) {
-                Text("◆", color = Color(0xFF41AEFC), fontSize = 17.sp)
-            }
-        CleanVisualTheme.TITANIUM ->
-            Box(modifier, contentAlignment = Alignment.Center) {
-                Text("◇", color = Color(0xFF32434D), fontSize = 22.sp)
-            }
-        CleanVisualTheme.COPPER ->
-            Box(modifier, contentAlignment = Alignment.Center) {
-                Text("✦", color = Color(0xFFF7C28B), fontSize = 22.sp)
+                Text(when (theme) {
+                    CleanVisualTheme.CARBON_FIBER -> "✦"
+                    CleanVisualTheme.TITANIUM -> "◆"
+                    else -> "✧"
+                }, color = premiumSkin(theme).spec.accentStrong, fontSize = 23.sp)
             }
         else -> Unit
     }
