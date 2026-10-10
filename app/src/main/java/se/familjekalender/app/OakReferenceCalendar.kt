@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -86,7 +87,12 @@ internal fun OakReferenceCalendarScreen(
     onOpenEvent: (SyncEvent) -> Unit, onShowAll: () -> Unit,
     onWeather: () -> Unit,
 ) {
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Compress only the six calendar rows and lower panels when Android
+        // status and gesture/navigation bars leave less vertical space.
+        // Keep every button and event live, with scrolling as a fallback.
+        val compactHeight = maxHeight < 750.dp
+        val lowerPanelHeight = if (compactHeight) 163.dp else 182.dp
         // A broad, uninterrupted wood backdrop beneath individually carved surfaces.
         OakPhotographicBackground(Modifier.fillMaxSize())
         OakLeafDecoration(
@@ -116,9 +122,9 @@ internal fun OakReferenceCalendarScreen(
                     Icons.Default.Notifications, onReminders, Modifier.weight(1f))
             }
             PremiumWoodCalendar(month, selectedDate, today, locale,
-                eventsByDate, membersById, onSelect, onMonthChange)
+                eventsByDate, membersById, onSelect, onMonthChange, compactHeight)
             Row(
-                Modifier.fillMaxWidth().height(182.dp),
+                Modifier.fillMaxWidth().height(lowerPanelHeight),
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 PremiumWoodAgenda(
@@ -278,6 +284,7 @@ private fun PremiumWoodCalendar(
     eventsByDate: Map<LocalDate, List<SyncEvent>>,
     members: Map<String, SyncMember>,
     onSelect: (LocalDate) -> Unit, onChange: (Long) -> Unit,
+    compactHeight: Boolean,
 ) {
     val shape = RoundedCornerShape(15.dp)
     Surface(
@@ -352,7 +359,7 @@ private fun PremiumWoodCalendar(
                 val wf = WeekFields.ISO
                 repeat(rows) { week ->
                     Row(
-                        Modifier.fillMaxWidth().height(43.dp),
+                        Modifier.fillMaxWidth().height(if (compactHeight) 39.dp else 43.dp),
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -369,7 +376,7 @@ private fun PremiumWoodCalendar(
                             val dayShape = RoundedCornerShape(9.dp)
                             val events = eventsByDate[date].orEmpty()
                             Box(
-                                Modifier.weight(1f).height(40.dp)
+                                Modifier.weight(1f).height(if (compactHeight) 36.dp else 40.dp)
                                     .shadow(if (active) 3.dp else 1.dp, dayShape)
                                     .background(
                                         Brush.verticalGradient(
