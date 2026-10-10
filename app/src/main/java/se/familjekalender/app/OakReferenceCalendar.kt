@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.YearMonth
@@ -88,11 +89,17 @@ internal fun OakReferenceCalendarScreen(
     onWeather: () -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Compress only the six calendar rows and lower panels when Android
-        // status and gesture/navigation bars leave less vertical space.
-        // Keep every button and event live, with scrolling as a fallback.
-        val compactHeight = maxHeight < 750.dp
-        val lowerPanelHeight = if (compactHeight) 163.dp else 182.dp
+        // Scaffold has already subtracted Android/system and our bottom bar.
+        // Reserve the agenda/weather panel, then let the month grid use exactly
+        // the remaining height instead of scrolling under the bottom navigation.
+        val compactHeight = maxHeight < 740.dp
+        val lowerPanelHeight = when {
+            maxHeight < 610.dp -> 128.dp
+            maxHeight < 680.dp -> 145.dp
+            maxHeight < 760.dp -> 160.dp
+            else -> 182.dp
+        }
+        val summaryHeight = if (compactHeight) 92.dp else 100.dp
         // A broad, uninterrupted wood backdrop beneath individually carved surfaces.
         OakPhotographicBackground(Modifier.fillMaxSize())
         OakLeafDecoration(
@@ -103,9 +110,8 @@ internal fun OakReferenceCalendarScreen(
                 .background(Brush.verticalGradient(listOf(Color(0xE9E7B781), Color(0x44D9A575))))
         )
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compactHeight) 6.dp else 8.dp),
         ) {
             PremiumWoodHeader(onSearch, onAdd, onFamily)
             Row(
@@ -113,16 +119,19 @@ internal fun OakReferenceCalendarScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 PremiumWoodStat("Idag", selectedEvents.size, if (selectedEvents.size == 1) "aktivitet" else "aktiviteter",
-                    Icons.Default.CalendarMonth, onToday, Modifier.weight(1f))
+                    Icons.Default.CalendarMonth, onToday, Modifier.weight(1f), summaryHeight)
                 PremiumWoodStat("Veckan", weekCount, "aktiviteter",
-                    Icons.Default.BarChart, onWeek, Modifier.weight(1f))
+                    Icons.Default.BarChart, onWeek, Modifier.weight(1f), summaryHeight)
                 PremiumWoodStat("Krockar", conflictCount, if (conflictCount == 0) "lugnt" else "krockar",
-                    Icons.Default.WarningAmber, onConflicts, Modifier.weight(1f))
+                    Icons.Default.WarningAmber, onConflicts, Modifier.weight(1f), summaryHeight)
                 PremiumWoodStat("Påminn.", reminderCount, "påminnelser",
-                    Icons.Default.Notifications, onReminders, Modifier.weight(1f))
+                    Icons.Default.Notifications, onReminders, Modifier.weight(1f), summaryHeight)
             }
-            PremiumWoodCalendar(month, selectedDate, today, locale,
-                eventsByDate, membersById, onSelect, onMonthChange, compactHeight)
+            PremiumWoodCalendar(
+                month, selectedDate, today, locale,
+                eventsByDate, membersById, onSelect, onMonthChange, compactHeight,
+                Modifier.fillMaxWidth().weight(1f),
+            )
             Row(
                 Modifier.fillMaxWidth().height(lowerPanelHeight),
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -136,7 +145,6 @@ internal fun OakReferenceCalendarScreen(
                     Modifier.weight(1f).fillMaxHeight(),
                 )
             }
-            Spacer(Modifier.height(3.dp))
         }
     }
 }
@@ -212,10 +220,11 @@ private fun PremiumWoodButton(
 private fun PremiumWoodStat(
     label: String, value: Int, caption: String, icon: ImageVector,
     onClick: () -> Unit, modifier: Modifier = Modifier,
+    height: Dp = 100.dp,
 ) {
     val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = modifier.height(100.dp).shadow(5.dp, shape)
+        modifier = modifier.height(height).shadow(5.dp, shape)
             .clickable(onClick = onClick),
         shape = shape, color = Color(0xFF53301A),
         border = BorderStroke(1.dp, WoodBorder),
@@ -285,10 +294,11 @@ private fun PremiumWoodCalendar(
     members: Map<String, SyncMember>,
     onSelect: (LocalDate) -> Unit, onChange: (Long) -> Unit,
     compactHeight: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(15.dp)
     Surface(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
             .shadow(8.dp, shape)
             .pointerInput(month) {
                 var distance = 0f
@@ -318,9 +328,14 @@ private fun PremiumWoodCalendar(
                     )
                 )
             )
-            Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
+            Column(
+                Modifier.fillMaxSize().padding(
+                    horizontal = 10.dp,
+                    vertical = if (compactHeight) 6.dp else 10.dp,
+                ),
+            ) {
                 Row(
-                    Modifier.fillMaxWidth().height(45.dp),
+                    Modifier.fillMaxWidth().height(if (compactHeight) 40.dp else 45.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -335,9 +350,9 @@ private fun PremiumWoodCalendar(
                     Spacer(Modifier.width(7.dp))
                     PremiumWoodButton("›", { onChange(1L) }, 36)
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(if (compactHeight) 4.dp else 10.dp))
                 Row(
-                    Modifier.fillMaxWidth().height(23.dp),
+                    Modifier.fillMaxWidth().height(if (compactHeight) 19.dp else 23.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -359,7 +374,7 @@ private fun PremiumWoodCalendar(
                 val wf = WeekFields.ISO
                 repeat(rows) { week ->
                     Row(
-                        Modifier.fillMaxWidth().height(if (compactHeight) 39.dp else 43.dp),
+                        Modifier.fillMaxWidth().weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -376,7 +391,7 @@ private fun PremiumWoodCalendar(
                             val dayShape = RoundedCornerShape(9.dp)
                             val events = eventsByDate[date].orEmpty()
                             Box(
-                                Modifier.weight(1f).height(if (compactHeight) 36.dp else 40.dp)
+                                Modifier.weight(1f).fillMaxHeight()
                                     .shadow(if (active) 3.dp else 1.dp, dayShape)
                                     .background(
                                         Brush.verticalGradient(
@@ -442,7 +457,7 @@ private fun PremiumWoodCalendar(
                             }
                         }
                     }
-                    if (week < rows - 1) Spacer(Modifier.height(3.dp))
+                    if (week < rows - 1) Spacer(Modifier.height(if (compactHeight) 2.dp else 3.dp))
                 }
             }
             listOf(
