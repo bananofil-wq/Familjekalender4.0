@@ -89,6 +89,9 @@ internal fun OakReferenceCalendarScreen(
     Box(Modifier.fillMaxSize()) {
         // A broad, uninterrupted wood backdrop beneath individually carved surfaces.
         OakPhotographicBackground(Modifier.fillMaxSize())
+        OakLeafDecoration(
+            Modifier.align(Alignment.TopStart).width(52.dp).height(109.dp)
+        )
         Box(
             Modifier.fillMaxWidth().height(78.dp)
                 .background(Brush.verticalGradient(listOf(Color(0xE9E7B781), Color(0x44D9A575))))
@@ -115,7 +118,7 @@ internal fun OakReferenceCalendarScreen(
             PremiumWoodCalendar(month, selectedDate, today, locale,
                 eventsByDate, membersById, onSelect, onMonthChange)
             Row(
-                Modifier.fillMaxWidth().height(158.dp),
+                Modifier.fillMaxWidth().height(182.dp),
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 PremiumWoodAgenda(
@@ -142,7 +145,8 @@ private fun PremiumWoodHeader(
     onSearch: () -> Unit, onAdd: () -> Unit, onFamily: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 4.dp),
+        Modifier.fillMaxWidth().height(64.dp)
+            .padding(start = 29.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
@@ -151,7 +155,7 @@ private fun PremiumWoodHeader(
         ) {
             Text(
                 "Familjekalendern ❧", color = Color(0xFF2D160B),
-                fontSize = 25.sp, fontFamily = FontFamily.Serif,
+                fontSize = 23.sp, fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold, maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -205,7 +209,7 @@ private fun PremiumWoodStat(
 ) {
     val shape = RoundedCornerShape(12.dp)
     Surface(
-        modifier = modifier.height(87.dp).shadow(5.dp, shape)
+        modifier = modifier.height(100.dp).shadow(5.dp, shape)
             .clickable(onClick = onClick),
         shape = shape, color = Color(0xFF53301A),
         border = BorderStroke(1.dp, WoodBorder),
@@ -220,7 +224,8 @@ private fun PremiumWoodStat(
                 )
             )
             Column(
-                Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 6.dp),
+                Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 5.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(
@@ -228,7 +233,7 @@ private fun PremiumWoodStat(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        Modifier.size(26.dp)
+                        Modifier.size(25.dp)
                             .background(
                                 Brush.verticalGradient(
                                     listOf(Color(0xFFB78553), Color(0xFF4D2710))
@@ -249,20 +254,19 @@ private fun PremiumWoodStat(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(Modifier.height(0.dp))
                 Text(
                     value.toString(), color = Color(0xFFFFDCA7),
                     fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp, maxLines = 1,
+                    fontSize = 31.sp, lineHeight = 33.sp, maxLines = 1,
                 )
                 Text(
-                    caption, color = Color(0xFFF1D0A7), fontSize = 9.sp,
+                    caption, color = Color(0xFFF1D0A7), fontSize = 9.5.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 "›", color = WoodGold, fontSize = 17.sp,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 5.dp, bottom = 11.dp)
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 5.dp, bottom = 15.dp)
             )
         }
     }
@@ -383,7 +387,11 @@ private fun PremiumWoodCalendar(
                                     .clickable { onSelect(date) },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                // The selected date is a carved dark inset, not a generic purple chip.
+                                // Subtle real grain on each carved date, not a flat rounded rectangle.
+                                if (!active) OakPhotographicSurface(
+                                    Modifier.matchParentSize().clip(dayShape),
+                                    opacity = .15f, material = OakPhotoMaterial.PALE,
+                                )
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center,
@@ -507,7 +515,7 @@ private fun PremiumWoodAgenda(
                         else -> "•"
                     }
                     Row(
-                        Modifier.fillMaxWidth().weight(1f)
+                        Modifier.fillMaxWidth().height(43.dp)
                             .background(
                                 Brush.verticalGradient(
                                     listOf(Color(0x956B4229), Color(0xAA361A0D))
@@ -580,16 +588,20 @@ private fun PremiumWoodWeather(
                     )
                 )
             )
-            // Golden-hour horizon is decorative; weather figures come from the service.
+            // The shoreline is a photograph cropped from the reference. Weather remains live.
+            OakSunsetDecoration(
+                Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth().fillMaxHeight(.41f).clip(shape)
+            )
             Canvas(Modifier.fillMaxSize()) {
                 drawCircle(
-                    color = Color(0x59FFD092),
+                    color = Color(0x22FFD092),
                     radius = size.width * .32f,
                     center = Offset(size.width * .74f, size.height * .76f),
                 )
                 drawRect(
                     brush = Brush.verticalGradient(
-                        listOf(Color(0x00D88945), Color(0xA52B1C13)),
+                        listOf(Color(0x00D88945), Color(0x552B1C13)),
                         startY = size.height * .64f, endY = size.height,
                     ),
                     topLeft = Offset(0f, size.height * .64f),
