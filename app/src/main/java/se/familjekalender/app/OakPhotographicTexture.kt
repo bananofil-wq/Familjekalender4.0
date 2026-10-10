@@ -7,6 +7,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -15,6 +16,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
@@ -101,4 +104,39 @@ private fun drawOakPhoto(
         alpha = (opacity.coerceIn(0f, 1f) * 255).toInt()
     }
     canvas.drawRect(0f, 0f, width, height, paint)
+}
+
+/** Original corner foliage and sunset shoreline taken from the approved reference. */
+private enum class OakDecor(val top: Int, val width: Int, val height: Int) {
+    LEAVES(0, 80, 170), SUNSET(175, 240, 78)
+}
+
+@Composable
+private fun rememberOakDecor(which: OakDecor): Bitmap? {
+    val context = LocalContext.current
+    val atlas = remember(context) {
+        BitmapFactory.decodeResource(context.resources, R.drawable.oak_2026_decor)
+    }
+    return remember(atlas, which) {
+        if (atlas == null || atlas.width < 240 || atlas.height < 253) null
+        else Bitmap.createBitmap(atlas, 0, which.top, which.width, which.height)
+    }
+}
+
+@Composable
+internal fun OakLeafDecoration(modifier: Modifier = Modifier) {
+    val bitmap = rememberOakDecor(OakDecor.LEAVES)
+    if (bitmap != null) Image(
+        bitmap = bitmap.asImageBitmap(), contentDescription = null,
+        modifier = modifier, contentScale = ContentScale.FillBounds,
+    )
+}
+
+@Composable
+internal fun OakSunsetDecoration(modifier: Modifier = Modifier) {
+    val bitmap = rememberOakDecor(OakDecor.SUNSET)
+    if (bitmap != null) Image(
+        bitmap = bitmap.asImageBitmap(), contentDescription = null,
+        modifier = modifier, contentScale = ContentScale.Crop,
+    )
 }
