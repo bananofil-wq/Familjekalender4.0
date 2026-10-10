@@ -2743,6 +2743,9 @@ private fun CleanCalendarCard(
 ) {
     val spec = LocalCleanThemeSpec.current
     val theme = LocalCleanVisualTheme.current
+    val isOak = theme == CleanVisualTheme.OAK_WOOD
+    val calendarInk = if (isOak) Color(0xFF372417) else spec.text
+    val calendarMuted = if (isOak) Color(0xFF826244) else spec.muted
     val calendarShape = RoundedCornerShape(spec.calendarRadius)
     val calendarColors =
         if (theme == CleanVisualTheme.CURRENT) {
@@ -2751,11 +2754,19 @@ private fun CleanCalendarCard(
                 Color(0xCB23212A),
                 Color(0xE319171F),
             )
+        } else if (isOak) {
+            // Same Current 32dp calendar container, finished as light oak parchment.
+            listOf(
+                Color(0xFFF7E7CB),
+                Color(0xFFEFD4AC),
+                Color(0xFFE2BE89),
+            )
         } else {
             listOf(spec.panelTop, spec.panelMid, spec.panelBottom)
         }
     val calendarBorder =
-        if (theme == CleanVisualTheme.CURRENT) Color.White.copy(alpha = .28f) else spec.border
+        if (theme == CleanVisualTheme.CURRENT) Color.White.copy(alpha = .28f)
+        else if (isOak) Color(0xB88A5934) else spec.border
     val scope = rememberCoroutineScope()
     val dragOffset = remember { Animatable(0f) }
 
@@ -2763,7 +2774,7 @@ private fun CleanCalendarCard(
         modifier =
             Modifier.fillMaxWidth()
                 .shadow(
-                    if (theme == CleanVisualTheme.CURRENT) 13.dp else spec.shadow,
+                    if (theme == CleanVisualTheme.CURRENT || isOak) 13.dp else spec.shadow,
                     calendarShape,
                     clip = false,
                 )
@@ -2814,6 +2825,10 @@ private fun CleanCalendarCard(
                     )
                 },
     ) {
+        if (isOak) {
+            // A genuine photographed wood-fiber sample sits behind the same month grid.
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .12f)
+        }
         Box(
             Modifier.fillMaxWidth().graphicsLayer {
                 translationX = dragOffset.value
@@ -2833,7 +2848,7 @@ private fun CleanCalendarCard(
                         month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar {
                             it.uppercase(locale)
                         } + " ${month.year}",
-                        color = spec.text,
+                        color = calendarInk,
                         fontFamily =
                             if (theme == CleanVisualTheme.LUXURY_GOLD ||
                                 theme == CleanVisualTheme.BIOPHILIC ||
@@ -2864,7 +2879,7 @@ private fun CleanCalendarCard(
                 Row(Modifier.fillMaxWidth()) {
                     Text(
                         "V",
-                        color = spec.muted.copy(alpha = .72f),
+                        color = calendarMuted.copy(alpha = .72f),
                         fontSize = 9.sp,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
@@ -2873,7 +2888,7 @@ private fun CleanCalendarCard(
                     weekdays.forEach { day ->
                         Text(
                             day,
-                            color = spec.muted.copy(alpha = .95f),
+                            color = calendarMuted.copy(alpha = .95f),
                             fontSize = 9.sp,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Bold,
@@ -2895,7 +2910,7 @@ private fun CleanCalendarCard(
                         val weekDate = gridStart.plusDays((row * 7).toLong())
                         Text(
                             weekDate.get(weekFields.weekOfWeekBasedYear()).toString(),
-                            color = spec.muted.copy(alpha = .70f),
+                            color = calendarMuted.copy(alpha = .70f),
                             fontSize = 9.sp,
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.SemiBold,
@@ -3013,7 +3028,7 @@ private fun CleanCalendarCard(
                                     Modifier.fillMaxWidth(.82f)
                                         .height(1.dp)
                                         .background(
-                                            (if (isSelected) spec.selectedText else spec.text).copy(
+                                            (if (isSelected) spec.selectedText else calendarInk).copy(
                                                 alpha = if (isSelected) .54f else .18f
                                             )
                                         )
@@ -3084,8 +3099,8 @@ private fun CleanCalendarCard(
                                         color =
                                             when {
                                                 isSelected -> spec.selectedText
-                                                inMonth -> spec.text
-                                                else -> spec.muted.copy(alpha = .52f)
+                                                inMonth -> calendarInk
+                                                else -> calendarMuted.copy(alpha = .52f)
                                             },
                                         fontSize = if (isSelected) 17.sp else 15.sp,
                                         fontWeight =
