@@ -43,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,7 +90,9 @@ internal fun OakReferenceCalendarScreen(
     onSelect: (LocalDate) -> Unit, onMonthChange: (Long) -> Unit,
     onOpenEvent: (SyncEvent) -> Unit, onShowAll: () -> Unit,
     onWeather: () -> Unit,
+    visualTheme: CleanVisualTheme = CleanVisualTheme.OAK_WOOD,
 ) {
+    CompositionLocalProvider(LocalPremiumMaterialTheme provides visualTheme) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // Scaffold has already subtracted Android/system and our bottom bar.
         // Reserve the agenda/weather panel, then let the month grid use exactly
@@ -103,7 +106,7 @@ internal fun OakReferenceCalendarScreen(
         }
         val summaryHeight = if (compactHeight) 82.dp else 88.dp
         // A broad, uninterrupted wood backdrop beneath individually carved surfaces.
-        OakPhotographicBackground(Modifier.fillMaxSize())
+        PremiumMaterialBackground(Modifier.fillMaxSize())
         Column(
             Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 7.dp),
             verticalArrangement = Arrangement.spacedBy(if (compactHeight) 6.dp else 8.dp),
@@ -142,6 +145,7 @@ internal fun OakReferenceCalendarScreen(
             }
         }
     }
+    }
 }
 
 private val WoodGold = Color(0xFFF5CE8F)
@@ -158,12 +162,13 @@ private val WoodIvory = Color(0xFFFCE5BF)
 private fun PremiumWoodHeader(
     onSearch: () -> Unit, onAdd: () -> Unit, onFamily: () -> Unit,
 ) {
+    val skin = premiumSkin(LocalPremiumMaterialTheme.current)
     Box(Modifier.fillMaxWidth().height(73.dp)) {
-        OakPhotographicSurface(
+        PremiumMaterialSurface(
             Modifier.matchParentSize(), opacity = .86f,
             material = OakPhotoMaterial.TOP,
         )
-        OakLeafDecoration(
+        PremiumMaterialDecoration(
             Modifier.align(Alignment.TopStart).width(40.dp).height(73.dp)
         )
         Row(
@@ -176,7 +181,7 @@ private fun PremiumWoodHeader(
             ) {
                 Text(
                     "Familjekalendern ❧",
-                    color = Color(0xFF2E1609),
+                    color = skin.headerInk,
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
@@ -186,7 +191,7 @@ private fun PremiumWoodHeader(
                 Spacer(Modifier.height(3.dp))
                 Text(
                     "T I L L S A M M A N S  V A R J E  D A G",
-                    color = Color(0xFF58301A),
+                    color = skin.headerInk.copy(alpha = .78f),
                     fontSize = 7.2.sp, fontWeight = FontWeight.Bold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
@@ -205,21 +210,25 @@ private fun PremiumWoodStat(
     onClick: () -> Unit, modifier: Modifier = Modifier,
     height: Dp = 100.dp,
 ) {
+    val skin = premiumSkin(LocalPremiumMaterialTheme.current)
+    val darkOverlay = if (skin.oak) listOf(Color(0x55472C17), Color(0xB329140B)) else listOf(Color.Transparent, Color.Transparent)
+    val iconBackground = if (skin.oak) listOf(Color(0xFFC3955B), Color(0xFF553019)) else listOf(skin.buttonTop, skin.buttonBottom)
+    val statText = skin.panelInk
     val shape = RoundedCornerShape(12.dp)
     Surface(
         modifier = modifier.height(height).shadow(5.dp, shape)
             .clickable(onClick = onClick),
         shape = shape,
-        color = Color(0xFF4C2816),
-        border = BorderStroke(1.dp, Color(0xFFB57A48)),
+        color = skin.panelTop,
+        border = BorderStroke(1.dp, skin.border),
         tonalElevation = 0.dp,
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .87f)
+            PremiumMaterialSurface(Modifier.matchParentSize(), opacity = .87f)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        listOf(Color(0x55472C17), Color(0xB329140B))
+                        darkOverlay
                     )
                 )
             )
@@ -236,27 +245,27 @@ private fun PremiumWoodStat(
                         Modifier.size(24.dp)
                             .background(
                                 Brush.verticalGradient(
-                                    listOf(Color(0xFFC3955B), Color(0xFF553019))
+                                    iconBackground
                                 ), CircleShape
                             )
-                            .border(1.dp, Color(0xFFE2B275), CircleShape),
+                            .border(1.dp, skin.border, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             icon, contentDescription = label,
-                            tint = Color(0xFFFFE0B2), modifier = Modifier.size(15.dp),
+                            tint = statText, modifier = Modifier.size(15.dp),
                         )
                     }
                     Spacer(Modifier.width(3.dp))
                     Text(
-                        label, color = Color(0xFFFFDDB7),
+                        label, color = statText,
                         fontFamily = FontFamily.Serif, fontSize = 11.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Text(
                     value.toString(),
-                    color = Color(0xFFFFD69D),
+                    color = statText,
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
                     fontSize = 31.sp,
@@ -265,13 +274,13 @@ private fun PremiumWoodStat(
                 )
                 Text(
                     caption,
-                    color = Color(0xFFECCBA4), fontSize = 9.sp,
+                    color = statText.copy(alpha = .82f), fontSize = 9.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                 )
             }
             Text(
-                "›", color = Color(0xFFF0C993),
+                "›", color = skin.spec.accentStrong,
                 fontSize = 16.sp,
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = 5.dp, bottom = 10.dp),
@@ -284,6 +293,7 @@ private fun PremiumWoodStat(
 private fun PremiumWoodButton(
     symbol: String, onClick: () -> Unit, diameter: Int = 33,
 ) {
+    val skin = premiumSkin(LocalPremiumMaterialTheme.current)
     val shape = CircleShape
     Box(
         Modifier.size(diameter.dp)
@@ -291,24 +301,24 @@ private fun PremiumWoodButton(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0xFFC99459), Color(0xFF73411F), Color(0xFF341A0E),
+                        skin.buttonTop, skin.buttonMid, skin.buttonBottom,
                     )
                 ), shape
             )
-            .border(1.7.dp, Color(0xFFD7A66C), shape)
+            .border(1.7.dp, skin.border, shape)
             .clickable(onClick = onClick)
             .padding(3.dp)
-            .border(.8.dp, Color(0xFF9B602E), shape),
+            .border(.8.dp, skin.border.copy(alpha = .63f), shape),
         contentAlignment = Alignment.Center,
     ) {
         if (symbol == "⌕") {
             Icon(
                 Icons.Default.Search, contentDescription = "Sök",
-                tint = Color(0xFFF9D29A), modifier = Modifier.size(24.dp),
+                tint = skin.headerInk, modifier = Modifier.size(24.dp),
             )
         } else {
             Text(
-                symbol, color = Color(0xFFFFDAA1),
+                symbol, color = skin.headerInk,
                 fontFamily = FontFamily.Serif,
                 fontSize = 29.sp, lineHeight = 30.sp,
                 textAlign = TextAlign.Center,
@@ -326,6 +336,8 @@ private fun PremiumWoodCalendar(
     compactHeight: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val skin = premiumSkin(LocalPremiumMaterialTheme.current)
+    val calendarOverlay = if (skin.oak) listOf(Color(0x67FFE8BF), Color(0x45EEC499), Color(0x48A66D38)) else listOf(Color.Transparent, Color.Transparent)
     val shape = RoundedCornerShape(15.dp)
     Surface(
         modifier = modifier
@@ -346,15 +358,15 @@ private fun PremiumWoodCalendar(
                     onDragCancel = { distance = 0f },
                 )
             },
-        shape = shape, color = Color(0xFFF1C793),
-        border = BorderStroke(2.dp, Color(0xFF8B532E)),
+        shape = shape, color = skin.calendarTop,
+        border = BorderStroke(2.dp, skin.border),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .82f, material = OakPhotoMaterial.PALE)
+            PremiumMaterialSurface(Modifier.matchParentSize(), opacity = .82f, material = OakPhotoMaterial.PALE)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        listOf(Color(0x67FFE8BF), Color(0x45EEC499), Color(0x48A66D38))
+                        calendarOverlay
                     )
                 )
             )
@@ -372,7 +384,7 @@ private fun PremiumWoodCalendar(
                         month.month.getDisplayName(TextStyle.FULL, locale)
                             .replaceFirstChar { it.uppercase(locale) } + " " + month.year,
                         modifier = Modifier.weight(1f),
-                        color = WoodDark, fontFamily = FontFamily.Serif,
+                        color = skin.calendarInk, fontFamily = FontFamily.Serif,
                         fontSize = 26.sp, fontWeight = FontWeight.Bold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
@@ -387,14 +399,14 @@ private fun PremiumWoodCalendar(
                 ) {
                     Text(
                         "V", Modifier.width(26.dp),
-                        color = Color(0xFF775039), fontSize = 10.sp,
+                        color = skin.mutedInk, fontSize = 10.sp,
                         textAlign = TextAlign.Center,
                     )
                     listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN").forEach { day ->
                         Text(
                             day, Modifier.weight(1f), textAlign = TextAlign.Center,
                             fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                            color = Color(0xFF533320),
+                            color = skin.calendarInk,
                         )
                     }
                 }
@@ -412,7 +424,7 @@ private fun PremiumWoodCalendar(
                         Text(
                             weekStart.get(wf.weekOfWeekBasedYear()).toString(),
                             Modifier.width(26.dp), textAlign = TextAlign.Center,
-                            color = Color(0xFF775039), fontSize = 10.sp,
+                            color = skin.mutedInk, fontSize = 10.sp,
                         )
                         repeat(7) { day ->
                             val date = weekStart.plusDays(day.toLong())
@@ -427,22 +439,22 @@ private fun PremiumWoodCalendar(
                                     .background(
                                         Brush.verticalGradient(
                                             if (active)
-                                                listOf(Color(0xFF8F5129), Color(0xFF321608))
+                                                listOf(skin.selectedTop, skin.selectedBottom)
                                             else
-                                                listOf(Color(0xFFFFE9C7), Color(0xFFDDB285))
+                                                listOf(skin.tileTop, skin.tileBottom)
                                         ), dayShape
                                     )
                                     .border(
                                         if (isToday) 2.8.dp else if (active) 1.6.dp else .65.dp,
-                                        if (isToday) Color(0xFFFFC66C) else if (active) WoodGold else Color(0x66B77B44),
+                                        if (isToday) skin.todayRing else if (active) skin.spec.selectedBorder else skin.border.copy(alpha = .5f),
                                         dayShape,
                                     )
                                     .clickable { onSelect(date) },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (isToday) Box(Modifier.matchParentSize().padding(2.dp).border(1.dp, Color(0xFF8B4D20), RoundedCornerShape(7.dp)))
+                                if (isToday) Box(Modifier.matchParentSize().padding(2.dp).border(1.dp, skin.todayRing.copy(alpha = .65f), RoundedCornerShape(7.dp)))
                                 // Subtle real grain on each carved date, not a flat rounded rectangle.
-                                if (!active) OakPhotographicSurface(
+                                if (!active) PremiumMaterialSurface(
                                     Modifier.matchParentSize().clip(dayShape),
                                     opacity = .15f, material = OakPhotoMaterial.PALE,
                                 )
@@ -455,9 +467,9 @@ private fun PremiumWoodCalendar(
                                 ) {
                                     Text(
                                         date.dayOfMonth.toString(),
-                                        color = if (active) WoodIvory
-                                            else if (inMonth) WoodDark
-                                            else Color(0x88725138),
+                                        color = if (active) skin.selectedInk
+                                            else if (inMonth) skin.tileInk
+                                            else skin.mutedInk.copy(alpha = .65f),
                                         fontSize = 17.sp, fontFamily = FontFamily.Serif,
                                         fontWeight = if (date == today || active)
                                             FontWeight.Bold else FontWeight.Medium,
@@ -500,10 +512,10 @@ private fun PremiumWoodCalendar(
                     Modifier.align(pos).padding(7.dp).size(7.dp)
                         .background(
                             Brush.radialGradient(
-                                listOf(Color(0xFFFFE3AE), Color(0xFFB08355), Color(0xFF5F3215))
+                                listOf(skin.buttonTop, skin.buttonMid, skin.buttonBottom)
                             ), CircleShape
                         )
-                        .border(.6.dp, Color(0xFF6B3C1F), CircleShape)
+                        .border(.6.dp, skin.border, CircleShape)
                 )
             }
         }
@@ -521,18 +533,21 @@ private fun PremiumWoodAgenda(
     onEvent: (SyncEvent) -> Unit, onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val skin = premiumSkin(LocalPremiumMaterialTheme.current)
+    val agendaOverlay = if (skin.oak) listOf(Color(0x44402010), Color(0x9930170B)) else listOf(Color.Transparent, Color.Transparent)
+    val rowGradient = if (skin.oak) listOf(Color(0x956B4229), Color(0xAA361A0D)) else listOf(skin.agendaRowTop, skin.agendaRowBottom)
     val shape = RoundedCornerShape(14.dp)
     Surface(
         modifier = modifier.shadow(6.dp, shape),
-        shape = shape, color = Color(0xFF3D2011),
-        border = BorderStroke(1.dp, WoodBorder),
+        shape = shape, color = skin.panelTop,
+        border = BorderStroke(1.dp, skin.border),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .74f)
+            PremiumMaterialSurface(Modifier.matchParentSize(), opacity = .74f)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        listOf(Color(0x44402010), Color(0x9930170B))
+                        agendaOverlay
                     )
                 )
             )
@@ -546,18 +561,18 @@ private fun PremiumWoodAgenda(
                 ) {
                     Text(
                         "Idag", modifier = Modifier.weight(1f),
-                        color = WoodIvory, fontFamily = FontFamily.Serif,
+                        color = skin.panelInk, fontFamily = FontFamily.Serif,
                         fontSize = 22.sp, fontWeight = FontWeight.Bold,
                     )
                     Text(
                         date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE")))
                             .replaceFirstChar { it.uppercase() } + "   ›",
-                        color = WoodIvory, fontSize = 10.sp,
+                        color = skin.panelInk, fontSize = 10.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
                 if (events.isEmpty()) {
-                    Text("Inga aktiviteter den här dagen", color = WoodIvory, fontSize = 11.sp)
+                    Text("Inga aktiviteter den här dagen", color = skin.panelInk, fontSize = 11.sp)
                 }
                 events.take(3).forEach { event ->
                     val accent = members[event.memberId]?.let {
@@ -575,30 +590,30 @@ private fun PremiumWoodAgenda(
                         Modifier.fillMaxWidth().height(43.dp)
                             .background(
                                 Brush.verticalGradient(
-                                    listOf(Color(0x956B4229), Color(0xAA361A0D))
+                                    rowGradient
                                 ), RoundedCornerShape(8.dp)
                             )
-                            .border(.65.dp, Color(0x886F4529), RoundedCornerShape(8.dp))
+                            .border(.65.dp, skin.border.copy(alpha = .45f), RoundedCornerShape(8.dp))
                             .clickable { onEvent(event) }
                             .padding(horizontal = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            event.time.ifBlank { "Heldag" }, color = WoodIvory,
+                            event.time.ifBlank { "Heldag" }, color = skin.panelInk,
                             fontSize = 10.sp, modifier = Modifier.width(39.dp),
                             maxLines = 1,
                         )
                         Box(
                             Modifier.size(24.dp)
                                 .background(accent.copy(alpha = .8f), CircleShape)
-                                .border(.8.dp, WoodGold.copy(alpha = .7f), CircleShape),
+                                .border(.8.dp, skin.spec.accentStrong.copy(alpha = .7f), CircleShape),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(icon, color = Color.White, fontSize = 14.sp)
                         }
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            event.title, color = Color(0xFFFFE7C6),
+                            event.title, color = skin.panelInk,
                             fontSize = 11.sp, maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
@@ -608,7 +623,7 @@ private fun PremiumWoodAgenda(
                             Box(
                                 Modifier.size(19.dp)
                                     .background(accent.copy(alpha = .65f), CircleShape)
-                                    .border(.6.dp, Color(0xFFDDB889), CircleShape),
+                                    .border(.6.dp, skin.border, CircleShape),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -617,7 +632,7 @@ private fun PremiumWoodAgenda(
                                 )
                             }
                         }
-                        Text(" ›", color = WoodGold, fontSize = 14.sp)
+                        Text(" ›", color = skin.spec.accentStrong, fontSize = 14.sp)
                     }
                 }
             }
@@ -630,30 +645,33 @@ private fun PremiumWoodWeather(
     weather: CleanWeatherSnapshot?, loading: Boolean, onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val skin = premiumSkin(LocalPremiumMaterialTheme.current)
+    val weatherOverlay = if (skin.oak) listOf(Color(0x44934D1B), Color(0x447C3C17), Color(0xDD2D1D13)) else listOf(Color.Transparent, Color.Transparent)
+    val sceneryOverlay = if (skin.oak) listOf(Color(0x00D88945), Color(0x552B1C13)) else listOf(Color.Transparent, Color(0x99231B20))
     val shape = RoundedCornerShape(14.dp)
     Surface(
         modifier = modifier.shadow(6.dp, shape).clickable(onClick = onClick),
-        shape = shape, color = Color(0xFF90542A),
-        border = BorderStroke(1.dp, WoodBorder),
+        shape = shape, color = skin.panelTop,
+        border = BorderStroke(1.dp, skin.border),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .83f, material = OakPhotoMaterial.AMBER)
+            PremiumMaterialSurface(Modifier.matchParentSize(), opacity = .83f, material = OakPhotoMaterial.AMBER)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        listOf(Color(0x44934D1B), Color(0x447C3C17), Color(0xDD2D1D13))
+                        weatherOverlay
                     )
                 )
             )
             // The shoreline is a photograph cropped from the reference. Weather remains live.
-            OakSunsetDecoration(
+            PremiumMaterialWeatherScene(
                 Modifier.align(Alignment.BottomCenter)
                     .fillMaxWidth().fillMaxHeight(.41f).clip(shape)
             )
             Canvas(Modifier.fillMaxSize()) {
                 drawRect(
                     brush = Brush.verticalGradient(
-                        listOf(Color(0x00D88945), Color(0x552B1C13)),
+                        sceneryOverlay,
                         startY = size.height * .64f, endY = size.height,
                     ),
                     topLeft = Offset(0f, size.height * .64f),
@@ -668,23 +686,23 @@ private fun PremiumWoodWeather(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "Väder", modifier = Modifier.weight(1f),
-                        color = WoodIvory, fontSize = 19.sp,
+                        color = skin.panelInk, fontSize = 19.sp,
                         fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
                     )
-                    Text("›", color = WoodGold, fontSize = 19.sp)
+                    Text("›", color = skin.spec.accentStrong, fontSize = 19.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(oakWeatherEmoji(weather?.weatherCode), fontSize = 27.sp)
                     Spacer(Modifier.width(3.dp))
                     Text(
                         weather?.temperatureC?.toString()?.plus("°") ?: "—°",
-                        color = WoodIvory, fontFamily = FontFamily.Serif,
+                        color = skin.panelInk, fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold, fontSize = 35.sp,
                     )
                 }
                 Text(
                     weather?.description ?: if (loading) "Hämtar vädret…" else "Visa vädret",
-                    color = Color(0xFFF7E0C4), fontSize = 10.sp,
+                    color = skin.panelInk, fontSize = 10.sp,
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                 )
