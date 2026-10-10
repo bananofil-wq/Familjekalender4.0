@@ -103,7 +103,9 @@ private fun cleanMaterialColorScheme(theme: CleanVisualTheme) =
                 CleanVisualTheme.EDITORIAL_PLANNER,
                 CleanVisualTheme.EARTH_SAGE,
                 CleanVisualTheme.FAMILY_SPECTRUM,
-                CleanVisualTheme.OAK_WOOD -> true
+                CleanVisualTheme.OAK_WOOD,
+                CleanVisualTheme.TITANIUM,
+                CleanVisualTheme.HIPPIE -> true
                 else -> false
             }
 
