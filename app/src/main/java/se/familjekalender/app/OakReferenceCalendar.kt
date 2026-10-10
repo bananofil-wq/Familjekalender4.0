@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -84,14 +85,14 @@ internal fun OakReferenceCalendarScreen(
     onWeather: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        StorybookThemeBackdrop(CleanVisualTheme.OAK_WOOD, Modifier.fillMaxSize())
+        OakPhotographicBackground(Modifier.fillMaxSize())
         Column(
             Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 10.dp, vertical = 3.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            OakHeader(onSearch, onAdd, onFamily)
+            OakHeader(month, locale, onSearch, onAdd, onFamily)
             OakFamilyPortraitStrip(membersById, onFamily)
             OakPaperMonth(
                 month, selectedDate, today, locale, eventsByDate, membersById,
@@ -114,11 +115,13 @@ private val OakBrown = Color(0xFF724326)
 
 @Composable
 private fun OakHeader(
+    month: YearMonth,
+    locale: Locale,
     onSearch: () -> Unit,
     onAdd: () -> Unit,
     onFamily: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(43.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier.size(30.dp).clip(RoundedCornerShape(6.dp))
                 .clickable(onClick = onFamily),
@@ -127,16 +130,20 @@ private fun OakHeader(
             Icon(Icons.Default.Menu, "Familj", tint = OakInk, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(7.dp))
-        Text(
-            "Familjekalendern",
-            modifier = Modifier.weight(1f),
-            color = OakInk,
-            fontSize = 21.sp,
-            fontFamily = FontFamily.SansSerif,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Familjekalendern",
+                color = OakInk, fontSize = 19.sp,
+                fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                month.month.getDisplayName(TextStyle.FULL, locale)
+                    .replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
+                color = OakMutedInk, fontSize = 9.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
         OakRoundButton(false, onSearch) {
             Icon(Icons.Default.Search, "Sök", tint = OakInk, modifier = Modifier.size(20.dp))
         }
@@ -155,7 +162,7 @@ private fun OakRoundButton(
 ) {
     val shape = CircleShape
     Box(
-        modifier = Modifier.size(if (solid) 39.dp else 35.dp)
+        modifier = Modifier.size(if (solid) 35.dp else 32.dp)
             .shadow(2.dp, shape)
             .background(if (solid) OakBrown else OakPaper, shape)
             .border(1.dp, if (solid) Color(0xFF51301C) else OakBorder, shape)
@@ -207,7 +214,7 @@ private fun OakFamilyAvatar(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(37.dp)
+            Modifier.size(36.dp)
                 .shadow(1.5.dp, CircleShape)
                 .background(Brush.verticalGradient(
                     listOf(accent.copy(alpha = .75f), accent.copy(alpha = .98f))
@@ -217,18 +224,67 @@ private fun OakFamilyAvatar(
             contentAlignment = Alignment.Center,
         ) {
             if (name == "Alla") {
-                Text("♟", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Icon(
+                    Icons.Default.People,
+                    "Hela familjen",
+                    tint = Color(0xFFFCEAD0),
+                    modifier = Modifier.size(21.dp),
+                )
             } else {
+                val variant = (name.hashCode() and Int.MAX_VALUE) % 4
+                val hair = listOf(
+                    Color(0xFF583725), Color(0xFF302924),
+                    Color(0xFFB27B42), Color(0xFF6E3E29),
+                )[variant]
+                val skin = listOf(
+                    Color(0xFFF7D3AE), Color(0xFFD9A87F),
+                    Color(0xFFF5C99B), Color(0xFFE7B990),
+                )[variant]
                 Canvas(Modifier.size(32.dp)) {
-                    drawCircle(
-                        color = Color(0xFFF8E3C9),
-                        radius = size.width * .18f,
-                        center = Offset(size.width * .50f, size.height * .36f),
+                    val unit = size.width
+                    // Distinct illustrated portraits, not empty generic user silhouettes.
+                    drawOval(
+                        color = Color(0xFFE7D8BD),
+                        topLeft = Offset(unit * .04f, unit * .04f),
+                        size = Size(unit * .92f, unit * .92f),
                     )
                     drawOval(
-                        color = Color(0xFFF8E3C9),
-                        topLeft = Offset(size.width * .19f, size.height * .58f),
-                        size = Size(size.width * .62f, size.height * .36f),
+                        color = Color(0xFF395B65).copy(alpha = .85f),
+                        topLeft = Offset(unit * .09f, unit * .68f),
+                        size = Size(unit * .82f, unit * .43f),
+                    )
+                    drawOval(
+                        color = hair,
+                        topLeft = Offset(unit * .19f, unit * .10f),
+                        size = Size(unit * .62f, unit * .67f),
+                    )
+                    drawOval(
+                        color = skin,
+                        topLeft = Offset(unit * .245f, unit * .235f),
+                        size = Size(unit * .51f, unit * .52f),
+                    )
+                    drawOval(
+                        color = hair,
+                        topLeft = Offset(unit * .23f, unit * .12f),
+                        size = Size(unit * .53f, unit * .22f),
+                    )
+                    if (variant % 2 == 0) {
+                        drawOval(
+                            color = hair,
+                            topLeft = Offset(unit * .16f, unit * .22f),
+                            size = Size(unit * .14f, unit * .56f),
+                        )
+                    }
+                    val eyeY = unit * .49f
+                    drawCircle(Color(0xFF312C2C), unit * .026f,
+                        center = Offset(unit * .405f, eyeY))
+                    drawCircle(Color(0xFF312C2C), unit * .026f,
+                        center = Offset(unit * .595f, eyeY))
+                    drawLine(
+                        color = Color(0xFFB06A61),
+                        start = Offset(unit * .43f, unit * .64f),
+                        end = Offset(unit * .57f, unit * .64f),
+                        strokeWidth = unit * .02f,
                     )
                 }
             }
@@ -252,7 +308,7 @@ private fun OakPaperMonth(
     onSelect: (LocalDate) -> Unit,
     onChange: (Long) -> Unit,
 ) {
-    val panelShape = RoundedCornerShape(15.dp)
+    val panelShape = RoundedCornerShape(12.dp)
     Surface(
         color = OakPaper,
         shape = panelShape,
@@ -275,25 +331,27 @@ private fun OakPaperMonth(
             )
         },
     ) {
-        Column(Modifier.padding(horizontal = 9.dp, vertical = 9.dp)) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .10f)
+            Column(Modifier.padding(horizontal = 6.dp, vertical = 8.dp)) {
             Row(
-                Modifier.fillMaxWidth().height(39.dp),
+                Modifier.fillMaxWidth().height(35.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                OakMonthArrow(Icons.Default.ChevronLeft, "Föregående månad") { onChange(-1L) }
                 Text(
                     month.month.getDisplayName(TextStyle.FULL, locale)
                         .replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
-                    color = OakInk, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = OakInk, fontSize = 17.sp, fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.SansSerif,
                 )
-                OakMonthArrow(Icons.Default.ChevronLeft, "Föregående månad") { onChange(-1L) }
-                Spacer(Modifier.width(5.dp))
                 OakMonthArrow(Icons.Default.ChevronRight, "Nästa månad") { onChange(1L) }
             }
             Spacer(Modifier.height(3.dp))
             Row(
-                Modifier.fillMaxWidth().height(26.dp),
+                Modifier.fillMaxWidth().height(23.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -352,6 +410,7 @@ private fun OakPaperMonth(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -364,7 +423,7 @@ private fun OakMonthArrow(
 ) {
     Box(
         Modifier.size(31.dp)
-            .background(Color(0xFFF0D9B7), CircleShape)
+            .background(Color(0x99E3C7A0), CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -389,17 +448,18 @@ private fun OakPaperDay(
         else -> OakMutedInk.copy(alpha = .46f)
     }
     Box(
-        modifier.height(43.dp)
-            .border(.35.dp, Color(0x1A69482B))
+        modifier.height(37.dp)
+            .border(.35.dp, Color(0x2269482B))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.size(if (selected) 34.dp else 32.dp)
+            Modifier.size(if (selected) 31.dp else 29.dp)
                 .then(
                     if (selected) {
                         Modifier.shadow(2.dp, CircleShape)
                             .background(OakBrown, CircleShape)
+                            .clip(CircleShape)
                             .border(1.2.dp, Color(0xFFD9AF78), CircleShape)
                     } else if (isToday) {
                         Modifier.border(.9.dp, OakBrown.copy(alpha = .60f), CircleShape)
@@ -407,10 +467,13 @@ private fun OakPaperDay(
                 ),
             contentAlignment = Alignment.Center,
         ) {
+            if (selected) {
+                OakPhotographicSurface(Modifier.matchParentSize(), opacity = .18f)
+            }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     date.dayOfMonth.toString(),
-                    color = ink, fontSize = if (selected) 15.sp else 13.sp,
+                    color = ink, fontSize = if (selected) 14.sp else 12.sp,
                     fontWeight = if (selected || isToday) FontWeight.Bold else FontWeight.Medium,
                 )
                 Row(
@@ -488,7 +551,11 @@ private fun OakActivityLedger(
             val accent = members[event.memberId]?.let { Color(it.colorArgb.toInt()) }
                 ?: Color(0xFFD8A55A)
             val isReminder = event.source.contains("reminder", ignoreCase = true) ||
-                event.title.startsWith("🔔")
+                event.title.startsWith("🔔") || event.title.startsWith("🛎")
+            val displayTitle = event.title
+                .replace(Regex("""^(?:🔔|🛎️?|⭐|✅)\s*"""), "")
+                .replace(Regex("""\s*[·•]\s*\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}"""), "")
+                .trim()
             val icon = when {
                 isReminder -> "🔔"
                 event.title.contains("skola", ignoreCase = true) -> "🏠"
@@ -499,7 +566,7 @@ private fun OakActivityLedger(
                 event.title.contains("fika", ignoreCase = true) ||
                     event.title.contains("frukost", ignoreCase = true) -> "☕"
                 event.title.contains("födelsedag", ignoreCase = true) -> "🌈"
-                else -> "•"
+                else -> "📅"
             }
             Surface(
                 color = Color(0xF4E7CBA3),
@@ -508,26 +575,10 @@ private fun OakActivityLedger(
                 shadowElevation = 1.5.dp,
                 modifier = Modifier.fillMaxWidth().clickable { onEvent(event) },
             ) {
+                Box {
+                    OakPhotographicSurface(Modifier.matchParentSize(), opacity = .30f)
                 Row(
-                    Modifier.fillMaxWidth().height(51.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color(0xFFEFDCBC), Color(0xFFE5C79F))
-                            )
-                        )
-                        .drawBehind {
-                            // Fine horizontal oak fibers inside each compact event card.
-                            for (grain in 0..20) {
-                                val yy = size.height * (grain + .4f) / 21f
-                                val wave = sin(grain * .82).toFloat() * 1.8f
-                                drawLine(
-                                    Color(0x16805A35),
-                                    Offset(0f, yy + wave),
-                                    Offset(size.width, yy - wave),
-                                    .75f,
-                                )
-                            }
-                        }
+                    Modifier.fillMaxWidth().height(49.dp)
                         .padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -551,7 +602,7 @@ private fun OakActivityLedger(
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            event.title.replace(Regex("""\s*[·•]\s*\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}"""), "").trim(),
+                            displayTitle,
                             color = OakInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
@@ -574,6 +625,7 @@ private fun OakActivityLedger(
                         }
                     }
                 }
+                }
             }
         }
         if (events.size > 4) {
@@ -588,6 +640,17 @@ private fun OakActivityLedger(
     }
 }
 
+private fun oakWeatherEmoji(code: Int?): String =
+    when (code) {
+        0, 1 -> "☀️"
+        2, 3 -> "⛅"
+        45, 48 -> "🌫️"
+        51, 53, 55, 61, 63, 65, 80, 81, 82 -> "🌧️"
+        71, 73, 75, 77, 85, 86 -> "❄️"
+        95, 96, 99 -> "⛈️"
+        else -> "☁️"
+    }
+
 @Composable
 private fun OakWeatherPanel(
     weather: CleanWeatherSnapshot?,
@@ -601,19 +664,22 @@ private fun OakWeatherPanel(
         shadowElevation = 2.dp,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .19f)
         Row(
-            Modifier.fillMaxWidth().height(61.dp)
-                .padding(horizontal = 12.dp),
+            Modifier.fillMaxWidth().height(
+                if (weather?.upcomingDays.isNullOrEmpty()) 61.dp else 72.dp
+            )
+                .padding(horizontal = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Cloud, "Väder", tint = Color(0xFF789BA7),
-                modifier = Modifier.size(28.dp))
-            Spacer(Modifier.width(9.dp))
+            Text(oakWeatherEmoji(weather?.weatherCode), fontSize = 24.sp)
+            Spacer(Modifier.width(7.dp))
             Text(
                 weather?.let { "${it.temperatureC}°" } ?: "—°",
-                color = OakInk, fontSize = 25.sp, fontWeight = FontWeight.Bold,
+                color = OakInk, fontSize = 23.sp, fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
@@ -624,9 +690,35 @@ private fun OakWeatherPanel(
                     color = OakInk, fontSize = 11.sp, maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text("Aktuellt väder", color = OakMutedInk, fontSize = 9.sp)
+                Text(
+                    if (weather?.upcomingDays.isNullOrEmpty()) "Aktuellt väder" else "Prognos",
+                    color = OakMutedInk, fontSize = 9.sp
+                )
             }
-            Text("›", color = OakMutedInk, fontSize = 22.sp)
+            if (!weather?.upcomingDays.isNullOrEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    weather!!.upcomingDays.take(3).forEach { day ->
+                        Column(
+                            Modifier.width(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))
+                                    .take(3),
+                                color = OakMutedInk, fontSize = 9.sp,
+                            )
+                            Text(oakWeatherEmoji(day.weatherCode), fontSize = 16.sp)
+                            Text(
+                                "${day.highC}°", color = OakInk,
+                                fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text("›", color = OakMutedInk, fontSize = 22.sp)
+            }
+        }
         }
     }
 }
