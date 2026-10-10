@@ -2620,6 +2620,10 @@ private fun MinimalBottomNav(
     cleanVisualTheme: CleanVisualTheme,
     onSelect: (Int) -> Unit,
 ) {
+    if (cleanVisualTheme == CleanVisualTheme.OAK_WOOD) {
+        OakReferenceBottomNav(selected, onSelect)
+        return
+    }
     val spec = cleanThemeSpec(cleanVisualTheme)
     val oakNav = cleanVisualTheme == CleanVisualTheme.OAK_WOOD
     val navShape =
@@ -2779,6 +2783,83 @@ private fun MinimalBottomNav(
         }
     }
 }
+
+/** Replaces the old generic wood-tinted bar with the carved five-tab reference. */
+@Composable
+private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
+    val items = listOf(
+        Triple(0, Icons.Default.CalendarMonth, "Kalender"),
+        Triple(1, Icons.Default.ShoppingCart, "Inköp"),
+        Triple(2, Icons.Default.CheckCircle, "Att göra"),
+        Triple(4, Icons.Default.Settings, "Inställningar"),
+        Triple(5, Icons.Default.LocationOn, "Plats"),
+    )
+    Box(
+        Modifier.fillMaxWidth().background(Color(0xFF311B0F))
+            .navigationBarsPadding().padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        val frame = RoundedCornerShape(25.dp)
+        Surface(
+            modifier = Modifier.fillMaxWidth().shadow(7.dp, frame),
+            shape = frame,
+            color = Color(0xFF3D2111),
+            border = BorderStroke(1.5.dp, Color(0xFFAE7540)),
+        ) {
+            Box {
+                OakPhotographicSurface(Modifier.matchParentSize(), opacity = .41f)
+                Row(
+                    Modifier.fillMaxWidth().height(69.dp).padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items.forEach { (tab, icon, label) ->
+                        val active = selected == tab
+                        val shape = RoundedCornerShape(22.dp)
+                        Box(
+                            Modifier.weight(1f).fillMaxHeight()
+                                .then(
+                                    if (active) Modifier
+                                        .shadow(3.dp, shape)
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color(0xFFFFDDA9),
+                                                    Color(0xFFDCAA70),
+                                                    Color(0xFFB47740),
+                                                )
+                                            ), shape
+                                        )
+                                        .border(1.dp, Color(0xFFF9D7A2), shape)
+                                    else Modifier
+                                )
+                                .clickable { onSelect(tab) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Icon(
+                                    icon, contentDescription = label,
+                                    tint = if (active) Color(0xFF331807) else Color(0xFFF2C28C),
+                                    modifier = Modifier.size(if (active) 26.dp else 23.dp),
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    label,
+                                    color = if (active) Color(0xFF321807) else Color(0xFFF3D0A4),
+                                    fontSize = 9.sp,
+                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
