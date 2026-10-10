@@ -630,6 +630,17 @@ private fun OakActivityLedger(
     }
 }
 
+private fun oakWeatherEmoji(code: Int?): String =
+    when (code) {
+        0, 1 -> "☀️"
+        2, 3 -> "⛅"
+        45, 48 -> "🌫️"
+        51, 53, 55, 61, 63, 65, 80, 81, 82 -> "🌧️"
+        71, 73, 75, 77, 85, 86 -> "❄️"
+        95, 96, 99 -> "⛈️"
+        else -> "☁️"
+    }
+
 @Composable
 private fun OakWeatherPanel(
     weather: CleanWeatherSnapshot?,
@@ -646,26 +657,19 @@ private fun OakWeatherPanel(
         Box {
             OakPhotographicSurface(Modifier.matchParentSize(), opacity = .19f)
         Row(
-            Modifier.fillMaxWidth().height(61.dp)
-                .padding(horizontal = 12.dp),
+            Modifier.fillMaxWidth().height(
+                if (weather?.upcomingDays.isNullOrEmpty()) 61.dp else 72.dp
+            )
+                .padding(horizontal = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val weatherSymbol = when (weather?.weatherCode) {
-                0, 1 -> "☀️"
-                2, 3 -> "⛅"
-                45, 48 -> "🌫️"
-                51, 53, 55, 61, 63, 65, 80, 81, 82 -> "🌧️"
-                71, 73, 75, 77, 85, 86 -> "❄️"
-                95, 96, 99 -> "⛈️"
-                else -> "☁️"
-            }
-            Text(weatherSymbol, fontSize = 27.sp)
-            Spacer(Modifier.width(9.dp))
+            Text(oakWeatherEmoji(weather?.weatherCode), fontSize = 24.sp)
+            Spacer(Modifier.width(7.dp))
             Text(
                 weather?.let { "${it.temperatureC}°" } ?: "—°",
-                color = OakInk, fontSize = 25.sp, fontWeight = FontWeight.Bold,
+                color = OakInk, fontSize = 23.sp, fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     when {
@@ -676,9 +680,34 @@ private fun OakWeatherPanel(
                     color = OakInk, fontSize = 11.sp, maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text("Aktuellt väder", color = OakMutedInk, fontSize = 9.sp)
+                Text(
+                    if (weather?.upcomingDays.isNullOrEmpty()) "Aktuellt väder" else "Prognos",
+                    color = OakMutedInk, fontSize = 9.sp
+                )
             }
-            Text("›", color = OakMutedInk, fontSize = 22.sp)
+            if (!weather?.upcomingDays.isNullOrEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    weather!!.upcomingDays.take(3).forEach { day ->
+                        Column(
+                            Modifier.width(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("sv", "SE"))
+                                    .take(3),
+                                color = OakMutedInk, fontSize = 9.sp,
+                            )
+                            Text(oakWeatherEmoji(day.weatherCode), fontSize = 16.sp)
+                            Text(
+                                "${day.highC}°", color = OakInk,
+                                fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text("›", color = OakMutedInk, fontSize = 22.sp)
+            }
         }
         }
     }
