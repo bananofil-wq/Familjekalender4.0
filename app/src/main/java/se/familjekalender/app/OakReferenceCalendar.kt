@@ -215,11 +215,11 @@ private fun PremiumWoodStat(
         border = BorderStroke(1.dp, WoodBorder),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .52f)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .83f)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        listOf(Color(0x5431160A), Color(0x98402012), Color(0xE72A1208))
+                        listOf(Color(0x31231609), Color(0x48301C0E), Color(0x7830180C))
                     )
                 )
             )
@@ -395,6 +395,9 @@ private fun PremiumWoodCalendar(
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(
+                                        top = if (events.any(::oakBirthdayEvent)) 8.dp else 0.dp
+                                    ),
                                 ) {
                                     Text(
                                         date.dayOfMonth.toString(),
@@ -471,11 +474,11 @@ private fun PremiumWoodAgenda(
         border = BorderStroke(1.dp, WoodBorder),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .34f)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .74f)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        listOf(Color(0x554B230D), Color(0xCB2E160B))
+                        listOf(Color(0x44402010), Color(0x9930170B))
                     )
                 )
             )
@@ -580,7 +583,7 @@ private fun PremiumWoodWeather(
         border = BorderStroke(1.dp, WoodBorder),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .74f, material = OakPhotoMaterial.AMBER)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .83f, material = OakPhotoMaterial.AMBER)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
