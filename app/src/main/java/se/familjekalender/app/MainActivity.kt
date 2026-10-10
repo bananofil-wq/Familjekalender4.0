@@ -2144,7 +2144,7 @@ private fun SettingsScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "10 nya premiumteman samt Nuvarande och Nordic Day Planner. Dina två original är oförändrade.",
+                "10 helt olika Clean-layouter med egna datumrutor, rubriker och aktivitetskort. Nuvarande och Nordic Day Planner är oförändrade.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .78f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp,
@@ -2220,6 +2220,9 @@ private fun SettingsScreen(
                                                 .background(swatch)
                                         )
                                     }
+                                }
+                                if (isDesignedCleanTheme(cleanTheme)) {
+                                    CleanThemeMiniPreview(cleanTheme)
                                 }
                                 Text(
                                     cleanTheme.description,
@@ -2627,6 +2630,16 @@ private fun MinimalBottomNav(
             CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
                 RoundedCornerShape(4.dp)
             CleanVisualTheme.CYBERPUNK -> RoundedCornerShape(10.dp)
+            CleanVisualTheme.PURE_CALENDAR -> RoundedCornerShape(13.dp)
+            CleanVisualTheme.MIDNIGHT_GOLD -> RoundedCornerShape(4.dp)
+            CleanVisualTheme.PASTEL_FLOW -> RoundedCornerShape(26.dp)
+            CleanVisualTheme.CRYSTAL_GLASS -> RoundedCornerShape(23.dp)
+            CleanVisualTheme.EDITORIAL_PLANNER -> RoundedCornerShape(0.dp)
+            CleanVisualTheme.NEON_PULSE -> RoundedCornerShape(5.dp)
+            CleanVisualTheme.EARTH_SAGE -> RoundedCornerShape(21.dp)
+            CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(2.dp)
+            CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(8.dp)
+            CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(19.dp)
             else -> RoundedCornerShape(spec.cardRadius)
         }
     val activeShape =
@@ -2634,6 +2647,16 @@ private fun MinimalBottomNav(
             CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
                 RoundedCornerShape(2.dp)
             CleanVisualTheme.CYBERPUNK -> RoundedCornerShape(8.dp)
+            CleanVisualTheme.PURE_CALENDAR -> RoundedCornerShape(9.dp)
+            CleanVisualTheme.MIDNIGHT_GOLD -> RoundedCornerShape(2.dp)
+            CleanVisualTheme.PASTEL_FLOW -> RoundedCornerShape(20.dp)
+            CleanVisualTheme.CRYSTAL_GLASS -> RoundedCornerShape(16.dp)
+            CleanVisualTheme.EDITORIAL_PLANNER -> RoundedCornerShape(0.dp)
+            CleanVisualTheme.NEON_PULSE -> RoundedCornerShape(2.dp)
+            CleanVisualTheme.EARTH_SAGE -> RoundedCornerShape(17.dp)
+            CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(0.dp)
+            CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(4.dp)
+            CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(13.dp)
             else -> RoundedCornerShape(18.dp)
         }
     val items =
