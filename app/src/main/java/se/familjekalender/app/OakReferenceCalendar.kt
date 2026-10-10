@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -56,6 +57,7 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import java.util.Locale
+import kotlin.math.sin
 
 /**
  * Bespoke compact wood layout matching the selected reference, independent of the
@@ -507,7 +509,26 @@ private fun OakActivityLedger(
                 modifier = Modifier.fillMaxWidth().clickable { onEvent(event) },
             ) {
                 Row(
-                    Modifier.fillMaxWidth().height(51.dp).padding(end = 8.dp),
+                    Modifier.fillMaxWidth().height(51.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color(0xFFEFDCBC), Color(0xFFE5C79F))
+                            )
+                        )
+                        .drawBehind {
+                            // Fine horizontal oak fibers inside each compact event card.
+                            for (grain in 0..20) {
+                                val yy = size.height * (grain + .4f) / 21f
+                                val wave = sin(grain * .82).toFloat() * 1.8f
+                                drawLine(
+                                    Color(0x16805A35),
+                                    Offset(0f, yy + wave),
+                                    Offset(size.width, yy - wave),
+                                    .75f,
+                                )
+                            }
+                        }
+                        .padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
