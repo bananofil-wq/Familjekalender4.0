@@ -957,7 +957,9 @@ internal fun CleanThemeBackdrop(
                     size = androidx.compose.ui.geometry.Size(size.width * .028f, size.height * .18f))
             }
 
-            CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> Unit
+            CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT,
+            CleanVisualTheme.COPPER, CleanVisualTheme.CARBON_FIBER,
+            CleanVisualTheme.TITANIUM, CleanVisualTheme.HIPPIE -> Unit
 
             CleanVisualTheme.BRUTALIST -> {
                 drawRect(
