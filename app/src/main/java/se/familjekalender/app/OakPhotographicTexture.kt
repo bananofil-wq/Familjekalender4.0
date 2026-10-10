@@ -140,3 +140,59 @@ internal fun OakSunsetDecoration(modifier: Modifier = Modifier) {
         modifier = modifier, contentScale = ContentScale.Crop,
     )
 }
+
+
+/**
+ * Exact photo-sourced header, navigation and stat-card frames from the user's
+ * approved reference. Only decorative pixels are baked in: card values stay live.
+ * Keeping the header/nav in the same image atlas preserves their woodgrain,
+ * engraved lettering, brass highlights and leaf art exactly as photographed.
+ */
+@Composable
+private fun rememberOakReferencePiece(which: Int): Bitmap? {
+    val context = LocalContext.current
+    val photo = remember(context) {
+        BitmapFactory.decodeResource(context.resources, R.drawable.oak_reference_header_nav)
+    }
+    val stats = remember(context) {
+        BitmapFactory.decodeResource(context.resources, R.drawable.oak_reference_stat_cards)
+    }
+    return remember(photo, stats, which) {
+        when {
+            which == 0 && photo != null && photo.width >= 360 && photo.height >= 135 ->
+                Bitmap.createBitmap(photo, 0, 0, 360, 70)
+            which == 1 && photo != null && photo.width >= 360 && photo.height >= 135 ->
+                Bitmap.createBitmap(photo, 0, 70, 360, 65)
+            which in 2..5 && stats != null && stats.width >= 360 && stats.height >= 74 ->
+                Bitmap.createBitmap(stats, (which - 2) * 90, 0, 88, 74)
+            else -> null
+        }
+    }
+}
+
+@Composable
+internal fun OakReferenceHeaderArt(modifier: Modifier = Modifier) {
+    val picture = rememberOakReferencePiece(0)
+    if (picture != null) Image(
+        bitmap = picture.asImageBitmap(), contentDescription = null,
+        modifier = modifier, contentScale = ContentScale.FillBounds,
+    )
+}
+
+@Composable
+internal fun OakReferenceNavArt(modifier: Modifier = Modifier) {
+    val picture = rememberOakReferencePiece(1)
+    if (picture != null) Image(
+        bitmap = picture.asImageBitmap(), contentDescription = null,
+        modifier = modifier, contentScale = ContentScale.FillBounds,
+    )
+}
+
+@Composable
+internal fun OakReferenceStatArt(index: Int, modifier: Modifier = Modifier) {
+    val picture = rememberOakReferencePiece(2 + index.coerceIn(0, 3))
+    if (picture != null) Image(
+        bitmap = picture.asImageBitmap(), contentDescription = null,
+        modifier = modifier, contentScale = ContentScale.FillBounds,
+    )
+}
