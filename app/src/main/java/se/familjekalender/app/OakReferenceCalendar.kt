@@ -92,7 +92,7 @@ internal fun OakReferenceCalendarScreen(
                 .padding(horizontal = 10.dp, vertical = 3.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            OakHeader(onSearch, onAdd, onFamily)
+            OakHeader(month, locale, onSearch, onAdd, onFamily)
             OakFamilyPortraitStrip(membersById, onFamily)
             OakPaperMonth(
                 month, selectedDate, today, locale, eventsByDate, membersById,
@@ -115,6 +115,8 @@ private val OakBrown = Color(0xFF724326)
 
 @Composable
 private fun OakHeader(
+    month: YearMonth,
+    locale: Locale,
     onSearch: () -> Unit,
     onAdd: () -> Unit,
     onFamily: () -> Unit,
@@ -128,16 +130,20 @@ private fun OakHeader(
             Icon(Icons.Default.Menu, "Familj", tint = OakInk, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(7.dp))
-        Text(
-            "Familjekalendern",
-            modifier = Modifier.weight(1f),
-            color = OakInk,
-            fontSize = 20.sp,
-            fontFamily = FontFamily.SansSerif,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Familjekalendern",
+                color = OakInk, fontSize = 19.sp,
+                fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                month.month.getDisplayName(TextStyle.FULL, locale)
+                    .replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
+                color = OakMutedInk, fontSize = 9.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
         OakRoundButton(false, onSearch) {
             Icon(Icons.Default.Search, "Sök", tint = OakInk, modifier = Modifier.size(20.dp))
         }
@@ -332,15 +338,15 @@ private fun OakPaperMonth(
                 Modifier.fillMaxWidth().height(35.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                OakMonthArrow(Icons.Default.ChevronLeft, "Föregående månad") { onChange(-1L) }
                 Text(
                     month.month.getDisplayName(TextStyle.FULL, locale)
                         .replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
-                    color = OakInk, fontSize = 19.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = OakInk, fontSize = 17.sp, fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.SansSerif,
                 )
-                OakMonthArrow(Icons.Default.ChevronLeft, "Föregående månad") { onChange(-1L) }
-                Spacer(Modifier.width(5.dp))
                 OakMonthArrow(Icons.Default.ChevronRight, "Nästa månad") { onChange(1L) }
             }
             Spacer(Modifier.height(3.dp))
@@ -417,7 +423,7 @@ private fun OakMonthArrow(
 ) {
     Box(
         Modifier.size(31.dp)
-            .background(Color(0xFFF0D9B7), CircleShape)
+            .background(Color(0x99E3C7A0), CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
