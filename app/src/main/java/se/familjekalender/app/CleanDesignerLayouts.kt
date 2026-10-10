@@ -63,7 +63,7 @@ private fun designerMemberColor(event: SyncEvent, members: Map<String, SyncMembe
         ?: if (event.memberId == ALL_FAMILY_MEMBER_ID) Color(0xFFE9B44D) else fallback
 
 private fun designerTitle(event: SyncEvent): String =
-    event.title.replace(Regex("""\\s*[·•]\\s*\\d{1,2}:\\d{2}\\s*[–-]\\s*\\d{1,2}:\\d{2}"""), "")
+    event.title.replace(Regex("""\s*[·•]\s*\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}"""), "")
         .trim().trim('·', ' ')
 
 private fun designerTime(event: SyncEvent): String =
