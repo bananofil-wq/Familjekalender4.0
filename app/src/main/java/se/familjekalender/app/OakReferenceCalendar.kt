@@ -84,12 +84,12 @@ internal fun OakReferenceCalendarScreen(
     onWeather: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        StorybookThemeBackdrop(CleanVisualTheme.OAK_WOOD, Modifier.fillMaxSize())
+        OakPhotographicBackground(Modifier.fillMaxSize())
         Column(
             Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 10.dp, vertical = 3.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             OakHeader(onSearch, onAdd, onFamily)
             OakFamilyPortraitStrip(membersById, onFamily)
@@ -118,7 +118,7 @@ private fun OakHeader(
     onAdd: () -> Unit,
     onFamily: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(43.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier.size(30.dp).clip(RoundedCornerShape(6.dp))
                 .clickable(onClick = onFamily),
@@ -131,7 +131,7 @@ private fun OakHeader(
             "Familjekalendern",
             modifier = Modifier.weight(1f),
             color = OakInk,
-            fontSize = 21.sp,
+            fontSize = 20.sp,
             fontFamily = FontFamily.SansSerif,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -155,7 +155,7 @@ private fun OakRoundButton(
 ) {
     val shape = CircleShape
     Box(
-        modifier = Modifier.size(if (solid) 39.dp else 35.dp)
+        modifier = Modifier.size(if (solid) 35.dp else 32.dp)
             .shadow(2.dp, shape)
             .background(if (solid) OakBrown else OakPaper, shape)
             .border(1.dp, if (solid) Color(0xFF51301C) else OakBorder, shape)
@@ -207,7 +207,7 @@ private fun OakFamilyAvatar(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(37.dp)
+            Modifier.size(36.dp)
                 .shadow(1.5.dp, CircleShape)
                 .background(Brush.verticalGradient(
                     listOf(accent.copy(alpha = .75f), accent.copy(alpha = .98f))
@@ -252,7 +252,7 @@ private fun OakPaperMonth(
     onSelect: (LocalDate) -> Unit,
     onChange: (Long) -> Unit,
 ) {
-    val panelShape = RoundedCornerShape(15.dp)
+    val panelShape = RoundedCornerShape(12.dp)
     Surface(
         color = OakPaper,
         shape = panelShape,
@@ -275,16 +275,18 @@ private fun OakPaperMonth(
             )
         },
     ) {
-        Column(Modifier.padding(horizontal = 9.dp, vertical = 9.dp)) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .10f)
+            Column(Modifier.padding(horizontal = 6.dp, vertical = 8.dp)) {
             Row(
-                Modifier.fillMaxWidth().height(39.dp),
+                Modifier.fillMaxWidth().height(35.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     month.month.getDisplayName(TextStyle.FULL, locale)
                         .replaceFirstChar { it.uppercase(locale) } + " ${month.year}",
                     modifier = Modifier.weight(1f).padding(start = 4.dp),
-                    color = OakInk, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                    color = OakInk, fontSize = 19.sp, fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.SansSerif,
                 )
                 OakMonthArrow(Icons.Default.ChevronLeft, "Föregående månad") { onChange(-1L) }
@@ -293,7 +295,7 @@ private fun OakPaperMonth(
             }
             Spacer(Modifier.height(3.dp))
             Row(
-                Modifier.fillMaxWidth().height(26.dp),
+                Modifier.fillMaxWidth().height(23.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -352,6 +354,7 @@ private fun OakPaperMonth(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -389,13 +392,13 @@ private fun OakPaperDay(
         else -> OakMutedInk.copy(alpha = .46f)
     }
     Box(
-        modifier.height(43.dp)
-            .border(.35.dp, Color(0x1A69482B))
+        modifier.height(37.dp)
+            .border(.35.dp, Color(0x2269482B))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.size(if (selected) 34.dp else 32.dp)
+            Modifier.size(if (selected) 31.dp else 29.dp)
                 .then(
                     if (selected) {
                         Modifier.shadow(2.dp, CircleShape)
@@ -410,7 +413,7 @@ private fun OakPaperDay(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     date.dayOfMonth.toString(),
-                    color = ink, fontSize = if (selected) 15.sp else 13.sp,
+                    color = ink, fontSize = if (selected) 14.sp else 12.sp,
                     fontWeight = if (selected || isToday) FontWeight.Bold else FontWeight.Medium,
                 )
                 Row(
@@ -510,24 +513,6 @@ private fun OakActivityLedger(
             ) {
                 Row(
                     Modifier.fillMaxWidth().height(51.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color(0xFFEFDCBC), Color(0xFFE5C79F))
-                            )
-                        )
-                        .drawBehind {
-                            // Fine horizontal oak fibers inside each compact event card.
-                            for (grain in 0..20) {
-                                val yy = size.height * (grain + .4f) / 21f
-                                val wave = sin(grain * .82).toFloat() * 1.8f
-                                drawLine(
-                                    Color(0x16805A35),
-                                    Offset(0f, yy + wave),
-                                    Offset(size.width, yy - wave),
-                                    .75f,
-                                )
-                            }
-                        }
                         .padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
