@@ -11,6 +11,7 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDate
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.roundToInt
@@ -19,11 +20,19 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
+import org.json.JSONArray
+
+internal data class CleanForecastDay(
+    val date: LocalDate,
+    val highC: Int,
+    val weatherCode: Int,
+)
 
 internal data class CleanWeatherSnapshot(
     val temperatureC: Int,
     val description: String,
     val weatherCode: Int,
+    val upcomingDays: List<CleanForecastDay> = emptyList(),
 )
 
 internal object CleanWeatherService {
@@ -148,7 +157,8 @@ internal object CleanWeatherService {
                 URL(
                     "https://api.open-meteo.com/v1/forecast" +
                             "?latitude=$latitude&longitude=$longitude" +
-                            "&current=temperature_2m,weather_code&timezone=auto"
+                            "&current=temperature_2m,weather_code" +
+                            "&daily=temperature_2m_max,weather_code&forecast_days=4&timezone=auto"
                 )
             val connection =
                 (url.openConnection() as HttpURLConnection).apply {
@@ -164,10 +174,29 @@ internal object CleanWeatherService {
                 val current = JSONObject(json).getJSONObject("current")
                 val temperature = current.getDouble("temperature_2m").roundToInt()
                 val weatherCode = current.optInt("weather_code", -1)
+                val upcomingDays = mutableListOf<CleanForecastDay>()
+                val daily = JSONObject(json).optJSONObject("daily")
+                if (daily != null) {
+                    val dates = daily.optJSONArray("time")
+                    val highs = daily.optJSONArray("temperature_2m_max")
+                    val codes = daily.optJSONArray("weather_code")
+                    if (dates != null && highs != null && codes != null) {
+                        for (i in 1 until minOf(4, dates.length(), highs.length(), codes.length())) {
+                            runCatching {
+                                upcomingDays += CleanForecastDay(
+                                    date = LocalDate.parse(dates.getString(i)),
+                                    highC = highs.getDouble(i).roundToInt(),
+                                    weatherCode = codes.getInt(i),
+                                )
+                            }
+                        }
+                    }
+                }
                 CleanWeatherSnapshot(
                     temperatureC = temperature,
                     description = descriptionFor(weatherCode),
                     weatherCode = weatherCode,
+                    upcomingDays = upcomingDays,
                 )
             } finally {
                 connection.disconnect()
@@ -180,10 +209,23 @@ internal object CleanWeatherService {
         if (updatedAt <= 0L || System.currentTimeMillis() - updatedAt > CACHE_MAX_AGE_MS)
             return null
         if (!prefs.contains("temperature")) return null
+        val upcomingDays = mutableListOf<CleanForecastDay>()
+        runCatching {
+            val cache = JSONArray(prefs.getString("upcoming_days", "[]") ?: "[]")
+            for (i in 0 until cache.length()) {
+                val day = cache.getJSONObject(i)
+                upcomingDays += CleanForecastDay(
+                    date = LocalDate.parse(day.getString("date")),
+                    highC = day.getInt("high"),
+                    weatherCode = day.getInt("code"),
+                )
+            }
+        }
         return CleanWeatherSnapshot(
             temperatureC = prefs.getInt("temperature", 0),
             description = prefs.getString("description", "Väder") ?: "Väder",
             weatherCode = prefs.getInt("weather_code", -1),
+            upcomingDays = upcomingDays,
         )
     }
 
@@ -194,6 +236,19 @@ internal object CleanWeatherService {
             .putInt("temperature", snapshot.temperatureC)
             .putString("description", snapshot.description)
             .putInt("weather_code", snapshot.weatherCode)
+            .putString(
+                "upcoming_days",
+                JSONArray().apply {
+                    snapshot.upcomingDays.forEach { day ->
+                        put(
+                            JSONObject()
+                                .put("date", day.date.toString())
+                                .put("high", day.highC)
+                                .put("code", day.weatherCode)
+                        )
+                    }
+                }.toString()
+            )
             .putLong("updated_at", System.currentTimeMillis())
             .apply()
     }
