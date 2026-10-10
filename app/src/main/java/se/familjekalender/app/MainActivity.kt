@@ -2621,6 +2621,7 @@ private fun MinimalBottomNav(
     onSelect: (Int) -> Unit,
 ) {
     val spec = cleanThemeSpec(cleanVisualTheme)
+    val oakNav = cleanVisualTheme == CleanVisualTheme.OAK_WOOD
     val navShape =
         when (cleanVisualTheme) {
             CleanVisualTheme.CURRENT -> RoundedCornerShape(30.dp)
@@ -2696,7 +2697,7 @@ private fun MinimalBottomNav(
         ) {
             Row(
                 Modifier.fillMaxWidth()
-                    .height(64.dp)
+                    .height(if (oakNav) 57.dp else 64.dp)
                     .padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -2740,9 +2741,14 @@ private fun MinimalBottomNav(
                                 contentDescription = label,
                                 tint =
                                     if (isSelected) spec.selectedText
+                                    else if (oakNav) Color(0xFFF1D4AF)
                                     else spec.muted.copy(alpha = .82f),
                                 modifier =
-                                    Modifier.size(if (isSelected) 26.dp else 24.dp)
+                                    Modifier.size(
+                                        if (oakNav) {
+                                            if (isSelected) 23.dp else 21.dp
+                                        } else if (isSelected) 26.dp else 24.dp
+                                    )
                                         .graphicsLayer {
                                             scaleX = if (isSelected) 1.06f else 1f
                                             scaleY = if (isSelected) 1.06f else 1f
@@ -2753,6 +2759,7 @@ private fun MinimalBottomNav(
                                 label,
                                 color =
                                     if (isSelected) spec.selectedText
+                                    else if (oakNav) Color(0xFFF1D4AF)
                                     else spec.muted.copy(alpha = .88f),
                                 fontSize = 9.sp,
                                 fontWeight =
