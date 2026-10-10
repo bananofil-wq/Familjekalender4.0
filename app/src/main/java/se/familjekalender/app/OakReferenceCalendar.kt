@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -217,18 +218,67 @@ private fun OakFamilyAvatar(
             contentAlignment = Alignment.Center,
         ) {
             if (name == "Alla") {
-                Text("♟", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Icon(
+                    Icons.Default.People,
+                    "Hela familjen",
+                    tint = Color(0xFFFCEAD0),
+                    modifier = Modifier.size(21.dp),
+                )
             } else {
+                val variant = (name.hashCode() and Int.MAX_VALUE) % 4
+                val hair = listOf(
+                    Color(0xFF583725), Color(0xFF302924),
+                    Color(0xFFB27B42), Color(0xFF6E3E29),
+                )[variant]
+                val skin = listOf(
+                    Color(0xFFF7D3AE), Color(0xFFD9A87F),
+                    Color(0xFFF5C99B), Color(0xFFE7B990),
+                )[variant]
                 Canvas(Modifier.size(32.dp)) {
-                    drawCircle(
-                        color = Color(0xFFF8E3C9),
-                        radius = size.width * .18f,
-                        center = Offset(size.width * .50f, size.height * .36f),
+                    val unit = size.width
+                    // Distinct illustrated portraits, not empty generic user silhouettes.
+                    drawOval(
+                        color = Color(0xFFE7D8BD),
+                        topLeft = Offset(unit * .04f, unit * .04f),
+                        size = Size(unit * .92f, unit * .92f),
                     )
                     drawOval(
-                        color = Color(0xFFF8E3C9),
-                        topLeft = Offset(size.width * .19f, size.height * .58f),
-                        size = Size(size.width * .62f, size.height * .36f),
+                        color = Color(0xFF395B65).copy(alpha = .85f),
+                        topLeft = Offset(unit * .09f, unit * .68f),
+                        size = Size(unit * .82f, unit * .43f),
+                    )
+                    drawOval(
+                        color = hair,
+                        topLeft = Offset(unit * .19f, unit * .10f),
+                        size = Size(unit * .62f, unit * .67f),
+                    )
+                    drawOval(
+                        color = skin,
+                        topLeft = Offset(unit * .245f, unit * .235f),
+                        size = Size(unit * .51f, unit * .52f),
+                    )
+                    drawOval(
+                        color = hair,
+                        topLeft = Offset(unit * .23f, unit * .12f),
+                        size = Size(unit * .53f, unit * .22f),
+                    )
+                    if (variant % 2 == 0) {
+                        drawOval(
+                            color = hair,
+                            topLeft = Offset(unit * .16f, unit * .22f),
+                            size = Size(unit * .14f, unit * .56f),
+                        )
+                    }
+                    val eyeY = unit * .49f
+                    drawCircle(Color(0xFF312C2C), unit * .026f,
+                        center = Offset(unit * .405f, eyeY))
+                    drawCircle(Color(0xFF312C2C), unit * .026f,
+                        center = Offset(unit * .595f, eyeY))
+                    drawLine(
+                        color = Color(0xFFB06A61),
+                        start = Offset(unit * .43f, unit * .64f),
+                        end = Offset(unit * .57f, unit * .64f),
+                        strokeWidth = unit * .02f,
                     )
                 }
             }
