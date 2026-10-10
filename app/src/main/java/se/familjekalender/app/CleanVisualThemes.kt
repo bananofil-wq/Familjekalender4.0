@@ -82,6 +82,71 @@ enum class CleanVisualTheme(
         "Djupt rymdtema med stjärnhimmel, planettoner och lysande kosmiska accenter.",
         "✧",
     ),
+    PURE_CALENDAR(
+        "Pure Calendar", "Minimalistisk vit kalender med tydliga blå detaljer.", "▦",
+    ),
+    MIDNIGHT_GOLD(
+        "Midnight Gold", "Kolsvart design med champagneguld och eleganta detaljer.", "✦",
+    ),
+    PASTEL_FLOW(
+        "Pastel Flow", "Lavendel, persika och mint med mjuka kort.", "◕",
+    ),
+    CRYSTAL_GLASS(
+        "Crystal Glass", "Frostat glas med blåviolett djup och mjuka reflexer.", "◇",
+    ),
+    EDITORIAL_PLANNER(
+        "Editorial Planner", "Varmvitt papper och luftig tidningsliknande typografi.", "▤",
+    ),
+    NEON_PULSE(
+        "Neon Pulse", "Grafitsvart med lysande cyan och violett.", "⚡",
+    ),
+    EARTH_SAGE(
+        "Earth & Sage", "Salviagrönt, sand och terrakotta.", "❧",
+    ),
+    RETRO_DIGITAL(
+        "Retro Digital", "Marinblå digital retro med orange och turkos.", "▧",
+    ),
+    FOREST_PRO(
+        "Forest Pro", "Antracit och skogsgrönt med rena ytor.", "♧",
+    ),
+    FAMILY_SPECTRUM(
+        "Family Spectrum", "Ljus familjedesign med klara kategorifärger.", "◉",
+    ),
+}
+
+/** The only twelve user-selectable Clean themes; legacy enum IDs remain for compatibility. */
+internal val selectableCleanVisualThemes = listOf(
+    CleanVisualTheme.CURRENT,
+    CleanVisualTheme.NORDIC_DAY_PLANNER,
+    CleanVisualTheme.PURE_CALENDAR,
+    CleanVisualTheme.MIDNIGHT_GOLD,
+    CleanVisualTheme.PASTEL_FLOW,
+    CleanVisualTheme.CRYSTAL_GLASS,
+    CleanVisualTheme.EDITORIAL_PLANNER,
+    CleanVisualTheme.NEON_PULSE,
+    CleanVisualTheme.EARTH_SAGE,
+    CleanVisualTheme.RETRO_DIGITAL,
+    CleanVisualTheme.FOREST_PRO,
+    CleanVisualTheme.FAMILY_SPECTRUM,
+)
+
+/** Migrate persisted old theme IDs to the new collection without affecting appointments. */
+internal fun resolveCleanVisualTheme(saved: String?): CleanVisualTheme {
+    val old = runCatching { CleanVisualTheme.valueOf(saved ?: "") }.getOrDefault(CleanVisualTheme.CURRENT)
+    return when (old) {
+        CleanVisualTheme.NORDIC_DAY_PLANNER_DARK -> CleanVisualTheme.NORDIC_DAY_PLANNER
+        CleanVisualTheme.BRUTALIST -> CleanVisualTheme.RETRO_DIGITAL
+        CleanVisualTheme.JAPANDI -> CleanVisualTheme.EARTH_SAGE
+        CleanVisualTheme.LUXURY_GOLD -> CleanVisualTheme.MIDNIGHT_GOLD
+        CleanVisualTheme.MEMPHIS -> CleanVisualTheme.FAMILY_SPECTRUM
+        CleanVisualTheme.SWISS -> CleanVisualTheme.PURE_CALENDAR
+        CleanVisualTheme.ICE_GLASS -> CleanVisualTheme.CRYSTAL_GLASS
+        CleanVisualTheme.BIOPHILIC -> CleanVisualTheme.FOREST_PRO
+        CleanVisualTheme.RETRO_70S -> CleanVisualTheme.RETRO_DIGITAL
+        CleanVisualTheme.CLAY -> CleanVisualTheme.PASTEL_FLOW
+        CleanVisualTheme.CYBERPUNK -> CleanVisualTheme.NEON_PULSE
+        else -> old
+    }
 }
 
 internal fun isNordicDayPlannerTheme(theme: CleanVisualTheme): Boolean =
@@ -223,6 +288,208 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 dayRadius = 8.dp,
                 buttonRadius = 12.dp,
                 shadow = 2.dp,
+            )
+
+        CleanVisualTheme.PURE_CALENDAR ->
+            cleanThemeSpec(CleanVisualTheme.SWISS).copy(
+                backgroundTop = Color(0xFFFFFFFF),
+                backgroundBottom = Color(0xFFF7F9FC),
+                panelTop = Color(0xFFFFFFFF),
+                panelMid = Color(0xFFF9FAFC),
+                panelBottom = Color(0xFFF3F6FA),
+                text = Color(0xFF1E293B),
+                muted = Color(0xFF68788A),
+                accent = Color(0xFF3579E8),
+                accentStrong = Color(0xFF1B62D5),
+                secondary = Color(0xFF28A6A1),
+                navSurface = Color(0xFFFFFFFF),
+                border = Color(0x1F334155),
+                navBorder = Color(0x1F334155),
+                titleFont = FontFamily.SansSerif, titleWeight = FontWeight.SemiBold,
+                cardRadius = 15.dp, calendarRadius = 19.dp,
+                dayRadius = 9.dp, buttonRadius = 13.dp, shadow = 1.dp,
+            )
+
+        CleanVisualTheme.MIDNIGHT_GOLD ->
+            cleanThemeSpec(CleanVisualTheme.LUXURY_GOLD).copy(
+                backgroundTop = Color(0xFF0B0D11),
+                backgroundBottom = Color(0xFF020305),
+                panelTop = Color(0xFF242227),
+                panelMid = Color(0xFF171719),
+                panelBottom = Color(0xFF101113),
+                navSurface = Color(0xFF101012),
+                text = Color(0xFFF8F1DE),
+                muted = Color(0xFFC3B9A6),
+                accent = Color(0xFFD8B76C),
+                accentStrong = Color(0xFFFFDC8E),
+                secondary = Color(0xFFB6C5DB),
+                titleFont = FontFamily.Serif, titleWeight = FontWeight.Medium,
+                cardRadius = 18.dp, calendarRadius = 24.dp,
+                dayRadius = 13.dp, buttonRadius = 50.dp, shadow = 5.dp,
+            )
+
+        CleanVisualTheme.PASTEL_FLOW ->
+            cleanThemeSpec(CleanVisualTheme.CLAY).copy(
+                backgroundTop = Color(0xFFFFF2ED),
+                backgroundBottom = Color(0xFFECEBFF),
+                panelTop = Color(0xFFFFF9F7),
+                panelMid = Color(0xFFF8F3FC),
+                panelBottom = Color(0xFFF0F7F1),
+                navSurface = Color(0xFFFFFAFD),
+                text = Color(0xFF4B4260),
+                muted = Color(0xFF797087),
+                accent = Color(0xFF9476CC),
+                accentStrong = Color(0xFF805FBC),
+                secondary = Color(0xFF61B6A4),
+                info = Color(0xFF76A5DF),
+                warning = Color(0xFFDE936F),
+                titleFont = FontFamily.SansSerif, titleWeight = FontWeight.Bold,
+                cardRadius = 25.dp, calendarRadius = 27.dp,
+                dayRadius = 15.dp, buttonRadius = 50.dp, shadow = 3.dp,
+            )
+
+        CleanVisualTheme.CRYSTAL_GLASS ->
+            cleanThemeSpec(CleanVisualTheme.ICE_GLASS).copy(
+                backgroundTop = Color(0xFF3C468C),
+                backgroundBottom = Color(0xFF161B43),
+                overlayTop = Color(0x2228C6F7),
+                overlayBottom = Color(0x66331766),
+                panelTop = Color(0x667F8FCE),
+                panelMid = Color(0x88415A9C),
+                panelBottom = Color(0x99233469),
+                navSurface = Color(0xCC29386E),
+                text = Color(0xFFFFFFFF),
+                muted = Color(0xFFE3EAFF),
+                accent = Color(0xFF8EDBFA),
+                accentStrong = Color(0xFFB4ECFF),
+                secondary = Color(0xFFD3ADFF),
+                border = Color(0x99DCE9FF),
+                navBorder = Color(0x99DCE9FF),
+                titleFont = FontFamily.SansSerif, titleWeight = FontWeight.SemiBold,
+                cardRadius = 25.dp, calendarRadius = 30.dp,
+                dayRadius = 17.dp, buttonRadius = 50.dp, shadow = 6.dp,
+            )
+
+        CleanVisualTheme.EDITORIAL_PLANNER ->
+            cleanThemeSpec(CleanVisualTheme.JAPANDI).copy(
+                backgroundTop = Color(0xFFF8F4ED),
+                backgroundBottom = Color(0xFFF0E9DF),
+                panelTop = Color(0xFFFFFDF9),
+                panelMid = Color(0xFFF8F4EC),
+                panelBottom = Color(0xFFF1E9DC),
+                navSurface = Color(0xFFFFFDF9),
+                text = Color(0xFF282724),
+                muted = Color(0xFF77746E),
+                accent = Color(0xFF514A43),
+                accentStrong = Color(0xFF282724),
+                secondary = Color(0xFFB2785C),
+                info = Color(0xFF627B79),
+                titleFont = FontFamily.Serif, titleWeight = FontWeight.SemiBold,
+                cardRadius = 5.dp, calendarRadius = 7.dp,
+                dayRadius = 3.dp, buttonRadius = 5.dp, shadow = 1.dp,
+            )
+
+        CleanVisualTheme.NEON_PULSE ->
+            cleanThemeSpec(CleanVisualTheme.CYBERPUNK).copy(
+                backgroundTop = Color(0xFF13151C),
+                backgroundBottom = Color(0xFF090A10),
+                panelTop = Color(0xFF24283B),
+                panelMid = Color(0xFF171B2B),
+                panelBottom = Color(0xFF0F1220),
+                navSurface = Color(0xFF101522),
+                text = Color(0xFFF3FBFF),
+                muted = Color(0xFFB2C2D2),
+                accent = Color(0xFF3EE3EE),
+                accentStrong = Color(0xFF82F6FC),
+                secondary = Color(0xFFBD7AFF),
+                border = Color(0x8850D9EF),
+                navBorder = Color(0x8850D9EF),
+                titleFont = FontFamily.SansSerif, titleWeight = FontWeight.Bold,
+                cardRadius = 13.dp, calendarRadius = 16.dp,
+                dayRadius = 8.dp, buttonRadius = 13.dp, shadow = 4.dp,
+            )
+
+        CleanVisualTheme.EARTH_SAGE ->
+            cleanThemeSpec(CleanVisualTheme.JAPANDI).copy(
+                backgroundTop = Color(0xFFF1E9DC),
+                backgroundBottom = Color(0xFFE1E6D8),
+                panelTop = Color(0xFFFCF8F0),
+                panelMid = Color(0xFFF2F0E7),
+                panelBottom = Color(0xFFE9E9DD),
+                navSurface = Color(0xFFF7F4EA),
+                text = Color(0xFF35463A),
+                muted = Color(0xFF69766B),
+                accent = Color(0xFF6F876A),
+                accentStrong = Color(0xFF4F6E50),
+                secondary = Color(0xFFBC7B62),
+                info = Color(0xFF789D97),
+                titleFont = FontFamily.Serif, titleWeight = FontWeight.Medium,
+                cardRadius = 22.dp, calendarRadius = 24.dp,
+                dayRadius = 12.dp, buttonRadius = 50.dp, shadow = 2.dp,
+            )
+
+        CleanVisualTheme.RETRO_DIGITAL ->
+            cleanThemeSpec(CleanVisualTheme.RETRO_70S).copy(
+                backgroundTop = Color(0xFF172C42),
+                backgroundBottom = Color(0xFF0C1727),
+                panelTop = Color(0xFF244057),
+                panelMid = Color(0xFF1B3043),
+                panelBottom = Color(0xFF142739),
+                navSurface = Color(0xFF152A3F),
+                text = Color(0xFFF5F0DF),
+                muted = Color(0xFFB2C4CB),
+                accent = Color(0xFFFFA34E),
+                accentStrong = Color(0xFFFFC17B),
+                secondary = Color(0xFF58C8BF),
+                info = Color(0xFF8CC6EA),
+                border = Color(0x88639D9B),
+                navBorder = Color(0x88639D9B),
+                titleFont = FontFamily.Monospace, titleWeight = FontWeight.Bold,
+                cardRadius = 8.dp, calendarRadius = 11.dp,
+                dayRadius = 5.dp, buttonRadius = 7.dp, shadow = 2.dp,
+            )
+
+        CleanVisualTheme.FOREST_PRO ->
+            cleanThemeSpec(CleanVisualTheme.BIOPHILIC).copy(
+                backgroundTop = Color(0xFF1C2B26),
+                backgroundBottom = Color(0xFF101B18),
+                panelTop = Color(0xFF293A33),
+                panelMid = Color(0xFF202E29),
+                panelBottom = Color(0xFF192720),
+                navSurface = Color(0xFF182721),
+                text = Color(0xFFF0F3ED),
+                muted = Color(0xFFB5C5B9),
+                accent = Color(0xFF8EC69D),
+                accentStrong = Color(0xFFB0E4BD),
+                secondary = Color(0xFF80AEA0),
+                info = Color(0xFF83B5C0),
+                border = Color(0x775D957A),
+                navBorder = Color(0x775D957A),
+                titleFont = FontFamily.SansSerif, titleWeight = FontWeight.SemiBold,
+                cardRadius = 14.dp, calendarRadius = 18.dp,
+                dayRadius = 8.dp, buttonRadius = 12.dp, shadow = 3.dp,
+            )
+
+        CleanVisualTheme.FAMILY_SPECTRUM ->
+            cleanThemeSpec(CleanVisualTheme.MEMPHIS).copy(
+                backgroundTop = Color(0xFFF5F8FF),
+                backgroundBottom = Color(0xFFEDF5F9),
+                panelTop = Color(0xFFFFFFFF),
+                panelMid = Color(0xFFF9FBFE),
+                panelBottom = Color(0xFFF2F7FC),
+                navSurface = Color(0xFFFFFFFF),
+                text = Color(0xFF263A4A),
+                muted = Color(0xFF6E8192),
+                accent = Color(0xFF507BE6),
+                accentStrong = Color(0xFF3565D1),
+                secondary = Color(0xFF20AFA0),
+                info = Color(0xFF9672E3),
+                warning = Color(0xFFEAA35C),
+                border = Color(0x24546880),
+                navBorder = Color(0x24546880),
+                titleFont = FontFamily.SansSerif, titleWeight = FontWeight.Bold,
+                cardRadius = 21.dp, calendarRadius = 25.dp,
+                dayRadius = 13.dp, buttonRadius = 20.dp, shadow = 2.dp,
             )
 
         CleanVisualTheme.BRUTALIST ->
@@ -501,6 +768,25 @@ internal fun CleanThemeBackdrop(
 
             CleanVisualTheme.NORDIC_DAY_PLANNER_DARK -> {
                 // Keep the Nordic layout unchanged. Dark mode is color-only.
+            }
+
+
+            CleanVisualTheme.PURE_CALENDAR, CleanVisualTheme.EDITORIAL_PLANNER -> Unit
+
+            CleanVisualTheme.MIDNIGHT_GOLD, CleanVisualTheme.CRYSTAL_GLASS,
+            CleanVisualTheme.PASTEL_FLOW, CleanVisualTheme.NEON_PULSE,
+            CleanVisualTheme.EARTH_SAGE, CleanVisualTheme.FOREST_PRO,
+            CleanVisualTheme.FAMILY_SPECTRUM -> {
+                drawCircle(spec.accent.copy(alpha = .12f), size.width * .38f,
+                    Offset(size.width * .93f, size.height * .08f))
+                drawCircle(spec.secondary.copy(alpha = .09f), size.width * .33f,
+                    Offset(size.width * .04f, size.height * .92f))
+            }
+
+            CleanVisualTheme.RETRO_DIGITAL -> {
+                drawRect(spec.secondary.copy(alpha = .22f),
+                    topLeft = Offset(0f, size.height * .06f),
+                    size = androidx.compose.ui.geometry.Size(size.width * .028f, size.height * .18f))
             }
 
             CleanVisualTheme.BRUTALIST -> {
