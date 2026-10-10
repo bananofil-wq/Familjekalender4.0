@@ -97,7 +97,12 @@ private fun cleanMaterialColorScheme(theme: CleanVisualTheme) =
                 CleanVisualTheme.MEMPHIS,
                 CleanVisualTheme.SWISS,
                 CleanVisualTheme.RETRO_70S,
-                CleanVisualTheme.CLAY -> true
+                CleanVisualTheme.CLAY,
+                CleanVisualTheme.PURE_CALENDAR,
+                CleanVisualTheme.PASTEL_FLOW,
+                CleanVisualTheme.EDITORIAL_PLANNER,
+                CleanVisualTheme.EARTH_SAGE,
+                CleanVisualTheme.FAMILY_SPECTRUM -> true
                 else -> false
             }
 
