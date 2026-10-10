@@ -2624,7 +2624,7 @@ private fun MinimalBottomNav(
     val oakNav = cleanVisualTheme == CleanVisualTheme.OAK_WOOD
     val navShape =
         when (cleanVisualTheme) {
-            CleanVisualTheme.CURRENT -> RoundedCornerShape(30.dp)
+            CleanVisualTheme.CURRENT, CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(30.dp)
             CleanVisualTheme.NORDIC_DAY_PLANNER,
             CleanVisualTheme.NORDIC_DAY_PLANNER_DARK -> RoundedCornerShape(0.dp)
             CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
@@ -2640,7 +2640,6 @@ private fun MinimalBottomNav(
             CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(2.dp)
             CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(8.dp)
             CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(19.dp)
-            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(13.dp)
             CleanVisualTheme.GOTHAM_NIGHT -> RoundedCornerShape(5.dp)
             else -> RoundedCornerShape(spec.cardRadius)
         }
@@ -2659,7 +2658,7 @@ private fun MinimalBottomNav(
             CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(0.dp)
             CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(4.dp)
             CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(13.dp)
-            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(7.dp)
+            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(18.dp)
             CleanVisualTheme.GOTHAM_NIGHT -> RoundedCornerShape(5.dp)
             else -> RoundedCornerShape(18.dp)
         }
@@ -2691,7 +2690,7 @@ private fun MinimalBottomNav(
             shape = navShape,
             border = BorderStroke(1.dp, spec.navBorder),
             shadowElevation =
-                if (cleanVisualTheme == CleanVisualTheme.CURRENT) 12.dp else spec.shadow,
+                if (cleanVisualTheme == CleanVisualTheme.CURRENT || oakNav) 12.dp else spec.shadow,
             tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -2704,7 +2703,7 @@ private fun MinimalBottomNav(
                 }
             Row(
                 Modifier.fillMaxWidth()
-                    .height(if (oakNav) 57.dp else 64.dp)
+                    .height(64.dp)
                     .padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -2752,9 +2751,7 @@ private fun MinimalBottomNav(
                                     else spec.muted.copy(alpha = .82f),
                                 modifier =
                                     Modifier.size(
-                                        if (oakNav) {
-                                            if (isSelected) 23.dp else 21.dp
-                                        } else if (isSelected) 26.dp else 24.dp
+                                        if (isSelected) 26.dp else 24.dp
                                     )
                                         .graphicsLayer {
                                             scaleX = if (isSelected) 1.06f else 1f
