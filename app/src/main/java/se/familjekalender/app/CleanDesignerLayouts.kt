@@ -1,5 +1,9 @@
 package se.familjekalender.app
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -651,7 +655,24 @@ private fun DesignerMonth(
         border = BorderStroke(
             if (theme == CleanVisualTheme.NEON_PULSE) 1.5.dp else 1.dp,
             if (theme == CleanVisualTheme.NEON_PULSE) spec.accent.copy(alpha = .65f) else spec.border),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+            .pointerInput(month) {
+                var horizontalDrag = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { horizontalDrag = 0f },
+                    onHorizontalDrag = { change, amount ->
+                        change.consume()
+                        horizontalDrag += amount
+                    },
+                    onDragEnd = {
+                        val threshold = 52.dp.toPx()
+                        if (horizontalDrag < -threshold) onMonthChange(1)
+                        else if (horizontalDrag > threshold) onMonthChange(-1)
+                        horizontalDrag = 0f
+                    },
+                    onDragCancel = { horizontalDrag = 0f },
+                )
+            },
     ) {
         Column(Modifier.padding(horizontal = 9.dp, vertical = 10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -696,7 +717,9 @@ private fun DesignerMonth(
                 }
             }
             Spacer(Modifier.height(4.dp))
-            val first = month.atDay(1)
+            Crossfade(targetState = month, animationSpec = tween(180),
+                label = "designer-month-transition") { visibleMonth ->
+                val first = visibleMonth.atDay(1)
             val start = first.minusDays((first.dayOfWeek.value - 1).toLong())
             repeat(6) { row ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -711,7 +734,7 @@ private fun DesignerMonth(
                         DesignerDayCell(
                             theme = theme,
                             date = date,
-                            month = month,
+                            month = visibleMonth,
                             selected = date == selectedDate,
                             today = date == today,
                             dayEvents = eventsByDate[date].orEmpty(),
@@ -721,6 +744,7 @@ private fun DesignerMonth(
                         )
                     }
                 }
+            }
             }
             if (theme == CleanVisualTheme.NEON_PULSE ||
                 theme == CleanVisualTheme.RETRO_DIGITAL) {
