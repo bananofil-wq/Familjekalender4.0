@@ -285,7 +285,7 @@ private fun PremiumWoodCalendar(
         border = BorderStroke(2.dp, Color(0xFF8B532E)),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .29f)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .82f, material = OakPhotoMaterial.PALE)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
@@ -558,7 +558,7 @@ private fun PremiumWoodWeather(
         border = BorderStroke(1.dp, WoodBorder),
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .31f)
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .74f, material = OakPhotoMaterial.AMBER)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
