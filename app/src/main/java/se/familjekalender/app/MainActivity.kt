@@ -298,13 +298,7 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
     }
     var cleanVisualTheme by remember {
         mutableStateOf(
-            runCatching {
-                CleanVisualTheme.valueOf(
-                    prefs.getString("clean_visual_theme", CleanVisualTheme.CURRENT.name)
-                        ?: CleanVisualTheme.CURRENT.name
-                )
-            }
-                .getOrDefault(CleanVisualTheme.CURRENT)
+            resolveCleanVisualTheme(prefs.getString("clean_visual_theme", CleanVisualTheme.CURRENT.name))
         )
     }
     val palette = paletteFor(themeMode)
@@ -312,7 +306,7 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
         palette = palette,
         lightMode =
             uiLayoutMode == UiLayoutMode.MINIMAL &&
-                cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER,
+                isLightCleanTheme(cleanVisualTheme),
         nordicDarkMode =
             uiLayoutMode == UiLayoutMode.MINIMAL &&
                 cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
@@ -2150,14 +2144,14 @@ private fun SettingsScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "12 helt olika utseenden. Nuvarande behåller exakt den Clean-stil du redan använder.",
+                "10 nya premiumteman samt Nuvarande och Nordic Day Planner. Dina två original är oförändrade.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .78f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 7.dp),
             )
 
-            CleanVisualTheme.values().toList().chunked(2).forEach { rowThemes ->
+            selectableCleanVisualThemes.chunked(2).forEach { rowThemes ->
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

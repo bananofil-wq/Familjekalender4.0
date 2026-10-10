@@ -3,6 +3,7 @@ package se.familjekalender.app
 import android.content.Context
 import android.widget.RemoteViews
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
 
 /** Colors are resolved from the same saved theme as the main calendar. */
 internal object WidgetThemeColors {
@@ -10,12 +11,11 @@ internal object WidgetThemeColors {
 
     fun colors(context: Context): Palette {
         val prefs = context.getSharedPreferences("family_calendar", Context.MODE_PRIVATE)
-        val theme = runCatching {
-            CleanVisualTheme.valueOf(prefs.getString("clean_visual_theme", CleanVisualTheme.CURRENT.name)!!)
-        }.getOrDefault(CleanVisualTheme.CURRENT)
+        val theme = resolveCleanVisualTheme(prefs.getString("clean_visual_theme", CleanVisualTheme.CURRENT.name))
         val spec = cleanThemeSpec(theme)
         val accent = spec.accent.toArgb()
-        val onAccent = if (theme == CleanVisualTheme.NORDIC_DAY_PLANNER || theme == CleanVisualTheme.JAPANDI || theme == CleanVisualTheme.SWISS) 0xFFFFFFFF.toInt() else 0xFFFFFFFF.toInt()
+        // Avoid white text on the light accents of glass, gold and pastel palettes.
+        val onAccent = if (spec.accent.luminance() > 0.45f) 0xFF14202B.toInt() else 0xFFFFFFFF.toInt()
         return Palette(spec.backgroundTop.toArgb(), spec.panelTop.toArgb(), spec.text.toArgb(), spec.muted.toArgb(), accent, onAccent)
     }
 
