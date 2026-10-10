@@ -163,7 +163,10 @@ private fun PremiumWoodHeader(
     onSearch: () -> Unit, onAdd: () -> Unit, onFamily: () -> Unit,
 ) {
     val skin = premiumSkin(LocalPremiumMaterialTheme.current)
-    Box(Modifier.fillMaxWidth().height(73.dp)) {
+    val frame = RoundedCornerShape(if (skin.hippie) 18.dp else 12.dp)
+    Box(Modifier.fillMaxWidth().height(73.dp)
+        .border(if (skin.oak) 0.dp else 1.8.dp, skin.border, frame)
+        .clip(frame)) {
         PremiumMaterialSurface(
             Modifier.matchParentSize(), opacity = .86f,
             material = OakPhotoMaterial.TOP,
@@ -213,18 +216,24 @@ private fun PremiumWoodStat(
     val skin = premiumSkin(LocalPremiumMaterialTheme.current)
     val darkOverlay = if (skin.oak) listOf(Color(0x55472C17), Color(0xB329140B)) else listOf(Color.Transparent, Color.Transparent)
     val iconBackground = if (skin.oak) listOf(Color(0xFFC3955B), Color(0xFF553019)) else listOf(skin.buttonTop, skin.buttonBottom)
-    val statText = skin.panelInk
-    val shape = RoundedCornerShape(12.dp)
+    val statText = if (skin.hippie) Color(0xFFFFF2CC) else skin.panelInk
+    val shape = RoundedCornerShape(if (skin.hippie) 10.dp else 12.dp)
+    val hippieCard = if (skin.hippie) when (label) {
+        "Idag" -> Color(0xFF2D792C)
+        "Veckan" -> Color(0xFFDC4D21)
+        "Krockar" -> Color(0xFFC92B26)
+        else -> Color(0xFF713A89)
+    } else skin.panelTop
     Surface(
         modifier = modifier.height(height).shadow(5.dp, shape)
             .clickable(onClick = onClick),
         shape = shape,
-        color = skin.panelTop,
-        border = BorderStroke(1.dp, skin.border),
+        color = hippieCard,
+        border = BorderStroke(if (skin.hippie) 2.dp else 1.dp, if (skin.hippie) Color(0xFFFFC93C) else skin.border),
         tonalElevation = 0.dp,
     ) {
         Box {
-            PremiumMaterialSurface(Modifier.matchParentSize(), opacity = .87f)
+            if (!skin.hippie) PremiumMaterialSurface(Modifier.matchParentSize(), opacity = .87f)
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
