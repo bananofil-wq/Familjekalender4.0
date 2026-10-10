@@ -149,6 +149,15 @@ internal fun resolveCleanVisualTheme(saved: String?): CleanVisualTheme {
     }
 }
 
+/** Material backgrounds and dialogs must respect each light Clean palette. */
+internal fun isLightCleanTheme(theme: CleanVisualTheme): Boolean =
+    theme == CleanVisualTheme.NORDIC_DAY_PLANNER ||
+        theme == CleanVisualTheme.PURE_CALENDAR ||
+        theme == CleanVisualTheme.PASTEL_FLOW ||
+        theme == CleanVisualTheme.EDITORIAL_PLANNER ||
+        theme == CleanVisualTheme.EARTH_SAGE ||
+        theme == CleanVisualTheme.FAMILY_SPECTRUM
+
 internal fun isNordicDayPlannerTheme(theme: CleanVisualTheme): Boolean =
     theme == CleanVisualTheme.NORDIC_DAY_PLANNER ||
         theme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
