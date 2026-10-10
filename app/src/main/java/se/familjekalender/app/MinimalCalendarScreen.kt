@@ -312,6 +312,55 @@ internal fun MinimalCalendarScreen(
                 onOpenTodo = onOpenTodo,
                 onOpenShopping = onOpenShopping,
             )
+        } else if (isDesignedCleanTheme(cleanVisualTheme)) {
+            DesignedCleanCalendarScreen(
+                theme = cleanVisualTheme,
+                month = month,
+                selectedDate = selectedDate,
+                today = today,
+                locale = locale,
+                eventsByDate = eventsByDate,
+                selectedEvents = selectedEvents,
+                memberById = memberById,
+                weekCount = weekActivities.size,
+                conflictCount = weekConflicts.size,
+                reminderCount = weekReminders.size,
+                weather = weather,
+                weatherLoading = weatherLoading,
+                onSearch = { showSearch = true },
+                onAdd = onAdd,
+                onSelectDate = { date ->
+                    month = YearMonth.from(date)
+                    onSelect(date)
+                },
+                onMonthChange = { delta ->
+                    month = month.plusMonths(delta)
+                    onSelect(month.atDay(1))
+                },
+                onEventClick = { event ->
+                    if (event.source == "sportadmin") openedEvent = event else onEdit(event)
+                },
+                onShowAll = { showAllDayActivities = true },
+                onToday = { summaryDetail = CleanSummaryKind.TODAY },
+                onWeek = { summaryDetail = CleanSummaryKind.WEEK },
+                onConflicts = { summaryDetail = CleanSummaryKind.CONFLICTS },
+                onReminders = { summaryDetail = CleanSummaryKind.REMINDERS },
+                onWeather = {
+                    showWeatherDetails = true
+                    if (hasWeatherLocationPermission()) {
+                        forceWeatherRefresh = true
+                        weatherRefreshRequest++
+                    } else {
+                        weatherPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            )
+                        )
+                    }
+                },
+                onFamily = onOpenFamily,
+            )
         } else {
         Box(Modifier.fillMaxSize()) {
             if (cleanVisualTheme == CleanVisualTheme.CURRENT) {
@@ -540,48 +589,48 @@ internal fun MinimalCalendarScreen(
             remember(selectedDate) { mutableStateOf(emptySet<String>()) }
 
         val useNordicLightDialog =
-            cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER
+            isLightCleanTheme(cleanVisualTheme)
         val useNordicDarkDialog =
-            cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK
+            cleanVisualTheme != CleanVisualTheme.CURRENT && !isLightCleanTheme(cleanVisualTheme)
         val dialogContainer =
             when {
-                useNordicLightDialog -> Color(0xFFFFFEFA)
+                useNordicLightDialog -> cleanSpec.backgroundTop
                 useNordicDarkDialog -> cleanSpec.backgroundTop
                 else -> Color(0xE61A1624)
             }
         val dialogText =
             when {
-                useNordicLightDialog -> Color(0xFF17334A)
+                useNordicLightDialog -> cleanSpec.text
                 useNordicDarkDialog -> cleanSpec.text
                 else -> Color.White
             }
         val dialogMuted =
             when {
-                useNordicLightDialog -> Color(0xFF71808B)
+                useNordicLightDialog -> cleanSpec.muted
                 useNordicDarkDialog -> cleanSpec.muted
                 else -> CleanMuted
             }
         val dialogSurface =
             when {
-                useNordicLightDialog -> Color(0xFFF8F5ED)
+                useNordicLightDialog -> cleanSpec.panelTop
                 useNordicDarkDialog -> cleanSpec.panelTop
                 else -> Color.White.copy(alpha = .045f)
             }
         val dialogBorder =
             when {
-                useNordicLightDialog -> Color(0x1F24425D)
+                useNordicLightDialog -> cleanSpec.border
                 useNordicDarkDialog -> cleanSpec.border
                 else -> Color.White.copy(alpha = .08f)
             }
         val dialogDivider =
             when {
-                useNordicLightDialog -> Color(0x18243F55)
+                useNordicLightDialog -> cleanSpec.border.copy(alpha = .75f)
                 useNordicDarkDialog -> cleanSpec.border.copy(alpha = .75f)
                 else -> Color.White.copy(alpha = .07f)
             }
         val dialogSubDivider =
             when {
-                useNordicLightDialog -> Color(0x12243F55)
+                useNordicLightDialog -> cleanSpec.border.copy(alpha = .52f)
                 useNordicDarkDialog -> cleanSpec.border.copy(alpha = .52f)
                 else -> Color.White.copy(alpha = .05f)
             }
