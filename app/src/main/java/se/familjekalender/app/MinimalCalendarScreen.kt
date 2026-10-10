@@ -638,6 +638,7 @@ internal fun MinimalCalendarScreen(
             if (useNordicLightDialog) Color(0xFFB94752) else Color(0xFFFFA0A8)
         val dialogCloseAccent =
             when {
+                isDesignedCleanTheme(cleanVisualTheme) -> cleanSpec.accentStrong
                 useNordicLightDialog -> Color(0xFF0875A8)
                 useNordicDarkDialog -> cleanSpec.accentStrong
                 else -> CleanPurpleBright
@@ -1030,10 +1031,14 @@ internal fun MinimalCalendarScreen(
     }
 
     if (showWeatherDetails) {
+        val designed = isDesignedCleanTheme(cleanVisualTheme)
+        val weatherText = if (designed) cleanSpec.text else Color.White
+        val weatherMuted = if (designed) cleanSpec.muted else Color.White.copy(alpha = .76f)
+        val weatherAccent = if (designed) cleanSpec.accentStrong else CleanPurpleBright
         AlertDialog(
             onDismissRequest = { showWeatherDetails = false },
-            containerColor = Color(0xE61A1624),
-            shape = RoundedCornerShape(28.dp),
+            containerColor = if (designed) cleanSpec.panelTop else Color(0xE61A1624),
+            shape = RoundedCornerShape(if (designed) cleanSpec.cardRadius else 28.dp),
             tonalElevation = 0.dp,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1046,13 +1051,13 @@ internal fun MinimalCalendarScreen(
                         Icon(
                             Icons.Default.Cloud,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = .88f),
+                            tint = weatherText,
                         )
                     }
                     Spacer(Modifier.width(12.dp))
                     Text(
                         "Väder",
-                        color = Color.White,
+                        color = weatherText,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -1067,7 +1072,7 @@ internal fun MinimalCalendarScreen(
                                 strokeWidth = 2.dp,
                             )
                             Spacer(Modifier.width(12.dp))
-                            Text("Hämtar aktuellt väder…", color = Color.White.copy(alpha = .76f))
+                            Text("Hämtar aktuellt väder…", color = weatherMuted)
                         }
                     }
 
@@ -1075,18 +1080,18 @@ internal fun MinimalCalendarScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Text(
                                 "${weather!!.temperatureC}°",
-                                color = Color.White,
+                                color = weatherText,
                                 fontSize = 40.sp,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Text(
                                 weather!!.description,
-                                color = Color.White.copy(alpha = .76f),
+                                color = weatherMuted,
                                 fontSize = 16.sp,
                             )
                             Text(
                                 "Aktuellt väder för din nuvarande plats.",
-                                color = Color.White.copy(alpha = .52f),
+                                color = if (designed) weatherMuted.copy(alpha = .78f) else Color.White.copy(alpha = .52f),
                                 fontSize = 11.sp,
                             )
                         }
@@ -1100,14 +1105,14 @@ internal fun MinimalCalendarScreen(
                                 } else {
                                     "Tillåt platsåtkomst för att visa aktuellt väder."
                                 },
-                            color = Color.White.copy(alpha = .76f),
+                            color = weatherMuted,
                         )
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showWeatherDetails = false }) {
-                    Text("Stäng", color = CleanPurpleBright, fontWeight = FontWeight.SemiBold)
+                    Text("Stäng", color = weatherAccent, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -1119,7 +1124,7 @@ internal fun MinimalCalendarScreen(
                             weatherRefreshRequest++
                         },
                     ) {
-                        Text("Uppdatera", color = CleanPurpleBright)
+                        Text("Uppdatera", color = weatherAccent)
                     }
                 }
             },
@@ -2174,6 +2179,30 @@ private fun CleanSummaryDialog(
                     " – " +
                     weekEnd.format(DateTimeFormatter.ofPattern("d MMM", locale))
         }
+
+
+    val designerTheme = LocalCleanVisualTheme.current
+    if (isDesignedCleanTheme(designerTheme)) {
+        DesignedCleanSummaryDialog(
+            theme = designerTheme,
+            heading = title,
+            subtitle = subtitle,
+            kind = kind.name,
+            events = when (kind) {
+                CleanSummaryKind.TODAY -> dayActivities
+                CleanSummaryKind.WEEK -> weekActivities
+                CleanSummaryKind.REMINDERS -> reminders
+                CleanSummaryKind.CONFLICTS -> emptyList()
+            },
+            conflicts = conflicts,
+            members = memberById,
+            locale = locale,
+            onDismiss = onDismiss,
+            onSelectDate = onSelectDate,
+            onEventClick = onOpenEvent,
+        )
+        return
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
