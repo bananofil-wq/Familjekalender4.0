@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -99,16 +101,9 @@ internal fun OakReferenceCalendarScreen(
             maxHeight < 760.dp -> 160.dp
             else -> 182.dp
         }
-        val summaryHeight = if (compactHeight) 92.dp else 100.dp
+        val summaryHeight = if (compactHeight) 82.dp else 88.dp
         // A broad, uninterrupted wood backdrop beneath individually carved surfaces.
         OakPhotographicBackground(Modifier.fillMaxSize())
-        OakLeafDecoration(
-            Modifier.align(Alignment.TopStart).width(52.dp).height(109.dp)
-        )
-        Box(
-            Modifier.fillMaxWidth().height(78.dp)
-                .background(Brush.verticalGradient(listOf(Color(0xE9E7B781), Color(0x44D9A575))))
-        )
         Column(
             Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 7.dp),
             verticalArrangement = Arrangement.spacedBy(if (compactHeight) 6.dp else 8.dp),
@@ -158,61 +153,24 @@ private val WoodIvory = Color(0xFFFCE5BF)
 private fun PremiumWoodHeader(
     onSearch: () -> Unit, onAdd: () -> Unit, onFamily: () -> Unit,
 ) {
-    Row(
-        Modifier.fillMaxWidth().height(64.dp)
-            .padding(start = 29.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            Modifier.weight(1f).clickable(onClick = onFamily),
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                "Familjekalendern ❧", color = Color(0xFF2D160B),
-                fontSize = 23.sp, fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold, maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                "T I L L S A M M A N S   V A R J E   D A G",
-                color = Color(0xFF5B301B), fontSize = 7.5.sp,
-                fontWeight = FontWeight.Bold, maxLines = 1,
-            )
-        }
-        PremiumWoodButton("⌕", onSearch, 40)
-        Spacer(Modifier.width(9.dp))
-        PremiumWoodButton("+", onAdd, 43)
-    }
-}
-
-@Composable
-private fun PremiumWoodButton(
-    symbol: String, onClick: () -> Unit, diameter: Int = 33,
-) {
-    val shape = CircleShape
-    Box(
-        Modifier.size(diameter.dp).shadow(5.dp, shape)
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFFB87E48), Color(0xFF603419), Color(0xFF32180B))),
-                shape,
-            )
-            .border(1.5.dp, WoodGold, shape)
-            .clickable(onClick = onClick).padding(3.dp)
-            .border(.65.dp, Color(0xFFEBC48E).copy(alpha = .78f), shape),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (symbol == "⌕") {
-            Icon(
-                Icons.Default.Search, contentDescription = "Sök",
-                tint = WoodGold, modifier = Modifier.size(22.dp),
-            )
-        } else {
-            Text(
-                symbol, color = WoodGold, fontSize = 30.sp,
-                fontFamily = FontFamily.Serif, fontWeight = FontWeight.Light,
-                textAlign = TextAlign.Center,
-            )
-        }
+    // The actual photographed heading, brass controls and foliage are shown
+    // at their original proportions, with invisible Android hit areas on top.
+    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(360f / 70f)) {
+        OakReferenceHeaderArt(Modifier.matchParentSize())
+        Box(
+            Modifier.align(Alignment.CenterStart).fillMaxWidth(.70f)
+                .fillMaxHeight().clickable(onClick = onFamily),
+        )
+        Box(
+            Modifier.align(Alignment.CenterEnd).padding(end = maxWidth * .169f)
+                .width(maxWidth * .125f).fillMaxHeight()
+                .clickable(onClick = onSearch),
+        )
+        Box(
+            Modifier.align(Alignment.CenterEnd).padding(end = maxWidth * .026f)
+                .width(maxWidth * .128f).fillMaxHeight()
+                .clickable(onClick = onAdd),
+        )
     }
 }
 
@@ -222,66 +180,35 @@ private fun PremiumWoodStat(
     onClick: () -> Unit, modifier: Modifier = Modifier,
     height: Dp = 100.dp,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val index = when (label) {
+        "Idag" -> 0
+        "Veckan" -> 1
+        "Krockar" -> 2
+        else -> 3
+    }
+    // Frame, texture, brass button, etched heading and arrow come directly
+    // from the reference; the changing number and caption remain native text.
     Surface(
-        modifier = modifier.height(height).shadow(5.dp, shape)
-            .clickable(onClick = onClick),
-        shape = shape, color = Color(0xFF53301A),
-        border = BorderStroke(1.dp, WoodBorder),
+        modifier = modifier.height(height).clickable(onClick = onClick),
+        color = Color(0xFF452613), shape = RoundedCornerShape(12.dp),
+        shadowElevation = 3.dp,
     ) {
         Box {
-            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .83f)
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        listOf(Color(0x31231609), Color(0x48301C0E), Color(0x7830180C))
-                    )
-                )
-            )
-            Column(
-                Modifier.fillMaxSize().padding(horizontal = 5.dp, vertical = 5.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        Modifier.size(25.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0xFFB78553), Color(0xFF4D2710))
-                                ), CircleShape
-                            )
-                            .border(1.dp, Color(0xFFD9A868), CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = icon, contentDescription = label,
-                            tint = WoodIvory, modifier = Modifier.size(16.dp),
-                        )
-                    }
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        label, color = WoodIvory, fontFamily = FontFamily.Serif,
-                        fontSize = 11.sp, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    value.toString(), color = Color(0xFFFFDCA7),
-                    fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
-                    fontSize = 31.sp, lineHeight = 33.sp, maxLines = 1,
-                )
-                Text(
-                    caption, color = Color(0xFFF1D0A7), fontSize = 9.5.sp,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
-            }
+            OakReferenceStatArt(index, Modifier.matchParentSize())
             Text(
-                "›", color = WoodGold, fontSize = 17.sp,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 5.dp, bottom = 15.dp)
+                value.toString(),
+                color = Color(0xFFFFDCAA),
+                fontFamily = FontFamily.Serif,
+                fontSize = 32.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                modifier = Modifier.align(Alignment.Center).offset(y = 9.dp),
+            )
+            Text(
+                caption, color = Color(0xFFF4CFAC), fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .padding(start = 4.dp, end = 4.dp, bottom = 6.dp),
             )
         }
     }
