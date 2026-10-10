@@ -312,7 +312,7 @@ internal fun MinimalCalendarScreen(
                 onOpenTodo = onOpenTodo,
                 onOpenShopping = onOpenShopping,
             )
-        } else if (isDesignedCleanTheme(cleanVisualTheme) && cleanVisualTheme != CleanVisualTheme.OAK_WOOD) {
+        } else if (isDesignedCleanTheme(cleanVisualTheme)) {
             DesignedCleanCalendarScreen(
                 theme = cleanVisualTheme,
                 month = month,

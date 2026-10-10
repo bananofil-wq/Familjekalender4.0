@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,43 +67,327 @@ import kotlin.math.sin
  */
 @Composable
 internal fun OakReferenceCalendarScreen(
-    month: YearMonth,
-    selectedDate: LocalDate,
-    today: LocalDate,
-    locale: Locale,
+    month: YearMonth, selectedDate: LocalDate, today: LocalDate, locale: Locale,
     eventsByDate: Map<LocalDate, List<SyncEvent>>,
-    selectedEvents: List<SyncEvent>,
-    membersById: Map<String, SyncMember>,
-    weather: CleanWeatherSnapshot?,
-    weatherLoading: Boolean,
-    onSearch: () -> Unit,
-    onAdd: () -> Unit,
-    onFamily: () -> Unit,
-    onSelect: (LocalDate) -> Unit,
-    onMonthChange: (Long) -> Unit,
-    onOpenEvent: (SyncEvent) -> Unit,
-    onShowAll: () -> Unit,
+    selectedEvents: List<SyncEvent>, membersById: Map<String, SyncMember>,
+    weather: CleanWeatherSnapshot?, weatherLoading: Boolean,
+    weekCount: Int, conflictCount: Int, reminderCount: Int,
+    onToday: () -> Unit, onWeek: () -> Unit,
+    onConflicts: () -> Unit, onReminders: () -> Unit,
+    onSearch: () -> Unit, onAdd: () -> Unit, onFamily: () -> Unit,
+    onSelect: (LocalDate) -> Unit, onMonthChange: (Long) -> Unit,
+    onOpenEvent: (SyncEvent) -> Unit, onShowAll: () -> Unit,
     onWeather: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         OakPhotographicBackground(Modifier.fillMaxSize())
         Column(
-            Modifier.fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 3.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            OakHeader(month, locale, onSearch, onAdd, onFamily)
-            OakFamilyPortraitStrip(membersById, onFamily)
-            OakPaperMonth(
+            PremiumWoodHeader(onSearch, onAdd, onFamily)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                PremiumWoodStat("Idag", selectedEvents.size, "aktivitet", "▦", onToday, Modifier.weight(1f))
+                PremiumWoodStat("Veckan", weekCount, "aktiviteter", "▥", onWeek, Modifier.weight(1f))
+                PremiumWoodStat("Krockar", conflictCount, "lugnt", "!", onConflicts, Modifier.weight(1f))
+                PremiumWoodStat("Påminn.", reminderCount, "påminnelser", "♧", onReminders, Modifier.weight(1f))
+            }
+            PremiumWoodCalendar(
                 month, selectedDate, today, locale, eventsByDate, membersById,
                 onSelect, onMonthChange,
             )
-            OakActivityLedger(
-                selectedDate, selectedEvents, membersById, locale, onOpenEvent, onShowAll,
+            Row(
+                Modifier.fillMaxWidth().height(180.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                PremiumWoodAgenda(selectedDate, selectedEvents, membersById,
+                    onOpenEvent, onShowAll, Modifier.weight(1.8f).fillMaxHeight())
+                PremiumWoodWeather(weather, weatherLoading, onWeather,
+                    Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+    }
+}
+
+private val WoodGold = Color(0xFFEFC28B)
+private val WoodDark = Color(0xFF402210)
+private val WoodBorder = Color(0xFFBA824C)
+
+@Composable
+private fun PremiumWoodHeader(
+    onSearch: () -> Unit, onAdd: () -> Unit, onFamily: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).clickable(onClick = onFamily)) {
+            Text("Familjekalendern ❧", color = WoodDark,
+                fontSize = 25.sp, fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            Text("T I L L S A M M A N S   V A R J E   D A G",
+                color = Color(0xFF60391D), fontSize = 7.sp, maxLines = 1)
+        }
+        PremiumWoodButton("⌕", onSearch)
+        Spacer(Modifier.width(6.dp))
+        PremiumWoodButton("+", onAdd)
+    }
+}
+
+@Composable
+private fun PremiumWoodButton(symbol: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(40.dp).shadow(4.dp, CircleShape)
+            .background(
+                Brush.verticalGradient(listOf(Color(0xFF9B663B), Color(0xFF3B1C0D))),
+                CircleShape,
             )
-            OakWeatherPanel(weather, weatherLoading, onWeather)
-            Spacer(Modifier.height(6.dp))
+            .border(1.5.dp, WoodGold, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(symbol, color = WoodGold, fontSize = 28.sp)
+    }
+}
+
+@Composable
+private fun PremiumWoodStat(
+    label: String, value: Int, caption: String, icon: String,
+    onClick: () -> Unit, modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.height(93.dp).clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp), color = Color(0xF24D2915),
+        border = BorderStroke(1.dp, WoodBorder), shadowElevation = 5.dp,
+    ) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .28f)
+            Column(
+                Modifier.fillMaxSize().padding(6.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(icon + " " + label, color = WoodGold, fontSize = 10.sp,
+                    fontFamily = FontFamily.Serif, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+                Text(value.toString(), color = Color(0xFFFFDFAC),
+                    fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
+                    fontSize = 30.sp)
+                Text(caption, color = Color(0xFFE0BC92), fontSize = 9.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PremiumWoodCalendar(
+    month: YearMonth, selected: LocalDate, today: LocalDate, locale: Locale,
+    eventsByDate: Map<LocalDate, List<SyncEvent>>,
+    members: Map<String, SyncMember>,
+    onSelect: (LocalDate) -> Unit, onChange: (Long) -> Unit,
+) {
+    Surface(
+        color = Color(0xFFF2CF9E), shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(2.dp, Color(0xFF9C5C2A)),
+        shadowElevation = 7.dp,
+        modifier = Modifier.fillMaxWidth().pointerInput(month) {
+            var distance = 0f
+            detectHorizontalDragGestures(
+                onDragStart = { distance = 0f },
+                onHorizontalDrag = { change, amount ->
+                    change.consume()
+                    distance += amount
+                },
+                onDragEnd = {
+                    if (distance < -48.dp.toPx()) onChange(1L)
+                    else if (distance > 48.dp.toPx()) onChange(-1L)
+                    distance = 0f
+                },
+                onDragCancel = { distance = 0f },
+            )
+        },
+    ) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .15f)
+            Column(Modifier.padding(horizontal = 8.dp, vertical = 11.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().height(43.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        month.month.getDisplayName(TextStyle.FULL, locale)
+                            .replaceFirstChar { it.uppercase(locale) } + " " + month.year,
+                        color = WoodDark, fontFamily = FontFamily.Serif,
+                        fontSize = 24.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                    PremiumWoodButton("‹", { onChange(-1L) })
+                    Spacer(Modifier.width(5.dp))
+                    PremiumWoodButton("›", { onChange(1L) })
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth().height(22.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("V", Modifier.width(17.dp), color = OakMutedInk,
+                        fontSize = 9.sp, textAlign = TextAlign.Center)
+                    listOf("MÅN", "TIS", "ONS", "TOR", "FRE", "LÖR", "SÖN").forEach { day ->
+                        Text(day, Modifier.weight(1f), textAlign = TextAlign.Center,
+                            fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                            color = OakMutedInk)
+                    }
+                }
+                val first = month.atDay(1)
+                val start = first.minusDays((first.dayOfWeek.value - 1).toLong())
+                val rows = (first.lengthOfMonth() + first.dayOfWeek.value + 5) / 7
+                val wf = WeekFields.of(locale)
+                repeat(rows) { week ->
+                    Row(
+                        Modifier.fillMaxWidth().height(46.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val weekStart = start.plusDays((week * 7).toLong())
+                        Text(weekStart.get(wf.weekOfWeekBasedYear()).toString(),
+                            Modifier.width(17.dp), textAlign = TextAlign.Center,
+                            color = OakMutedInk, fontSize = 9.sp)
+                        repeat(7) { day ->
+                            val date = weekStart.plusDays(day.toLong())
+                            val selectedDay = date == selected
+                            val shape = RoundedCornerShape(9.dp)
+                            Box(
+                                Modifier.weight(1f).fillMaxHeight()
+                                    .shadow(if (selectedDay) 3.dp else 1.dp, shape)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            if (selectedDay)
+                                                listOf(Color(0xFF8C4D26), Color(0xFF3A1B0C))
+                                            else listOf(Color(0xFFFBE5C1), Color(0xFFDCAD78))
+                                        ), shape
+                                    )
+                                    .border(
+                                        if (selectedDay) 1.5.dp else .5.dp,
+                                        if (selectedDay) WoodGold else Color(0x55986639),
+                                        shape,
+                                    )
+                                    .clickable { onSelect(date) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(date.dayOfMonth.toString(),
+                                        color = if (selectedDay) WoodGold
+                                            else if (date.month == month.month) WoodDark
+                                            else Color(0x88775536),
+                                        fontSize = 17.sp, fontFamily = FontFamily.Serif,
+                                        fontWeight = if (date == today || selectedDay)
+                                            FontWeight.Bold else FontWeight.Medium)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        eventsByDate[date].orEmpty()
+                                            .filterNot {
+                                                it.title.trimStart().startsWith("🌈") ||
+                                                    it.source.contains("birthday", ignoreCase = true)
+                                            }
+                                            .take(3).forEach { event ->
+                                            val accent = members[event.memberId]?.let {
+                                                Color(it.colorArgb.toInt())
+                                            } ?: Color(0xFFE7B34D)
+                                            Box(Modifier.size(4.dp).background(accent, CircleShape))
+                                        }
+                                    }
+                                }
+                                val birthday = eventsByDate[date].orEmpty().any {
+                                    it.title.trimStart().startsWith("🌈") ||
+                                        it.title.contains("födelsedag", ignoreCase = true) ||
+                                        it.source.contains("birthday", ignoreCase = true)
+                                }
+                                if (birthday) {
+                                    Text("🌈", fontSize = 9.sp,
+                                        modifier = Modifier.align(Alignment.TopEnd))
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(3.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PremiumWoodAgenda(
+    date: LocalDate, events: List<SyncEvent>, members: Map<String, SyncMember>,
+    onEvent: (SyncEvent) -> Unit, onShowAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(13.dp),
+        color = Color(0xF44D2713), border = BorderStroke(1.dp, WoodBorder),
+        shadowElevation = 5.dp) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .24f)
+            Column(Modifier.fillMaxSize().padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(Modifier.fillMaxWidth().clickable(onClick = onShowAll)) {
+                    Text("Idag", color = WoodGold, fontFamily = FontFamily.Serif,
+                        fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f))
+                    Text(date.dayOfMonth.toString() + "/" + date.monthValue + " ›",
+                        color = WoodGold, fontSize = 10.sp)
+                }
+                if (events.isEmpty()) {
+                    Text("Inget planerat", color = WoodGold, fontSize = 11.sp)
+                }
+                events.take(3).forEach { event ->
+                    val accent = members[event.memberId]?.let {
+                        Color(it.colorArgb.toInt())
+                    } ?: WoodGold
+                    Row(
+                        Modifier.fillMaxWidth().weight(1f)
+                            .background(Color(0x88402413), RoundedCornerShape(7.dp))
+                            .border(.6.dp, Color(0x885B4029), RoundedCornerShape(7.dp))
+                            .clickable { onEvent(event) }
+                            .padding(horizontal = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(event.time.ifBlank { "Heldag" },
+                            color = WoodGold, fontSize = 9.sp,
+                            modifier = Modifier.width(37.dp), maxLines = 1)
+                        Box(Modifier.size(8.dp).background(accent, CircleShape))
+                        Spacer(Modifier.width(5.dp))
+                        Text(event.title, color = Color(0xFFFFE6C2), fontSize = 10.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f))
+                        Text("›", color = WoodGold, fontSize = 16.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PremiumWoodWeather(
+    weather: CleanWeatherSnapshot?, loading: Boolean, onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(13.dp),
+        color = Color(0xF66D3D20),
+        border = BorderStroke(1.dp, WoodBorder), shadowElevation = 5.dp,
+    ) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .22f)
+            Column(Modifier.fillMaxSize().padding(8.dp),
+                verticalArrangement = Arrangement.SpaceBetween) {
+                Text("Väder  ›", color = WoodGold, fontFamily = FontFamily.Serif,
+                    fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(oakWeatherEmoji(weather?.weatherCode), fontSize = 27.sp)
+                Text(weather?.temperatureC?.toString()?.plus("°") ?: "—°",
+                    color = WoodGold, fontFamily = FontFamily.Serif,
+                    fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                Text(weather?.description ?: if (loading) "Hämtar…" else "Visa vädret",
+                    color = Color(0xFFFFD6A4), fontSize = 10.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
