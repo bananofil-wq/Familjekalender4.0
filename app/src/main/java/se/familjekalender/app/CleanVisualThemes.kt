@@ -377,6 +377,7 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 titleFont = FontFamily.SansSerif, titleWeight = FontWeight.SemiBold,
                 cardRadius = 25.dp, calendarRadius = 30.dp,
                 dayRadius = 17.dp, buttonRadius = 50.dp, shadow = 6.dp,
+                selectedText = Color(0xFF182447),
             )
 
         CleanVisualTheme.EDITORIAL_PLANNER ->
@@ -456,6 +457,7 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 titleFont = FontFamily.Monospace, titleWeight = FontWeight.Bold,
                 cardRadius = 8.dp, calendarRadius = 11.dp,
                 dayRadius = 5.dp, buttonRadius = 7.dp, shadow = 2.dp,
+                selectedText = Color(0xFF152438),
             )
 
         CleanVisualTheme.FOREST_PRO ->
@@ -477,6 +479,7 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 titleFont = FontFamily.SansSerif, titleWeight = FontWeight.SemiBold,
                 cardRadius = 14.dp, calendarRadius = 18.dp,
                 dayRadius = 8.dp, buttonRadius = 12.dp, shadow = 3.dp,
+                selectedText = Color(0xFF11281D),
             )
 
         CleanVisualTheme.FAMILY_SPECTRUM ->
@@ -499,6 +502,7 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 titleFont = FontFamily.SansSerif, titleWeight = FontWeight.Bold,
                 cardRadius = 21.dp, calendarRadius = 25.dp,
                 dayRadius = 13.dp, buttonRadius = 20.dp, shadow = 2.dp,
+                selectedText = Color.White,
             )
 
         CleanVisualTheme.BRUTALIST ->
