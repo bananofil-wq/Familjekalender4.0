@@ -2808,9 +2808,9 @@ private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             border = BorderStroke(1.5.dp, Color(0xFFAE7540)),
         ) {
             Box {
-                OakPhotographicSurface(Modifier.matchParentSize(), opacity = .41f)
+                OakPhotographicSurface(Modifier.matchParentSize(), opacity = .71f)
                 Row(
-                    Modifier.fillMaxWidth().height(69.dp).padding(4.dp),
+                    Modifier.fillMaxWidth().height(72.dp).padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     items.forEach { (tab, icon, label) ->
@@ -2836,6 +2836,10 @@ private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
                                 .clickable { onSelect(tab) },
                             contentAlignment = Alignment.Center,
                         ) {
+                            if (active) OakPhotographicSurface(
+                                Modifier.matchParentSize().clip(shape),
+                                opacity = .43f, material = OakPhotoMaterial.PALE,
+                            )
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
