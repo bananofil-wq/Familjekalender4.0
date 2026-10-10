@@ -491,7 +491,11 @@ private fun OakActivityLedger(
             val accent = members[event.memberId]?.let { Color(it.colorArgb.toInt()) }
                 ?: Color(0xFFD8A55A)
             val isReminder = event.source.contains("reminder", ignoreCase = true) ||
-                event.title.startsWith("🔔")
+                event.title.startsWith("🔔") || event.title.startsWith("🛎")
+            val displayTitle = event.title
+                .replace(Regex("""^(?:🔔|🛎️?|⭐|✅)\s*"""), "")
+                .replace(Regex("""\s*[·•]\s*\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}"""), "")
+                .trim()
             val icon = when {
                 isReminder -> "🔔"
                 event.title.contains("skola", ignoreCase = true) -> "🏠"
@@ -502,7 +506,7 @@ private fun OakActivityLedger(
                 event.title.contains("fika", ignoreCase = true) ||
                     event.title.contains("frukost", ignoreCase = true) -> "☕"
                 event.title.contains("födelsedag", ignoreCase = true) -> "🌈"
-                else -> "•"
+                else -> "📅"
             }
             Surface(
                 color = Color(0xF4E7CBA3),
@@ -511,8 +515,10 @@ private fun OakActivityLedger(
                 shadowElevation = 1.5.dp,
                 modifier = Modifier.fillMaxWidth().clickable { onEvent(event) },
             ) {
+                Box {
+                    OakPhotographicSurface(Modifier.matchParentSize(), opacity = .30f)
                 Row(
-                    Modifier.fillMaxWidth().height(51.dp)
+                    Modifier.fillMaxWidth().height(49.dp)
                         .padding(end = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -536,7 +542,7 @@ private fun OakActivityLedger(
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            event.title.replace(Regex("""\s*[·•]\s*\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}"""), "").trim(),
+                            displayTitle,
                             color = OakInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
@@ -558,6 +564,7 @@ private fun OakActivityLedger(
                                 color = OakInk, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
+                }
                 }
             }
         }
@@ -586,13 +593,23 @@ private fun OakWeatherPanel(
         shadowElevation = 2.dp,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
+        Box {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .19f)
         Row(
             Modifier.fillMaxWidth().height(61.dp)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Cloud, "Väder", tint = Color(0xFF789BA7),
-                modifier = Modifier.size(28.dp))
+            val weatherSymbol = when (weather?.weatherCode) {
+                0, 1 -> "☀️"
+                2, 3 -> "⛅"
+                45, 48 -> "🌫️"
+                51, 53, 55, 61, 63, 65, 80, 81, 82 -> "🌧️"
+                71, 73, 75, 77, 85, 86 -> "❄️"
+                95, 96, 99 -> "⛈️"
+                else -> "☁️"
+            }
+            Text(weatherSymbol, fontSize = 27.sp)
             Spacer(Modifier.width(9.dp))
             Text(
                 weather?.let { "${it.temperatureC}°" } ?: "—°",
@@ -612,6 +629,7 @@ private fun OakWeatherPanel(
                 Text("Aktuellt väder", color = OakMutedInk, fontSize = 9.sp)
             }
             Text("›", color = OakMutedInk, fontSize = 22.sp)
+        }
         }
     }
 }
