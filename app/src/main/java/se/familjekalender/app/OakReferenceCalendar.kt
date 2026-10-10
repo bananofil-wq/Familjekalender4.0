@@ -594,11 +594,6 @@ private fun PremiumWoodWeather(
                     .fillMaxWidth().fillMaxHeight(.41f).clip(shape)
             )
             Canvas(Modifier.fillMaxSize()) {
-                drawCircle(
-                    color = Color(0x22FFD092),
-                    radius = size.width * .32f,
-                    center = Offset(size.width * .74f, size.height * .76f),
-                )
                 drawRect(
                     brush = Brush.verticalGradient(
                         listOf(Color(0x00D88945), Color(0x552B1C13)),
