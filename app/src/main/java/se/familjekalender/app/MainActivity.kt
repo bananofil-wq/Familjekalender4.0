@@ -2695,6 +2695,13 @@ private fun MinimalBottomNav(
             tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth(),
         ) {
+            Box {
+                if (oakNav) {
+                    OakPhotographicSurface(
+                        Modifier.matchParentSize(),
+                        opacity = .19f,
+                    )
+                }
             Row(
                 Modifier.fillMaxWidth()
                     .height(if (oakNav) 57.dp else 64.dp)
@@ -2769,6 +2776,7 @@ private fun MinimalBottomNav(
                         }
                     }
                 }
+            }
             }
         }
     }
