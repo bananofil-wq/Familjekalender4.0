@@ -6,44 +6,59 @@ import android.graphics.BitmapShader
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
-import android.util.Base64
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 /**
- * A real photographed wood-grain sample taken from the user's selected concept
- * image, NOT a grid of simulated boards. Repeats with a mirrored tile to avoid seams.
- * Kept inline so the theme works offline and without another image download.
+ * Real photographed surfaces sampled directly from the user's approved oak reference.
+ * The single image atlas ships in drawable-nodpi; no network, repeated screenshot UI,
+ * gradients pretending to be grain, or brittle inline base64 texture.
  */
-private const val OAK_PHOTO_SAMPLE = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUEBAQEAwUEBAQGBQUGCA0ICAcHCBALDAkNExAUExIQEhIUFx0ZFBYcFhISGiMaHB4fISEhFBkkJyQgJh0gISD/2wBDAQUGBggHCA8ICA8gFRIVICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICD/wAARCAAjAHYDAREAAhEBAxEB/8QAGQAAAwEBAQAAAAAAAAAAAAAAAQIDAAQG/8QANBAAAgECAwcBBQcFAAAAAAAAAQIRAAMSITEEEyJRYXGBQSMyM2KRFDRygoPB4UJSobHR/8QAFwEBAQEBAAAAAAAAAAAAAAAAAAEGAv/EABYRAQEBAAAAAAAAAAAAAAAAAAARAf/aAAwDAQACEQMRAD8A9ANlUiBbI7MDWKjXUzbHbI0dewFSLmmTYkjhNweBNItWFhQuHARHyUiUTauQDDR0UA0gU2cRj2k96QYbOFnO55g/7pBjZu6jEBzwikKY2Xw/GM9UmkSgtk5zfYnlgpFqotKBxMT4ipApW3MFWY9SasGFtJytLHWaB92gP3e3HODQo4cstnBHagHARkAJ10rpGYW1OiwOZqBlCF+EKORAmgo+8A4SwnkuVFZt5HuYupXKiAIAJa2kjP3TQANZJMoo7elApuITAUEco/igUvhGaII6/wDaDY50zPLI0DBiBmrj8IoqyXUORe6vRk1qBi9sghr6g/MIn/FApUFSZTwwg0RtwQMyPDUHGWskw27GWsa1VNbNkCLbIfy0FItkxvArDktEONcIzn1HDQPggzDD9QUBYroYnnINEEqwHCCO9AAXA9R1iilY3lMDMczVBVXYzKx4qCkEf0gnnhMUBxSPgr3BIoELEyN2Okkn9qBN2BPsxPb+Kitu0iGT6VAirsz5qLn5YFUV3Gz6h3X8TgUS6DWlJhSx/UopfsZbWyrDqZ/ekKU7M6E+xtgehAmkKbdXoENA/tjKqM1u6CCN3PVWqIUteWVK2zPrBqqGK+rZRERGGgJW8ZOIjoMqgIF6MJLnqKKYpdK5m6CPmoiZF0HiVz5mgDLdJlbbzzg0Clb4EjZ709IFQVS7caAzkiqOlUQgyinuKIc7Ls7xitDTtVCtsmzoMS24PQmkS6jcGEDCSPNFILtwNGM/WgrjcqSTJqCTXHxROXaqKozNALGKg6cC4ND9aokwCzAqKlJNyDpQGBi0oKADCaqFLGNfWoP/2Q=="
+internal enum class OakPhotoMaterial(val atlasRow: Int) {
+    TOP(0), PALE(1), DARK(2), AMBER(3)
+}
+
+@Composable
+private fun rememberOakMaterial(material: OakPhotoMaterial): Bitmap? {
+    val context = LocalContext.current
+    val atlas = remember(context) {
+        BitmapFactory.decodeResource(context.resources, R.drawable.oak_2026_atlas)
+    }
+    return remember(atlas, material) {
+        if (atlas == null || atlas.width < 240 || atlas.height < 160) null
+        else Bitmap.createBitmap(atlas, 0, material.atlasRow * 40, 240, 40)
+    }
+}
 
 @Composable
 internal fun OakPhotographicBackground(modifier: Modifier = Modifier) {
-    val sample = remember {
-        val bytes = Base64.decode(OAK_PHOTO_SAMPLE, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }
+    val dark = rememberOakMaterial(OakPhotoMaterial.DARK)
+    val light = rememberOakMaterial(OakPhotoMaterial.TOP)
     Canvas(modifier) {
         drawIntoCanvas { canvas ->
-            drawOakPhoto(
-                canvas.nativeCanvas, sample,
-                width = size.width, height = size.height, opacity = 1f,
-            )
+            drawOakPhoto(canvas.nativeCanvas, dark, size.width, size.height, 1f)
+            val headerHeight = 82.dp.toPx().coerceAtMost(size.height)
+            canvas.nativeCanvas.save()
+            canvas.nativeCanvas.clipRect(0f, 0f, size.width, headerHeight)
+            drawOakPhoto(canvas.nativeCanvas, light, size.width, headerHeight, 1f)
+            canvas.nativeCanvas.restore()
         }
-        // The reference photo darkens towards the bottom; keep the real grain visible.
         drawRect(
             brush = Brush.verticalGradient(
                 listOf(
-                    Color(0x19FFE4B9),
-                    Color(0x08CF9A69),
-                    Color(0x188B532A),
-                    Color(0x622D170B),
+                    Color(0x16FFE2B6),
+                    Color(0x3A683B20),
+                    Color(0x502A160C),
+                    Color(0x88220F06),
                 )
             )
         )
@@ -54,11 +69,9 @@ internal fun OakPhotographicBackground(modifier: Modifier = Modifier) {
 internal fun OakPhotographicSurface(
     modifier: Modifier = Modifier,
     opacity: Float = .20f,
+    material: OakPhotoMaterial = OakPhotoMaterial.DARK,
 ) {
-    val sample = remember {
-        val bytes = Base64.decode(OAK_PHOTO_SAMPLE, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }
+    val sample = rememberOakMaterial(material)
     Canvas(modifier) {
         drawIntoCanvas { canvas ->
             drawOakPhoto(
@@ -78,17 +91,14 @@ private fun drawOakPhoto(
     opacity: Float,
 ) {
     if (sample == null || width <= 0f || height <= 0f) return
-
     val shader = BitmapShader(sample, Shader.TileMode.MIRROR, Shader.TileMode.MIRROR)
-    val matrix = Matrix().apply {
-        // One broad-grained sweep across the screen, repeated softly down the page.
-        val xScale = width / sample.width.coerceAtLeast(1).toFloat()
-        setScale(xScale, xScale * .60f)
-    }
-    shader.setLocalMatrix(matrix)
+    val scale = width / sample.width.toFloat()
+    shader.setLocalMatrix(
+        Matrix().apply { setScale(scale, scale * 1.15f) }
+    )
     val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
         this.shader = shader
-        alpha = (opacity * 255).toInt().coerceIn(0, 255)
+        alpha = (opacity.coerceIn(0f, 1f) * 255).toInt()
     }
     canvas.drawRect(0f, 0f, width, height, paint)
 }
