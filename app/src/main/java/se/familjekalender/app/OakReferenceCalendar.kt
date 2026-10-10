@@ -417,6 +417,7 @@ private fun PremiumWoodCalendar(
                         repeat(7) { day ->
                             val date = weekStart.plusDays(day.toLong())
                             val active = date == selected
+                            val isToday = date == today
                             val inMonth = YearMonth.from(date) == month
                             val dayShape = RoundedCornerShape(9.dp)
                             val events = eventsByDate[date].orEmpty()
@@ -432,13 +433,14 @@ private fun PremiumWoodCalendar(
                                         ), dayShape
                                     )
                                     .border(
-                                        if (active) 1.6.dp else .65.dp,
-                                        if (active) WoodGold else Color(0x66B77B44),
+                                        if (isToday) 2.8.dp else if (active) 1.6.dp else .65.dp,
+                                        if (isToday) Color(0xFFFFC66C) else if (active) WoodGold else Color(0x66B77B44),
                                         dayShape,
                                     )
                                     .clickable { onSelect(date) },
                                 contentAlignment = Alignment.Center,
                             ) {
+                                if (isToday) Box(Modifier.matchParentSize().padding(2.dp).border(1.dp, Color(0xFF8B4D20), RoundedCornerShape(7.dp)))
                                 // Subtle real grain on each carved date, not a flat rounded rectangle.
                                 if (!active) OakPhotographicSurface(
                                     Modifier.matchParentSize().clip(dayShape),
