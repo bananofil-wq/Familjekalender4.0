@@ -2624,7 +2624,8 @@ private fun MinimalBottomNav(
     val oakNav = cleanVisualTheme == CleanVisualTheme.OAK_WOOD
     val navShape =
         when (cleanVisualTheme) {
-            CleanVisualTheme.CURRENT, CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(30.dp)
+            CleanVisualTheme.CURRENT -> RoundedCornerShape(30.dp)
+            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(25.dp)
             CleanVisualTheme.NORDIC_DAY_PLANNER,
             CleanVisualTheme.NORDIC_DAY_PLANNER_DARK -> RoundedCornerShape(0.dp)
             CleanVisualTheme.BRUTALIST, CleanVisualTheme.SWISS ->
@@ -2658,7 +2659,7 @@ private fun MinimalBottomNav(
             CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(0.dp)
             CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(4.dp)
             CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(13.dp)
-            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(18.dp)
+            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(21.dp)
             CleanVisualTheme.GOTHAM_NIGHT -> RoundedCornerShape(5.dp)
             else -> RoundedCornerShape(18.dp)
         }
@@ -2698,7 +2699,7 @@ private fun MinimalBottomNav(
                 if (oakNav) {
                     OakPhotographicSurface(
                         Modifier.matchParentSize(),
-                        opacity = .19f,
+                        opacity = .31f,
                     )
                 }
             Row(
