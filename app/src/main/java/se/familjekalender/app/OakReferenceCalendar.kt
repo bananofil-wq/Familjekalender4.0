@@ -280,13 +280,27 @@ private fun PremiumWoodCalendar(
                                         fontWeight = if (date == today || selectedDay)
                                             FontWeight.Bold else FontWeight.Medium)
                                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        eventsByDate[date].orEmpty().take(3).forEach { event ->
+                                        eventsByDate[date].orEmpty()
+                                            .filterNot {
+                                                it.title.trimStart().startsWith("🌈") ||
+                                                    it.source.contains("birthday", ignoreCase = true)
+                                            }
+                                            .take(3).forEach { event ->
                                             val accent = members[event.memberId]?.let {
                                                 Color(it.colorArgb.toInt())
                                             } ?: Color(0xFFE7B34D)
                                             Box(Modifier.size(4.dp).background(accent, CircleShape))
                                         }
                                     }
+                                }
+                                val birthday = eventsByDate[date].orEmpty().any {
+                                    it.title.trimStart().startsWith("🌈") ||
+                                        it.title.contains("födelsedag", ignoreCase = true) ||
+                                        it.source.contains("birthday", ignoreCase = true)
+                                }
+                                if (birthday) {
+                                    Text("🌈", fontSize = 9.sp,
+                                        modifier = Modifier.align(Alignment.TopEnd))
                                 }
                             }
                         }
