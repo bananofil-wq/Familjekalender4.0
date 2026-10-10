@@ -33,61 +33,71 @@ private fun DrawScope.drawOakBackground() {
     val h = size.height
     drawRect(
         brush = Brush.verticalGradient(
-            listOf(Color(0xFFD6A46A), Color(0xFFC68C53), Color(0xFFA46737), Color(0xFF7B4727))
+            listOf(
+                Color(0xFFD8B081),
+                Color(0xFFC6935D),
+                Color(0xFFAE7847),
+                Color(0xFF916039),
+                Color(0xFF754322),
+            )
         )
     )
 
-    // Oak boards, narrow seams, and irregular hand-drawn grain.
-    for (board in 1..4) {
-        val x = w * board / 5f
-        drawLine(Color(0x553E1F0D), Offset(x, 0f), Offset(x, h), 3.8f)
-        drawLine(Color(0x55F6D4A6), Offset(x + 3.5f, 0f), Offset(x + 3.5f, h), 1.8f)
-    }
-    for (line in 0..175) {
-        val y = h * (line + .45f) / 175f
-        val wave = sin(line * 2.31) * 7.5f
+    // Organic, horizontal oak grain. No hard board seams or straight tile-grid
+    // lines: these were the main reason the previous wood theme looked artificial.
+    for (line in 0..430) {
+        val y = h * (line + .24f) / 431f
+        val bend = sin(line * .37f) * 8.0f + sin(line * .096f) * 7.4f
+        val drift = sin(line * .23f) * 3.4f
         val path = Path().apply {
-            moveTo(-20f, y + wave.toFloat())
-            cubicTo(w * .26f, y + wave.toFloat() + sin(line * .78).toFloat() * 9,
-                w * .60f, y + sin(line * 1.21).toFloat() * 8,
-                w + 20, y + sin(line * .58).toFloat() * 5)
-        }
-        val opacity = if (line % 7 == 0) .18f else if (line % 3 == 0) .095f else .045f
-        drawPath(
-            path = path,
-            color = if (line % 5 == 0) Color(0xFFFFE0B4).copy(alpha = opacity)
-                else Color(0xFF5D341A).copy(alpha = opacity),
-            style = Stroke(width = if (line % 9 == 0) 2.1f else 1f),
-        )
-    }
-
-    // Visible knots in the wood, without relying on a repeated flat texture.
-    listOf(Triple(w * .77f, h * .29f, w * .095f), Triple(w * .18f, h * .80f, w * .075f)).forEach { (x,y,r) ->
-        for (ring in 0..6) {
-            val rx = r * (1f + ring * .29f)
-            val ry = rx * .30f
-            drawOval(
-                color = Color(0xFF633719).copy(alpha = (.18f - ring * .019f).coerceAtLeast(.015f)),
-                topLeft = Offset(x - rx, y - ry),
-                size = Size(rx * 2f, ry * 2f),
-                style = Stroke(width = 1.7f),
+            moveTo(-w * .05f, y + bend)
+            cubicTo(
+                w * .22f, y + bend + sin(line * .81f) * 3.5f,
+                w * .46f, y + drift - sin(line * .42f) * 7.2f,
+                w * .74f, y + bend * .58f,
+            )
+            cubicTo(
+                w * .91f, y + bend * .24f + sin(line * .25f) * 3.8f,
+                w * 1.02f, y + sin(line * .62f) * 5.1f,
+                w * 1.05f, y + drift,
             )
         }
-        drawOval(
-            Color(0x30602C11),
-            topLeft = Offset(x - r * .37f, y - r * .13f),
-            size = Size(r * .74f, r * .26f)
+        val opacity = when {
+            line % 31 == 0 -> .16f
+            line % 13 == 0 -> .12f
+            line % 5 == 0 -> .072f
+            else -> .030f
+        }
+        drawPath(
+            path = path,
+            color = if (line % 4 == 0)
+                Color(0xFFFFE8C4).copy(alpha = opacity * .72f)
+                else Color(0xFF613A23).copy(alpha = opacity),
+            style = Stroke(width = if (line % 23 == 0) 1.7f else .85f),
         )
     }
 
-    // Plant stems and small leaves in the upper and lower right, like the reference mock-up.
-    drawOakSprig(w * .93f, h * .27f, w * .12f, up = true)
-    drawOakSprig(w * .90f, h * .80f, w * .13f, up = false)
+    // In-grain flow around tiny knots; faint enough not to dominate the calendar.
+    listOf(Triple(w * .72f, h * .29f, w * .07f), Triple(w * .11f, h * .77f, w * .055f))
+        .forEach { (cx, cy, radius) ->
+            for (ring in 0..7) {
+                val r = radius * (.38f + ring * .31f)
+                drawOval(
+                    color = Color(0xFF60391E).copy(alpha = (.13f - ring * .012f).coerceAtLeast(.016f)),
+                    topLeft = Offset(cx - r, cy - r * .29f),
+                    size = Size(r * 2f, r * .58f),
+                    style = Stroke(width = 1.3f),
+                )
+            }
+        }
 
-    // Subtle light from the top edge to balance the dark wooden footer.
+    drawOakSprig(w * .94f, h * .37f, w * .095f, up = true)
+    drawOakSprig(w * .96f, h * .72f, w * .10f, up = false)
+
+    // Light catches the natural satin finish; depth increases towards the footer.
     drawRect(
         brush = Brush.verticalGradient(
-            listOf(Color(0x1FFFF7E8), Color.Transparent, Color.Transparent, Color(0x240F0805))
+            listOf(Color(0x19FFF3D9), Color.Transparent, Color.Transparent, Color(0x30250F07))
         )
     )
 }

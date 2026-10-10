@@ -107,6 +107,30 @@ internal fun DesignedCleanCalendarScreen(
     onWeather: () -> Unit,
     onFamily: () -> Unit,
 ) {
+    // Use a purpose-built layout for the selected wood reference image, not the
+    // generic Clean cards merely recolored brown. Other themes are untouched.
+    if (theme == CleanVisualTheme.OAK_WOOD) {
+        OakReferenceCalendarScreen(
+            month = month,
+            selectedDate = selectedDate,
+            today = today,
+            locale = locale,
+            eventsByDate = eventsByDate,
+            selectedEvents = selectedEvents,
+            membersById = memberById,
+            weather = weather,
+            weatherLoading = weatherLoading,
+            onSearch = onSearch,
+            onAdd = onAdd,
+            onFamily = onFamily,
+            onSelect = onSelectDate,
+            onMonthChange = onMonthChange,
+            onOpenEvent = onEventClick,
+            onShowAll = onShowAll,
+            onWeather = onWeather,
+        )
+        return
+    }
     val spec = cleanThemeSpec(theme)
     val header: @Composable () -> Unit = {
         DesignerHeader(theme, selectedDate, locale, onSearch, onAdd, onFamily)
