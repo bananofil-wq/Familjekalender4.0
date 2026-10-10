@@ -312,6 +312,55 @@ internal fun MinimalCalendarScreen(
                 onOpenTodo = onOpenTodo,
                 onOpenShopping = onOpenShopping,
             )
+        } else if (cleanVisualTheme == CleanVisualTheme.OAK_WOOD) {
+            // A fully bespoke photographic wood layout; the former oak recoloring is removed.
+            OakReferenceCalendarScreen(
+                month = month,
+                selectedDate = selectedDate,
+                today = today,
+                locale = locale,
+                eventsByDate = eventsByDate,
+                selectedEvents = selectedDayActivities,
+                membersById = memberById,
+                weather = weather,
+                weatherLoading = weatherLoading,
+                weekCount = weekActivities.size,
+                conflictCount = weekConflicts.size,
+                reminderCount = weekReminders.size,
+                onToday = { summaryDetail = CleanSummaryKind.TODAY },
+                onWeek = { summaryDetail = CleanSummaryKind.WEEK },
+                onConflicts = { summaryDetail = CleanSummaryKind.CONFLICTS },
+                onReminders = { summaryDetail = CleanSummaryKind.REMINDERS },
+                onSearch = { showSearch = true },
+                onAdd = onAdd,
+                onFamily = onOpenFamily,
+                onSelect = { date ->
+                    month = YearMonth.from(date)
+                    onSelect(date)
+                },
+                onMonthChange = { delta ->
+                    month = month.plusMonths(delta)
+                    onSelect(month.atDay(1))
+                },
+                onOpenEvent = { event ->
+                    if (event.source == "sportadmin") openedEvent = event else onEdit(event)
+                },
+                onShowAll = { showAllDayActivities = true },
+                onWeather = {
+                    showWeatherDetails = true
+                    if (hasWeatherLocationPermission()) {
+                        forceWeatherRefresh = true
+                        weatherRefreshRequest++
+                    } else {
+                        weatherPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            )
+                        )
+                    }
+                },
+            )
         } else if (isDesignedCleanTheme(cleanVisualTheme)) {
             DesignedCleanCalendarScreen(
                 theme = cleanVisualTheme,
