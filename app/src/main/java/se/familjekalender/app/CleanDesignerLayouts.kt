@@ -719,6 +719,7 @@ private fun DesignerMonth(
             Spacer(Modifier.height(4.dp))
             Crossfade(targetState = month, animationSpec = tween(180),
                 label = "designer-month-transition") { visibleMonth ->
+                Column {
                 val first = visibleMonth.atDay(1)
             val start = first.minusDays((first.dayOfWeek.value - 1).toLong())
             repeat(6) { row ->
@@ -744,6 +745,7 @@ private fun DesignerMonth(
                         )
                     }
                 }
+            }
             }
             }
             if (theme == CleanVisualTheme.NEON_PULSE ||
