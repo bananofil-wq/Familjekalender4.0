@@ -2091,6 +2091,9 @@ private fun CleanSummaryTile(
             )
             .clickable(onClick = onClick)
     ) {
+        if (theme == CleanVisualTheme.OAK_WOOD) {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .19f)
+        }
         Box(
             Modifier.fillMaxWidth()
                 .height(if (theme == CleanVisualTheme.BRUTALIST) 2.dp else 1.dp)
@@ -2611,6 +2614,9 @@ private fun CleanSummaryEventRow(
 private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
     val spec = LocalCleanThemeSpec.current
     val theme = LocalCleanVisualTheme.current
+    val oak = theme == CleanVisualTheme.OAK_WOOD
+    val headerText = if (oak) Color(0xFF332013) else spec.text
+    val headerMuted = if (oak) Color(0xFF593B26) else spec.muted
     val actionShape =
         if (theme == CleanVisualTheme.BRUTALIST || theme == CleanVisualTheme.SWISS) {
             RoundedCornerShape(spec.buttonRadius)
@@ -2629,7 +2635,7 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     title,
-                    color = spec.text,
+                    color = headerText,
                     fontFamily = spec.titleFont,
                     fontSize = if (theme == CleanVisualTheme.BRUTALIST) 25.sp else 30.sp,
                     fontWeight = spec.titleWeight,
@@ -2639,14 +2645,14 @@ private fun CleanHeader(onSearch: () -> Unit, onAdd: () -> Unit) {
                 Spacer(Modifier.width(6.dp))
                 Text(
                     "♡",
-                    color = spec.accentStrong,
+                    color = if (oak) Color(0xFF7D4625) else spec.accentStrong,
                     fontSize = 25.sp,
                     fontWeight = FontWeight.Bold,
                 )
             }
             Text(
                 "TILLSAMMANS VARJE DAG",
-                color = spec.muted.copy(alpha = .95f),
+                color = headerMuted.copy(alpha = .95f),
                 fontSize = 9.sp,
                 letterSpacing = if (theme == CleanVisualTheme.BRUTALIST) 2.5.sp else 2.sp,
                 fontWeight = FontWeight.Bold,
@@ -3433,6 +3439,9 @@ private fun CleanWeatherCard(
             )
             .clickable(onClick = onClick)
     ) {
+        if (theme == CleanVisualTheme.OAK_WOOD) {
+            OakPhotographicSurface(Modifier.matchParentSize(), opacity = .22f)
+        }
         Row(
             Modifier.fillMaxSize().padding(horizontal = 17.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
