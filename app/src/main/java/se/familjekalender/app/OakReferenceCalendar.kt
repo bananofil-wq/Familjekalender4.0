@@ -459,6 +459,7 @@ private fun OakPaperDay(
                     if (selected) {
                         Modifier.shadow(2.dp, CircleShape)
                             .background(OakBrown, CircleShape)
+                            .clip(CircleShape)
                             .border(1.2.dp, Color(0xFFD9AF78), CircleShape)
                     } else if (isToday) {
                         Modifier.border(.9.dp, OakBrown.copy(alpha = .60f), CircleShape)
@@ -466,6 +467,9 @@ private fun OakPaperDay(
                 ),
             contentAlignment = Alignment.Center,
         ) {
+            if (selected) {
+                OakPhotographicSurface(Modifier.matchParentSize(), opacity = .18f)
+            }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     date.dayOfMonth.toString(),
