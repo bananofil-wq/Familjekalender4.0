@@ -2789,6 +2789,27 @@ private fun MinimalBottomNav(
 /** Replaces the old generic wood-tinted bar with the carved five-tab reference. */
 @Composable
 private fun OakReferenceBottomNav(selected: Int, onSelect: (Int) -> Unit) {
+    if (selected == 0) {
+        // Use the actual approved photographic nav bar on the calendar screen.
+        // Keep all five tabs functional with transparent full-height hit zones.
+        Box(
+            Modifier.fillMaxWidth().navigationBarsPadding().height(75.dp)
+        ) {
+            OakReferenceNavArt(Modifier.matchParentSize())
+            Row(
+                Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                listOf(0, 1, 2, 4, 5).forEach { tab ->
+                    Box(
+                        Modifier.weight(1f).fillMaxHeight()
+                            .clickable { onSelect(tab) }
+                    )
+                }
+            }
+        }
+        return
+    }
     val items = listOf(
         Triple(0, Icons.Default.CalendarMonth, "Kalender"),
         Triple(1, Icons.Default.ShoppingCart, "Inköp"),
