@@ -140,6 +140,7 @@ internal fun DesignedCleanCalendarScreen(
         Brush.verticalGradient(listOf(spec.backgroundTop, spec.backgroundBottom))
     )) {
         CleanThemeBackdrop(theme, Modifier.fillMaxSize())
+        StorybookThemeBackdrop(theme, Modifier.fillMaxSize())
         DesignerTexture(theme)
         Column(
             Modifier.fillMaxSize()
@@ -147,6 +148,7 @@ internal fun DesignedCleanCalendarScreen(
                 .padding(
                     horizontal = when (theme) {
                         CleanVisualTheme.EDITORIAL_PLANNER -> 21.dp
+                        CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> 12.dp
                         CleanVisualTheme.NEON_PULSE, CleanVisualTheme.RETRO_DIGITAL -> 12.dp
                         else -> 15.dp
                     },
@@ -233,6 +235,14 @@ internal fun DesignedCleanCalendarScreen(
                     calendar()
                     stats()
                     weatherChip()
+                }
+                CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> {
+                    header()
+                    family()
+                    calendar()
+                    agenda()
+                    weatherChip()
+                    stats()
                 }
                 else -> Unit // The original Clean and Nordic layouts are never routed here.
             }
@@ -336,6 +346,7 @@ private fun DesignerHeader(
         CleanVisualTheme.RETRO_DIGITAL -> "FAMILY.EXE"
         CleanVisualTheme.FOREST_PRO -> "FAMILY / PLANNER"
         CleanVisualTheme.FAMILY_SPECTRUM -> "Vår kalender"
+        CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> "Familjekalendern"
         else -> "Familjekalender"
     }
     val subtitle = when (theme) {
@@ -349,6 +360,8 @@ private fun DesignerHeader(
         CleanVisualTheme.RETRO_DIGITAL -> "READY_  >  $tiny"
         CleanVisualTheme.FOREST_PRO -> "VECKOPLANERING   •   $tiny"
         CleanVisualTheme.FAMILY_SPECTRUM -> "Allas planer, på samma plats"
+        CleanVisualTheme.OAK_WOOD -> "Hemma hos oss • $tiny"
+        CleanVisualTheme.GOTHAM_NIGHT -> "NATTENS VÄKTARE • VÅR FAMILJ"
         else -> ""
     }
     val centered = theme == CleanVisualTheme.MIDNIGHT_GOLD
@@ -366,6 +379,7 @@ private fun DesignerHeader(
                     fontSize = when (theme) {
                         CleanVisualTheme.EDITORIAL_PLANNER -> 32.sp
                         CleanVisualTheme.MIDNIGHT_GOLD -> 18.sp
+                        CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> 25.sp
                         CleanVisualTheme.RETRO_DIGITAL, CleanVisualTheme.NEON_PULSE -> 23.sp
                         else -> 27.sp
                     },
@@ -472,8 +486,15 @@ private fun DesignerFamilyRibbon(
     val people = members.values.filter { it.id != ALL_FAMILY_MEMBER_ID }.take(5)
     if (people.isEmpty()) return
     Surface(
-        color = spec.panelTop,
-        shape = RoundedCornerShape(if (theme == CleanVisualTheme.FAMILY_SPECTRUM) 18.dp else 25.dp),
+        color = if (theme == CleanVisualTheme.OAK_WOOD) Color(0xCCE6C190)
+            else if (theme == CleanVisualTheme.GOTHAM_NIGHT) Color(0xD20D1C2F)
+            else spec.panelTop,
+        shape = RoundedCornerShape(
+            if (theme == CleanVisualTheme.FAMILY_SPECTRUM) 18.dp
+            else if (theme == CleanVisualTheme.OAK_WOOD) 10.dp
+            else if (theme == CleanVisualTheme.GOTHAM_NIGHT) 4.dp
+            else 25.dp
+        ),
         border = BorderStroke(1.dp, spec.border),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onFamily)
     ) {
@@ -482,7 +503,8 @@ private fun DesignerFamilyRibbon(
                 Icon(Icons.Default.People, contentDescription = null,
                     tint = spec.accentStrong, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(5.dp))
-                Text("FAMILJEN", color = spec.muted, fontSize = 9.sp,
+                Text(if (theme == CleanVisualTheme.GOTHAM_NIGHT) "FAMILJENS HJÄLTAR"
+                    else "FAMILJEN", color = spec.muted, fontSize = 9.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             Spacer(Modifier.height(7.dp))
@@ -642,11 +664,15 @@ private fun DesignerMonth(
         CleanVisualTheme.PURE_CALENDAR, CleanVisualTheme.EDITORIAL_PLANNER -> RoundedCornerShape(3.dp)
         CleanVisualTheme.NEON_PULSE, CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(7.dp)
         CleanVisualTheme.PASTEL_FLOW, CleanVisualTheme.CRYSTAL_GLASS -> RoundedCornerShape(25.dp)
+        CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(13.dp)
+        CleanVisualTheme.GOTHAM_NIGHT -> RoundedCornerShape(4.dp)
         else -> RoundedCornerShape(spec.calendarRadius)
     }
     val background = when (theme) {
         CleanVisualTheme.EDITORIAL_PLANNER -> Color.Transparent
         CleanVisualTheme.CRYSTAL_GLASS -> spec.panelTop.copy(alpha = .72f)
+        CleanVisualTheme.OAK_WOOD -> Color(0xFFF8E9CE)
+        CleanVisualTheme.GOTHAM_NIGHT -> Color(0xF50A1729)
         else -> spec.panelTop
     }
     Surface(
@@ -682,6 +708,7 @@ private fun DesignerMonth(
                     CleanVisualTheme.RETRO_DIGITAL -> "[ ${month.monthValue.toString().padStart(2,'0')}.${month.year} ]"
                     CleanVisualTheme.NEON_PULSE -> "${monthLabel.uppercase(locale)} // ${month.year}"
                     CleanVisualTheme.EDITORIAL_PLANNER -> monthLabel
+                    CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> "$monthLabel ${month.year}"
                     CleanVisualTheme.MIDNIGHT_GOLD -> monthLabel.uppercase(locale)
                     else -> "$monthLabel ${month.year}"
                 }
@@ -805,6 +832,7 @@ private fun DesignerDayCell(
         CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(0.dp)
         CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(5.dp)
         CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(11.dp)
+        CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> CircleShape
         else -> RoundedCornerShape(8.dp)
     }
     val familyTint = dayEvents.firstOrNull()?.let { designerMemberColor(it, members, spec.accentStrong) }
@@ -814,11 +842,15 @@ private fun DesignerDayCell(
             CleanVisualTheme.EDITORIAL_PLANNER -> spec.text
             CleanVisualTheme.RETRO_DIGITAL -> spec.accent
             CleanVisualTheme.NEON_PULSE -> spec.accent.copy(alpha = .22f)
+            CleanVisualTheme.OAK_WOOD -> Color(0xFF7D4B28)
+            CleanVisualTheme.GOTHAM_NIGHT -> Color(0xFF164879)
             else -> spec.accent
         }
         !activeMonth -> Color.Transparent
         theme == CleanVisualTheme.PURE_CALENDAR ||
             theme == CleanVisualTheme.EDITORIAL_PLANNER -> Color.Transparent
+        theme == CleanVisualTheme.OAK_WOOD ||
+            theme == CleanVisualTheme.GOTHAM_NIGHT -> Color.Transparent
         theme == CleanVisualTheme.FAMILY_SPECTRUM && dayEvents.isNotEmpty() ->
             familyTint.copy(alpha = .15f)
         theme == CleanVisualTheme.PASTEL_FLOW -> when (date.dayOfWeek.value % 3) {
@@ -837,6 +869,7 @@ private fun DesignerDayCell(
         theme == CleanVisualTheme.RETRO_DIGITAL ||
             theme == CleanVisualTheme.NEON_PULSE -> spec.border.copy(alpha = .65f)
         theme == CleanVisualTheme.MIDNIGHT_GOLD -> spec.border.copy(alpha = .58f)
+        theme == CleanVisualTheme.GOTHAM_NIGHT && today -> spec.accentStrong
         else -> Color.Transparent
     }
     val selectedText = if (theme == CleanVisualTheme.NEON_PULSE) spec.accentStrong
@@ -933,6 +966,9 @@ private fun DesignerAgenda(
                     CleanVisualTheme.RETRO_DIGITAL -> "EVENTS.TXT"
                     CleanVisualTheme.FOREST_PRO -> "DAGENS SCHEMA"
                     CleanVisualTheme.FAMILY_SPECTRUM -> "Familjens aktiviteter"
+                    CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT ->
+                        selectedDate.format(DateTimeFormatter.ofPattern("EEEE d MMMM", locale))
+                            .replaceFirstChar { it.uppercase(locale) }
                     else -> "Dagens aktiviteter"
                 }, modifier = Modifier.weight(1f), color = spec.text,
                     fontFamily = if (theme == CleanVisualTheme.EDITORIAL_PLANNER) FontFamily.Serif
@@ -958,12 +994,16 @@ private fun DesignerAgenda(
                         RoundedCornerShape(13.dp)
                     CleanVisualTheme.NEON_PULSE, CleanVisualTheme.RETRO_DIGITAL ->
                         RoundedCornerShape(3.dp)
+                    CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(9.dp)
+                    CleanVisualTheme.GOTHAM_NIGHT -> RoundedCornerShape(2.dp)
                     else -> RoundedCornerShape(7.dp)
                 }
                 val itemColor = when (theme) {
                     CleanVisualTheme.FAMILY_SPECTRUM, CleanVisualTheme.PASTEL_FLOW ->
                         color.copy(alpha = .12f)
                     CleanVisualTheme.CRYSTAL_GLASS -> spec.panelMid.copy(alpha = .7f)
+                    CleanVisualTheme.OAK_WOOD -> spec.panelMid.copy(alpha = .80f)
+                    CleanVisualTheme.GOTHAM_NIGHT -> Color(0xDD0E2035)
                     CleanVisualTheme.NEON_PULSE, CleanVisualTheme.RETRO_DIGITAL ->
                         spec.panelBottom
                     else -> Color.Transparent
@@ -983,7 +1023,9 @@ private fun DesignerAgenda(
                     if (theme == CleanVisualTheme.EDITORIAL_PLANNER ||
                         theme == CleanVisualTheme.MIDNIGHT_GOLD ||
                         theme == CleanVisualTheme.NEON_PULSE ||
-                        theme == CleanVisualTheme.FOREST_PRO) {
+                        theme == CleanVisualTheme.FOREST_PRO ||
+                        theme == CleanVisualTheme.OAK_WOOD ||
+                        theme == CleanVisualTheme.GOTHAM_NIGHT) {
                         Box(Modifier.width(3.dp).height(28.dp)
                             .background(color, RoundedCornerShape(3.dp)))
                         Spacer(Modifier.width(8.dp))
@@ -1073,6 +1115,8 @@ internal fun CleanThemeMiniPreview(theme: CleanVisualTheme, modifier: Modifier =
                 CleanVisualTheme.FOREST_PRO -> "FAMILY / PLANNER"
                 CleanVisualTheme.FAMILY_SPECTRUM -> "Vår kalender"
                 CleanVisualTheme.PASTEL_FLOW -> "Vår familj ✿"
+                CleanVisualTheme.OAK_WOOD -> "Ek & familj"
+                CleanVisualTheme.GOTHAM_NIGHT -> "Gotham Night"
                 else -> "Kalender"
             }, modifier = Modifier.weight(1f), color = spec.text, maxLines = 1,
                 fontSize = 8.sp, fontFamily = spec.titleFont, fontWeight = FontWeight.Bold)

@@ -112,6 +112,12 @@ enum class CleanVisualTheme(
     FAMILY_SPECTRUM(
         "Family Spectrum", "Ljus familjedesign med klara kategorifärger.", "◉",
     ),
+    OAK_WOOD(
+        "Trätema", "Varm ek, äkta träådring, lövdetaljer och kalender på pergament.", "🌿",
+    ),
+    GOTHAM_NIGHT(
+        "DC – Gotham Night", "Månbelyst gotisk stad, mörk sten och blå nattglöd.", "🌙",
+    ),
 }
 
 /** The only twelve user-selectable Clean themes; legacy enum IDs remain for compatibility. */
@@ -128,6 +134,8 @@ internal val selectableCleanVisualThemes = listOf(
     CleanVisualTheme.RETRO_DIGITAL,
     CleanVisualTheme.FOREST_PRO,
     CleanVisualTheme.FAMILY_SPECTRUM,
+    CleanVisualTheme.OAK_WOOD,
+    CleanVisualTheme.GOTHAM_NIGHT,
 )
 
 /** Migrate persisted old theme IDs to the new collection without affecting appointments. */
@@ -156,7 +164,8 @@ internal fun isLightCleanTheme(theme: CleanVisualTheme): Boolean =
         theme == CleanVisualTheme.PASTEL_FLOW ||
         theme == CleanVisualTheme.EDITORIAL_PLANNER ||
         theme == CleanVisualTheme.EARTH_SAGE ||
-        theme == CleanVisualTheme.FAMILY_SPECTRUM
+        theme == CleanVisualTheme.FAMILY_SPECTRUM ||
+        theme == CleanVisualTheme.OAK_WOOD
 
 internal fun isNordicDayPlannerTheme(theme: CleanVisualTheme): Boolean =
     theme == CleanVisualTheme.NORDIC_DAY_PLANNER ||
@@ -505,6 +514,75 @@ internal fun cleanThemeSpec(theme: CleanVisualTheme): CleanThemeSpec =
                 selectedText = Color.White,
             )
 
+
+        CleanVisualTheme.OAK_WOOD ->
+            cleanThemeSpec(CleanVisualTheme.EARTH_SAGE).copy(
+                backgroundTop = Color(0xFFB97C48),
+                backgroundBottom = Color(0xFF784629),
+                overlayTop = Color.Transparent,
+                overlayBottom = Color.Transparent,
+                panelTop = Color(0xFFF9EACE),
+                panelMid = Color(0xFFF0D6B2),
+                panelBottom = Color(0xFFE0BB88),
+                border = Color(0x885C371C),
+                text = Color(0xFF362114),
+                muted = Color(0xFF775038),
+                accent = Color(0xFF724323),
+                accentStrong = Color(0xFF5B3219),
+                secondary = Color(0xFF51806B),
+                info = Color(0xFF4F85A2),
+                warning = Color(0xFFBB7039),
+                selectedTop = Color(0xFF8E562C),
+                selectedBottom = Color(0xFF502C17),
+                selectedBorder = Color(0xFFD4AD75),
+                selectedText = Color.White,
+                dayTop = Color(0xFFF9EEDB),
+                dayBottom = Color(0xFFECD6B3),
+                navSurface = Color(0xFF704221),
+                navBorder = Color(0xFFA67750),
+                titleFont = FontFamily.Serif,
+                titleWeight = FontWeight.Bold,
+                cardRadius = 12.dp,
+                calendarRadius = 17.dp,
+                dayRadius = 4.dp,
+                buttonRadius = 12.dp,
+                shadow = 4.dp,
+            )
+
+        CleanVisualTheme.GOTHAM_NIGHT ->
+            cleanThemeSpec(CleanVisualTheme.CRYSTAL_GLASS).copy(
+                backgroundTop = Color(0xFF081A30),
+                backgroundBottom = Color(0xFF020914),
+                overlayTop = Color.Transparent,
+                overlayBottom = Color.Transparent,
+                panelTop = Color(0xEB0C1727),
+                panelMid = Color(0xED111E31),
+                panelBottom = Color(0xE8091323),
+                border = Color(0x774C6D91),
+                text = Color(0xFFF2F3F6),
+                muted = Color(0xFF9DAFC3),
+                accent = Color(0xFF2D77BB),
+                accentStrong = Color(0xFF83C7FC),
+                secondary = Color(0xFF71A4D6),
+                info = Color(0xFF81C8EC),
+                warning = Color(0xFFE4AA6B),
+                selectedTop = Color(0xFF254E75),
+                selectedBottom = Color(0xFF102943),
+                selectedBorder = Color(0xFF87CAFF),
+                selectedText = Color(0xFFFFFFFF),
+                dayTop = Color(0x990B1B2D),
+                dayBottom = Color(0xB8071424),
+                navSurface = Color(0xF004101F),
+                navBorder = Color(0x77619BC6),
+                titleFont = FontFamily.Serif,
+                titleWeight = FontWeight.SemiBold,
+                cardRadius = 9.dp,
+                calendarRadius = 5.dp,
+                dayRadius = 6.dp,
+                buttonRadius = 8.dp,
+                shadow = 4.dp,
+            )
+
         CleanVisualTheme.BRUTALIST ->
             CleanThemeSpec(
                 backgroundTop = Color(0xFF24272A), backgroundBottom = Color(0xFF0D0F10),
@@ -801,6 +879,8 @@ internal fun CleanThemeBackdrop(
                     topLeft = Offset(0f, size.height * .06f),
                     size = androidx.compose.ui.geometry.Size(size.width * .028f, size.height * .18f))
             }
+
+            CleanVisualTheme.OAK_WOOD, CleanVisualTheme.GOTHAM_NIGHT -> Unit
 
             CleanVisualTheme.BRUTALIST -> {
                 drawRect(

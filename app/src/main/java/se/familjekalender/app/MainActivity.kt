@@ -2144,17 +2144,18 @@ private fun SettingsScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "10 helt olika Clean-layouter med egna datumrutor, rubriker och aktivitetskort. Nuvarande och Nordic Day Planner är oförändrade.",
+                "Välj bland 14 teman. Små rutor för snabb överblick – tryck för att byta. Nuvarande och Nordic Day Planner är bevarade.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .78f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 7.dp),
             )
 
-            selectableCleanVisualThemes.chunked(2).forEach { rowThemes ->
+            // Compact 3-column picker: the original large preview cards dominated settings.
+            selectableCleanVisualThemes.chunked(3).forEach { rowThemes ->
                 Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     rowThemes.forEach { cleanTheme ->
                         val selected = cleanVisualTheme == cleanTheme
@@ -2162,83 +2163,81 @@ private fun SettingsScreen(
                         Surface(
                             color = spec.panelMid,
                             contentColor = spec.text,
-                            shape = RoundedCornerShape(
-                                if (cleanTheme == CleanVisualTheme.BRUTALIST ||
-                                    cleanTheme == CleanVisualTheme.SWISS
-                                ) 4.dp else 16.dp
-                            ),
+                            shape = RoundedCornerShape(10.dp),
                             border = BorderStroke(
                                 if (selected) 2.dp else 1.dp,
                                 if (selected) spec.accentStrong else spec.border,
                             ),
-                            shadowElevation = if (selected) 5.dp else 0.dp,
+                            shadowElevation = if (selected) 2.dp else 0.dp,
                             modifier = Modifier.weight(1f)
-                                .heightIn(min = 92.dp)
+                                .height(66.dp)
                                 .clickable { onCleanVisualThemeChanged(cleanTheme) },
                         ) {
                             Column(
-                                Modifier.fillMaxWidth().padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                                modifier = Modifier.fillMaxSize().padding(
+                                    horizontal = 7.dp, vertical = 5.dp,
+                                ),
+                                verticalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Row(
-                                    Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(
-                                        cleanTheme.emoji,
-                                        color = spec.accentStrong,
-                                        fontSize = 16.sp,
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        cleanTheme.label,
-                                        color = spec.text,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        modifier = Modifier.weight(1f),
-                                    )
+                                    Text(cleanTheme.emoji, fontSize = 12.sp,
+                                        color = spec.accentStrong)
+                                    Spacer(Modifier.weight(1f))
                                     if (selected) {
                                         Icon(
                                             Icons.Default.CheckCircle,
                                             contentDescription = "Valt",
                                             tint = spec.accentStrong,
-                                            modifier = Modifier.size(17.dp),
+                                            modifier = Modifier.size(14.dp),
                                         )
                                     }
-                                }
-                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    listOf(
-                                        spec.accentStrong,
-                                        spec.secondary,
-                                        spec.info,
-                                        spec.warning,
-                                    ).forEach { swatch ->
-                                        Box(
-                                            Modifier.size(13.dp)
-                                                .clip(CircleShape)
-                                                .background(swatch)
-                                        )
-                                    }
-                                }
-                                if (isDesignedCleanTheme(cleanTheme)) {
-                                    CleanThemeMiniPreview(cleanTheme)
                                 }
                                 Text(
-                                    cleanTheme.description,
-                                    color = spec.muted,
-                                    fontSize = 8.sp,
+                                    cleanTheme.label,
+                                    color = spec.text,
+                                    fontSize = 10.sp,
                                     lineHeight = 11.sp,
-                                    maxLines = 3,
+                                    fontWeight = if (selected) FontWeight.Bold
+                                        else FontWeight.SemiBold,
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
+                                )
+                                Box(
+                                    Modifier.fillMaxWidth()
+                                        .height(3.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                listOf(spec.accentStrong, spec.secondary)
+                                            )
+                                        )
                                 )
                             }
                         }
                     }
-                    if (rowThemes.size == 1) Spacer(Modifier.weight(1f))
+                    repeat(3 - rowThemes.size) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(5.dp))
             }
+            Text(
+                "Valt tema: ${cleanVisualTheme.label}",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+            Text(
+                cleanVisualTheme.description,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                lineHeight = 13.sp,
+                modifier = Modifier.padding(top = 2.dp),
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -2640,6 +2639,8 @@ private fun MinimalBottomNav(
             CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(2.dp)
             CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(8.dp)
             CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(19.dp)
+            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(13.dp)
+            CleanVisualTheme.GOTHAM_NIGHT -> RoundedCornerShape(5.dp)
             else -> RoundedCornerShape(spec.cardRadius)
         }
     val activeShape =
@@ -2657,6 +2658,8 @@ private fun MinimalBottomNav(
             CleanVisualTheme.RETRO_DIGITAL -> RoundedCornerShape(0.dp)
             CleanVisualTheme.FOREST_PRO -> RoundedCornerShape(4.dp)
             CleanVisualTheme.FAMILY_SPECTRUM -> RoundedCornerShape(13.dp)
+            CleanVisualTheme.OAK_WOOD -> RoundedCornerShape(7.dp)
+            CleanVisualTheme.GOTHAM_NIGHT -> RoundedCornerShape(5.dp)
             else -> RoundedCornerShape(18.dp)
         }
     val items =
