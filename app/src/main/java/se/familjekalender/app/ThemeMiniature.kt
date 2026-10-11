@@ -41,6 +41,8 @@ internal fun ThemeMiniature(
     val ink = if (theme == null) Color.White else spec.text
     val panel = if (theme == null) Color(0xA940414D) else spec.panelMid
     val bright = if (theme == null) Color(0xFFB998F9) else spec.accentStrong
+    val widgetStyle = if (widget && theme != null && !wood &&
+        selectedTheme != CleanVisualTheme.CURRENT) WidgetThemeColors.forPreview(theme) else null
 
     Canvas(modifier) {
         val w = size.width
@@ -87,19 +89,25 @@ internal fun ThemeMiniature(
         if (widget) {
             // A miniature of the ACTUAL widget hierarchy:
             // calendar badge, headline, two shortcuts, rounded event rows.
-            rect(8f,8f,28f,32f,Color(0xFFE9EEF3),5f)
-            rect(8f,8f,28f,9f,Color(0xFFE45666),4f)
-            rect(45f,10f,91f,4f,ink.copy(alpha=.90f),2f)
-            rect(45f,20f,67f,3f,ink.copy(alpha=.43f),2f)
-            rect(45f,28f,52f,2f,ink.copy(alpha=.32f),1f)
-            rect(8f,47f,69f,16f,Color(0xD526684E),9f)
-            rect(82f,47f,69f,16f,Color(0xD5316190),9f)
+            val widgetInk = widgetStyle?.let { Color(it.text) } ?: ink
+            val dayColor = widgetStyle?.let { Color(it.badgeDayPreview) } ?: Color(0xFFE45666)
+            val numberColor = widgetStyle?.let { Color(it.badgeNumberPreview) } ?: Color(0xFFE9EEF3)
+            val rowColor = widgetStyle?.let { Color(it.rowPreview) }
+                ?: if(light) Color(0x99FFFFFF) else panel.copy(alpha=.94f)
+            val shortcutColor = widgetStyle?.let { Color(it.controlPreview) }
+            rect(8f,8f,28f,32f,numberColor,5f)
+            rect(8f,8f,28f,9f,dayColor,4f)
+            rect(45f,10f,91f,4f,widgetInk.copy(alpha=.90f),2f)
+            rect(45f,20f,67f,3f,widgetInk.copy(alpha=.55f),2f)
+            rect(45f,28f,52f,2f,widgetInk.copy(alpha=.40f),1f)
+            rect(8f,47f,69f,16f,shortcutColor ?: Color(0xD526684E),9f)
+            rect(82f,47f,69f,16f,shortcutColor ?: Color(0xD5316190),9f)
             for(i in 0..2) {
                 val y=69f+i*17f
-                rect(9f,y,142f,14f,if(light)Color(0x99FFFFFF) else panel.copy(alpha=.94f),8f)
-                rect(16f,y+4f,26f,2.8f,ink.copy(alpha=.83f),1f)
-                rect(50f,y+4f,60f,2.8f,ink.copy(alpha=.60f),1f)
-                rect(121f,y+4f,22f,2.8f,ink.copy(alpha=.45f),1f)
+                rect(9f,y,142f,14f,rowColor,8f)
+                rect(16f,y+4f,26f,2.8f,widgetInk.copy(alpha=.83f),1f)
+                rect(50f,y+4f,60f,2.8f,widgetInk.copy(alpha=.66f),1f)
+                rect(121f,y+4f,22f,2.8f,widgetInk.copy(alpha=.48f),1f)
             }
             drawCircle(bright,3f*sc,Offset(140f*sc,18f*sc))
         } else {
