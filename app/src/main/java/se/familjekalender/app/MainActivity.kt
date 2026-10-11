@@ -357,7 +357,9 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
                         {
                             cleanVisualTheme = it
                             prefs.edit().putString("clean_visual_theme", it.name).apply()
-                            FamilyCalendarWidget.refreshTheme(context)
+                            if (WidgetThemeColors.savedChoice(context) == WidgetThemeColors.FOLLOW_CALENDAR) {
+                                FamilyCalendarWidget.refreshTheme(context)
+                            }
                         },
                         initialTab = initialTab,
                     )
@@ -2372,6 +2374,14 @@ private fun SettingsScreen(
             fontSize = 10.sp,
             lineHeight = 14.sp,
         )
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SettingsSectionCard(
+        title = "Widget på hemskärmen",
+        subtitle = "Eget tema för widgeten, oberoende av kalendertemat.",
+    ) {
+        WidgetThemeSettings(cleanVisualTheme)
     }
 
     Spacer(Modifier.height(14.dp))
