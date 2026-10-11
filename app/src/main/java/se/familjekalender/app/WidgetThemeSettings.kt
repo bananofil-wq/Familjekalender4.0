@@ -174,6 +174,9 @@ private fun WidgetThemePreview(choice: String, calendarTheme: CleanVisualTheme) 
     val context = LocalContext.current
     val palette = remember(choice, calendarTheme) { WidgetThemeColors.colors(context) }
     val original = choice == WidgetThemeColors.ORIGINAL
+    val today = java.time.LocalDate.now()
+    val dateLabel = today.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", java.util.Locale("sv", "SE")))
+        .replaceFirstChar { it.uppercase() }
     val background = when (palette.skin) {
         WidgetThemeColors.Skin.WOOD -> Color(0xFF4C2B18)
         WidgetThemeColors.Skin.COPPER -> Color(0xFF412925)
@@ -210,12 +213,12 @@ private fun WidgetThemePreview(choice: String, calendarTheme: CleanVisualTheme) 
                     shape = RoundedCornerShape(6.dp),
                     color = Color(0xFFE75D68),
                 ) {
-                    Text("11", Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    Text(today.dayOfMonth.toString(), Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         fontWeight = FontWeight.Bold, color = Color.White, fontSize = 17.sp)
                 }
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Söndag 11 oktober", color = contentColor, fontSize = 15.sp,
+                    Text(dateLabel, color = contentColor, fontSize = 15.sp,
                         fontWeight = FontWeight.Bold)
                     Text("3 aktiviteter kvar idag", color = Color(palette.muted),
                         fontSize = 11.sp)
