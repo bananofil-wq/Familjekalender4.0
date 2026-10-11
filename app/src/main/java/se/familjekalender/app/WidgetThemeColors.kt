@@ -247,7 +247,10 @@ internal object WidgetThemeColors {
             Skin.PASTEL, Skin.SAGE, Skin.PAPER, Skin.NORDIC, Skin.PURE,
             Skin.FAMILY, Skin.CRYSTAL)
         val text = if (isLight) 0xFF25313A.toInt() else 0xFFFFF1DE.toInt()
-        val muted = if (isLight) 0xFF536575.toInt() else 0xFFE1CEB7.toInt()
+        // Existing Nuvarande and Trä retain their exact previous status-text color.
+        val muted = if (selectedSkin == Skin.WOOD || selectedSkin == Skin.GLASS) {
+            0xFFDACAB7.toInt()
+        } else if (isLight) 0xFF536575.toInt() else 0xFFE1CEB7.toInt()
         val accent = cleanThemeSpec(theme).accentStrong.toArgb()
         val tone = tone(selectedSkin)
         return Palette(
