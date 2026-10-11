@@ -112,6 +112,25 @@ internal object WidgetThemeColors {
             Skin.PAPER -> R.drawable.widget_skin_paper_row
     }
 
+    private fun controlResource(skin: Skin): Int = when (skin) {
+        Skin.CLASSIC -> R.drawable.widget_refresh_bg
+        Skin.WOOD -> R.drawable.widget_skin_wood_control
+        Skin.COPPER -> R.drawable.widget_skin_copper_control
+        Skin.TITANIUM -> R.drawable.widget_skin_titanium_control
+        Skin.CARBON -> R.drawable.widget_skin_carbon_control
+        Skin.HIPPIE -> R.drawable.widget_skin_hippie_control
+        Skin.LIGHT -> R.drawable.widget_skin_light_control
+        Skin.DARK -> R.drawable.widget_skin_dark_control
+        Skin.GLASS -> R.drawable.widget_skin_glass_control
+        Skin.FOREST -> R.drawable.widget_skin_forest_control
+        Skin.GOLD -> R.drawable.widget_skin_gold_control
+        Skin.PASTEL -> R.drawable.widget_skin_pastel_control
+        Skin.GOTHAM -> R.drawable.widget_skin_gotham_control
+        Skin.RETRO -> R.drawable.widget_skin_retro_control
+        Skin.SAGE -> R.drawable.widget_skin_sage_control
+        Skin.PAPER -> R.drawable.widget_skin_paper_control
+    }
+
     fun colors(context: Context): Palette {
         val theme = selectedTheme(context)
         if (theme == null) {
@@ -139,8 +158,22 @@ internal object WidgetThemeColors {
         views.setTextColor(R.id.widget_date, style.text)
         views.setTextColor(R.id.widget_status, style.muted)
         views.setTextColor(R.id.widget_refresh, style.text)
-        // The date badge and two shortcut pills retain their existing gradient
-        // drawables; applying setBackgroundColor would destroy their rounded corners.
+        if (style.skin == Skin.CLASSIC) {
+            // Restore the original date/shortcut/control surfaces after a theme change.
+            views.setInt(R.id.widget_todo, "setBackgroundResource", R.drawable.widget_action_green)
+            views.setInt(R.id.widget_shopping, "setBackgroundResource", R.drawable.widget_action_blue)
+            views.setInt(R.id.widget_refresh, "setBackgroundResource", R.drawable.widget_refresh_bg)
+            views.setTextColor(R.id.widget_todo, 0xFFFFFFFF.toInt())
+            views.setTextColor(R.id.widget_shopping, 0xFFFFFFFF.toInt())
+        } else {
+            // All three controls get the same bespoke material as the selected theme.
+            val control = controlResource(style.skin)
+            views.setInt(R.id.widget_todo, "setBackgroundResource", control)
+            views.setInt(R.id.widget_shopping, "setBackgroundResource", control)
+            views.setInt(R.id.widget_refresh, "setBackgroundResource", control)
+            views.setTextColor(R.id.widget_todo, style.text)
+            views.setTextColor(R.id.widget_shopping, style.text)
+        }
     }
 
     fun applyEvent(context: Context, views: RemoteViews) {
