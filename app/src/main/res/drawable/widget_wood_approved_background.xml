@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Keep the existing rounded widget footprint, but never draw nested carved frames. -->
+    <item android:top="2dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#4A000000"/>
+            <corners android:radius="30dp"/>
+        </shape>
+    </item>
+    <item android:bottom="2dp">
+        <shape android:shape="rectangle">
+            <gradient android:angle="270"
+                android:startColor="#F1462A1C"
+                android:centerColor="#F1332018"
+                android:endColor="#F11E1716"/>
+            <corners android:radius="30dp"/>
+            <stroke android:width="1dp" android:color="#B9BE986D"/>
+        </shape>
+    </item>
+    <item android:drawable="@drawable/widget_wood_approved_grain" android:bottom="2dp"/>
+</layer-list>
