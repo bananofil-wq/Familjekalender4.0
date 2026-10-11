@@ -36,8 +36,26 @@ internal fun ThemeMiniature(
     val carbon = selectedTheme == CleanVisualTheme.CARBON_FIBER
     val metal = selectedTheme in listOf(CleanVisualTheme.TITANIUM, CleanVisualTheme.COPPER)
     val light = theme != null && isLightCleanTheme(selectedTheme)
-    val baseTop = if (theme == null) Color(0xE82D2A35) else spec.backgroundTop
-    val baseBottom = if (theme == null) Color(0xF5191922) else spec.backgroundBottom
+    // Widgeten använder egna RemoteViews-material; använd deras faktiska grundtoner
+    // i miniatyren i stället för kalenderns bakgrundsfärger.
+    val widgetSurfaces = if (!widget || theme == null ||
+        selectedTheme == CleanVisualTheme.CURRENT || wood) null else when (selectedTheme) {
+        CleanVisualTheme.NORDIC_DAY_PLANNER -> Color(0xFFE7F3FD) to Color(0xFFE1EDF7)
+        CleanVisualTheme.PURE_CALENDAR -> Color(0xFFFFFFFF) to Color(0xFFF6F9FC)
+        CleanVisualTheme.FAMILY_SPECTRUM -> Color(0xFFFDECE0) to Color(0xFFF9E3D8)
+        CleanVisualTheme.CRYSTAL_GLASS -> Color(0xFFB2D9F5) to Color(0xFFB6CCE8)
+        CleanVisualTheme.NEON_PULSE -> Color(0xFF192638) to Color(0xFF0B0D18)
+        CleanVisualTheme.COPPER -> Color(0xFF412925) to Color(0xFF191214)
+        CleanVisualTheme.TITANIUM -> Color(0xFFE4E9EC) to Color(0xFFAEB7C0)
+        CleanVisualTheme.CARBON_FIBER -> Color(0xFF101824) to Color(0xFF030811)
+        CleanVisualTheme.HIPPIE -> Color(0xFFFFE9A0) to Color(0xFFFFD49B)
+        CleanVisualTheme.GOTHAM_NIGHT -> Color(0xFF0B2138) to Color(0xFF030C1C)
+        else -> null
+    }
+    val baseTop = widgetSurfaces?.first
+        ?: if (theme == null) Color(0xE82D2A35) else spec.backgroundTop
+    val baseBottom = widgetSurfaces?.second
+        ?: if (theme == null) Color(0xF5191922) else spec.backgroundBottom
     val ink = if (theme == null) Color.White else spec.text
     val panel = if (theme == null) Color(0xA940414D) else spec.panelMid
     val bright = if (theme == null) Color(0xFFB998F9) else spec.accentStrong
