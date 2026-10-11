@@ -88,7 +88,7 @@ internal object WidgetThemeColors {
 
     private fun backgroundResource(skin: Skin): Int? = when (skin) {
         Skin.CLASSIC -> null
-            Skin.WOOD -> R.drawable.widget_skin_wood_background
+            Skin.WOOD -> R.drawable.widget_wood_approved_background
             Skin.COPPER -> R.drawable.widget_skin_copper_background
             Skin.TITANIUM -> R.drawable.widget_skin_titanium_background
             Skin.CARBON -> R.drawable.widget_skin_carbon_background
@@ -112,7 +112,7 @@ internal object WidgetThemeColors {
 
     private fun rowResource(skin: Skin): Int? = when (skin) {
         Skin.CLASSIC -> null
-            Skin.WOOD -> R.drawable.widget_skin_wood_row
+            Skin.WOOD -> R.drawable.widget_wood_approved_row
             Skin.COPPER -> R.drawable.widget_skin_copper_row
             Skin.TITANIUM -> R.drawable.widget_skin_titanium_row
             Skin.CARBON -> R.drawable.widget_skin_carbon_row
@@ -136,7 +136,7 @@ internal object WidgetThemeColors {
 
     private fun controlResource(skin: Skin): Int = when (skin) {
         Skin.CLASSIC -> R.drawable.widget_refresh_bg
-        Skin.WOOD -> R.drawable.widget_skin_wood_control
+        Skin.WOOD -> R.drawable.widget_wood_approved_control
         Skin.COPPER -> R.drawable.widget_skin_copper_control
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_control
         Skin.CARBON -> R.drawable.widget_skin_carbon_control
