@@ -145,8 +145,8 @@ internal fun ThemeMiniature(
         }
         if (wood) {
             // Tiny brass corner dots: enough to tell it apart from plain beige themes.
-            listOf(Offset(6f,6f),Offset(154f,6f),Offset(6f,widget?113f:118f),
-                Offset(154f,widget?113f:118f)).forEach {
+            listOf(Offset(6f,6f),Offset(154f,6f),Offset(6f,if (widget) 113f else 118f),
+                Offset(154f,if (widget) 113f else 118f)).forEach {
                 drawCircle(Color(0xFFECC080),1.4f*sc,Offset(it.x*sc,it.y*sc))
             }
         }
