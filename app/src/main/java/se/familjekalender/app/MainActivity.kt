@@ -2148,7 +2148,7 @@ private fun SettingsScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                "Välj bland 14 teman. Små rutor för snabb överblick – tryck för att byta. Nuvarande och Nordic Day Planner är bevarade.",
+                "Välj bland ${selectableCleanVisualThemes.size} teman. Små rutor för snabb överblick – tryck för att byta. Nuvarande och Nordic Day Planner är bevarade.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .78f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp,
