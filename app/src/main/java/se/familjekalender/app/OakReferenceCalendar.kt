@@ -281,12 +281,19 @@ private fun PremiumWoodStat(
                     lineHeight = 33.sp,
                     maxLines = 1,
                 )
-                Text(
-                    caption,
-                    color = statText.copy(alpha = .82f), fontSize = 9.sp,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
+                // Oak's short summary cards clip the caption at the bottom.
+                // Keep its layout space so the title and number don't shift,
+                // but leave that space visually clean in the wood theme.
+                if (skin.oak) {
+                    Spacer(Modifier.height(12.dp))
+                } else {
+                    Text(
+                        caption,
+                        color = statText.copy(alpha = .82f), fontSize = 9.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             Text(
                 "›", color = skin.spec.accentStrong,
