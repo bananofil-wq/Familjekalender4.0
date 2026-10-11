@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="1dp" android:height="1dp"
+    android:viewportWidth="200" android:viewportHeight="60">
+    <!-- Short, low-contrast grain for activity cards; never repeat a full-panel frame. -->
+    <clip-path android:pathData="M16,0 L184,0 Q200,0 200,16 L200,44 Q200,60 184,60 L16,60 Q0,60 0,44 L0,16 Q0,0 16,0 Z"/>
+    <path android:pathData="M0,6 C53,7.3 135,4.7 200,6.8" android:fillColor="#00000000" android:strokeColor="#EDC091" android:strokeAlpha=".085" android:strokeWidth=".42"/>
+    <path android:pathData="M0,14 C53,15.3 135,12.7 200,14.8" android:fillColor="#00000000" android:strokeColor="#EDC091" android:strokeAlpha=".045" android:strokeWidth=".42"/>
+    <path android:pathData="M0,22 C53,23.3 135,20.7 200,22.8" android:fillColor="#00000000" android:strokeColor="#EDC091" android:strokeAlpha=".045" android:strokeWidth=".42"/>
+    <path android:pathData="M0,30 C53,31.3 135,28.7 200,30.8" android:fillColor="#00000000" android:strokeColor="#EDC091" android:strokeAlpha=".085" android:strokeWidth=".42"/>
+    <path android:pathData="M0,38 C53,39.3 135,36.7 200,38.8" android:fillColor="#00000000" android:strokeColor="#EDC091" android:strokeAlpha=".045" android:strokeWidth=".42"/>
+    <path android:pathData="M0,46 C53,47.3 135,44.7 200,46.8" android:fillColor="#00000000" android:strokeColor="#EDC091" android:strokeAlpha=".045" android:strokeWidth=".42"/>
+    <path android:pathData="M0,54 C53,55.3 135,52.7 200,54.8" android:fillColor="#00000000" android:strokeColor="#EDC091" android:strokeAlpha=".085" android:strokeWidth=".42"/>
+</vector>
