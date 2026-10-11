@@ -45,7 +45,7 @@ internal fun ThemeMiniature(
     Canvas(modifier) {
         val w = size.width
         val h = size.height
-        val sc = w / 160f
+        val sc = minOf(w / 160f, h / (if (widget) 120f else 158f))
         fun rect(x: Float, y: Float, dx: Float, dy: Float, color: Color, rad: Float = 5f) {
             drawRoundRect(color, Offset(x*sc, y*sc), Size(dx*sc,dy*sc),
                 CornerRadius(rad*sc,rad*sc))
