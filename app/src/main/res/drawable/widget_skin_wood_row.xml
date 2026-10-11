@@ -14,5 +14,5 @@
         </shape>
     </item>
     <!-- Scalable material-specific artwork on top of the gradient; no layout changes. -->
-    <item android:drawable="@drawable/widget_material_wood" android:bottom="2dp"/>
+    <item android:drawable="@drawable/widget_material_wood_row" android:bottom="2dp"/>
 </layer-list>
