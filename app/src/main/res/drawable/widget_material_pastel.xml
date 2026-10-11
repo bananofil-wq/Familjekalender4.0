@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="200dp" android:height="320dp" android:viewportWidth="200" android:viewportHeight="320">
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="1dp" android:height="1dp" android:viewportWidth="200" android:viewportHeight="320">
     <clip-path android:pathData="M28,0 L172,0 Q200,0 200,28 L200,292 Q200,320 172,320 L28,320 Q0,320 0,292 L0,28 Q0,0 28,0 Z"/>
     <path android:pathData="M27,44 a8,8 0,1 0 16,0 a8,8 0,1 0 -16,0" android:fillColor="#D49BE9" android:fillAlpha=".30"/>
     <path android:pathData="M21,55 a8,8 0,1 0 16,0 a8,8 0,1 0 -16,0" android:fillColor="#EF9DB9" android:fillAlpha=".30"/>
