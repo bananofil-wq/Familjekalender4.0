@@ -13,4 +13,5 @@
             <stroke android:width="1dp" android:color="#B48691A6"/>
         </shape>
     </item>
+    <item android:drawable="@drawable/widget_material_dark" android:bottom="3dp"/>
 </layer-list>
