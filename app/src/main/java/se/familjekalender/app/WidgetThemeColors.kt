@@ -70,7 +70,7 @@ internal object WidgetThemeColors {
         CleanVisualTheme.FOREST_PRO, CleanVisualTheme.BIOPHILIC -> Skin.FOREST
         CleanVisualTheme.RETRO_DIGITAL, CleanVisualTheme.RETRO_70S -> Skin.RETRO
         CleanVisualTheme.GOTHAM_NIGHT -> Skin.GOTHAM
-        CleanVisualTheme.CURRENT -> Skin.CLASSIC
+        CleanVisualTheme.CURRENT -> Skin.GLASS
         else -> Skin.DARK
     }
 
@@ -115,7 +115,8 @@ internal object WidgetThemeColors {
     fun colors(context: Context): Palette {
         val theme = selectedTheme(context)
         if (theme == null) {
-            return Palette(Skin.CLASSIC, null, null,
+            return Palette(Skin.CLASSIC,
+                R.drawable.widget_background, R.drawable.widget_event_row_bg,
                 0xFFFFFFFF.toInt(), 0xD8FFFFFF.toInt(),
                 0xFFD9C0FF.toInt(), 0xFFFFFFFF.toInt())
         }
@@ -132,9 +133,8 @@ internal object WidgetThemeColors {
     /** Only add style actions; never replace the widget's date, event data, or click actions. */
     fun apply(context: Context, views: RemoteViews) {
         val style = colors(context)
-        // Do not touch the default widget's backgrounds: those contain its original
-        // rounded gradient corners, transparency and distinct green/blue shortcut pills.
-        if (style.skin == Skin.CLASSIC) return
+        // Apply the classic resources as well, so switching BACK from a selected
+        // skin fully restores the original widget without re-adding it to the launcher.
         style.root?.let { views.setInt(R.id.widget_root, "setBackgroundResource", it) }
         views.setTextColor(R.id.widget_date, style.text)
         views.setTextColor(R.id.widget_status, style.muted)
@@ -145,7 +145,6 @@ internal object WidgetThemeColors {
 
     fun applyEvent(context: Context, views: RemoteViews) {
         val style = colors(context)
-        if (style.skin == Skin.CLASSIC) return
         style.row?.let { views.setInt(R.id.widget_item_root, "setBackgroundResource", it) }
         views.setTextColor(R.id.widget_item_who, style.text)
         views.setTextColor(R.id.widget_item_activity, style.text)
@@ -154,7 +153,6 @@ internal object WidgetThemeColors {
 
     fun applyHeader(context: Context, views: RemoteViews) {
         val style = colors(context)
-        if (style.skin == Skin.CLASSIC) return
         views.setTextColor(R.id.widget_list_header, style.muted)
     }
 }
