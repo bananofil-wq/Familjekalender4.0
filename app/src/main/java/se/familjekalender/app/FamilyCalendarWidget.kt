@@ -179,7 +179,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )
             views.setPendingIntentTemplate(R.id.widget_event_list, templatePending)
 
-                bindActions(context, views, appWidgetId)
+            bindActions(context, views, appWidgetId)
+            WidgetThemeColors.apply(context, views)
             return views
         }
 
@@ -195,7 +196,20 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 .notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
         }
 
-        fun refreshTheme(context: Context) = refreshAllWidgetsFromCache(context)
+        /**
+         * Restyle existing widgets WITHOUT rebuilding their RemoteViews or blanking their
+         * To-Do/shopping counts, date status and pending click intents.
+         */
+        fun refreshTheme(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val component = ComponentName(context, FamilyCalendarWidget::class.java)
+            manager.getAppWidgetIds(component).forEach { appWidgetId ->
+                val styleOnly = RemoteViews(context.packageName, R.layout.widget_family_calendar)
+                WidgetThemeColors.apply(context, styleOnly)
+                manager.partiallyUpdateAppWidget(appWidgetId, styleOnly)
+                manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
+            }
+        }
 
         private fun refreshAllWidgetsFromCache(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
