@@ -208,7 +208,30 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
-        setContent { ResponsiveApp { FamilyCalendarApp(widgetOpenTab) } }
+        setContent {
+            ResponsiveApp {
+                FamilyCalendarApp(widgetOpenTab)
+                val popup by FamilyEventPopup.current.collectAsState()
+                popup?.let { event ->
+                    AlertDialog(
+                        onDismissRequest = { /* Explicit dismissal only */ },
+                        title = { Text(event.title) },
+                        text = { Text(event.message.ifBlank { "En ny händelse har lagts till i familjekalendern." }) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                FamilyEventPopup.dismiss(event.id)
+                                widgetOpenTab = 0
+                            }) { Text("Visa händelse") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { FamilyEventPopup.dismiss(event.id) }) {
+                                Text("Stäng")
+                            }
+                        },
+                    )
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
