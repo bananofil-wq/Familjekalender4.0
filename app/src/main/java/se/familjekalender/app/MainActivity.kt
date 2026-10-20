@@ -539,6 +539,12 @@ private fun SyncedApp(
             }
     }
 
+    // Event push can arrive between scheduled syncs. Fetch the latest events
+    // immediately before attempting to navigate to the referenced event.
+    LaunchedEffect(requestedEventId) {
+        if (!requestedEventId.isNullOrBlank()) refresh()
+    }
+
     LaunchedEffect(members, deviceMemberId) {
         val deviceMember = members.firstOrNull { it.id == deviceMemberId }
         if (
