@@ -71,7 +71,7 @@ internal object FamilyEventPopup {
     fun dismiss(id: String) {
         if (!::appContext.isInitialized || pending.value?.id != id) return
         val prefs = appContext.getSharedPreferences(PREFS, 0)
-        val updated = (prefs.getStringSet(SEEN, emptySet()).orEmpty() + id).takeLast(200).toSet()
+        val updated = (prefs.getStringSet(SEEN, emptySet()).orEmpty() + id).toList().takeLast(200).toSet()
         prefs.edit().putStringSet(SEEN, updated).remove(PENDING).apply()
         pending.value = null
     }
