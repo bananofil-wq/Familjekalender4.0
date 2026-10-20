@@ -22,7 +22,7 @@ internal object FamilyEventPopup {
             val action = data?.optString("event_type").orEmpty()
             if (type !in setOf("calendar_event_created", "event_created") &&
                 action !in setOf("calendar_event_created", "event_created")) return
-            val id = data?.optString("event_id").orEmpty().ifBlank { notification.notificationId }
+            val id = data?.optString("event_id").orEmpty().ifBlank { notification.notificationId.orEmpty() }
             if (pending.value?.id == id) return
             pending.value = Event(id, notification.title.orEmpty().ifBlank { "Ny händelse" },
                 notification.body.orEmpty())
