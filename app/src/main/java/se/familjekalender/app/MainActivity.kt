@@ -204,11 +204,36 @@ internal fun paletteFor(mode: ThemeMode, date: LocalDate = LocalDate.now()): Sea
 
 class MainActivity : ComponentActivity() {
     private var widgetOpenTab by mutableIntStateOf(-1)
+    private var requestedEventId by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
-        setContent { ResponsiveApp { FamilyCalendarApp(widgetOpenTab) } }
+        setContent {
+            ResponsiveApp {
+                FamilyCalendarApp(widgetOpenTab, requestedEventId)
+                val popup by FamilyEventPopup.current.collectAsState()
+                popup?.let { event ->
+                    AlertDialog(
+                        onDismissRequest = { /* Explicit dismissal only */ },
+                        title = { Text(event.title) },
+                        text = { Text(event.message.ifBlank { "En ny händelse har lagts till i familjekalendern." }) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                requestedEventId = event.id
+                                FamilyEventPopup.dismiss(event.id)
+                                widgetOpenTab = 0
+                            }) { Text("Visa händelse") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { FamilyEventPopup.dismiss(event.id) }) {
+                                Text("Stäng")
+                            }
+                        },
+                    )
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -234,7 +259,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun FamilyCalendarApp(initialTab: Int = -1) {
+fun FamilyCalendarApp(initialTab: Int = -1, requestedEventId: String? = null) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("family_calendar", 0) }
     val notificationPermissionLauncher =
@@ -362,6 +387,7 @@ fun FamilyCalendarApp(initialTab: Int = -1) {
                             }
                         },
                         initialTab = initialTab,
+                        requestedEventId = requestedEventId,
                     )
                 }
             }
@@ -440,6 +466,7 @@ private fun SyncedApp(
     onUiLayoutModeSaved: (UiLayoutMode) -> Unit,
     onCleanVisualThemeSaved: (CleanVisualTheme) -> Unit,
     initialTab: Int = -1,
+    requestedEventId: String? = null,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -465,6 +492,33 @@ private fun SyncedApp(
     }
     var showAddEvent by remember { mutableStateOf(false) }
     var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
+    var handledEventRequest by remember { mutableStateOf<String?>(null) }
+
+    // Opening a notification should select the exact event, not just the calendar tab.
+    // If sync is still loading, retry automatically when the event list arrives.
+    LaunchedEffect(requestedEventId, events) {
+        val requested = requestedEventId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        if (requested == handledEventRequest) return@LaunchedEffect
+
+        val target =
+            if (requested.startsWith("calendar-series:")) {
+                val seriesId = requested.removePrefix("calendar-series:")
+                events.filter { it.seriesId == seriesId }
+                    .sortedWith(compareBy<SyncEvent> { it.date.isBefore(LocalDate.now()) }.thenBy { it.date })
+                    .firstOrNull()
+            } else {
+                val eventId = requested.removePrefix("calendar:")
+                events.firstOrNull { it.id == eventId }
+            }
+
+        if (target != null) {
+            handledEventRequest = requested
+            selectedTab = 0
+            selectedDate = target.date
+            editEvent = target
+        }
+    }
+
     var addEventInitialTitle by remember { mutableStateOf("") }
     var assistantAddRequest by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("") }
@@ -483,6 +537,12 @@ private fun SyncedApp(
             .onFailure {
                 message = "Synkfel: ${it.message}"
             }
+    }
+
+    // Event push can arrive between scheduled syncs. Fetch the latest events
+    // immediately before attempting to navigate to the referenced event.
+    LaunchedEffect(requestedEventId) {
+        if (!requestedEventId.isNullOrBlank()) refresh()
     }
 
     LaunchedEffect(members, deviceMemberId) {

@@ -18,7 +18,10 @@ class FamilyCalendarApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        FamilyEventPopup.initialize(this)
         OneSignal.initWithContext(this, "220bbe78-fd9a-4e5a-8d57-b84399821f7c")
+        OneSignal.Notifications.addForegroundLifecycleListener(FamilyEventPopup.foregroundListener)
+        OneSignal.Notifications.addClickListener(FamilyEventPopup.clickListener)
 
         prefs = getSharedPreferences("family_calendar", 0)
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
