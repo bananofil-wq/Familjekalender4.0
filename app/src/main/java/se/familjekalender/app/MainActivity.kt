@@ -214,21 +214,18 @@ class MainActivity : ComponentActivity() {
                 FamilyCalendarApp(widgetOpenTab, requestedEventId)
                 val popup by FamilyEventPopup.current.collectAsState()
                 popup?.let { event ->
-                    AlertDialog(
-                        onDismissRequest = { /* Explicit dismissal only */ },
-                        title = { Text(event.title) },
-                        text = { Text(event.message.ifBlank { "En ny händelse har lagts till i familjekalendern." }) },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                requestedEventId = event.id
-                                FamilyEventPopup.dismiss(event.id)
-                                widgetOpenTab = 0
-                            }) { Text("Visa händelse") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { FamilyEventPopup.dismiss(event.id) }) {
-                                Text("Stäng")
-                            }
+                    val selectedTheme = resolveCleanVisualTheme(
+                        getSharedPreferences("family_calendar", MODE_PRIVATE)
+                            .getString("clean_visual_theme", CleanVisualTheme.CURRENT.name)
+                    )
+                    FamilyEventPopupDialog(
+                        theme = selectedTheme,
+                        event = event,
+                        onClose = { FamilyEventPopup.dismiss(event.id) },
+                        onShowEvent = {
+                            requestedEventId = event.id
+                            FamilyEventPopup.dismiss(event.id)
+                            widgetOpenTab = 0
                         },
                     )
                 }
