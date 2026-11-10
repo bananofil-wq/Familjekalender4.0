@@ -66,11 +66,6 @@ private data class MaterialTimePickerRequest(
     val onPicked: (Int, Int) -> Unit,
 )
 
-private fun isLaundryEvent(event: SyncEvent): Boolean {
-    val title = event.title.trim()
-    return title.startsWith("🧺") || title.contains("tvätt", ignoreCase = true)
-}
-
 private fun displayEventTitle(event: SyncEvent): String =
     event.title.removePrefix("🌈").removePrefix("🧺").trim()
 
@@ -466,7 +461,7 @@ internal fun ExactCalendarScreen(
             members = members,
             hasSeries = matchingSeries.size > 1,
             onDismiss = { editEvent = null },
-            onSave = { title, date, time, endTime, memberId, isReminder, editScope ->
+            onSave = { title, date, time, endTime, memberId, entryKind, editScope ->
                 val session = currentFamilySession(context)
                 if (session != null) {
                     scope.launch {
@@ -500,13 +495,7 @@ internal fun ExactCalendarScreen(
                                     time,
                                     endTime,
                                     memberId,
-                                    source =
-                                        when {
-                                            isReminder && time.isBlank() -> "reminder_no_time"
-                                            isReminder -> "reminder"
-                                            time.isBlank() -> "manual_no_time"
-                                            else -> "manual"
-                                        },
+                                    source = calendarEventSource(entryKind, time.isNotBlank()),
                                 )
                                 when {
                                     event.seriesId == null -> Unit
@@ -881,19 +870,26 @@ internal fun EditEventDialog(
     members: List<SyncMember>,
     hasSeries: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, LocalDate, String, String?, String?, Boolean, SeriesEditScope) -> Unit,
+    onSave: (String, LocalDate, String, String?, String?, CalendarEntryKind, SeriesEditScope) -> Unit,
     onDelete: (SeriesEditScope) -> Unit,
 ) {
     val context = LocalContext.current
     val birthday = isBirthdayEvent(event)
     val canModify = event.source != "sportadmin"
-    var isReminder by remember(event.id) {
+    var entryKind by remember(event.id) {
         mutableStateOf(
-            event.source.lowercase().contains("reminder") || event.title.trimStart().startsWith("🔔")
+            when {
+                isLaundryEvent(event) -> CalendarEntryKind.LAUNDRY
+                event.source.lowercase().contains("reminder") ||
+                    event.title.trimStart().startsWith("🔔") -> CalendarEntryKind.REMINDER
+                else -> CalendarEntryKind.ACTIVITY
+            }
         )
     }
+    val isReminder = entryKind == CalendarEntryKind.REMINDER
+    val isLaundry = entryKind == CalendarEntryKind.LAUNDRY
     var title by remember(event.id) {
-        mutableStateOf(event.title.removePrefix("🌈").removePrefix("🔔").trim())
+        mutableStateOf(event.title.removePrefix("🌈").removePrefix("🔔").removePrefix("🧺").trim())
     }
     var date by remember(event.id) { mutableStateOf(event.date) }
     var hasTime by remember(event.id) { mutableStateOf(event.time.isNotBlank()) }
@@ -951,6 +947,7 @@ internal fun EditEventDialog(
                     when {
                         birthday -> "Redigera födelsedag"
                         isReminder -> "Redigera påminnelse"
+                        isLaundry -> "Redigera tvätt"
                         else -> "Redigera aktivitet"
                     },
                     color = Color.White,
@@ -996,7 +993,8 @@ internal fun EditEventDialog(
                                 when {
                                     birthday -> "Namn"
                                     isReminder -> "Påminnelse"
-                                    else -> "Aktivitet"
+                                    isLaundry -> "Tvätt"
+                                     else -> "Aktivitet"
                                 }
                             )
                         },
@@ -1006,73 +1004,33 @@ internal fun EditEventDialog(
                     )
 
                     if (!birthday) {
-                        Text(
-                            "Typ",
-                            color = muted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Surface(
-                                color =
-                                    if (!isReminder) accent.copy(alpha = .14f)
-                                    else innerColor,
-                                shape = RoundedCornerShape(16.dp),
-                                border =
-                                    BorderStroke(
-                                        1.dp,
-                                        if (!isReminder) accent.copy(alpha = .55f) else outline,
-                                    ),
-                                modifier =
-                                    Modifier.weight(1f).clickable {
-                                        isReminder = false
+                        Text("Typ", color = muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            listOf(
+                                CalendarEntryKind.ACTIVITY to "Aktivitet",
+                                CalendarEntryKind.REMINDER to "Påminnelse",
+                                CalendarEntryKind.LAUNDRY to "Tvätt",
+                            ).forEach { (option, label) ->
+                                val selected = entryKind == option
+                                Surface(
+                                    color = if (selected) accent.copy(alpha = .17f) else innerColor,
+                                    shape = RoundedCornerShape(13.dp),
+                                    border = BorderStroke(1.dp, if (selected) accent.copy(alpha = .65f) else outline),
+                                    modifier = Modifier.weight(1f).clickable {
+                                        if (entryKind == CalendarEntryKind.LAUNDRY &&
+                                            option != CalendarEntryKind.LAUNDRY &&
+                                            title.trim().equals("Tvätt", ignoreCase = true)
+                                        ) title = ""
+                                        entryKind = option
+                                        if (option == CalendarEntryKind.REMINDER) endTime = ""
+                                        if (option == CalendarEntryKind.LAUNDRY && title.isBlank()) title = "Tvätt"
                                     },
-                            ) {
-                                Column(Modifier.padding(13.dp)) {
+                                ) {
                                     Text(
-                                        "Aktivitet",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    Text(
-                                        "Kan krocka med andra aktiviteter",
-                                        color = muted,
-                                        fontSize = 9.sp,
-                                        lineHeight = 13.sp,
-                                    )
-                                }
-                            }
-                            Surface(
-                                color =
-                                    if (isReminder) Color(0xFF8FB8FF).copy(alpha = .14f)
-                                    else innerColor,
-                                shape = RoundedCornerShape(16.dp),
-                                border =
-                                    BorderStroke(
-                                        1.dp,
-                                        if (isReminder) Color(0xFF8FB8FF).copy(alpha = .55f)
-                                        else outline,
-                                    ),
-                                modifier =
-                                    Modifier.weight(1f).clickable {
-                                        isReminder = true
-                                        endTime = ""
-                                    },
-                            ) {
-                                Column(Modifier.padding(13.dp)) {
-                                    Text(
-                                        "Påminnelse",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    Text(
-                                        "Räknas aldrig som kalenderkrock",
-                                        color = muted,
-                                        fontSize = 9.sp,
-                                        lineHeight = 13.sp,
+                                        label, color = Color.White, fontSize = 12.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 13.dp),
                                     )
                                 }
                             }
@@ -1307,7 +1265,7 @@ internal fun EditEventDialog(
                             ),
                     ) {
                         Text(
-                            if (isReminder) "Ta bort påminnelse" else "Ta bort aktivitet",
+                            when { isReminder -> "Ta bort påminnelse"; isLaundry -> "Ta bort tvätt"; else -> "Ta bort aktivitet" },
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
@@ -1323,13 +1281,13 @@ internal fun EditEventDialog(
                             when {
                                 birthday -> "🌈 " + title.trim()
                                 isReminder -> "🔔 " + title.removePrefix("🔔").trim()
-                                else -> title.removePrefix("🔔").trim()
+                                else -> title.removePrefix("🔔").removePrefix("🧺").trim()
                             },
                             date,
                             if (hasTime) time else "",
                             if (!hasTime || isReminder) null else endTime.ifBlank { null },
                             memberId,
-                            isReminder,
+                            entryKind,
                             editScope,
                         )
                     },
@@ -1356,6 +1314,7 @@ internal fun EditEventDialog(
                 Text(
                     if (hasSeries) "Vad vill du ta bort?"
                     else if (isReminder) "Ta bort påminnelse?"
+                    else if (isLaundry) "Ta bort tvätt?"
                     else "Ta bort aktivitet?",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
