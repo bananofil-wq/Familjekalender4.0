@@ -99,7 +99,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                     today -> "Idag"
                     today.plusDays(1) -> "Imorgon"
                     else -> date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
-                        .replaceFirstChar { it.uppercase(Locale("sv", "SE")) }
+                        .replaceFirstChar { it.uppercase() }
                 }
                 val count = dayRows.size
                 val activityCount = if (count == 1) "1 aktivitet" else "$count aktiviteter"
