@@ -68,7 +68,7 @@ private data class MaterialTimePickerRequest(
 
 private fun isLaundryEvent(event: SyncEvent): Boolean {
     val title = event.title.trim()
-    return title.startsWith("🧺") || title.equals("Tvätt", ignoreCase = true)
+    return title.startsWith("🧺") || title.contains("tvätt", ignoreCase = true)
 }
 
 private fun displayEventTitle(event: SyncEvent): String =
@@ -330,7 +330,13 @@ internal fun ExactCalendarScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("🧺 Tvätt")
+                        Image(
+                            painter = painterResource(R.drawable.ic_laundry_machine),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Tvätt")
                     }
                     OutlinedButton(
                         onClick = {
@@ -711,7 +717,11 @@ private fun DayOverviewPopup(
                                                     )
 
                                                 laundry ->
-                                                    Text("🧺", fontSize = 20.sp, lineHeight = 22.sp)
+                                                    Image(
+                                                        painter = painterResource(R.drawable.ic_laundry_machine),
+                                                        contentDescription = "Tvätt",
+                                                        modifier = Modifier.size(22.dp),
+                                                    )
 
                                                 allFamily ->
                                                     Text(
@@ -1631,7 +1641,11 @@ private fun MonthPanel(
                                                     )
 
                                                 isLaundryEvent(event) ->
-                                                    Text("🧺", fontSize = 14.sp, lineHeight = 16.sp)
+                                                    Image(
+                                                        painter = painterResource(R.drawable.ic_laundry_machine),
+                                                        contentDescription = "Tvätt",
+                                                        modifier = Modifier.size(17.dp),
+                                                    )
 
                                                 event.memberId == ALL_FAMILY_MEMBER_ID ->
                                                     Text(
@@ -1754,11 +1768,10 @@ private fun DayPanel(
                                     modifier = Modifier.width(32.dp),
                                 )
                             } else if (laundry) {
-                                Text(
-                                    "🧺",
-                                    fontSize = 20.sp,
-                                    lineHeight = 24.sp,
-                                    modifier = Modifier.width(32.dp),
+                                Image(
+                                    painter = painterResource(R.drawable.ic_laundry_machine),
+                                    contentDescription = "Tvätt",
+                                    modifier = Modifier.size(width = 32.dp, height = 24.dp),
                                 )
                             } else if (allFamily) {
                                 Text(

@@ -711,7 +711,7 @@ private fun SyncedApp(
                                         showAddEvent = true
                                     },
                                     onAddLaundry = {
-                                        addEventInitialTitle = "🧺 Tvätt"
+                                        addEventInitialTitle = "Tvätt"
                                         showAddEvent = true
                                     },
                                     onOpenSettings = { selectedTab = 4 },

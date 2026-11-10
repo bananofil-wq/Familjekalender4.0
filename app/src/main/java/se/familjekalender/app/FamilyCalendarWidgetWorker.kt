@@ -167,7 +167,11 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     .put("date", date.toString())
                     .put("memberKey", memberKey)
                     .put("who", who)
-                    .put("activity", widgetActivityIcon(activity) + "  " + activity)
+                    .put("activity", if (activity.contains("tvätt", ignoreCase = true)) {
+                            activity.removePrefix("🧺").trimStart()
+                        } else {
+                            widgetActivityIcon(activity) + "  " + activity
+                        })
                     .put("time", timeTextOrNull(event).orEmpty())
             )
         }
@@ -217,7 +221,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
         endTime: String?,
         who: String,
     ): String {
-        var cleaned = title.removePrefix("🌈").trim()
+        var cleaned = title.removePrefix("🌈").removePrefix("🧺").trim()
         if (cleaned.startsWith(who, ignoreCase = true)) {
             cleaned = cleaned.drop(who.length).trimStart()
             cleaned = cleaned.trimStart('•', '·', '|', ':', '-', '–').trimStart()
@@ -250,7 +254,6 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
     private fun widgetActivityIcon(title: String): String {
         val value = title.lowercase()
         return when {
-            "tvätt" in value -> "🧺"
             "jobb" in value || "arbete" in value -> "💼"
             "skola" in value || "förskola" in value -> "🎓"
             "träning" in value || "innebandy" in value || "handboll" in value -> "🏃"

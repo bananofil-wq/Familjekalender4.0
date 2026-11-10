@@ -20,6 +20,16 @@
         android:textStyle="bold"
         android:maxLines="2" />
 
+    <ImageView
+        android:id="@+id/widget_item_laundry_icon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="3dp"
+        android:contentDescription="Tvätt"
+        android:src="@drawable/ic_laundry_machine"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/widget_item_activity"
         android:layout_width="0dp"

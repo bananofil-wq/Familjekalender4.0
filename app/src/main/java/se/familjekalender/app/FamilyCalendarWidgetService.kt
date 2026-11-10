@@ -175,7 +175,16 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                 is Item.Event ->
                     RemoteViews(context.packageName, R.layout.widget_event_item).apply {
                         setTextViewText(R.id.widget_item_who, item.who)
-                        setTextViewText(R.id.widget_item_activity, item.activity)
+                        val laundry = item.activity.contains("tvätt", ignoreCase = true)
+                        setTextViewText(
+                            R.id.widget_item_activity,
+                            if (laundry) item.activity.replace(Regex("^(\\s*🧺\\s*)+"), "").trimStart()
+                            else item.activity,
+                        )
+                        setViewVisibility(
+                            R.id.widget_item_laundry_icon,
+                            if (laundry) android.view.View.VISIBLE else android.view.View.GONE,
+                        )
                         setTextViewText(R.id.widget_item_time, item.time)
                         WidgetThemeColors.applyEvent(context, this)
 
