@@ -43,18 +43,6 @@ data class SportAdminImportResult(
             }
 }
 
-data class MailOffer(
-    val id: String,
-    val store: String,
-    val productName: String,
-    val normalizedProduct: String,
-    val price: Double,
-    val unitText: String?,
-    val validUntil: LocalDate?,
-    val sourceSubject: String?,
-    val createdAt: String?,
-)
-
 data class SyncEvent(
     val id: String,
     val title: String,
@@ -360,6 +348,7 @@ object SupabaseSync {
         endTime: String?,
         memberId: String?,
         seriesId: String? = null,
+        source: String = "manual",
     ) =
         withContext(Dispatchers.IO) {
             val noTime = startTime.isBlank()
@@ -372,7 +361,10 @@ object SupabaseSync {
                     .put("family_id", session.id)
                     .put("title", title)
                     .put("starts_at", starts.toOffsetDateTime().toString())
-                    .put("source", if (noTime) "manual_no_time" else "manual")
+                    .put("source", calendarEventSource(
+                        if (source == "laundry") CalendarEntryKind.LAUNDRY else CalendarEntryKind.ACTIVITY,
+                        !noTime,
+                    ))
             val parsedEnd =
                 if (noTime) null
                 else endTime?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
@@ -597,51 +589,6 @@ object SupabaseSync {
             )
         }
 
-    suspend fun loadMailOffers(session: FamilySession): List<MailOffer> =
-        withContext(Dispatchers.IO) {
-            val result =
-                request(
-                    "GET",
-                    "/rest/v1/mail_offers?select=id,store,product_name,normalized_product,price,unit_text,valid_until,source_subject,created_at&family_id=eq.${session.id}&order=created_at.desc&limit=200",
-                    familyCode = session.code,
-                )
-            val array = JSONArray(result)
-            buildList {
-                repeat(array.length()) {
-                    val row = array.getJSONObject(it)
-                    val validUntil =
-                        if (row.isNull("valid_until")) null
-                        else
-                            runCatching { LocalDate.parse(row.getString("valid_until")) }
-                                .getOrNull()
-                    if (validUntil == null || !validUntil.isBefore(LocalDate.now())) {
-                        add(
-                            MailOffer(
-                                id = row.getString("id"),
-                                store = row.optString("store", "Butik"),
-                                productName = row.optString("product_name"),
-                                normalizedProduct = row.optString("normalized_product"),
-                                price = row.optDouble("price"),
-                                unitText =
-                                    row.optString("unit_text").takeIf {
-                                        it.isNotBlank() && it != "null"
-                                    },
-                                validUntil = validUntil,
-                                sourceSubject =
-                                    row.optString("source_subject").takeIf {
-                                        it.isNotBlank() && it != "null"
-                                    },
-                                createdAt =
-                                    row.optString("created_at").takeIf {
-                                        it.isNotBlank() && it != "null"
-                                    },
-                            )
-                        )
-                    }
-                }
-            }
-        }
-
     suspend fun loadShoppingInterestTerms(session: FamilySession): List<String> =
         withContext(Dispatchers.IO) {
             val names = linkedSetOf<String>()
@@ -682,68 +629,6 @@ object SupabaseSync {
                 }
             }
             names.toList()
-        }
-
-    suspend fun upsertMailOffer(
-        session: FamilySession,
-        store: String,
-        productName: String,
-        normalizedProduct: String,
-        price: Double,
-        unitText: String?,
-        validUntil: LocalDate?,
-        sourceSubject: String?,
-        sourceMessageId: String,
-    ) =
-        withContext(Dispatchers.IO) {
-            val body =
-                JSONObject()
-                    .put("family_id", session.id)
-                    .put("store", store.take(120))
-                    .put("product_name", productName.take(200))
-                    .put("normalized_product", normalizedProduct.take(200))
-                    .put("price", price)
-                    .put("source_message_id", sourceMessageId.take(200))
-            if (!unitText.isNullOrBlank()) body.put("unit_text", unitText.take(40))
-            if (validUntil != null) body.put("valid_until", validUntil.toString())
-            if (!sourceSubject.isNullOrBlank()) body.put("source_subject", sourceSubject.take(300))
-            request(
-                "POST",
-                "/rest/v1/mail_offers?on_conflict=family_id,source_message_id,normalized_product,price",
-                body,
-                session.code,
-                preferRepresentation = false,
-                preferExtra = "resolution=merge-duplicates",
-            )
-        }
-
-    suspend fun upsertMailEvent(
-        session: FamilySession,
-        externalId: String,
-        title: String,
-        startsAt: OffsetDateTime,
-        endsAt: OffsetDateTime?,
-        location: String?,
-    ) =
-        withContext(Dispatchers.IO) {
-            val body =
-                JSONObject()
-                    .put("family_id", session.id)
-                    .put("title", title.ifBlank { "Mailinbjudan" }.take(300))
-                    .put("starts_at", startsAt.toString())
-                    .put("source", "mail")
-                    .put("external_id", externalId.take(200))
-                    .put("member_id", JSONObject.NULL)
-            if (endsAt != null && endsAt.isAfter(startsAt)) body.put("ends_at", endsAt.toString())
-            if (!location.isNullOrBlank()) body.put("location", location.take(400))
-            request(
-                "POST",
-                "/rest/v1/calendar_events?on_conflict=family_id,source,external_id",
-                body,
-                session.code,
-                preferRepresentation = false,
-                preferExtra = "resolution=merge-duplicates",
-            )
         }
 
     private fun normalizeShoppingName(value: String): String =

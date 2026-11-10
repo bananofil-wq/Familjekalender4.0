@@ -554,10 +554,23 @@ private fun SyncedApp(
         }
     }
 
+    // Stop retired mail jobs and remove local mail login data on upgraded devices.
+    LaunchedEffect(Unit) {
+        val work = androidx.work.WorkManager.getInstance(context)
+        work.cancelUniqueWork("familjekalender_mail_sync")
+        work.cancelUniqueWork("familjekalender_mail_sync_now")
+        context.getSharedPreferences("familjekalender_mail_accounts", Context.MODE_PRIVATE)
+            .edit().clear().apply()
+        runCatching {
+            val keys = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            if (keys.containsAlias("familjekalender_mail_accounts_v1")) {
+                keys.deleteEntry("familjekalender_mail_accounts_v1")
+            }
+        }
+    }
+
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(session.id, sportUrl, sportMemberId, lifecycle) {
-        MailSyncScheduler.schedule(context)
-
         suspend fun syncExternalCalendars() {
             if (sportUrl.isNotBlank()) {
                 runCatching { SupabaseSync.importSportAdmin(session, sportUrl, sportMemberId) }
@@ -947,7 +960,7 @@ private fun SyncedApp(
             members = members,
             hasSeries = matchingSeries.size > 1,
             onDismiss = { editEvent = null },
-            onSave = { title, date, time, endTime, memberId, isReminder, editScope ->
+            onSave = { title, date, time, endTime, memberId, entryKind, editScope ->
                 scope.launch {
                     val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
                     val targets =
@@ -979,13 +992,7 @@ private fun SyncedApp(
                                 time,
                                 endTime,
                                 memberId,
-                                source =
-                                    when {
-                                        isReminder && time.isBlank() -> "reminder_no_time"
-                                        isReminder -> "reminder"
-                                        time.isBlank() -> "manual_no_time"
-                                        else -> "manual"
-                                    },
+                                source = calendarEventSource(entryKind, time.isNotBlank()),
                             )
                             when {
                                 event.seriesId == null -> Unit
@@ -1053,10 +1060,10 @@ private fun SyncedApp(
                                         memberId,
                                         dates,
                                         birthday,
-                                        reminder,
+                                        entryKind,
                                         recurrence ->
             scope.launch {
-                if (reminder) {
+                if (entryKind == CalendarEntryKind.REMINDER) {
                     val targetDates =
                         if (recurrence == RecurrenceMode.NONE) {
                             dates.sorted()
@@ -1119,6 +1126,7 @@ private fun SyncedApp(
                             endTime,
                             memberId,
                             seriesId,
+                            source = if (entryKind == CalendarEntryKind.LAUNDRY) "laundry" else "manual",
                         )
                     }
                 }
@@ -2517,8 +2525,6 @@ private fun SettingsScreen(
     }
 
     Spacer(Modifier.height(14.dp))
-    MailSettingsCard(session)
-    Spacer(Modifier.height(14.dp))
     AppUpdateSettingsCard()
     Spacer(Modifier.height(52.dp))
 }
@@ -2964,7 +2970,7 @@ private fun AddEventDialog(
     lightStyle: Boolean = false,
     nordicDarkStyle: Boolean = false,
     onDismiss: () -> Unit,
-    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, Boolean, RecurrenceMode) -> Unit,
+    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, CalendarEntryKind, RecurrenceMode) -> Unit,
 ) {
     val context = LocalContext.current
     val dialogBackground =
@@ -3013,7 +3019,14 @@ private fun AddEventDialog(
     var showEndTimePicker by remember { mutableStateOf(false) }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
     var isBirthday by remember { mutableStateOf(false) }
-    var isReminder by remember { mutableStateOf(false) }
+    var entryKind by remember(initialTitle) {
+        mutableStateOf(
+            if (initialTitle.trim().equals("Tvätt", ignoreCase = true)) CalendarEntryKind.LAUNDRY
+            else CalendarEntryKind.ACTIVITY
+        )
+    }
+    val isReminder = entryKind == CalendarEntryKind.REMINDER
+    val isLaundry = entryKind == CalendarEntryKind.LAUNDRY
     var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }
     val dates = remember { mutableStateListOf(selectedDate) }
 
@@ -3076,7 +3089,14 @@ private fun AddEventDialog(
         titleContentColor = dialogText,
         textContentColor = dialogText,
         title = {
-            Text(when { isBirthday -> "Ny födelsedag"; isReminder -> "Ny påminnelse"; else -> "Ny aktivitet" }, fontWeight = FontWeight.Bold)
+            Text(
+                when {
+                    isBirthday -> "Ny födelsedag"
+                    isReminder -> "Ny påminnelse"
+                    isLaundry -> "Ny tvätt"
+                    else -> "Ny aktivitet"
+                }, fontWeight = FontWeight.Bold
+            )
         },
         text = {
             CompositionLocalProvider(LocalContentColor provides dialogText) {
@@ -3084,7 +3104,10 @@ private fun AddEventDialog(
                 Row(
                     Modifier.fillMaxWidth().clickable {
                         isBirthday = !isBirthday
-                        if (isBirthday) recurrence = RecurrenceMode.NONE
+                        if (isBirthday) {
+                            recurrence = RecurrenceMode.NONE
+                            entryKind = CalendarEntryKind.ACTIVITY
+                        }
                         if (isBirthday && dates.size > 1) {
                             val first = dates.first()
                             dates.clear()
@@ -3097,7 +3120,10 @@ private fun AddEventDialog(
                         isBirthday,
                         { checked ->
                             isBirthday = checked
-                            if (checked) recurrence = RecurrenceMode.NONE
+                            if (checked) {
+                                recurrence = RecurrenceMode.NONE
+                                entryKind = CalendarEntryKind.ACTIVITY
+                            }
                             if (checked && dates.size > 1) {
                                 val first = dates.first()
                                 dates.clear()
@@ -3108,35 +3134,49 @@ private fun AddEventDialog(
                     Text("Födelsedag – upprepas varje år")
                 }
 
-                Row(
-                    Modifier.fillMaxWidth().clickable {
-                        isReminder = !isReminder
-                        if (isReminder) {
-                            isBirthday = false
-                            if (dates.size > 1) {
-                                val first = dates.first()
-                                dates.clear()
-                                dates.add(first)
+                if (!isBirthday) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Typ av händelse", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        listOf(
+                            CalendarEntryKind.ACTIVITY to "Aktivitet",
+                            CalendarEntryKind.REMINDER to "Påminnelse",
+                            CalendarEntryKind.LAUNDRY to "Tvätt",
+                        ).forEach { (option, label) ->
+                            val selected = entryKind == option
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selected) dialogAccent.copy(alpha = .18f) else dialogField,
+                                border = BorderStroke(1.dp, if (selected) dialogAccent else dialogBorder),
+                                modifier = Modifier.weight(1f).clickable {
+                                    if (entryKind == CalendarEntryKind.LAUNDRY &&
+                                        option != CalendarEntryKind.LAUNDRY &&
+                                        title.trim().equals("Tvätt", ignoreCase = true)
+                                    ) title = ""
+                                    entryKind = option
+                                    if (option == CalendarEntryKind.LAUNDRY && title.isBlank()) title = "Tvätt"
+                                },
+                            ) {
+                                Text(
+                                    label,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 2.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                )
                             }
                         }
-                    },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(
-                        isReminder,
-                        { checked ->
-                            isReminder = checked
-                            if (checked) {
-                                isBirthday = false
-                                if (dates.size > 1) {
-                                    val first = dates.first()
-                                    dates.clear()
-                                    dates.add(first)
-                                }
-                            }
+                    }
+                    Text(
+                        when (entryKind) {
+                            CalendarEntryKind.ACTIVITY -> "En aktivitet kan varna för tidskrockar."
+                            CalendarEntryKind.REMINDER -> "Påminnelser räknas inte som kalenderkrockar."
+                            CalendarEntryKind.LAUNDRY -> "Tvätt får en tvättmaskinsikon i kalendern och widgeten."
                         },
+                        color = dialogMuted,
+                        fontSize = 11.sp,
                     )
-                    Text("Påminnelse – krockar inte med aktiviteter")
                 }
 
                 if (!isBirthday) {
@@ -3159,7 +3199,7 @@ private fun AddEventDialog(
                 OutlinedTextField(
                     title,
                     { title = it },
-                    label = { Text(when { isBirthday -> "Namn"; isReminder -> "Påminnelse"; else -> "Aktivitet" }) },
+                    label = { Text(when { isBirthday -> "Namn"; isReminder -> "Påminnelse"; isLaundry -> "Tvätt"; else -> "Aktivitet" }) },
                     modifier = Modifier.fillMaxWidth(),
                     colors =
                         OutlinedTextFieldDefaults.colors(
@@ -3364,7 +3404,7 @@ private fun AddEventDialog(
                         memberId,
                         dates.toList(),
                         isBirthday,
-                        isReminder,
+                        entryKind,
                         recurrence,
                     )
                 },

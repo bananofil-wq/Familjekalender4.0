@@ -99,6 +99,8 @@ private fun cleanEventTitle(event: SyncEvent): String =
         .replace(EmbeddedTimeRange, "")
         .replace(Regex("""\s*·\s*·\s*"""), " · ")
         .trim()
+        .removePrefix("🧺")
+        .trim()
         .trim('·', '-', ' ')
 
 private fun cleanEventTime(event: SyncEvent): String =
@@ -975,11 +977,19 @@ internal fun MinimalCalendarScreen(
                                                                         )
                                                                 )
                                                             }
-                                                            Box(
-                                                                Modifier.size(10.dp)
-                                                                    .clip(CircleShape)
-                                                                    .background(accent)
-                                                            )
+                                                            if (isLaundryEvent(event)) {
+                                                                 Image(
+                                                                     painter = painterResource(R.drawable.ic_laundry_machine),
+                                                                     contentDescription = "Tvätt",
+                                                                     modifier = Modifier.size(18.dp),
+                                                                 )
+                                                             } else {
+                                                                 Box(
+                                                                     Modifier.size(10.dp)
+                                                                         .clip(CircleShape)
+                                                                         .background(accent)
+                                                                 )
+                                                             }
                                                         }
                                                         Spacer(Modifier.width(7.dp))
                                                         Column(Modifier.weight(1f)) {
@@ -1897,6 +1907,7 @@ private fun NordicAgendaRow(
             event.memberId == ALL_FAMILY_MEMBER_ID -> "Hela familjen"
             member != null -> member.name
             isCleanReminderEvent(event) -> "Påminnelse"
+            isLaundryEvent(event) -> "Tvätt"
             else -> "Familjen"
         }
 
@@ -1922,12 +1933,20 @@ private fun NordicAgendaRow(
             Modifier.size(34.dp).clip(CircleShape).background(accent.copy(alpha = .14f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                Icons.Default.CalendarMonth,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(18.dp),
-            )
+            if (isLaundryEvent(event)) {
+                Image(
+                    painter = painterResource(R.drawable.ic_laundry_machine),
+                    contentDescription = "Tvätt",
+                    modifier = Modifier.size(21.dp),
+                )
+            } else {
+                Icon(
+                    Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
@@ -2638,6 +2657,14 @@ private fun CleanSummaryEventRow(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                 )
+            }
+            if (isLaundryEvent(event)) {
+                Image(
+                    painter = painterResource(R.drawable.ic_laundry_machine),
+                    contentDescription = "Tvätt",
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(6.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(

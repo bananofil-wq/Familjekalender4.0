@@ -162,16 +162,17 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             val memberKey = event.memberId ?: ALL_FAMILY_MEMBER_ID
             val who = memberName(memberKey, members)
             val activity = cleanActivityTitle(event.title, event.time, event.endTime, who)
+            val laundry = isLaundryEvent(event)
+            val displayActivity =
+                if (laundry) activity.removePrefix("🧺").trimStart()
+                else widgetActivityIcon(activity) + "  " + activity
             put(
                 JSONObject()
                     .put("date", date.toString())
                     .put("memberKey", memberKey)
                     .put("who", who)
-                    .put("activity", if (activity.contains("tvätt", ignoreCase = true)) {
-                            activity.removePrefix("🧺").trimStart()
-                        } else {
-                            widgetActivityIcon(activity) + "  " + activity
-                        })
+                    .put("activity", displayActivity)
+                    .put("laundry", laundry)
                     .put("time", timeTextOrNull(event).orEmpty())
             )
         }
