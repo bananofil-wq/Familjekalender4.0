@@ -26,7 +26,6 @@ class FamilyCalendarWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { appWidgetId ->
             val views = baseViews(context, appWidgetId)
-            views.setTextViewText(R.id.widget_status, "Uppdaterar…")
             manager.updateAppWidget(appWidgetId, views)
             manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
         }
@@ -66,12 +65,11 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                         AppWidgetManager.INVALID_APPWIDGET_ID,
                     )
                 val groupKey = intent.getStringExtra(EXTRA_GROUP_KEY)
-                if (
-                    intent.getStringExtra(EXTRA_ITEM_ACTION) == ITEM_ACTION_TOGGLE &&
-                    appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID &&
-                    !groupKey.isNullOrBlank()
-                ) {
-                    toggleGroup(context, appWidgetId, groupKey)
+                if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID && !groupKey.isNullOrBlank()) {
+                    when (intent.getStringExtra(EXTRA_ITEM_ACTION)) {
+                        ITEM_ACTION_TOGGLE -> toggleGroup(context, appWidgetId, groupKey)
+                        ITEM_ACTION_TOGGLE_DAY -> toggleDay(context, appWidgetId, groupKey)
+                    }
                 }
             }
 
@@ -101,11 +99,16 @@ class FamilyCalendarWidget : AppWidgetProvider() {
         internal const val EXTRA_GROUP_KEY = "group_key"
         internal const val EXTRA_ITEM_ACTION = "item_action"
         internal const val ITEM_ACTION_TOGGLE = "toggle"
+        internal const val ITEM_ACTION_TOGGLE_DAY = "toggle_day"
         internal const val WIDGET_PREFS = "family_calendar_widget"
         private const val IMMEDIATE_WORK_NAME = "family_calendar_widget_refresh"
         private const val PERIODIC_WORK_NAME = "family_calendar_widget_periodic_refresh"
 
         internal fun expandedGroupPrefKey(appWidgetId: Int) = "expanded_group_$appWidgetId"
+
+        internal fun expandedDayPrefKey(appWidgetId: Int) = "expanded_day_$appWidgetId"
+
+        internal fun cachedSummaryPrefKey(appWidgetId: Int) = "cached_summary_$appWidgetId"
 
         internal fun cachedRowsPrefKey(appWidgetId: Int) = "cached_rows_$appWidgetId"
 
@@ -115,7 +118,6 @@ class FamilyCalendarWidget : AppWidgetProvider() {
         fun enqueueRefresh(context: Context) {
             val request =
                 OneTimeWorkRequestBuilder<FamilyCalendarWidgetWorker>()
-                    .setConstraints(networkConstraints())
                     .build()
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(
@@ -140,6 +142,12 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         fun baseViews(context: Context, appWidgetId: Int): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_family_calendar)
+            val summary = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
+                .getString(cachedSummaryPrefKey(appWidgetId), null)
+            val values = summary?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
+            views.setTextViewText(R.id.widget_status, values?.optString("status") ?: "Uppdaterar…")
+            views.setTextViewText(R.id.widget_todo, values?.optString("todo") ?: "✓  To-Do    ›")
+            views.setTextViewText(R.id.widget_shopping, values?.optString("shopping") ?: "🛒  Inköp    ›")
             val today = LocalDate.now()
             val dateText =
                 today
@@ -192,6 +200,15 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 .putString(prefKey, if (current == groupKey) null else groupKey)
                 .apply()
 
+            AppWidgetManager.getInstance(context)
+                .notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
+        }
+
+        private fun toggleDay(context: Context, appWidgetId: Int, dateKey: String) {
+            val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
+            val key = expandedDayPrefKey(appWidgetId)
+            val expanded = prefs.getString(key, null)
+            prefs.edit().putString(key, if (expanded == dateKey) "" else dateKey).apply()
             AppWidgetManager.getInstance(context)
                 .notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
         }
