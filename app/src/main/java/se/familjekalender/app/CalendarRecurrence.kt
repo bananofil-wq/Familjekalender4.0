@@ -5,7 +5,9 @@ import java.time.LocalDate
 enum class RecurrenceMode(val label: String) {
     NONE("Upprepas inte"),
     DAILY("Varje dag"),
+    WEEKDAYS("Varje vardag"),
     WEEKLY("Varje vecka"),
+    BIWEEKLY("Varannan vecka"),
     MONTHLY("Varje månad"),
     YEARLY("Varje år"),
 }
@@ -14,7 +16,12 @@ fun recurringDates(start: LocalDate, mode: RecurrenceMode): List<LocalDate> =
     when (mode) {
         RecurrenceMode.NONE -> listOf(start)
         RecurrenceMode.DAILY -> generateSequence(start) { it.plusDays(1) }.take(366).toList()
+        RecurrenceMode.WEEKDAYS -> generateSequence(start) { it.plusDays(1) }
+            .filter { it.dayOfWeek.value <= 5 }
+            .take(366)
+            .toList()
         RecurrenceMode.WEEKLY -> generateSequence(start) { it.plusWeeks(1) }.take(105).toList()
+        RecurrenceMode.BIWEEKLY -> generateSequence(start) { it.plusWeeks(2) }.take(105).toList()
         RecurrenceMode.MONTHLY -> generateSequence(start) { it.plusMonths(1) }.take(61).toList()
         RecurrenceMode.YEARLY ->
             generateSequence(start) { current ->
