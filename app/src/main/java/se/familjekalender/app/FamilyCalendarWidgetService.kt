@@ -29,6 +29,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             val who: String,
             val activity: String,
             val time: String,
+            val laundry: Boolean,
         )
 
         private sealed interface Item {
@@ -38,6 +39,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                 val who: String,
                 val activity: String,
                 val time: String,
+                val laundry: Boolean = false,
                 val groupKey: String? = null,
                 val canToggle: Boolean = false,
             ) : Item
@@ -76,6 +78,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                             who = obj.optString("who"),
                             activity = obj.optString("activity"),
                             time = obj.optString("time"),
+                            laundry = obj.optBoolean("laundry", false),
                         )
                 }
             }
@@ -119,6 +122,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                                     who = first.who,
                                     activity = first.activity,
                                     time = first.time,
+                                    laundry = first.laundry,
                                 )
                         } else {
                             val groupKey = "$date|${first.memberKey}"
@@ -146,6 +150,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                                             who = "",
                                             activity = event.activity,
                                             time = event.time,
+                                            laundry = event.laundry,
                                         )
                                 }
                             }
@@ -175,7 +180,8 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                 is Item.Event ->
                     RemoteViews(context.packageName, R.layout.widget_event_item).apply {
                         setTextViewText(R.id.widget_item_who, item.who)
-                        val laundry = item.activity.contains("tvätt", ignoreCase = true)
+                        val laundry = item.laundry ||
+                            item.activity.trimStart().startsWith("tvätt", ignoreCase = true)
                         setTextViewText(
                             R.id.widget_item_activity,
                             if (laundry) item.activity.replace(Regex("^(\\s*🧺\\s*)+"), "").trimStart()
