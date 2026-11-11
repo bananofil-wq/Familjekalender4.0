@@ -435,6 +435,24 @@ internal object OfflineMutationQueue {
     }
 
     @Synchronized
+    fun cancelRevisions(
+        session: FamilySession, table: String, targetIds: Set<String>
+    ): Int {
+        val list = rows(session)
+        val remaining = JSONArray()
+        var cancelled = 0
+        for (i in 0 until list.length()) {
+            val entry = list.getJSONObject(i)
+            if (entry.optString("table") == table &&
+                entry.optString("target_id") in targetIds
+            ) cancelled++
+            else remaining.put(entry)
+        }
+        if (cancelled > 0) persist(session, remaining)
+        return cancelled
+    }
+
+    @Synchronized
     fun removeIfUnchanged(session: FamilySession, operation: JSONObject) {
         val opId = operation.optString("id")
         val original = rows(session)
