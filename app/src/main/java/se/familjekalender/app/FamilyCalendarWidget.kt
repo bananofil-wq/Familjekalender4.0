@@ -252,7 +252,7 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val component = ComponentName(context, FamilyCalendarWidget::class.java)
             manager.getAppWidgetIds(component).forEach { appWidgetId ->
                 val views = baseViews(context, appWidgetId)
-                views.setTextViewText(R.id.widget_status, "Uppdaterar…")
+                // Keep existing activities and counts visible during a manual refresh.
                 manager.updateAppWidget(appWidgetId, views)
                 manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
             }
