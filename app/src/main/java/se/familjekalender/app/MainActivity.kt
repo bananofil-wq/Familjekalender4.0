@@ -2508,6 +2508,24 @@ private fun SettingsScreen(
         }
     }
 
+    Spacer(Modifier.height(14.dp))
+    SettingsSectionCard(
+        title = "Familjenotiser",
+        subtitle = "Popup-avisering för nya familjeaktiviteter när Android tillåter det.",
+    ) {
+        Text(
+            "Nya aktiviteter använder en egen högprioriterad aviseringskanal. " +
+                "Android bestämmer om en popup visas utifrån kanalens behörighet och " +
+                "telefonens Stör ej- och aviseringsinställningar.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(9.dp))
+        OutlinedButton(
+            onClick = { openNotificationSettings(context) },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+        ) { Text("Hantera popup och ljud") }
+    }
+
     val notificationPrefs = context.getSharedPreferences("family_calendar", 0)
     val notificationPermissionRequested =
         notificationPrefs.getBoolean("notification_permission_requested", false)
