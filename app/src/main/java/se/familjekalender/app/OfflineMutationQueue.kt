@@ -334,7 +334,7 @@ internal object OfflineMutationQueue {
         }
     }
 
-    private fun hasPendingLocalRevision(session: FamilySession, table: String, id: String): Boolean {
+    fun hasPendingLocalRevision(session: FamilySession, table: String, id: String): Boolean {
         val list = rows(session)
         for (i in 0 until list.length()) {
             val e = list.getJSONObject(i)
@@ -435,6 +435,17 @@ internal object OfflineMutationQueue {
     }
 
     @Synchronized
+    fun removeIfUnchanged(session: FamilySession, operation: JSONObject) {
+        val opId = operation.optString("id")
+        val original = rows(session)
+        val current = (0 until original.length()).mapNotNull { original.optJSONObject(it) }
+            .firstOrNull { it.optString("id") == opId }
+        if (current == null || current.toString() == operation.toString()) {
+            remove(session, opId)
+        }
+    }
+
+    @Synchronized
     fun remove(session: FamilySession, operationId: String) {
         val list = rows(session)
         val remaining = JSONArray()
@@ -492,7 +503,7 @@ internal class OfflineCreateWorker(
                         changes = body,
                     )
                 }
-                OfflineMutationQueue.remove(session, id)
+                OfflineMutationQueue.removeIfUnchanged(session, operation)
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (failure: SupabaseSync.FamilyRevisionConflict) {
