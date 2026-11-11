@@ -66,8 +66,7 @@ internal object OfflineMutationQueue {
     @Synchronized
     private fun rows(session: FamilySession): JSONArray {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return runCatching { JSONArray(prefs.getString(key(session), "[]") ?: "[]") }
-            .getOrDefault(JSONArray())
+        return JSONArray(prefs.getString(key(session), "[]") ?: "[]")
     }
 
     @Synchronized
@@ -111,7 +110,7 @@ internal object OfflineMutationQueue {
                     source = source,
                     endDate = if (noTime) null else ends?.toLocalDate(),
                     endTime = if (noTime) null else ends?.let { "%02d:%02d".format(it.hour, it.minute) },
-                    seriesId = body.optString("series_id").takeIf { it.isNotBlank() },
+                    seriesId = if (body.isNull("series_id")) null else body.optString("series_id").takeIf { it.isNotBlank() },
                 )
                 val old = FamilyOfflineCache.loadEvents(context, session).orEmpty()
                 FamilyOfflineCache.saveEvents(context, session, (old + row).distinctBy { it.id })
@@ -146,6 +145,21 @@ internal object OfflineMutationQueue {
                 }
             }
         }
+    }
+
+    fun pendingEvents(session: FamilySession): List<SyncEvent> {
+        val ids = pending(session, "calendar_events").map { it.optString("id") }.toSet()
+        return FamilyOfflineCache.loadEvents(context, session).orEmpty().filter { it.id in ids }
+    }
+
+    fun pendingShopping(session: FamilySession): List<SyncShoppingItem> {
+        val ids = pending(session, "shopping_items").map { it.optString("id") }.toSet()
+        return FamilyOfflineCache.loadShopping(context, session).orEmpty().filter { it.id in ids }
+    }
+
+    fun pendingTodo(session: FamilySession): List<SyncTodoItem> {
+        val ids = pending(session, "todo_items").map { it.optString("id") }.toSet()
+        return FamilyOfflineCache.loadTodo(context, session).orEmpty().filter { it.id in ids }
     }
 
     @Synchronized
