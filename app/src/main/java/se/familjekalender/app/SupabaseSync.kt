@@ -29,7 +29,7 @@ data class FamilySession(val id: String, val name: String, val code: String)
 
 data class SyncMember(val id: String, val name: String, val role: String, val colorArgb: Long)
 
-data class SyncShoppingItem(val id: String, val name: String, val checked: Boolean)
+data class SyncShoppingItem(val id: String, val name: String, val checked: Boolean, val updatedAt: String? = null)
 
 data class SportAdminImportResult(
     val imported: Int,
@@ -55,6 +55,7 @@ data class SyncEvent(
     val endDate: LocalDate? = null,
     val endTime: String? = null,
     val seriesId: String? = null,
+    val updatedAt: String? = null,
 )
 
 object SupabaseSync {
@@ -149,7 +150,7 @@ object SupabaseSync {
             val result =
                 request(
                     "GET",
-                    "/rest/v1/shopping_items?select=id,name,checked&family_id=eq.${session.id}&order=updated_at.asc",
+                    "/rest/v1/shopping_items?select=id,name,checked,updated_at&family_id=eq.${session.id}&order=updated_at.asc",
                     familyCode = session.code,
                 )
             val array = JSONArray(result)
@@ -161,11 +162,15 @@ object SupabaseSync {
                             row.getString("id"),
                             row.getString("name"),
                             row.getBoolean("checked"),
+                            row.optString("updated_at").takeIf { it.isNotBlank() },
                         )
                     )
                 }
             }.let { cloud ->
-                (cloud + OfflineMutationQueue.pendingShopping(session)).distinctBy { it.id }
+                OfflineMutationQueue.overlayShopping(
+                    session,
+                    (cloud + OfflineMutationQueue.pendingShopping(session)).distinctBy { it.id }
+                )
             }
         }
 
@@ -189,52 +194,33 @@ object SupabaseSync {
 
     suspend fun toggleShopping(session: FamilySession, item: SyncShoppingItem) =
         withContext(Dispatchers.IO) {
-            val body =
-                JSONObject()
-                    .put("checked", !item.checked)
-                    .put("updated_at", OffsetDateTime.now().toString())
-            request(
-                "PATCH",
-                "/rest/v1/shopping_items?id=eq.${item.id}",
-                body,
-                session.code,
-                preferRepresentation = false,
+            // checked false→true is recorded by the database on successful UPDATE.
+            // The trigger also handles a retry after an offline period exactly once.
+            // Older clients use the original history RPC and are excluded from it.
+            submitRevision(
+                session, "shopping_items", item.id, item.updatedAt, "update",
+                JSONObject().put("checked", !item.checked), item.name,
             )
-            if (!item.checked) {
-                val normalized = normalizeShoppingName(item.name)
-                if (normalized.isNotBlank()) {
-                    val historyBody =
-                        JSONObject()
-                            .put("p_family_id", session.id)
-                            .put("p_name", item.name.trim())
-                            .put("p_normalized", normalized)
-                    request(
-                        "POST",
-                        "/rest/v1/rpc/record_shopping_purchase",
-                        historyBody,
-                        session.code,
-                        preferRepresentation = false,
-                    )
-                }
-            }
         }
 
-    suspend fun clearChecked(session: FamilySession) =
-        withContext(Dispatchers.IO) {
-            request(
-                "DELETE",
-                "/rest/v1/shopping_items?family_id=eq.${session.id}&checked=eq.true",
-                familyCode = session.code,
-                preferRepresentation = false,
+    suspend fun clearChecked(
+        session: FamilySession,
+        existing: List<SyncShoppingItem>,
+    ) = withContext(Dispatchers.IO) {
+        existing.filter { it.checked }.forEach { item ->
+            submitRevision(
+                session, "shopping_items", item.id, item.updatedAt, "delete",
+                label = item.name,
             )
         }
+    }
 
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> =
         withContext(Dispatchers.IO) {
             val result =
                 request(
                     "GET",
-                    "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source,series_id&family_id=eq.${session.id}&order=starts_at.asc",
+                    "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source,series_id,updated_at&family_id=eq.${session.id}&order=starts_at.asc",
                     familyCode = session.code,
                 )
             val array = JSONArray(result)
@@ -270,11 +256,15 @@ object SupabaseSync {
                                 else endZoned?.let { "%02d:%02d".format(it.hour, it.minute) },
                             seriesId =
                                 if (row.isNull("series_id")) null else row.getString("series_id"),
+                            updatedAt = row.optString("updated_at").takeIf { it.isNotBlank() },
                         )
                     )
                 }
             }.let { cloud ->
-                (cloud + OfflineMutationQueue.pendingEvents(session)).distinctBy { it.id }
+                OfflineMutationQueue.overlayEvents(
+                    session,
+                    (cloud + OfflineMutationQueue.pendingEvents(session)).distinctBy { it.id }
+                )
             }
         }
 
@@ -381,6 +371,9 @@ object SupabaseSync {
         endTime: String?,
         memberId: String?,
         source: String? = null,
+        expectedUpdatedAt: String? = null,
+        changeSeriesId: Boolean = false,
+        newSeriesId: String? = null,
     ) =
         withContext(Dispatchers.IO) {
             val noTime = time.isBlank()
@@ -402,19 +395,17 @@ object SupabaseSync {
                 JSONObject()
                     .put("title", title)
                     .put("starts_at", startsAt.toOffsetDateTime().toString())
-                    .put("updated_at", OffsetDateTime.now().toString())
+
             if (endsAt == null) body.put("ends_at", JSONObject.NULL)
             else body.put("ends_at", endsAt.toOffsetDateTime().toString())
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
             if (!source.isNullOrBlank()) body.put("source", source)
-            request(
-                "PATCH",
-                "/rest/v1/calendar_events?id=eq.$eventId&family_id=eq.${session.id}",
-                body,
-                session.code,
-                preferRepresentation = false,
+            if (changeSeriesId) body.put("series_id", newSeriesId ?: JSONObject.NULL)
+            submitRevision(
+                session, "calendar_events", eventId, expectedUpdatedAt, "update",
+                body, title,
             )
         }
 
@@ -433,6 +424,45 @@ object SupabaseSync {
                 preferRepresentation = false,
             )
         }
+
+    /**
+     * Undo works both online and offline. Cancel queued deletes, then submit
+     * a stable-ID restoration for each event. Existing rows are never overwritten.
+     */
+    suspend fun undoDeletedEvents(
+        session: FamilySession, snapshots: List<SyncEvent>,
+    ) = withContext(Dispatchers.IO) {
+        val targets = snapshots.distinctBy { it.id }
+        OfflineMutationQueue.cancelRevisions(
+            session, "calendar_events", targets.map { it.id }.toSet()
+        )
+        targets.forEach { event ->
+            val startTime = event.time.takeIf { it.isNotBlank() }
+                ?.let { LocalTime.parse(it) } ?: LocalTime.MIDNIGHT
+            val start = ZonedDateTime.of(event.date, startTime, STOCKHOLM)
+            val row = JSONObject()
+                .put("id", event.id)
+                .put("family_id", session.id)
+                .put("title", event.title)
+                .put("starts_at", start.toOffsetDateTime().toString())
+                .put("source", event.source)
+                .put(
+                    "member_id", event.memberId?.takeUnless {
+                        it == ALL_FAMILY_MEMBER_ID
+                    } ?: JSONObject.NULL,
+                )
+            if (event.endTime?.isNotBlank() == true) {
+                val endTime = LocalTime.parse(event.endTime)
+                val endDate = event.endDate ?: if (endTime.isAfter(startTime)) {
+                    event.date
+                } else event.date.plusDays(1)
+                row.put("ends_at",
+                    ZonedDateTime.of(endDate, endTime, STOCKHOLM).toOffsetDateTime().toString())
+            }
+            event.seriesId?.let { row.put("series_id", it) }
+            submitOfflineCapableCreation(session, "calendar_events", row)
+        }
+    }
 
     /**
      * Restore the exact calendar event IDs after a user taps Undo. Re-inserting
@@ -921,6 +951,119 @@ object SupabaseSync {
         )
     }
 
+    /**
+     * All editing and deletion paths use the same version-checked mutation.
+     * Pending creates can be changed before first sync, while existing records
+     * require updated_at. Server conflicts are never converted into new writes.
+     */
+    internal suspend fun submitRevision(
+        session: FamilySession,
+        table: String,
+        targetId: String,
+        baseUpdatedAt: String?,
+        action: String,
+        changes: JSONObject = JSONObject(),
+        label: String = "",
+    ) = withContext(Dispatchers.IO) {
+        require(table in setOf("calendar_events", "todo_items", "shopping_items"))
+        require(action == "update" || action == "delete")
+        if (OfflineMutationQueue.revisePendingCreate(session, table, targetId, action, changes)) {
+            return@withContext
+        }
+        val version = baseUpdatedAt?.takeIf { it.isNotBlank() }
+            ?: throw FamilyRevisionConflict(
+                "Posten har ingen versionsstämpel. Öppna appen online och försök igen."
+            )
+        if (OfflineMutationQueue.shouldQueue() ||
+            OfflineMutationQueue.hasPendingLocalRevision(session, table, targetId)
+        ) {
+            OfflineMutationQueue.enqueueRevision(
+                session, table, targetId, version, action, changes, label
+            )
+            return@withContext
+        }
+        try {
+            applyCheckedRevision(session, table, targetId, version, action, changes)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (networkFailure: java.io.IOException) {
+            OfflineMutationQueue.markNetworkFailure()
+            OfflineMutationQueue.enqueueRevision(
+                session, table, targetId, version, action, changes, label
+            )
+        }
+    }
+
+    /** Raised when the phone attempts to change data someone else has since edited. */
+    internal class FamilyRevisionConflict(message: String) : IllegalStateException(message)
+
+    /**
+     * Compare-and-swap, enforced by PostgREST using a row's exact updated_at value.
+     * Successful changes advance updated_at through the database trigger. If a response
+     * is lost, inspect the server row before deciding whether retry is safe.
+     */
+    internal suspend fun applyCheckedRevision(
+        session: FamilySession,
+        table: String,
+        targetId: String,
+        expectedUpdatedAt: String,
+        action: String,
+        changes: JSONObject = JSONObject(),
+    ) = withContext(Dispatchers.IO) {
+        require(table in setOf("calendar_events", "todo_items", "shopping_items"))
+        require(action == "update" || action == "delete")
+        require(runCatching { UUID.fromString(targetId) }.isSuccess)
+        require(expectedUpdatedAt.isNotBlank()) {
+            "Versionsinformation saknas. Öppna kalendern med internet och försök igen."
+        }
+        val versionParam = java.net.URLEncoder.encode(
+            expectedUpdatedAt, StandardCharsets.UTF_8.name()
+        )
+        val base = "/rest/v1/$table?id=eq.$targetId&family_id=eq.${session.id}"
+        val conditionalPath = "$base&updated_at=eq.$versionParam"
+        val answer = request(
+            if (action == "delete") "DELETE" else "PATCH",
+            conditionalPath,
+            if (action == "delete") null else changes,
+            session.code,
+            preferRepresentation = true,
+        )
+        if (JSONArray(answer).length() > 0) return@withContext
+
+        // Zero affected rows: either this exact request already succeeded or another
+        // device changed the row. Never retry blindly against the newer revision.
+        val now = JSONArray(request(
+            "GET", "$base&select=*&limit=1", familyCode = session.code
+        ))
+        if (now.length() == 0) {
+            if (action == "delete") return@withContext
+            throw FamilyRevisionConflict("Händelsen har redan tagits bort på en annan telefon.")
+        }
+        if (action == "update" && serverHasChanges(now.getJSONObject(0), changes)) {
+            return@withContext
+        }
+        throw FamilyRevisionConflict(
+            "Ändringen stoppades eftersom någon annan uppdaterat posten. " +
+                "Läs in den senaste versionen innan du försöker igen."
+        )
+    }
+
+    private fun serverHasChanges(server: JSONObject, changes: JSONObject): Boolean {
+        val names = changes.keys()
+        while (names.hasNext()) {
+            val key = names.next()
+            val wanted = changes.opt(key)
+            val actual = server.opt(key)
+            val value = if (wanted == null || wanted == JSONObject.NULL) null
+                else wanted.toString()
+            val current = if (actual == null || actual == JSONObject.NULL) null
+                else actual.toString()
+            val equal = revisionFieldMatches(key, value, current)
+            if (!equal) return false
+        }
+        return true
+    }
+
     private fun request(
         method: String,
         path: String,
@@ -937,6 +1080,9 @@ object SupabaseSync {
             connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
             connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
             connection.setRequestProperty("Content-Type", "application/json")
+            // Signals support for history tracking in the database trigger.
+            // Old installed app versions omit this header and keep using the RPC.
+            connection.setRequestProperty("x-shopping-history-tracking", "server")
             if (!familyCode.isNullOrBlank()) {
                 connection.setRequestProperty("x-family-code", familyCode.uppercase())
             }

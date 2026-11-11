@@ -17,6 +17,7 @@ import org.json.JSONObject
  */
 internal object FamilyEventPopup {
     data class Event(val id: String, val title: String, val message: String)
+    data class FamilyChange(val familyId: String = "", val sequence: Long = 0L)
 
     private const val PREFS = "family_event_popup"
     private const val LEGACY_PENDING = "pending"
@@ -25,6 +26,8 @@ internal object FamilyEventPopup {
     private val queue = mutableListOf<Event>()
     private val pending = MutableStateFlow<Event?>(null)
     val current = pending.asStateFlow()
+    private val changes = MutableStateFlow(FamilyChange())
+    val familyChanges = changes.asStateFlow()
     private lateinit var appContext: Context
 
     @Synchronized
@@ -79,6 +82,14 @@ internal object FamilyEventPopup {
     }
 
     private fun receivePush(data: JSONObject?, notificationId: String, title: String, body: String) {
+        // Any family push can signal changed shared data, including shopping/To-do.
+        // Keep popup dialogs limited to new calendar events as before.
+        val familyId = data?.optString("family_id").orEmpty()
+        if (familyId.isNotBlank()) {
+            synchronized(this) {
+                changes.value = FamilyChange(familyId, changes.value.sequence + 1L)
+            }
+        }
         val type = data?.optString("type").orEmpty()
         if (type != "calendar_event_created" && type != "event_created") return
         val id = data?.optString("event_id").orEmpty()

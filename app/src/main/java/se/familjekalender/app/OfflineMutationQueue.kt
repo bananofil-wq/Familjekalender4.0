@@ -23,9 +23,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Durable, idempotent offline creation queue. Only INSERT operations with client-generated
- * UUIDs are queued; changes/deletes are intentionally NOT silently retried, to avoid
- * replacing another family member's edits with stale offline state.
+ * Durable mutation queue. Creates have stable UUIDs; revisions use the server
+ * updated_at timestamp as a compare-and-swap guard. Conflicts are preserved
+ * for the user to review, never replayed against a newer version blindly.
  */
 internal object OfflineMutationQueue {
     private const val PREFS = "family_offline_mutations"
@@ -98,8 +98,9 @@ internal object OfflineMutationQueue {
         when (table) {
             "calendar_events" -> {
                 val starts = OffsetDateTime.parse(body.getString("starts_at")).atZoneSameInstant(stockholm)
-                val ends = body.optString("ends_at").takeIf { it.isNotBlank() }
-                    ?.let { OffsetDateTime.parse(it).atZoneSameInstant(stockholm) }
+                val ends = if (body.isNull("ends_at")) null else
+                    body.optString("ends_at").takeIf { it.isNotBlank() }
+                        ?.let { OffsetDateTime.parse(it).atZoneSameInstant(stockholm) }
                 val source = body.optString("source", "manual")
                 val noTime = source.contains("no_time", ignoreCase = true)
                 val row = SyncEvent(
@@ -131,6 +132,267 @@ internal object OfflineMutationQueue {
         }
     }
 
+    /**
+     * If the target row was itself created offline, edit its pending insert
+     * instead of generating an update against a server row that does not exist yet.
+     */
+    @Synchronized
+    fun revisePendingCreate(
+        session: FamilySession,
+        table: String,
+        targetId: String,
+        action: String,
+        changes: JSONObject,
+    ): Boolean {
+        val original = rows(session)
+        val updated = JSONArray()
+        var found = false
+        for (i in 0 until original.length()) {
+            val entry = original.getJSONObject(i)
+            if (entry.optString("table") == table &&
+                entry.optString("action", "create") == "create" &&
+                entry.optString("id") == targetId
+            ) {
+                found = true
+                if (action == "update") {
+                    val payload = entry.getJSONObject("body")
+                    val keys = changes.keys()
+                    while (keys.hasNext()) {
+                        val k = keys.next()
+                        payload.put(k, changes.get(k))
+                    }
+                    updated.put(entry)
+                }
+            } else {
+                updated.put(entry)
+            }
+        }
+        if (found) {
+            persist(session, updated)
+            applyLocalRevision(session, table, targetId, action, changes)
+        }
+        return found
+    }
+
+    @Synchronized
+    fun enqueueRevision(
+        session: FamilySession,
+        table: String,
+        targetId: String,
+        expectedUpdatedAt: String,
+        action: String,
+        changes: JSONObject,
+        label: String,
+    ) {
+        require(table in allowedTables && action in setOf("update", "delete"))
+        require(java.util.UUID.fromString(targetId).toString() == targetId)
+        require(expectedUpdatedAt.isNotBlank()) {
+            "Posten saknar version. Synkronisera med internet innan ändring."
+        }
+        if (revisePendingCreate(session, table, targetId, action, changes)) return
+
+        val original = rows(session)
+        val retained = JSONArray()
+        var existing: JSONObject? = null
+        for (i in 0 until original.length()) {
+            val item = original.getJSONObject(i)
+            if (item.optString("table") == table &&
+                item.optString("target_id") == targetId &&
+                item.optString("status", "queued") == "queued"
+            ) existing = item
+            else retained.put(item)
+        }
+        if (existing != null) {
+            require(existing.optString("expected_updated_at") == expectedUpdatedAt) {
+                "Den här posten har redan en väntande ändring."
+            }
+            if (action == "update" && existing.optString("action") == "update") {
+                val previous = existing.getJSONObject("body")
+                val keys = changes.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    previous.put(k, changes.get(k))
+                }
+                existing.put("body", previous)
+            } else {
+                existing.put("body", changes)
+                existing.put("action", action)
+            }
+            retained.put(existing)
+        } else {
+            require(retained.length() < 1000) { "Offlinekön är full." }
+            retained.put(JSONObject()
+                .put("id", UUID.randomUUID().toString())
+                .put("table", table)
+                .put("target_id", targetId)
+                .put("expected_updated_at", expectedUpdatedAt)
+                .put("action", action)
+                .put("body", changes)
+                .put("label", label.take(100))
+                .put("status", "queued"))
+        }
+        persist(session, retained)
+        applyLocalRevision(session, table, targetId, action, changes)
+        schedule()
+    }
+
+    @Synchronized
+    fun blocked(session: FamilySession): List<JSONObject> {
+        val list = rows(session)
+        return buildList {
+            for (i in 0 until list.length()) {
+                val item = list.getJSONObject(i)
+                if (item.optString("status", "queued") == "blocked") add(item)
+            }
+        }
+    }
+
+    @Synchronized
+    fun markBlocked(session: FamilySession, operationId: String, reason: String) {
+        val list = rows(session)
+        for (i in 0 until list.length()) {
+            val item = list.getJSONObject(i)
+            if (item.optString("id") == operationId) {
+                item.put("status", "blocked").put("reason", reason.take(250))
+                break
+            }
+        }
+        persist(session, list)
+    }
+
+    private fun persist(session: FamilySession, entries: JSONArray) {
+        val ok = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(key(session), entries.toString()).commit()
+        check(ok) { "Kunde inte spara offlineändringen på telefonen." }
+    }
+
+    private fun applyLocalRevision(
+        session: FamilySession, table: String, targetId: String,
+        action: String, changes: JSONObject
+    ) {
+        when (table) {
+            "shopping_items" -> {
+                val rows = FamilyOfflineCache.loadShopping(context, session).orEmpty()
+                val revised = rows.mapNotNull {
+                    if (it.id != targetId) it
+                    else if (action == "delete") null
+                    else it.copy(
+                        name = changes.optString("name", it.name),
+                        checked = if (changes.has("checked")) changes.optBoolean("checked") else it.checked,
+                    )
+                }
+                FamilyOfflineCache.saveShopping(context, session, revised)
+            }
+            "todo_items" -> {
+                val rows = FamilyOfflineCache.loadTodo(context, session).orEmpty()
+                val revised = rows.mapNotNull {
+                    if (it.id != targetId) it
+                    else if (action == "delete") null
+                    else it.copy(
+                        title = changes.optString("title", it.title),
+                        checked = if (changes.has("checked")) changes.optBoolean("checked") else it.checked,
+                        memberId = if (changes.has("member_id")) {
+                            if (changes.isNull("member_id")) null else changes.optString("member_id")
+                        } else it.memberId,
+                    )
+                }
+                FamilyOfflineCache.saveTodo(context, session, revised)
+            }
+            "calendar_events" -> {
+                val rows = FamilyOfflineCache.loadEvents(context, session).orEmpty()
+                val revised = rows.mapNotNull {
+                    if (it.id != targetId) it
+                    else if (action == "delete") null
+                    else {
+                        val start = changes.optString("starts_at").takeIf { it.isNotBlank() }
+                            ?.let { OffsetDateTime.parse(it).atZoneSameInstant(stockholm) }
+                        val end = if (changes.isNull("ends_at")) null
+                            else changes.optString("ends_at").takeIf { it.isNotBlank() }
+                                ?.let { OffsetDateTime.parse(it).atZoneSameInstant(stockholm) }
+                        val noTime = changes.optString("source", it.source).contains("no_time", true)
+                        it.copy(
+                            title = changes.optString("title", it.title),
+                            date = start?.toLocalDate() ?: it.date,
+                            time = if (noTime) "" else start?.let {
+                                "%02d:%02d".format(it.hour, it.minute)
+                            } ?: it.time,
+                            endDate = if (noTime) null else if (changes.has("ends_at")) end?.toLocalDate() else it.endDate,
+                            endTime = if (noTime) null else if (changes.has("ends_at")) end?.let {
+                                "%02d:%02d".format(it.hour, it.minute)
+                            } else it.endTime,
+                            memberId = if (changes.has("member_id")) {
+                                if (changes.isNull("member_id")) ALL_FAMILY_MEMBER_ID else changes.optString("member_id")
+                            } else it.memberId,
+                            source = changes.optString("source", it.source),
+                            seriesId = if (changes.has("series_id")) {
+                                if (changes.isNull("series_id")) null else changes.optString("series_id")
+                            } else it.seriesId,
+                        )
+                    }
+                }
+                FamilyOfflineCache.saveEvents(context, session, revised)
+            }
+        }
+    }
+
+    fun hasPendingLocalRevision(session: FamilySession, table: String, id: String): Boolean {
+        val list = rows(session)
+        for (i in 0 until list.length()) {
+            val e = list.getJSONObject(i)
+            if (e.optString("table") == table &&
+                e.optString("target_id") == id &&
+                e.optString("status", "queued") == "queued") return true
+        }
+        return false
+    }
+
+    fun overlayShopping(session: FamilySession, cloud: List<SyncShoppingItem>): List<SyncShoppingItem> =
+        overlayRevisions(session, "shopping_items", cloud, { it.id }) { original, patch ->
+            original.copy(
+                checked = if (patch.has("checked")) patch.optBoolean("checked") else original.checked,
+                name = patch.optString("name", original.name),
+            )
+        }
+
+    fun overlayTodo(session: FamilySession, cloud: List<SyncTodoItem>): List<SyncTodoItem> =
+        overlayRevisions(session, "todo_items", cloud, { it.id }) { original, patch ->
+            original.copy(
+                checked = if (patch.has("checked")) patch.optBoolean("checked") else original.checked,
+                title = patch.optString("title", original.title),
+                memberId = if (patch.has("member_id")) {
+                    if (patch.isNull("member_id")) null else patch.optString("member_id")
+                } else original.memberId,
+            )
+        }
+
+    fun overlayEvents(session: FamilySession, cloud: List<SyncEvent>): List<SyncEvent> {
+        val localById = FamilyOfflineCache.loadEvents(context, session).orEmpty().associateBy { it.id }
+        return overlayRevisions(session, "calendar_events", cloud, { it.id }) { original, _ ->
+            localById[original.id] ?: original
+        }
+    }
+
+    private fun <T> overlayRevisions(
+        session: FamilySession, table: String, cloud: List<T>, getId: (T) -> String,
+        apply: (T, JSONObject) -> T,
+    ): List<T> {
+        val result = cloud.toMutableList()
+        val list = rows(session)
+        for (i in 0 until list.length()) {
+            val e = list.getJSONObject(i)
+            if (e.optString("table") != table ||
+                e.optString("status", "queued") != "queued") continue
+            when (e.optString("action", "create")) {
+                "delete" -> result.removeAll { getId(it) == e.optString("target_id") }
+                "update" -> {
+                    val position = result.indexOfFirst { getId(it) == e.optString("target_id") }
+                    if (position >= 0) result[position] = apply(result[position], e.getJSONObject("body"))
+                }
+            }
+        }
+        return result
+    }
+
     @Synchronized
     fun pendingCount(session: FamilySession) = rows(session).length()
 
@@ -140,7 +402,8 @@ internal object OfflineMutationQueue {
         return buildList {
             for (i in 0 until list.length()) {
                 val entry = list.optJSONObject(i) ?: continue
-                if (entry.optString("table") == table) {
+                if (entry.optString("table") == table &&
+                    entry.optString("action", "create") == "create") {
                     entry.optJSONObject("body")?.let { add(it) }
                 }
             }
@@ -163,7 +426,43 @@ internal object OfflineMutationQueue {
     }
 
     @Synchronized
-    fun head(session: FamilySession): JSONObject? = rows(session).optJSONObject(0)
+    fun head(session: FamilySession): JSONObject? {
+        val list = rows(session)
+        for (i in 0 until list.length()) {
+            val entry = list.optJSONObject(i) ?: continue
+            if (entry.optString("status", "queued") == "queued") return entry
+        }
+        return null
+    }
+
+    @Synchronized
+    fun cancelRevisions(
+        session: FamilySession, table: String, targetIds: Set<String>
+    ): Int {
+        val list = rows(session)
+        val remaining = JSONArray()
+        var cancelled = 0
+        for (i in 0 until list.length()) {
+            val entry = list.getJSONObject(i)
+            if (entry.optString("table") == table &&
+                entry.optString("target_id") in targetIds
+            ) cancelled++
+            else remaining.put(entry)
+        }
+        if (cancelled > 0) persist(session, remaining)
+        return cancelled
+    }
+
+    @Synchronized
+    fun removeIfUnchanged(session: FamilySession, operation: JSONObject) {
+        val opId = operation.optString("id")
+        val original = rows(session)
+        val current = (0 until original.length()).mapNotNull { original.optJSONObject(it) }
+            .firstOrNull { it.optString("id") == opId }
+        if (current == null || current.toString() == operation.toString()) {
+            remove(session, opId)
+        }
+    }
 
     @Synchronized
     fun remove(session: FamilySession, operationId: String) {
@@ -211,16 +510,28 @@ internal class OfflineCreateWorker(
             val table = operation.optString("table")
             val body = operation.optJSONObject("body") ?: return Result.failure()
             try {
-                SupabaseSync.replayOfflineCreation(session, table, body)
-                OfflineMutationQueue.remove(session, id)
+                if (operation.optString("action", "create") == "create") {
+                    SupabaseSync.replayOfflineCreation(session, table, body)
+                } else {
+                    SupabaseSync.applyCheckedRevision(
+                        session = session,
+                        table = table,
+                        targetId = operation.getString("target_id"),
+                        expectedUpdatedAt = operation.getString("expected_updated_at"),
+                        action = operation.getString("action"),
+                        changes = body,
+                    )
+                }
+                OfflineMutationQueue.removeIfUnchanged(session, operation)
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
+            } catch (failure: SupabaseSync.FamilyRevisionConflict) {
+                OfflineMutationQueue.markBlocked(session, id, failure.message ?: "Ändrad på annan telefon")
             } catch (failure: IOException) {
                 OfflineMutationQueue.markNetworkFailure()
                 return Result.retry()
             } catch (failure: Exception) {
-                // Leave the entry on disk, so the user can resolve a rejected server write.
-                return Result.failure()
+                OfflineMutationQueue.markBlocked(session, id, failure.message ?: "Servern avvisade ändringen")
             }
         }
         return Result.retry()

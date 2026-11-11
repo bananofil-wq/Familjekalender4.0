@@ -42,6 +42,7 @@ data class SyncTodoItem(
     val title: String,
     val checked: Boolean,
     val memberId: String?,
+    val updatedAt: String? = null,
 )
 
 internal object TodoSync {
@@ -49,7 +50,7 @@ internal object TodoSync {
         val result =
             request(
                 "GET",
-                "/rest/v1/todo_items?select=id,title,checked,member_id&family_id=eq.${session.id}&order=updated_at.asc",
+                "/rest/v1/todo_items?select=id,title,checked,member_id,updated_at&family_id=eq.${session.id}&order=updated_at.asc",
                 familyCode = session.code,
             )
         val array = JSONArray(result)
@@ -64,11 +65,14 @@ internal object TodoSync {
                         memberId =
                             if (row.isNull("member_id")) null
                             else row.getString("member_id"),
+                        updatedAt = row.optString("updated_at").takeIf { it.isNotBlank() },
                     )
                 )
             }
         }.let { cloud ->
-            (cloud + OfflineMutationQueue.pendingTodo(session)).distinctBy { it.id }
+            OfflineMutationQueue.overlayTodo(
+                session, (cloud + OfflineMutationQueue.pendingTodo(session)).distinctBy { it.id }
+            )
         }
     }
 
@@ -122,48 +126,34 @@ internal object TodoSync {
         }
     }
 
-    fun toggle(session: FamilySession, item: SyncTodoItem) {
-        request(
-            "PATCH",
-            "/rest/v1/todo_items?id=eq.${item.id}&family_id=eq.${session.id}",
-            JSONObject().put("checked", !item.checked),
-            session.code,
-            preferRepresentation = false,
+    suspend fun toggle(session: FamilySession, item: SyncTodoItem) {
+        SupabaseSync.submitRevision(
+            session, "todo_items", item.id, item.updatedAt, "update",
+            JSONObject().put("checked", !item.checked), item.title,
         )
     }
 
-    fun updateAssignee(session: FamilySession, item: SyncTodoItem, memberId: String?) {
-        val body = JSONObject()
-        if (memberId.isNullOrBlank() || memberId == ALL_FAMILY_MEMBER_ID) {
-            body.put("member_id", JSONObject.NULL)
-        } else {
-            body.put("member_id", memberId)
+    suspend fun updateAssignee(session: FamilySession, item: SyncTodoItem, memberId: String?) {
+        SupabaseSync.submitRevision(
+            session, "todo_items", item.id, item.updatedAt, "update",
+            JSONObject().put(
+                "member_id",
+                memberId?.takeIf { it != ALL_FAMILY_MEMBER_ID } ?: JSONObject.NULL,
+            ), item.title,
+        )
+    }
+
+    suspend fun delete(session: FamilySession, item: SyncTodoItem) {
+        SupabaseSync.submitRevision(
+            session, "todo_items", item.id, item.updatedAt, "delete",
+            label = item.title,
+        )
+    }
+
+    suspend fun clearChecked(session: FamilySession, checkedItems: List<SyncTodoItem>) {
+        checkedItems.filter { it.checked }.forEach { item ->
+            delete(session, item)
         }
-        request(
-            "PATCH",
-            "/rest/v1/todo_items?id=eq.${item.id}&family_id=eq.${session.id}",
-            body,
-            session.code,
-            preferRepresentation = false,
-        )
-    }
-
-    fun delete(session: FamilySession, item: SyncTodoItem) {
-        request(
-            "DELETE",
-            "/rest/v1/todo_items?id=eq.${item.id}&family_id=eq.${session.id}",
-            familyCode = session.code,
-            preferRepresentation = false,
-        )
-    }
-
-    fun clearChecked(session: FamilySession) {
-        request(
-            "DELETE",
-            "/rest/v1/todo_items?family_id=eq.${session.id}&checked=eq.true",
-            familyCode = session.code,
-            preferRepresentation = false,
-        )
     }
 
     private fun request(
@@ -304,7 +294,7 @@ internal fun ToDoScreen(
         saved?.let { items = it }
         refresh()
         while (true) {
-            delay(30L * 60L * 1000L)
+            delay(20_000L)
             refresh()
         }
     }
@@ -641,7 +631,7 @@ internal fun ToDoScreen(
                                         kotlinx.coroutines.withContext(
                                             kotlinx.coroutines.Dispatchers.IO
                                         ) {
-                                            TodoSync.clearChecked(session)
+                                            TodoSync.clearChecked(session, items)
                                         }
                                     }.onFailure {
                                         error = it.message ?: "Kunde inte rensa"

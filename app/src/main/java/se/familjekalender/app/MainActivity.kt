@@ -479,16 +479,22 @@ private fun SyncedApp(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(if (initialTab in 0..5) initialTab else 0) }
 
-    // Android system back should navigate inside the app before closing the activity.
-    BackHandler(enabled = selectedTab != 0) {
-        selectedTab = 0
-    }
-
     LaunchedEffect(initialTab) {
         if (initialTab in 0..5) selectedTab = initialTab
     }
     var showAddEvent by remember { mutableStateOf(false) }
     var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
+
+    // Close the active editor first, then return to the calendar from a section.
+    // The Android back button must not exit the app from a nested view.
+    BackHandler(enabled = editEvent != null || showAddEvent || selectedTab != 0) {
+        when {
+            editEvent != null -> editEvent = null
+            showAddEvent -> showAddEvent = false
+            else -> selectedTab = 0
+        }
+    }
+
     var handledEventRequest by remember { mutableStateOf<String?>(null) }
 
     // Opening a notification should select the exact event, not just the calendar tab.
@@ -575,6 +581,16 @@ private fun SyncedApp(
             }
     }
 
+    // Push notifications refresh the family data immediately when the app is open.
+    // Normal polling remains a fallback for devices that do not deliver notifications.
+    val familyPush by FamilyEventPopup.familyChanges.collectAsState()
+    LaunchedEffect(session.id, familyPush.sequence) {
+        if (familyPush.familyId == session.id) {
+            refresh()
+            FamilyCalendarWidget.enqueueRefresh(context)
+        }
+    }
+
     // Event push can arrive between scheduled syncs. Fetch the latest events
     // immediately before attempting to navigate to the referenced event.
     LaunchedEffect(requestedEventId) {
@@ -617,10 +633,17 @@ private fun SyncedApp(
         }
 
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var lastSportImport = 0L
             while (isActive) {
-                syncExternalCalendars()
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (lastSportImport == 0L || now - lastSportImport >= 30L * 60_000L) {
+                    syncExternalCalendars()
+                    lastSportImport = now
+                }
                 refresh()
-                delay(30L * 60L * 1000L)
+                // Sync shared family edits while app is foregrounded rather than every
+                // 30 minutes. WorkManager handles new offline data in the background.
+                delay(20_000L)
             }
         }
     }
@@ -871,7 +894,7 @@ private fun SyncedApp(
                                     },
                                     onClear = {
                                         scope.launch {
-                                            SupabaseSync.clearChecked(session)
+                                            SupabaseSync.clearChecked(session, shopping)
                                             refresh()
                                         }
                                     },
@@ -926,6 +949,7 @@ private fun SyncedApp(
                                                 time,
                                                 event.endTime,
                                                 event.memberId,
+                                                expectedUpdatedAt = event.updatedAt,
                                             )
                                             refresh()
                                             FamilyCalendarWidget.enqueueRefresh(context)
@@ -1040,27 +1064,23 @@ private fun SyncedApp(
                                 if (editScope == SeriesEditScope.THIS) date
                                 else target.date.plusDays(dayShift)
                             SupabaseSync.updateEvent(
-                                session,
-                                target.id,
-                                title,
-                                targetDate,
-                                time,
-                                endTime,
-                                memberId,
+                                session = session,
+                                eventId = target.id,
+                                title = title,
+                                date = targetDate,
+                                time = time,
+                                endTime = endTime,
+                                memberId = memberId,
                                 source = calendarEventSource(entryKind, time.isNotBlank()),
+                                expectedUpdatedAt = target.updatedAt,
+                                changeSeriesId = event.seriesId != null &&
+                                    editScope != SeriesEditScope.WHOLE_SERIES,
+                                newSeriesId = when (editScope) {
+                                    SeriesEditScope.THIS -> null
+                                    SeriesEditScope.THIS_AND_FUTURE -> splitSeriesId
+                                    SeriesEditScope.WHOLE_SERIES -> event.seriesId
+                                },
                             )
-                            when {
-                                event.seriesId == null -> Unit
-                                editScope == SeriesEditScope.THIS ->
-                                    SupabaseSync.updateEventSeriesId(session, target.id, null)
-                                editScope == SeriesEditScope.THIS_AND_FUTURE ->
-                                    SupabaseSync.updateEventSeriesId(
-                                        session,
-                                        target.id,
-                                        splitSeriesId,
-                                    )
-                                editScope == SeriesEditScope.WHOLE_SERIES -> Unit
-                            }
                         }
                     }
                         .onSuccess {
@@ -1085,7 +1105,16 @@ private fun SyncedApp(
                         }
                     val effectiveTargets = if (targets.isEmpty()) listOf(event) else targets
                     runCatching {
-                        deleteCalendarEventsDirect(session, effectiveTargets.map { it.id })
+                        effectiveTargets.forEach { target ->
+                            SupabaseSync.submitRevision(
+                                session = session,
+                                table = "calendar_events",
+                                targetId = target.id,
+                                baseUpdatedAt = target.updatedAt,
+                                action = "delete",
+                                label = target.title,
+                            )
+                        }
                     }
                         .onSuccess {
                             editEvent = null
@@ -1104,7 +1133,7 @@ private fun SyncedApp(
                                 )
                                 if (response == SnackbarResult.ActionPerformed) {
                                     runCatching {
-                                        SupabaseSync.restoreRecentlyDeletedEvents(session, effectiveTargets)
+                                        SupabaseSync.undoDeletedEvents(session, effectiveTargets)
                                     }.onSuccess {
                                         refresh()
                                         FamilyCalendarWidget.enqueueRefresh(context)
@@ -2255,24 +2284,95 @@ private fun SettingsScreen(
             else "Senast sparade kalenderuppgifter: $savedAt",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        val queued = remember(session.id) { mutableIntStateOf(OfflineMutationQueue.pendingCount(session)) }
+        var queueRevision by remember(session.id) { mutableIntStateOf(0) }
+        val queued = remember(session.id, queueRevision) {
+            OfflineMutationQueue.pendingCount(session)
+        }
+        val blocked = remember(session.id, queueRevision) {
+            OfflineMutationQueue.blocked(session)
+        }
         Spacer(Modifier.height(7.dp))
         Text(
-            if (queued.intValue == 0) "Inga aktiviteter, inköp eller To-do väntar på uppladdning."
-            else "${queued.intValue} nya poster väntar på att skickas när internet fungerar.",
+            when {
+                queued == 0 -> "Inga ändringar väntar på uppladdning."
+                blocked.isNotEmpty() ->
+                    "$queued väntande ändringar, varav ${blocked.size} kräver granskning."
+                else -> "$queued ändringar väntar på att skickas när internet fungerar."
+            },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (queued.intValue > 0) {
+        if (queued > 0) {
             TextButton(onClick = {
                 OfflineMutationQueue.requestRetry()
-                queued.intValue = OfflineMutationQueue.pendingCount(session)
-            }) { Text("Försök synka väntande poster") }
+                queueRevision++
+            }) { Text("Försök synka / uppdatera status") }
+        }
+        if (blocked.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Konflikter – ingen nyare serverversion har skrivits över.",
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error,
+            )
+            blocked.forEach { entry ->
+                val table = entry.optString("table")
+                val label = entry.optString("label").ifBlank { "Okänd post" }
+                val subject = when (table) {
+                    "calendar_events" -> "Aktivitet"
+                    "todo_items" -> "To-do"
+                    "shopping_items" -> "Inköp"
+                    else -> "Post"
+                }
+                Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+                    Text("$subject: $label", fontWeight = FontWeight.Medium)
+                    Text(
+                        entry.optString("reason", "Ändring på annan telefon."),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                    TextButton(onClick = {
+                        OfflineMutationQueue.remove(session, entry.getString("id"))
+                        queueRevision++
+                        // Re-fetch the current version and let the user re-edit it.
+                        scope.launch {
+                            runCatching {
+                                when (table) {
+                                    "calendar_events" ->
+                                        FamilyOfflineCache.saveEvents(
+                                            context, session, SupabaseSync.loadEvents(session)
+                                        )
+                                    "shopping_items" ->
+                                        FamilyOfflineCache.saveShopping(
+                                            context, session, SupabaseSync.loadShopping(session)
+                                        )
+                                    "todo_items" ->
+                                        FamilyOfflineCache.saveTodo(
+                                            context, session,
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                TodoSync.load(session)
+                                            }
+                                        )
+                                }
+                            }
+                        }
+                    }) { Text("Behåll senaste serverversionen") }
+                }
+            }
         }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = { confirmClear = true },
+            enabled = OfflineMutationQueue.pendingCount(session) == 0,
             modifier = Modifier.fillMaxWidth().height(46.dp),
         ) { Text("Rensa offlinekopior från telefonen") }
+        if (OfflineMutationQueue.pendingCount(session) > 0) {
+            Text(
+                "Offlinekopior kan inte rensas förrän väntande ändringar har synkats " +
+                    "eller granskats. Annars kan oskickat innehåll döljas.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+            )
+        }
         if (confirmClear) {
             AlertDialog(
                 onDismissRequest = { confirmClear = false },
