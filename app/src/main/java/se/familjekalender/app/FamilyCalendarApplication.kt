@@ -18,6 +18,7 @@ class FamilyCalendarApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        FamilyNotificationChannels.ensureCreated(this)
         FamilyEventPopup.initialize(this)
         OneSignal.initWithContext(this, "220bbe78-fd9a-4e5a-8d57-b84399821f7c")
         OneSignal.Notifications.addForegroundLifecycleListener(FamilyEventPopup.foregroundListener)
@@ -47,6 +48,7 @@ class FamilyCalendarApplication : Application() {
                         "family_id" to familyId,
                         "device_id" to deviceId,
                         "platform" to "android",
+                        "family_push_channel_v1" to "1",
                     )
                 if (!memberId.isNullOrBlank()) {
                     tags["member_id"] = memberId
