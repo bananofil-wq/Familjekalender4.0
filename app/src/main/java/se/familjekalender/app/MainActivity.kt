@@ -933,6 +933,7 @@ private fun SyncedApp(
                                                 time,
                                                 event.endTime,
                                                 event.memberId,
+                                                expectedUpdatedAt = event.updatedAt,
                                             )
                                             refresh()
                                             FamilyCalendarWidget.enqueueRefresh(context)
