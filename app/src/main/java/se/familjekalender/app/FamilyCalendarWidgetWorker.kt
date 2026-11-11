@@ -75,11 +75,11 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         async {
                             runCatching {
                                 SupabaseSync.loadShopping(session).count { !it.checked }
-                            }.getOrDefault(0)
+                            }.getOrNull()
                         }
                     val todoDeferred =
                         async {
-                            runCatching { loadOpenTodoCount(session) }.getOrDefault(0)
+                            runCatching { loadOpenTodoCount(session) }.getOrNull()
                         }
 
                     LoadedWidgetData(
@@ -147,8 +147,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
     private data class LoadedWidgetData(
         val events: List<SyncEvent>,
         val members: Map<String, SyncMember>,
-        val openShopping: Int,
-        val openTodos: Int,
+        val openShopping: Int?,
+        val openTodos: Int?,
     )
 
     private fun JSONArray.appendEvents(
