@@ -98,8 +98,9 @@ internal object OfflineMutationQueue {
         when (table) {
             "calendar_events" -> {
                 val starts = OffsetDateTime.parse(body.getString("starts_at")).atZoneSameInstant(stockholm)
-                val ends = body.optString("ends_at").takeIf { it.isNotBlank() }
-                    ?.let { OffsetDateTime.parse(it).atZoneSameInstant(stockholm) }
+                val ends = if (body.isNull("ends_at")) null else
+                    body.optString("ends_at").takeIf { it.isNotBlank() }
+                        ?.let { OffsetDateTime.parse(it).atZoneSameInstant(stockholm) }
                 val source = body.optString("source", "manual")
                 val noTime = source.contains("no_time", ignoreCase = true)
                 val row = SyncEvent(
