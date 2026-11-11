@@ -2345,8 +2345,17 @@ private fun SettingsScreen(
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = { confirmClear = true },
+            enabled = OfflineMutationQueue.pendingCount(session) == 0,
             modifier = Modifier.fillMaxWidth().height(46.dp),
         ) { Text("Rensa offlinekopior från telefonen") }
+        if (OfflineMutationQueue.pendingCount(session) > 0) {
+            Text(
+                "Offlinekopior kan inte rensas förrän väntande ändringar har synkats " +
+                    "eller granskats. Annars kan oskickat innehåll döljas.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+            )
+        }
         if (confirmClear) {
             AlertDialog(
                 onDismissRequest = { confirmClear = false },
