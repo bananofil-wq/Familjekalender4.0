@@ -445,6 +445,45 @@ object SupabaseSync {
         }
 
     /**
+     * Undo works both online and offline. Cancel queued deletes, then submit
+     * a stable-ID restoration for each event. Existing rows are never overwritten.
+     */
+    suspend fun undoDeletedEvents(
+        session: FamilySession, snapshots: List<SyncEvent>,
+    ) = withContext(Dispatchers.IO) {
+        val targets = snapshots.distinctBy { it.id }
+        OfflineMutationQueue.cancelRevisions(
+            session, "calendar_events", targets.map { it.id }.toSet()
+        )
+        targets.forEach { event ->
+            val startTime = event.time.takeIf { it.isNotBlank() }
+                ?.let { LocalTime.parse(it) } ?: LocalTime.MIDNIGHT
+            val start = ZonedDateTime.of(event.date, startTime, STOCKHOLM)
+            val row = JSONObject()
+                .put("id", event.id)
+                .put("family_id", session.id)
+                .put("title", event.title)
+                .put("starts_at", start.toOffsetDateTime().toString())
+                .put("source", event.source)
+                .put(
+                    "member_id", event.memberId?.takeUnless {
+                        it == ALL_FAMILY_MEMBER_ID
+                    } ?: JSONObject.NULL,
+                )
+            if (event.endTime?.isNotBlank() == true) {
+                val endTime = LocalTime.parse(event.endTime)
+                val endDate = event.endDate ?: if (endTime.isAfter(startTime)) {
+                    event.date
+                } else event.date.plusDays(1)
+                row.put("ends_at",
+                    ZonedDateTime.of(endDate, endTime, STOCKHOLM).toOffsetDateTime().toString())
+            }
+            event.seriesId?.let { row.put("series_id", it) }
+            submitOfflineCapableCreation(session, "calendar_events", row)
+        }
+    }
+
+    /**
      * Restore the exact calendar event IDs after a user taps Undo. Re-inserting
      * the same ID twice is safe; only missing rows are added. This does not
      * overwrite events that another device has already recreated or edited.
