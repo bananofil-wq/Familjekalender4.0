@@ -70,7 +70,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             )
             val manualDay = prefs.getString(
                 FamilyCalendarWidget.expandedDayPrefKey(widgetId), null
-            )
+            )?.takeIf { it.isNotBlank() }
             val manualDayChangedOn = prefs.getString(
                 FamilyCalendarWidget.expandedDayUpdatedOnPrefKey(widgetId), null
             )

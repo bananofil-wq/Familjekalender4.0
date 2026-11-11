@@ -9,6 +9,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -73,11 +75,11 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         async {
                             runCatching {
                                 SupabaseSync.loadShopping(session).count { !it.checked }
-                            }.getOrDefault(0)
+                            }.getOrNull()
                         }
                     val todoDeferred =
                         async {
-                            runCatching { loadOpenTodoCount(session) }.getOrDefault(0)
+                            runCatching { loadOpenTodoCount(session) }.getOrNull()
                         }
 
                     LoadedWidgetData(
@@ -89,13 +91,13 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 }
 
             val today = LocalDate.now()
-            val cacheUntil = today.plusDays(13)
-            val now = LocalTime.now()
-            // Store two weeks, so the next week's overview still works when offline.
+            val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            val cacheUntil = weekStart.plusDays(13)
+            // Keep ALL activities from the current week, even after their end time.
+            // Otherwise today's row incorrectly appears empty later in the evening.
             val upcomingEvents = loaded.events
                 .filter { event ->
-                    !event.date.isBefore(today) && !event.date.isAfter(cacheUntil) &&
-                        (event.date != today || isStillRelevantToday(event, now))
+                    !event.date.isBefore(weekStart) && !event.date.isAfter(cacheUntil)
                 }
                 .sortedWith(compareBy<SyncEvent> { it.date }
                     .thenBy { parseMinute(it.time) ?: Int.MAX_VALUE }
@@ -111,19 +113,30 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 cacheRows(widgetId, cachedArray)
                 val todayCount = upcomingEvents.count { it.date == today }
                 val status = when (todayCount) {
-                    0 -> "Inga aktiviteter kvar idag"
-                    1 -> "✓ 1 aktivitet kvar idag"
-                    else -> "✓ $todayCount aktiviteter kvar idag"
+                    0 -> "Inga aktiviteter idag"
+                    1 -> "1 aktivitet idag"
+                    else -> "$todayCount aktiviteter idag"
                 }
-                val todo = "✓  ${loaded.openTodos} To-Do    ›"
-                val shopping = "🛒  ${loaded.openShopping} inköp    ›"
+                val prefs = applicationContext.getSharedPreferences(
+                    FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE
+                )
+                val previous = prefs.getString(
+                    FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), null
+                )?.let { runCatching { JSONObject(it) }.getOrNull() }
+                val todo = loaded.openTodos?.let { "✓  $it To-Do    ›" }
+                    ?: previous?.optString("todo")?.takeIf { it.isNotBlank() }
+                    ?: "✓  To-Do    ›"
+                val shopping = loaded.openShopping?.let { "🛒  $it inköp    ›" }
+                    ?: previous?.optString("shopping")?.takeIf { it.isNotBlank() }
+                    ?: "🛒  Inköp    ›"
                 val summary = JSONObject()
                     .put("date", today.toString())
                     .put("status", status)
                     .put("todo", todo)
                     .put("shopping", shopping)
-                applicationContext.getSharedPreferences(FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE)
-                    .edit().putString(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), summary.toString()).apply()
+                prefs.edit()
+                    .putString(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), summary.toString())
+                    .apply()
                 val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
                 manager.updateAppWidget(widgetId, views)
                 manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
@@ -145,8 +158,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
     private data class LoadedWidgetData(
         val events: List<SyncEvent>,
         val members: Map<String, SyncMember>,
-        val openShopping: Int,
-        val openTodos: Int,
+        val openShopping: Int?,
+        val openTodos: Int?,
     )
 
     private fun JSONArray.appendEvents(
@@ -184,18 +197,6 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             .putString(FamilyCalendarWidget.cachedRowsPrefKey(widgetId), rows.toString())
             .apply()
     }
-
-    private fun isStillRelevantToday(event: SyncEvent, now: LocalTime): Boolean {
-        if (event.time.isBlank()) return true
-        val end = parseLocalTime(event.endTime)
-        if (end != null) return !now.isAfter(end)
-        val start = parseLocalTime(event.time) ?: return true
-        return !now.isAfter(start.plusMinutes(15))
-    }
-
-    private fun eventComparator(): Comparator<SyncEvent> =
-        compareBy<SyncEvent> { parseMinute(it.time) ?: Int.MAX_VALUE }
-            .thenBy { it.title }
 
     private fun memberName(memberKey: String, members: Map<String, SyncMember>): String =
         if (memberKey == ALL_FAMILY_MEMBER_ID) {

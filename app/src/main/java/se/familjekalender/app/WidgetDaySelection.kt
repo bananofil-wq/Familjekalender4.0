@@ -5,11 +5,11 @@ import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
 /**
- * Automatically shows the current day's remaining activities. If there are none, opens
- * the next day with activities during the current Monday–Sunday week instead.
+ * Shows today's activities automatically (including activities that finished earlier).
+ * If there are none, opens the next day with events this Monday–Sunday week.
  *
- * A manual selection (including the empty string meaning "all closed") is respected until
- * the next calendar day. This avoids leaving yesterday expanded after midnight.
+ * A non-empty manual day selection is respected until midnight. Legacy empty strings
+ * represent a previously collapsed day and must never override automatic expansion.
  */
 internal fun preferredWidgetDay(
     today: LocalDate,
@@ -17,8 +17,9 @@ internal fun preferredWidgetDay(
     manuallySelectedDay: String?,
     manualSelectionDate: String?,
 ): String {
-    if (manualSelectionDate == today.toString() && manuallySelectedDay != null) {
-        return manuallySelectedDay
+    val manualDay = manuallySelectedDay?.takeIf { it.isNotBlank() }
+    if (manualSelectionDate == today.toString() && manualDay != null) {
+        return manualDay
     }
 
     val lastDayOfWeek = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))

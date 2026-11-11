@@ -215,10 +215,15 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
             val key = expandedDayPrefKey(appWidgetId)
             val expanded = prefs.getString(key, null)
-            prefs.edit()
-                .putString(key, if (expanded == dateKey) "" else dateKey)
-                .putString(expandedDayUpdatedOnPrefKey(appWidgetId), LocalDate.now().toString())
-                .apply()
+            val editor = prefs.edit()
+            if (expanded == dateKey) {
+                // A second tap returns to automatic selection rather than closing all days.
+                editor.remove(key).remove(expandedDayUpdatedOnPrefKey(appWidgetId))
+            } else {
+                editor.putString(key, dateKey)
+                    .putString(expandedDayUpdatedOnPrefKey(appWidgetId), LocalDate.now().toString())
+            }
+            editor.apply()
             AppWidgetManager.getInstance(context)
                 .notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
         }
