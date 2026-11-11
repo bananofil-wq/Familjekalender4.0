@@ -118,6 +118,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 val todo = "✓  ${loaded.openTodos} To-Do    ›"
                 val shopping = "🛒  ${loaded.openShopping} inköp    ›"
                 val summary = JSONObject()
+                    .put("date", today.toString())
                     .put("status", status)
                     .put("todo", todo)
                     .put("shopping", shopping)
@@ -205,10 +206,15 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
 
     private fun timeTextOrNull(event: SyncEvent): String? {
         if (event.time.isBlank()) return null
-        return event.endTime
-            ?.takeIf { it.isNotBlank() }
-            ?.let { "${event.time}–$it" }
-            ?: event.time
+        // Some older events stored a time range only in the title, not ends_at.
+        // Display it in the time column rather than leaving an orphaned "–14:00" in the title.
+        val titleRange = Regex("""(\\d{1,2}:\\d{2})\\s*[-–]\\s*(\\d{1,2}:\\d{2})""")
+            .find(event.title)
+        val inferredEnd = titleRange?.takeIf { match ->
+            parseLocalTime(match.groupValues[1]) == parseLocalTime(event.time)
+        }?.groupValues?.get(2)
+        val ending = event.endTime?.takeIf { it.isNotBlank() } ?: inferredEnd
+        return if (ending == null) event.time else "${event.time}–$ending"
     }
 
     private fun cleanActivityTitle(
@@ -235,6 +241,10 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             }
         ranges.forEach { cleaned = cleaned.replace(it, " ", ignoreCase = true) }
         if (startTime.isNotBlank()) {
+            cleaned = cleaned.replace(
+                Regex("""(?<!\\d)${Regex.escape(startTime)}\\s*[-–]\\s*\\d{1,2}:\\d{2}\\b"""),
+                " ",
+            )
             cleaned = cleaned.replace(startTime, " ", ignoreCase = true)
         }
         cleaned =
@@ -243,6 +253,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 .replace("  ", " ")
                 .trim()
                 .trim('•', '·', '-', '–', '|', ':')
+                .trim()
+                .replace(Regex("""\\s*[·•|]\\s*[-–]\\s*\\d{1,2}:\\d{2}\\s*$"""), "")
                 .trim()
         return cleaned.ifBlank { "Aktivitet" }
     }
