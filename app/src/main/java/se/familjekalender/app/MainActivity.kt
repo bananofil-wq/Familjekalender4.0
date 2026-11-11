@@ -2260,18 +2260,80 @@ private fun SettingsScreen(
             else "Senast sparade kalenderuppgifter: $savedAt",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        val queued = remember(session.id) { mutableIntStateOf(OfflineMutationQueue.pendingCount(session)) }
+        var queueRevision by remember(session.id) { mutableIntStateOf(0) }
+        val queued = remember(session.id, queueRevision) {
+            OfflineMutationQueue.pendingCount(session)
+        }
+        val blocked = remember(session.id, queueRevision) {
+            OfflineMutationQueue.blocked(session)
+        }
         Spacer(Modifier.height(7.dp))
         Text(
-            if (queued.intValue == 0) "Inga aktiviteter, inköp eller To-do väntar på uppladdning."
-            else "${queued.intValue} nya poster väntar på att skickas när internet fungerar.",
+            when {
+                queued == 0 -> "Inga ändringar väntar på uppladdning."
+                blocked.isNotEmpty() ->
+                    "$queued väntande ändringar, varav ${blocked.size} kräver granskning."
+                else -> "$queued ändringar väntar på att skickas när internet fungerar."
+            },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (queued.intValue > 0) {
+        if (queued > 0) {
             TextButton(onClick = {
                 OfflineMutationQueue.requestRetry()
-                queued.intValue = OfflineMutationQueue.pendingCount(session)
-            }) { Text("Försök synka väntande poster") }
+                queueRevision++
+            }) { Text("Försök synka / uppdatera status") }
+        }
+        if (blocked.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Konflikter – ingen nyare serverversion har skrivits över.",
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error,
+            )
+            blocked.forEach { entry ->
+                val table = entry.optString("table")
+                val label = entry.optString("label").ifBlank { "Okänd post" }
+                val subject = when (table) {
+                    "calendar_events" -> "Aktivitet"
+                    "todo_items" -> "To-do"
+                    "shopping_items" -> "Inköp"
+                    else -> "Post"
+                }
+                Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+                    Text("$subject: $label", fontWeight = FontWeight.Medium)
+                    Text(
+                        entry.optString("reason", "Ändring på annan telefon."),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                    TextButton(onClick = {
+                        OfflineMutationQueue.remove(session, entry.getString("id"))
+                        queueRevision++
+                        // Re-fetch the current version and let the user re-edit it.
+                        scope.launch {
+                            runCatching {
+                                when (table) {
+                                    "calendar_events" ->
+                                        FamilyOfflineCache.saveEvents(
+                                            context, session, SupabaseSync.loadEvents(session)
+                                        )
+                                    "shopping_items" ->
+                                        FamilyOfflineCache.saveShopping(
+                                            context, session, SupabaseSync.loadShopping(session)
+                                        )
+                                    "todo_items" ->
+                                        FamilyOfflineCache.saveTodo(
+                                            context, session,
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                TodoSync.load(session)
+                                            }
+                                        )
+                                }
+                            }
+                        }
+                    }) { Text("Behåll senaste serverversionen") }
+                }
+            }
         }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
