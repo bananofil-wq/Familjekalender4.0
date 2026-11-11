@@ -194,45 +194,45 @@ object SupabaseSync {
 
     suspend fun toggleShopping(session: FamilySession, item: SyncShoppingItem) =
         withContext(Dispatchers.IO) {
-            val body =
-                JSONObject()
-                    .put("checked", !item.checked)
-                    .put("updated_at", OffsetDateTime.now().toString())
-            request(
-                "PATCH",
-                "/rest/v1/shopping_items?id=eq.${item.id}",
-                body,
-                session.code,
-                preferRepresentation = false,
+            // A completion is an UPDATE with optimistic locking, not a blind PATCH.
+            // If the network is unavailable, the updated row waits in the offline queue.
+            submitRevision(
+                session, "shopping_items", item.id, item.updatedAt, "update",
+                JSONObject().put("checked", !item.checked), item.name,
             )
-            if (!item.checked) {
+            // Shopping history is recorded only when the client can safely confirm
+            // an online completion. Never increment the history counter during a
+            // queued retry, as a lost response could otherwise count it twice.
+            if (!item.checked && !OfflineMutationQueue.shouldQueue() &&
+                !OfflineMutationQueue.hasPendingLocalRevision(session, "shopping_items", item.id)
+            ) {
                 val normalized = normalizeShoppingName(item.name)
                 if (normalized.isNotBlank()) {
-                    val historyBody =
-                        JSONObject()
-                            .put("p_family_id", session.id)
-                            .put("p_name", item.name.trim())
-                            .put("p_normalized", normalized)
-                    request(
-                        "POST",
-                        "/rest/v1/rpc/record_shopping_purchase",
-                        historyBody,
-                        session.code,
-                        preferRepresentation = false,
-                    )
+                    runCatching {
+                        request(
+                            "POST", "/rest/v1/rpc/record_shopping_purchase",
+                            JSONObject()
+                                .put("p_family_id", session.id)
+                                .put("p_name", item.name.trim())
+                                .put("p_normalized", normalized),
+                            session.code, preferRepresentation = false,
+                        )
+                    }
                 }
             }
         }
 
-    suspend fun clearChecked(session: FamilySession) =
-        withContext(Dispatchers.IO) {
-            request(
-                "DELETE",
-                "/rest/v1/shopping_items?family_id=eq.${session.id}&checked=eq.true",
-                familyCode = session.code,
-                preferRepresentation = false,
+    suspend fun clearChecked(
+        session: FamilySession,
+        existing: List<SyncShoppingItem>,
+    ) = withContext(Dispatchers.IO) {
+        existing.filter { it.checked }.forEach { item ->
+            submitRevision(
+                session, "shopping_items", item.id, item.updatedAt, "delete",
+                label = item.name,
             )
         }
+    }
 
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> =
         withContext(Dispatchers.IO) {
