@@ -233,7 +233,7 @@ internal fun FamilyEventPopupDialog(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    "Stäng",
+                                    "Jag har sett",
                                     color = mainInk,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
