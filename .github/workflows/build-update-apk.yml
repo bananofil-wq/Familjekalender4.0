@@ -8,6 +8,12 @@ on:
     branches:
       - main
 
+# Superseded PR commits do not need to consume runner time.
+# Never cancel an in-progress published main-branch release.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: write
 
