@@ -2188,6 +2188,44 @@ private fun SettingsScreen(
 
     Spacer(Modifier.height(14.dp))
     SettingsSectionCard(
+        title = "Offlineåtkomst",
+        subtitle = "Öppna senast synkade aktiviteter, inköp och uppgifter utan internet.",
+    ) {
+        val savedAt = remember(session.id) { FamilyOfflineCache.lastSavedAt(context, session) }
+        var confirmClear by remember { mutableStateOf(false) }
+        var wasCleared by remember { mutableStateOf(false) }
+        Text(
+            if (wasCleared) "Sparad offlineinformation har rensats från den här telefonen."
+            else if (savedAt == null) "Ingen offlinekopia sparad ännu."
+            else "Senast sparade kalenderuppgifter: $savedAt",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { confirmClear = true },
+            modifier = Modifier.fillMaxWidth().height(46.dp),
+        ) { Text("Rensa offlinekopior från telefonen") }
+        if (confirmClear) {
+            AlertDialog(
+                onDismissRequest = { confirmClear = false },
+                title = { Text("Rensa offlinekopior?") },
+                text = { Text("Detta raderar bara senast sparad information på den här telefonen. Ingenting tas bort från familjens gemensamma kalender.") },
+                confirmButton = {
+                    Button(onClick = {
+                        FamilyOfflineCache.clear(context, session)
+                        wasCleared = true
+                        confirmClear = false
+                    }) { Text("Rensa") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmClear = false }) { Text("Avbryt") }
+                },
+            )
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SettingsSectionCard(
         title = "Utseende",
         subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen.",
     ) {
