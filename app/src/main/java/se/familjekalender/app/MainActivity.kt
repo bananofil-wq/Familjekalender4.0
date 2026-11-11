@@ -560,6 +560,17 @@ private fun SyncedApp(
                 if (message.startsWith("Synkfel:")) message = ""
             }
             .onFailure {
+                // Show offline items created since the last successful network refresh.
+                val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    Triple(
+                        FamilyOfflineCache.loadMembers(context, session),
+                        FamilyOfflineCache.loadShopping(context, session),
+                        FamilyOfflineCache.loadEvents(context, session),
+                    )
+                }
+                saved.first?.let { members = it }
+                saved.second?.let { shopping = it }
+                saved.third?.let { events = it }
                 message = "Synkfel: Visar senast sparade uppgifter. ${it.message}"
             }
     }
@@ -1121,6 +1132,7 @@ private fun SyncedApp(
                                         entryKind,
                                         recurrence ->
             scope.launch {
+                try {
                 if (entryKind == CalendarEntryKind.REMINDER) {
                     val targetDates =
                         if (recurrence == RecurrenceMode.NONE) {
@@ -1191,6 +1203,15 @@ private fun SyncedApp(
                 refresh()
                 FamilyCalendarWidget.enqueueRefresh(context)
                 showAddEvent = false
+                val pending = OfflineMutationQueue.pendingCount(session)
+                if (pending > 0) {
+                    message = "$pending poster sparades lokalt och väntar på internet."
+                }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    message = "Kunde inte spara allt: ${failure.message}. Kontrollera kalendern före nytt försök."
+                }
             }
         }
     }
@@ -2225,6 +2246,19 @@ private fun SettingsScreen(
             else "Senast sparade kalenderuppgifter: $savedAt",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        val queued = remember(session.id) { mutableIntStateOf(OfflineMutationQueue.pendingCount(session)) }
+        Spacer(Modifier.height(7.dp))
+        Text(
+            if (queued.intValue == 0) "Inga aktiviteter, inköp eller To-do väntar på uppladdning."
+            else "${queued.intValue} nya poster väntar på att skickas när internet fungerar.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (queued.intValue > 0) {
+            TextButton(onClick = {
+                OfflineMutationQueue.requestRetry()
+                queued.intValue = OfflineMutationQueue.pendingCount(session)
+            }) { Text("Försök synka väntande poster") }
+        }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = { confirmClear = true },
