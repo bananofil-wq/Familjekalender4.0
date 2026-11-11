@@ -68,8 +68,11 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             val expandedMember = prefs.getString(
                 FamilyCalendarWidget.expandedGroupPrefKey(widgetId), null
             )
-            val expandedDay = prefs.getString(
+            val manualDay = prefs.getString(
                 FamilyCalendarWidget.expandedDayPrefKey(widgetId), null
+            )
+            val manualDayChangedOn = prefs.getString(
+                FamilyCalendarWidget.expandedDayUpdatedOnPrefKey(widgetId), null
             )
             val rows = mutableListOf<CachedEvent>()
             runCatching {
@@ -90,6 +93,12 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             // All seven weekdays are always present, even on days without events.
             // The user expands a day before its rows are shown.
             val today = LocalDate.now()
+            val expandedDay = preferredWidgetDay(
+                today = today,
+                eventDates = rows.mapNotNull { runCatching { LocalDate.parse(it.date) }.getOrNull() },
+                manuallySelectedDay = manualDay,
+                manualSelectionDate = manualDayChangedOn,
+            )
             val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             repeat(7) { offset ->
                 val date = weekStart.plusDays(offset.toLong())

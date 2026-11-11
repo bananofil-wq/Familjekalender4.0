@@ -108,6 +108,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         internal fun expandedDayPrefKey(appWidgetId: Int) = "expanded_day_$appWidgetId"
 
+        internal fun expandedDayUpdatedOnPrefKey(appWidgetId: Int) = "expanded_day_updated_on_$appWidgetId"
+
         internal fun cachedSummaryPrefKey(appWidgetId: Int) = "cached_summary_$appWidgetId"
 
         internal fun cachedRowsPrefKey(appWidgetId: Int) = "cached_rows_$appWidgetId"
@@ -142,13 +144,18 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         fun baseViews(context: Context, appWidgetId: Int): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_family_calendar)
-            val summary = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
-                .getString(cachedSummaryPrefKey(appWidgetId), null)
+            val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
+            val summary = prefs.getString(cachedSummaryPrefKey(appWidgetId), null)
             val values = summary?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
-            views.setTextViewText(R.id.widget_status, values?.optString("status") ?: "Uppdaterar…")
+            val today = LocalDate.now()
+            val savedDate = values?.optString("date").orEmpty()
+            val summaryStatus = if (savedDate.isEmpty() || savedDate == today.toString())
+                values?.optString("status") else null
+            val fallbackStatus = if (prefs.contains(cachedRowsPrefKey(appWidgetId)))
+                "Visar sparade aktiviteter" else "Uppdaterar…"
+            views.setTextViewText(R.id.widget_status, summaryStatus ?: fallbackStatus)
             views.setTextViewText(R.id.widget_todo, values?.optString("todo") ?: "✓  To-Do    ›")
             views.setTextViewText(R.id.widget_shopping, values?.optString("shopping") ?: "🛒  Inköp    ›")
-            val today = LocalDate.now()
             val dateText =
                 today
                     .format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE")))
@@ -208,7 +215,10 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
             val key = expandedDayPrefKey(appWidgetId)
             val expanded = prefs.getString(key, null)
-            prefs.edit().putString(key, if (expanded == dateKey) "" else dateKey).apply()
+            prefs.edit()
+                .putString(key, if (expanded == dateKey) "" else dateKey)
+                .putString(expandedDayUpdatedOnPrefKey(appWidgetId), LocalDate.now().toString())
+                .apply()
             AppWidgetManager.getInstance(context)
                 .notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
         }
@@ -242,7 +252,7 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val component = ComponentName(context, FamilyCalendarWidget::class.java)
             manager.getAppWidgetIds(component).forEach { appWidgetId ->
                 val views = baseViews(context, appWidgetId)
-                views.setTextViewText(R.id.widget_status, "Uppdaterar…")
+                // Keep existing activities and counts visible during a manual refresh.
                 manager.updateAppWidget(appWidgetId, views)
                 manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
             }

@@ -85,4 +85,5 @@ dependencies {
     implementation("net.sf.biweekly:biweekly:0.6.8")
     implementation("com.onesignal:OneSignal:[5.6.1, 5.9.99]")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }
