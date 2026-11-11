@@ -617,10 +617,17 @@ private fun SyncedApp(
         }
 
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var lastSportImport = 0L
             while (isActive) {
-                syncExternalCalendars()
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (lastSportImport == 0L || now - lastSportImport >= 30L * 60_000L) {
+                    syncExternalCalendars()
+                    lastSportImport = now
+                }
                 refresh()
-                delay(30L * 60L * 1000L)
+                // Sync shared family edits while app is foregrounded rather than every
+                // 30 minutes. WorkManager handles new offline data in the background.
+                delay(20_000L)
             }
         }
     }
