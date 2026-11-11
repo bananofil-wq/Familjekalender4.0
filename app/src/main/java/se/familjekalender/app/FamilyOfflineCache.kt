@@ -138,6 +138,18 @@ internal object FamilyOfflineCache {
             }.getOrNull()
         }
 
+    fun lastSavedAt(context: Context, session: FamilySession): String? {
+        val source = file(context, session.id, "events")
+        if (!source.exists()) return null
+        return runCatching {
+            val timestamp = JSONObject(source.readText(Charsets.UTF_8)).getString("saved_at")
+            OffsetDateTime.parse(timestamp).atZoneSameInstant(
+                java.time.ZoneId.of("Europe/Stockholm")
+            ).format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy HH:mm",
+                java.util.Locale("sv", "SE")))
+        }.getOrNull()
+    }
+
     fun clear(context: Context, session: FamilySession) {
         listOf("members", "shopping", "events", "todo").forEach { kind ->
             file(context, session.id, kind).delete()
