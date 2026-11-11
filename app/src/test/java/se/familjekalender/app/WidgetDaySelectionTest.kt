@@ -37,9 +37,15 @@ class WidgetDaySelectionTest {
         ))
     }
 
-    @Test fun `manual collapse stays collapsed until tomorrow`() {
-        assertEquals("", preferredWidgetDay(
+    @Test fun `legacy empty manual day does not hide today's activities`() {
+        assertEquals("2026-11-11", preferredWidgetDay(
             wednesday, listOf(wednesday), "", wednesday.toString()
+        ))
+    }
+
+    @Test fun `legacy empty manual day still reveals tomorrow when today is empty`() {
+        assertEquals("2026-11-12", preferredWidgetDay(
+            wednesday, listOf(wednesday.plusDays(1)), "", wednesday.toString()
         ))
     }
 
