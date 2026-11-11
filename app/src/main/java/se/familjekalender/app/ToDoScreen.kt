@@ -42,6 +42,7 @@ data class SyncTodoItem(
     val title: String,
     val checked: Boolean,
     val memberId: String?,
+    val updatedAt: String? = null,
 )
 
 internal object TodoSync {
@@ -49,7 +50,7 @@ internal object TodoSync {
         val result =
             request(
                 "GET",
-                "/rest/v1/todo_items?select=id,title,checked,member_id&family_id=eq.${session.id}&order=updated_at.asc",
+                "/rest/v1/todo_items?select=id,title,checked,member_id,updated_at&family_id=eq.${session.id}&order=updated_at.asc",
                 familyCode = session.code,
             )
         val array = JSONArray(result)
@@ -64,6 +65,7 @@ internal object TodoSync {
                         memberId =
                             if (row.isNull("member_id")) null
                             else row.getString("member_id"),
+                        updatedAt = row.optString("updated_at").takeIf { it.isNotBlank() },
                     )
                 )
             }
