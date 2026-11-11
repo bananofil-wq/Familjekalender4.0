@@ -575,6 +575,16 @@ private fun SyncedApp(
             }
     }
 
+    // Push notifications refresh the family data immediately when the app is open.
+    // Normal polling remains a fallback for devices that do not deliver notifications.
+    val familyPush by FamilyEventPopup.familyChanges.collectAsState()
+    LaunchedEffect(session.id, familyPush.sequence) {
+        if (familyPush.familyId == session.id) {
+            refresh()
+            FamilyCalendarWidget.enqueueRefresh(context)
+        }
+    }
+
     // Event push can arrive between scheduled syncs. Fetch the latest events
     // immediately before attempting to navigate to the referenced event.
     LaunchedEffect(requestedEventId) {
