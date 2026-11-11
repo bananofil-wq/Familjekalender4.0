@@ -924,6 +924,82 @@ object SupabaseSync {
         )
     }
 
+    /** Raised when the phone attempts to change data someone else has since edited. */
+    internal class FamilyRevisionConflict(message: String) : IllegalStateException(message)
+
+    /**
+     * Compare-and-swap, enforced by PostgREST using a row's exact updated_at value.
+     * Successful changes advance updated_at through the database trigger. If a response
+     * is lost, inspect the server row before deciding whether retry is safe.
+     */
+    internal suspend fun applyCheckedRevision(
+        session: FamilySession,
+        table: String,
+        targetId: String,
+        expectedUpdatedAt: String,
+        action: String,
+        changes: JSONObject = JSONObject(),
+    ) = withContext(Dispatchers.IO) {
+        require(table in setOf("calendar_events", "todo_items", "shopping_items"))
+        require(action == "update" || action == "delete")
+        require(runCatching { UUID.fromString(targetId) }.isSuccess)
+        require(expectedUpdatedAt.isNotBlank()) {
+            "Versionsinformation saknas. Öppna kalendern med internet och försök igen."
+        }
+        val versionParam = java.net.URLEncoder.encode(
+            expectedUpdatedAt, StandardCharsets.UTF_8.name()
+        )
+        val base = "/rest/v1/$table?id=eq.$targetId&family_id=eq.${session.id}"
+        val conditionalPath = "$base&updated_at=eq.$versionParam"
+        val answer = request(
+            if (action == "delete") "DELETE" else "PATCH",
+            conditionalPath,
+            if (action == "delete") null else changes,
+            session.code,
+            preferRepresentation = true,
+        )
+        if (JSONArray(answer).length() > 0) return@withContext
+
+        // Zero affected rows: either this exact request already succeeded or another
+        // device changed the row. Never retry blindly against the newer revision.
+        val now = JSONArray(request(
+            "GET", "$base&select=*&limit=1", familyCode = session.code
+        ))
+        if (now.length() == 0) {
+            if (action == "delete") return@withContext
+            throw FamilyRevisionConflict("Händelsen har redan tagits bort på en annan telefon.")
+        }
+        if (action == "update" && serverHasChanges(now.getJSONObject(0), changes)) {
+            return@withContext
+        }
+        throw FamilyRevisionConflict(
+            "Ändringen stoppades eftersom någon annan uppdaterat posten. " +
+                "Läs in den senaste versionen innan du försöker igen."
+        )
+    }
+
+    private fun serverHasChanges(server: JSONObject, changes: JSONObject): Boolean {
+        val names = changes.keys()
+        while (names.hasNext()) {
+            val key = names.next()
+            val wanted = changes.opt(key)
+            val actual = server.opt(key)
+            val equal = when {
+                wanted == null || wanted == JSONObject.NULL ->
+                    actual == null || actual == JSONObject.NULL
+                actual == null || actual == JSONObject.NULL -> false
+                key in setOf("starts_at", "ends_at") ->
+                    runCatching {
+                        OffsetDateTime.parse(wanted.toString()).toInstant() ==
+                            OffsetDateTime.parse(actual.toString()).toInstant()
+                    }.getOrDefault(false)
+                else -> wanted.toString() == actual.toString()
+            }
+            if (!equal) return false
+        }
+        return true
+    }
+
     private fun request(
         method: String,
         path: String,
