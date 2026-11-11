@@ -69,7 +69,8 @@ internal object FamilyOfflineCache {
         val rows = JSONArray()
         values.forEach {
             rows.put(JSONObject().put("id", it.id).put("name", it.name)
-                .put("checked", it.checked))
+                .put("checked", it.checked)
+                .put("updatedAt", it.updatedAt ?: JSONObject.NULL))
         }
         write(context, session.id, "shopping", rows)
     }
@@ -80,7 +81,7 @@ internal object FamilyOfflineCache {
                 List(rows.length()) { index ->
                     val row = rows.getJSONObject(index)
                     SyncShoppingItem(row.getString("id"), row.getString("name"),
-                        row.getBoolean("checked"))
+                        row.getBoolean("checked"), optionalString(row, "updatedAt"))
                 }
             }.getOrNull()
         }
@@ -93,7 +94,8 @@ internal object FamilyOfflineCache {
                 .put("memberId", it.memberId ?: JSONObject.NULL)
                 .put("source", it.source).put("endDate", it.endDate?.toString() ?: JSONObject.NULL)
                 .put("endTime", it.endTime ?: JSONObject.NULL)
-                .put("seriesId", it.seriesId ?: JSONObject.NULL))
+                .put("seriesId", it.seriesId ?: JSONObject.NULL)
+                .put("updatedAt", it.updatedAt ?: JSONObject.NULL))
         }
         write(context, session.id, "events", rows)
     }
@@ -112,6 +114,7 @@ internal object FamilyOfflineCache {
                         endDate = optionalString(row, "endDate")?.let(LocalDate::parse),
                         endTime = optionalString(row, "endTime"),
                         seriesId = optionalString(row, "seriesId"),
+                        updatedAt = optionalString(row, "updatedAt"),
                     )
                 }
             }.getOrNull()
@@ -122,7 +125,8 @@ internal object FamilyOfflineCache {
         values.forEach {
             rows.put(JSONObject().put("id", it.id).put("title", it.title)
                 .put("checked", it.checked)
-                .put("memberId", it.memberId ?: JSONObject.NULL))
+                .put("memberId", it.memberId ?: JSONObject.NULL)
+                .put("updatedAt", it.updatedAt ?: JSONObject.NULL))
         }
         write(context, session.id, "todo", rows)
     }
@@ -133,7 +137,8 @@ internal object FamilyOfflineCache {
                 List(rows.length()) { index ->
                     val row = rows.getJSONObject(index)
                     SyncTodoItem(row.getString("id"), row.getString("title"),
-                        row.getBoolean("checked"), optionalString(row, "memberId"))
+                        row.getBoolean("checked"), optionalString(row, "memberId"),
+                        optionalString(row, "updatedAt"))
                 }
             }.getOrNull()
         }
