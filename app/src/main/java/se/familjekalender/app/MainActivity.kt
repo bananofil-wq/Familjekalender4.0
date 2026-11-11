@@ -519,20 +519,48 @@ private fun SyncedApp(
     var addEventInitialTitle by remember { mutableStateOf("") }
     var assistantAddRequest by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("") }
+    var loadedFromNetwork by remember(session.id) { mutableStateOf(false) }
     val deviceMemberId = remember { appPrefs.getString("device_member_id", null) }
+
+    // Show the last saved family data immediately if the phone starts without internet.
+    LaunchedEffect(session.id) {
+        val cached = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            Triple(
+                FamilyOfflineCache.loadMembers(context, session),
+                FamilyOfflineCache.loadShopping(context, session),
+                FamilyOfflineCache.loadEvents(context, session),
+            )
+        }
+        if (!loadedFromNetwork) {
+            cached.first?.let { members = it }
+            cached.second?.let { shopping = it }
+            cached.third?.let { events = it }
+        }
+    }
 
     suspend fun refresh() {
         runCatching {
-            members = SupabaseSync.loadMembers(session)
-            shopping = SupabaseSync.loadShopping(session)
+            val latestMembers = SupabaseSync.loadMembers(session)
+            val latestShopping = SupabaseSync.loadShopping(session)
             val loadedEvents = SupabaseSync.loadEvents(session)
-            events = RecurringScheduleSync.filterPausedScheduleEvents(session, loadedEvents)
+            val latestEvents = RecurringScheduleSync.filterPausedScheduleEvents(session, loadedEvents)
+            members = latestMembers
+            shopping = latestShopping
+            events = latestEvents
+            loadedFromNetwork = true
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    FamilyOfflineCache.saveMembers(context, session, latestMembers)
+                    FamilyOfflineCache.saveShopping(context, session, latestShopping)
+                    FamilyOfflineCache.saveEvents(context, session, latestEvents)
+                }
+            }
         }
             .onSuccess {
                 if (message.startsWith("Synkfel:")) message = ""
             }
             .onFailure {
-                message = "Synkfel: ${it.message}"
+                message = "Synkfel: Visar senast sparade uppgifter. ${it.message}"
             }
     }
 
@@ -600,7 +628,12 @@ private fun SyncedApp(
             while (isActive) {
                 try {
                     val latest = SupabaseSync.loadShopping(session)
-                    if (latest != shopping) shopping = latest
+                    if (latest != shopping) {
+                        shopping = latest
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            runCatching { FamilyOfflineCache.saveShopping(context, session, latest) }
+                        }
+                    }
                     if (message.startsWith("Inköpssynkfel:")) message = ""
                 } catch (cancelled: kotlinx.coroutines.CancellationException) {
                     // Leaving the Shopping tab cancels this coroutine by design.
@@ -2151,6 +2184,44 @@ private fun SettingsScreen(
         subtitle = "Exportera familjens data och återställ saknade uppgifter utan dubbletter.",
     ) {
         FamilyBackupSettings(session)
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SettingsSectionCard(
+        title = "Offlineåtkomst",
+        subtitle = "Öppna senast synkade aktiviteter, inköp och uppgifter utan internet.",
+    ) {
+        val savedAt = remember(session.id) { FamilyOfflineCache.lastSavedAt(context, session) }
+        var confirmClear by remember { mutableStateOf(false) }
+        var wasCleared by remember { mutableStateOf(false) }
+        Text(
+            if (wasCleared) "Sparad offlineinformation har rensats från den här telefonen."
+            else if (savedAt == null) "Ingen offlinekopia sparad ännu."
+            else "Senast sparade kalenderuppgifter: $savedAt",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { confirmClear = true },
+            modifier = Modifier.fillMaxWidth().height(46.dp),
+        ) { Text("Rensa offlinekopior från telefonen") }
+        if (confirmClear) {
+            AlertDialog(
+                onDismissRequest = { confirmClear = false },
+                title = { Text("Rensa offlinekopior?") },
+                text = { Text("Detta raderar bara senast sparad information på den här telefonen. Ingenting tas bort från familjens gemensamma kalender.") },
+                confirmButton = {
+                    Button(onClick = {
+                        FamilyOfflineCache.clear(context, session)
+                        wasCleared = true
+                        confirmClear = false
+                    }) { Text("Rensa") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmClear = false }) { Text("Avbryt") }
+                },
+            )
+        }
     }
 
     Spacer(Modifier.height(14.dp))

@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -210,6 +211,7 @@ internal fun ToDoScreen(
     members: List<SyncMember>,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val motionEnabled = appMotionEnabled()
     val realMembers = remember(members) { members.filter { it.id != ALL_FAMILY_MEMBER_ID } }
     val memberById = remember(realMembers) { realMembers.associateBy { it.id } }
@@ -230,8 +232,13 @@ internal fun ToDoScreen(
             .onSuccess {
                 items = it
                 error = ""
+                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching { FamilyOfflineCache.saveTodo(context, session, it) }
+                }
             }
-            .onFailure { error = it.message ?: "Kunde inte ladda To-Do" }
+            .onFailure {
+                error = "Visar senast sparade To-do. ${it.message ?: "Ingen anslutning"}"
+            }
     }
 
     fun addItem() {
@@ -292,6 +299,10 @@ internal fun ToDoScreen(
     }
 
     LaunchedEffect(session.id) {
+        val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            FamilyOfflineCache.loadTodo(context, session)
+        }
+        saved?.let { items = it }
         refresh()
         while (true) {
             delay(30L * 60L * 1000L)
