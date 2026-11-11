@@ -233,6 +233,9 @@ internal fun ToDoScreen(
                 }
             }
             .onFailure {
+                items = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    FamilyOfflineCache.loadTodo(context, session)
+                } ?: items
                 error = "Visar senast sparade To-do. ${it.message ?: "Ingen anslutning"}"
             }
     }
