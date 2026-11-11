@@ -871,7 +871,7 @@ private fun SyncedApp(
                                     },
                                     onClear = {
                                         scope.launch {
-                                            SupabaseSync.clearChecked(session)
+                                            SupabaseSync.clearChecked(session, shopping)
                                             refresh()
                                         }
                                     },
@@ -1040,27 +1040,23 @@ private fun SyncedApp(
                                 if (editScope == SeriesEditScope.THIS) date
                                 else target.date.plusDays(dayShift)
                             SupabaseSync.updateEvent(
-                                session,
-                                target.id,
-                                title,
-                                targetDate,
-                                time,
-                                endTime,
-                                memberId,
+                                session = session,
+                                eventId = target.id,
+                                title = title,
+                                date = targetDate,
+                                time = time,
+                                endTime = endTime,
+                                memberId = memberId,
                                 source = calendarEventSource(entryKind, time.isNotBlank()),
+                                expectedUpdatedAt = target.updatedAt,
+                                changeSeriesId = event.seriesId != null &&
+                                    editScope != SeriesEditScope.WHOLE_SERIES,
+                                newSeriesId = when (editScope) {
+                                    SeriesEditScope.THIS -> null
+                                    SeriesEditScope.THIS_AND_FUTURE -> splitSeriesId
+                                    SeriesEditScope.WHOLE_SERIES -> event.seriesId
+                                },
                             )
-                            when {
-                                event.seriesId == null -> Unit
-                                editScope == SeriesEditScope.THIS ->
-                                    SupabaseSync.updateEventSeriesId(session, target.id, null)
-                                editScope == SeriesEditScope.THIS_AND_FUTURE ->
-                                    SupabaseSync.updateEventSeriesId(
-                                        session,
-                                        target.id,
-                                        splitSeriesId,
-                                    )
-                                editScope == SeriesEditScope.WHOLE_SERIES -> Unit
-                            }
                         }
                     }
                         .onSuccess {
