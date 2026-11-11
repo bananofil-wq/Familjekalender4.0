@@ -560,6 +560,18 @@ private fun SyncedApp(
                 if (message.startsWith("Synkfel:")) message = ""
             }
             .onFailure {
+                // New offline entries are added to the device cache immediately.
+                // Re-read it on network failure, so they appear without restarting.
+                val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    Triple(
+                        FamilyOfflineCache.loadMembers(context, session),
+                        FamilyOfflineCache.loadShopping(context, session),
+                        FamilyOfflineCache.loadEvents(context, session),
+                    )
+                }
+                saved.first?.let { members = it }
+                saved.second?.let { shopping = it }
+                saved.third?.let { events = it }
                 message = "Synkfel: Visar senast sparade uppgifter. ${it.message}"
             }
     }
@@ -2200,6 +2212,19 @@ private fun SettingsScreen(
             else "Senast sparade kalenderuppgifter: $savedAt",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        val queued = remember(session.id) { mutableIntStateOf(OfflineMutationQueue.pendingCount(session)) }
+        Spacer(Modifier.height(7.dp))
+        Text(
+            if (queued.intValue == 0) "Inga aktiviteter, inköp eller To-do väntar på uppladdning."
+            else "${queued.intValue} nya poster väntar på att skickas när internet fungerar.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (queued.intValue > 0) {
+            TextButton(onClick = {
+                OfflineMutationQueue.requestRetry()
+                queued.intValue = OfflineMutationQueue.pendingCount(session)
+            }) { Text("Försök synka väntande poster") }
+        }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = { confirmClear = true },
