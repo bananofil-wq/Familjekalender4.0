@@ -1073,17 +1073,11 @@ object SupabaseSync {
             val key = names.next()
             val wanted = changes.opt(key)
             val actual = server.opt(key)
-            val equal = when {
-                wanted == null || wanted == JSONObject.NULL ->
-                    actual == null || actual == JSONObject.NULL
-                actual == null || actual == JSONObject.NULL -> false
-                key in setOf("starts_at", "ends_at") ->
-                    runCatching {
-                        OffsetDateTime.parse(wanted.toString()).toInstant() ==
-                            OffsetDateTime.parse(actual.toString()).toInstant()
-                    }.getOrDefault(false)
-                else -> wanted.toString() == actual.toString()
-            }
+            val value = if (wanted == null || wanted == JSONObject.NULL) null
+                else wanted.toString()
+            val current = if (actual == null || actual == JSONObject.NULL) null
+                else actual.toString()
+            val equal = revisionFieldMatches(key, value, current)
             if (!equal) return false
         }
         return true
