@@ -390,6 +390,9 @@ object SupabaseSync {
         endTime: String?,
         memberId: String?,
         source: String? = null,
+        expectedUpdatedAt: String? = null,
+        changeSeriesId: Boolean = false,
+        newSeriesId: String? = null,
     ) =
         withContext(Dispatchers.IO) {
             val noTime = time.isBlank()
@@ -411,19 +414,17 @@ object SupabaseSync {
                 JSONObject()
                     .put("title", title)
                     .put("starts_at", startsAt.toOffsetDateTime().toString())
-                    .put("updated_at", OffsetDateTime.now().toString())
+
             if (endsAt == null) body.put("ends_at", JSONObject.NULL)
             else body.put("ends_at", endsAt.toOffsetDateTime().toString())
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
             if (!source.isNullOrBlank()) body.put("source", source)
-            request(
-                "PATCH",
-                "/rest/v1/calendar_events?id=eq.$eventId&family_id=eq.${session.id}",
-                body,
-                session.code,
-                preferRepresentation = false,
+            if (changeSeriesId) body.put("series_id", newSeriesId ?: JSONObject.NULL)
+            submitRevision(
+                session, "calendar_events", eventId, expectedUpdatedAt, "update",
+                body, title,
             )
         }
 
