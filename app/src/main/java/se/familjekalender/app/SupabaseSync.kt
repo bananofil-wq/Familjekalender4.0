@@ -194,32 +194,13 @@ object SupabaseSync {
 
     suspend fun toggleShopping(session: FamilySession, item: SyncShoppingItem) =
         withContext(Dispatchers.IO) {
-            // A completion is an UPDATE with optimistic locking, not a blind PATCH.
-            // If the network is unavailable, the updated row waits in the offline queue.
+            // checked false→true is recorded by the database on successful UPDATE.
+            // The trigger also handles a retry after an offline period exactly once.
+            // Older clients use the original history RPC and are excluded from it.
             submitRevision(
                 session, "shopping_items", item.id, item.updatedAt, "update",
                 JSONObject().put("checked", !item.checked), item.name,
             )
-            // Shopping history is recorded only when the client can safely confirm
-            // an online completion. Never increment the history counter during a
-            // queued retry, as a lost response could otherwise count it twice.
-            if (!item.checked && !OfflineMutationQueue.shouldQueue() &&
-                !OfflineMutationQueue.hasPendingLocalRevision(session, "shopping_items", item.id)
-            ) {
-                val normalized = normalizeShoppingName(item.name)
-                if (normalized.isNotBlank()) {
-                    runCatching {
-                        request(
-                            "POST", "/rest/v1/rpc/record_shopping_purchase",
-                            JSONObject()
-                                .put("p_family_id", session.id)
-                                .put("p_name", item.name.trim())
-                                .put("p_normalized", normalized),
-                            session.code, preferRepresentation = false,
-                        )
-                    }
-                }
-            }
         }
 
     suspend fun clearChecked(
@@ -1099,6 +1080,9 @@ object SupabaseSync {
             connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
             connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
             connection.setRequestProperty("Content-Type", "application/json")
+            // Signals support for history tracking in the database trigger.
+            // Old installed app versions omit this header and keep using the RPC.
+            connection.setRequestProperty("x-shopping-history-tracking", "server")
             if (!familyCode.isNullOrBlank()) {
                 connection.setRequestProperty("x-family-code", familyCode.uppercase())
             }
