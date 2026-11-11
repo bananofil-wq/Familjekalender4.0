@@ -29,7 +29,7 @@ data class FamilySession(val id: String, val name: String, val code: String)
 
 data class SyncMember(val id: String, val name: String, val role: String, val colorArgb: Long)
 
-data class SyncShoppingItem(val id: String, val name: String, val checked: Boolean)
+data class SyncShoppingItem(val id: String, val name: String, val checked: Boolean, val updatedAt: String? = null)
 
 data class SportAdminImportResult(
     val imported: Int,
@@ -55,6 +55,7 @@ data class SyncEvent(
     val endDate: LocalDate? = null,
     val endTime: String? = null,
     val seriesId: String? = null,
+    val updatedAt: String? = null,
 )
 
 object SupabaseSync {
@@ -149,7 +150,7 @@ object SupabaseSync {
             val result =
                 request(
                     "GET",
-                    "/rest/v1/shopping_items?select=id,name,checked&family_id=eq.${session.id}&order=updated_at.asc",
+                    "/rest/v1/shopping_items?select=id,name,checked,updated_at&family_id=eq.${session.id}&order=updated_at.asc",
                     familyCode = session.code,
                 )
             val array = JSONArray(result)
@@ -161,6 +162,7 @@ object SupabaseSync {
                             row.getString("id"),
                             row.getString("name"),
                             row.getBoolean("checked"),
+                            row.optString("updated_at").takeIf { it.isNotBlank() },
                         )
                     )
                 }
@@ -234,7 +236,7 @@ object SupabaseSync {
             val result =
                 request(
                     "GET",
-                    "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source,series_id&family_id=eq.${session.id}&order=starts_at.asc",
+                    "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source,series_id,updated_at&family_id=eq.${session.id}&order=starts_at.asc",
                     familyCode = session.code,
                 )
             val array = JSONArray(result)
@@ -270,6 +272,7 @@ object SupabaseSync {
                                 else endZoned?.let { "%02d:%02d".format(it.hour, it.minute) },
                             seriesId =
                                 if (row.isNull("series_id")) null else row.getString("series_id"),
+                            updatedAt = row.optString("updated_at").takeIf { it.isNotBlank() },
                         )
                     )
                 }
