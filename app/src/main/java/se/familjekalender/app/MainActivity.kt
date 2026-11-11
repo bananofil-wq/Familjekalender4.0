@@ -846,12 +846,21 @@ private fun SyncedApp(
                                     onBack = { selectedTab = 0 },
                                     onAdd = { name ->
                                         scope.launch {
-                                            SupabaseSync.addShopping(
-                                                session,
-                                                name,
-                                                appPrefs.getString("push_device_id", null),
-                                            )
-                                            refresh()
+                                            try {
+                                                SupabaseSync.addShopping(
+                                                    session,
+                                                    name,
+                                                    appPrefs.getString("push_device_id", null),
+                                                )
+                                                refresh()
+                                                if (OfflineMutationQueue.pendingCount(session) > 0) {
+                                                    message = "Inköpet är sparat på telefonen och synkas när nätet fungerar."
+                                                }
+                                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                                throw cancelled
+                                            } catch (failure: Exception) {
+                                                message = "Kunde inte lägga till inköpet: ${failure.message}"
+                                            }
                                         }
                                     },
                                     onToggle = { item ->
