@@ -167,7 +167,10 @@ object SupabaseSync {
                     )
                 }
             }.let { cloud ->
-                (cloud + OfflineMutationQueue.pendingShopping(session)).distinctBy { it.id }
+                OfflineMutationQueue.overlayShopping(
+                    session,
+                    (cloud + OfflineMutationQueue.pendingShopping(session)).distinctBy { it.id }
+                )
             }
         }
 
@@ -277,7 +280,10 @@ object SupabaseSync {
                     )
                 }
             }.let { cloud ->
-                (cloud + OfflineMutationQueue.pendingEvents(session)).distinctBy { it.id }
+                OfflineMutationQueue.overlayEvents(
+                    session,
+                    (cloud + OfflineMutationQueue.pendingEvents(session)).distinctBy { it.id }
+                )
             }
         }
 
@@ -922,6 +928,49 @@ object SupabaseSync {
             "POST", "/rest/v1/$table?on_conflict=id", body, session.code,
             preferRepresentation = false, preferExtra = "resolution=ignore-duplicates",
         )
+    }
+
+    /**
+     * All editing and deletion paths use the same version-checked mutation.
+     * Pending creates can be changed before first sync, while existing records
+     * require updated_at. Server conflicts are never converted into new writes.
+     */
+    internal suspend fun submitRevision(
+        session: FamilySession,
+        table: String,
+        targetId: String,
+        baseUpdatedAt: String?,
+        action: String,
+        changes: JSONObject = JSONObject(),
+        label: String = "",
+    ) = withContext(Dispatchers.IO) {
+        require(table in setOf("calendar_events", "todo_items", "shopping_items"))
+        require(action == "update" || action == "delete")
+        if (OfflineMutationQueue.revisePendingCreate(session, table, targetId, action, changes)) {
+            return@withContext
+        }
+        val version = baseUpdatedAt?.takeIf { it.isNotBlank() }
+            ?: throw FamilyRevisionConflict(
+                "Posten har ingen versionsstämpel. Öppna appen online och försök igen."
+            )
+        if (OfflineMutationQueue.shouldQueue() ||
+            OfflineMutationQueue.hasPendingLocalRevision(session, table, targetId)
+        ) {
+            OfflineMutationQueue.enqueueRevision(
+                session, table, targetId, version, action, changes, label
+            )
+            return@withContext
+        }
+        try {
+            applyCheckedRevision(session, table, targetId, version, action, changes)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (networkFailure: java.io.IOException) {
+            OfflineMutationQueue.markNetworkFailure()
+            OfflineMutationQueue.enqueueRevision(
+                session, table, targetId, version, action, changes, label
+            )
+        }
     }
 
     /** Raised when the phone attempts to change data someone else has since edited. */
