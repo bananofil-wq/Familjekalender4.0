@@ -647,8 +647,10 @@ private fun SyncedApp(
         }
     }
 
+    val undoSnackbar = remember { SnackbarHostState() }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(undoSnackbar) },
         bottomBar = {
             when (uiLayoutMode) {
                 UiLayoutMode.MINIMAL ->
@@ -1069,6 +1071,29 @@ private fun SyncedApp(
                             editEvent = null
                             refresh()
                             FamilyCalendarWidget.enqueueRefresh(context)
+                            scope.launch {
+                                val response = undoSnackbar.showSnackbar(
+                                    message = if (effectiveTargets.size == 1) {
+                                        "Aktiviteten är borttagen."
+                                    } else {
+                                        "${effectiveTargets.size} aktiviteter är borttagna."
+                                    },
+                                    actionLabel = "Ångra",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long,
+                                )
+                                if (response == SnackbarResult.ActionPerformed) {
+                                    runCatching {
+                                        SupabaseSync.restoreRecentlyDeletedEvents(session, effectiveTargets)
+                                    }.onSuccess {
+                                        refresh()
+                                        FamilyCalendarWidget.enqueueRefresh(context)
+                                        message = "Aktiviteterna har återställts."
+                                    }.onFailure { error ->
+                                        message = "Kunde inte ångra borttagningen: ${error.message}"
+                                    }
+                                }
+                            }
                         }
                         .onFailure {
                             message = "Kunde inte ta bort aktiviteten: ${it.message}"

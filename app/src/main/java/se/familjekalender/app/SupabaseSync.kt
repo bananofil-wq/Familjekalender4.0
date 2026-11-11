@@ -448,6 +448,65 @@ object SupabaseSync {
             )
         }
 
+    /**
+     * Restore the exact calendar event IDs after a user taps Undo. Re-inserting
+     * the same ID twice is safe; only missing rows are added. This does not
+     * overwrite events that another device has already recreated or edited.
+     */
+    suspend fun restoreRecentlyDeletedEvents(
+        session: FamilySession,
+        deleted: List<SyncEvent>,
+    ): Int = withContext(Dispatchers.IO) {
+        val snapshots = deleted.distinctBy { it.id }
+        val rows = JSONArray()
+        snapshots.forEach { event ->
+            val startTime = event.time.takeIf { it.isNotBlank() }
+                ?.let { LocalTime.parse(it) } ?: LocalTime.MIDNIGHT
+            val start = ZonedDateTime.of(event.date, startTime, STOCKHOLM)
+            val row = JSONObject()
+                .put("id", event.id)
+                .put("family_id", session.id)
+                .put("title", event.title)
+                .put("starts_at", start.toOffsetDateTime().toString())
+                .put("source", event.source)
+                .put(
+                    "member_id",
+                    event.memberId?.takeUnless { it == ALL_FAMILY_MEMBER_ID }
+                        ?: JSONObject.NULL,
+                )
+            event.endTime?.takeIf { it.isNotBlank() }?.let { rawEnd ->
+                val endTime = LocalTime.parse(rawEnd)
+                val endDate = event.endDate ?: if (endTime.isAfter(startTime)) {
+                    event.date
+                } else {
+                    event.date.plusDays(1)
+                }
+                row.put(
+                    "ends_at",
+                    ZonedDateTime.of(endDate, endTime, STOCKHOLM).toOffsetDateTime().toString()
+                )
+            }
+            event.seriesId?.let { row.put("series_id", it) }
+            rows.put(row)
+        }
+        var i = 0
+        while (i < rows.length()) {
+            val batch = JSONArray()
+            val end = minOf(i + 75, rows.length())
+            for (index in i until end) batch.put(rows.getJSONObject(index))
+            request(
+                "POST",
+                "/rest/v1/calendar_events?on_conflict=id",
+                batch,
+                session.code,
+                preferRepresentation = false,
+                preferExtra = "resolution=ignore-duplicates",
+            )
+            i = end
+        }
+        snapshots.size
+    }
+
     suspend fun importSportAdmin(
         session: FamilySession,
         webcalUrl: String,
