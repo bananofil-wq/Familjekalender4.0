@@ -2,6 +2,7 @@ package se.familjekalender.app
 
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 internal enum class CalendarConflictKind {
     SAME_START,
@@ -45,16 +46,21 @@ private fun conflictMinutes(value: String?): Int? {
     return parsed.hour * 60 + parsed.minute
 }
 
-private fun conflictInterval(event: SyncEvent): ConflictInterval? {
-    val start = conflictMinutes(event.time) ?: return null
-    val endValue = conflictMinutes(event.endTime)
-    if (endValue == null) return ConflictInterval(start, null)
-    val end =
-        when {
-            event.endDate != null && event.endDate.isAfter(event.date) -> endValue + 24 * 60
-            endValue > start -> endValue
-            else -> endValue + 24 * 60
-        }
+private fun conflictEndDate(event: SyncEvent): LocalDate {
+    val start = conflictMinutes(event.time) ?: return event.date
+    val end = conflictMinutes(event.endTime) ?: return event.date
+    val explicit = event.endDate
+    if (explicit != null && !explicit.isBefore(event.date)) return explicit
+    return if (end <= start) event.date.plusDays(1) else event.date
+}
+
+/** Absolute event minutes relative to the day being checked; supports previous-day starts. */
+private fun conflictInterval(event: SyncEvent, comparedWith: LocalDate): ConflictInterval? {
+    val startTime = conflictMinutes(event.time) ?: return null
+    val start = ChronoUnit.DAYS.between(comparedWith, event.date).toInt() * 1440 + startTime
+    val endTime = conflictMinutes(event.endTime)
+    if (endTime == null) return ConflictInterval(start, null)
+    val end = ChronoUnit.DAYS.between(comparedWith, conflictEndDate(event)).toInt() * 1440 + endTime
     return ConflictInterval(start, end)
 }
 
@@ -73,10 +79,15 @@ internal fun analyzeCalendarConflicts(
 ): List<CalendarConflict> {
     val realMembers = members.filter { it.id != ALL_FAMILY_MEMBER_ID }
     val dates =
-        events
-            .asSequence()
-            .filter { date == null || it.date == date }
-            .map { it.date }
+        if (date != null) listOf(date)
+        else events.asSequence()
+            .filterNot(::isNonActivityConflictExempt)
+            .flatMap { event ->
+                val lastDate = conflictEndDate(event)
+                generateSequence(event.date) { day ->
+                    if (day.isBefore(lastDate)) day.plusDays(1) else null
+                }.take(366)
+            }
             .distinct()
             .sorted()
             .toList()
@@ -86,7 +97,11 @@ internal fun analyzeCalendarConflicts(
 
     dates.forEach { currentDate ->
         val dayEvents =
-            events.filter { it.date == currentDate && !isNonActivityConflictExempt(it) }
+            events.filter { event ->
+                !isNonActivityConflictExempt(event) &&
+                    !event.date.isAfter(currentDate) &&
+                    !conflictEndDate(event).isBefore(currentDate)
+            }
         val memberContexts: List<Pair<String?, String>> =
             if (realMembers.isEmpty()) {
                 listOf(ALL_FAMILY_MEMBER_ID to "Hela familjen")
@@ -107,14 +122,14 @@ internal fun analyzeCalendarConflicts(
 
             for (firstIndex in 0 until relevant.lastIndex) {
                 val first = relevant[firstIndex]
-                val firstInterval = conflictInterval(first) ?: continue
+                val firstInterval = conflictInterval(first, currentDate) ?: continue
 
                 for (secondIndex in firstIndex + 1..relevant.lastIndex) {
                     val second = relevant[secondIndex]
-                    val secondInterval = conflictInterval(second) ?: continue
+                    val secondInterval = conflictInterval(second, currentDate) ?: continue
                     if (first.id == second.id) continue
 
-                    val sameStart = firstInterval.start == secondInterval.start
+                    val sameStart = firstInterval.start == secondInterval.start && first.date == currentDate
                     val overlaps =
                         !sameStart &&
                                 firstInterval.end != null &&
