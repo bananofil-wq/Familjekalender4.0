@@ -208,7 +208,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
         if (event.time.isBlank()) return null
         // Some older events stored a time range only in the title, not ends_at.
         // Display it in the time column rather than leaving an orphaned "–14:00" in the title.
-        val titleRange = Regex("""(\\d{1,2}:\\d{2})\\s*[-–]\\s*(\\d{1,2}:\\d{2})""")
+        val titleRange = Regex("""(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})""")
             .find(event.title)
         val inferredEnd = titleRange?.takeIf { match ->
             parseLocalTime(match.groupValues[1]) == parseLocalTime(event.time)
@@ -242,7 +242,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
         ranges.forEach { cleaned = cleaned.replace(it, " ", ignoreCase = true) }
         if (startTime.isNotBlank()) {
             cleaned = cleaned.replace(
-                Regex("""(?<!\\d)${Regex.escape(startTime)}\\s*[-–]\\s*\\d{1,2}:\\d{2}\\b"""),
+                Regex("""(?<!\d)${Regex.escape(startTime)}\s*[-–]\s*\d{1,2}:\d{2}\b"""),
                 " ",
             )
             cleaned = cleaned.replace(startTime, " ", ignoreCase = true)
@@ -254,7 +254,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 .trim()
                 .trim('•', '·', '-', '–', '|', ':')
                 .trim()
-                .replace(Regex("""\\s*[·•|]\\s*[-–]\\s*\\d{1,2}:\\d{2}\\s*$"""), "")
+                .replace(Regex("""\s*[·•|]\s*[-–]\s*\d{1,2}:\d{2}\s*$"""), "")
                 .trim()
         return cleaned.ifBlank { "Aktivitet" }
     }
