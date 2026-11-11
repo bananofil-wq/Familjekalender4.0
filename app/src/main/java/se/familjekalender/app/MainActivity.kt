@@ -1081,7 +1081,16 @@ private fun SyncedApp(
                         }
                     val effectiveTargets = if (targets.isEmpty()) listOf(event) else targets
                     runCatching {
-                        deleteCalendarEventsDirect(session, effectiveTargets.map { it.id })
+                        effectiveTargets.forEach { target ->
+                            SupabaseSync.submitRevision(
+                                session = session,
+                                table = "calendar_events",
+                                targetId = target.id,
+                                baseUpdatedAt = target.updatedAt,
+                                action = "delete",
+                                label = target.title,
+                            )
+                        }
                     }
                         .onSuccess {
                             editEvent = null
@@ -1100,7 +1109,7 @@ private fun SyncedApp(
                                 )
                                 if (response == SnackbarResult.ActionPerformed) {
                                     runCatching {
-                                        SupabaseSync.restoreRecentlyDeletedEvents(session, effectiveTargets)
+                                        SupabaseSync.undoDeletedEvents(session, effectiveTargets)
                                     }.onSuccess {
                                         refresh()
                                         FamilyCalendarWidget.enqueueRefresh(context)
