@@ -70,7 +70,9 @@ internal object TodoSync {
                 )
             }
         }.let { cloud ->
-            (cloud + OfflineMutationQueue.pendingTodo(session)).distinctBy { it.id }
+            OfflineMutationQueue.overlayTodo(
+                session, (cloud + OfflineMutationQueue.pendingTodo(session)).distinctBy { it.id }
+            )
         }
     }
 
@@ -124,38 +126,27 @@ internal object TodoSync {
         }
     }
 
-    fun toggle(session: FamilySession, item: SyncTodoItem) {
-        request(
-            "PATCH",
-            "/rest/v1/todo_items?id=eq.${item.id}&family_id=eq.${session.id}",
-            JSONObject().put("checked", !item.checked),
-            session.code,
-            preferRepresentation = false,
+    suspend fun toggle(session: FamilySession, item: SyncTodoItem) {
+        SupabaseSync.submitRevision(
+            session, "todo_items", item.id, item.updatedAt, "update",
+            JSONObject().put("checked", !item.checked), item.title,
         )
     }
 
-    fun updateAssignee(session: FamilySession, item: SyncTodoItem, memberId: String?) {
-        val body = JSONObject()
-        if (memberId.isNullOrBlank() || memberId == ALL_FAMILY_MEMBER_ID) {
-            body.put("member_id", JSONObject.NULL)
-        } else {
-            body.put("member_id", memberId)
-        }
-        request(
-            "PATCH",
-            "/rest/v1/todo_items?id=eq.${item.id}&family_id=eq.${session.id}",
-            body,
-            session.code,
-            preferRepresentation = false,
+    suspend fun updateAssignee(session: FamilySession, item: SyncTodoItem, memberId: String?) {
+        SupabaseSync.submitRevision(
+            session, "todo_items", item.id, item.updatedAt, "update",
+            JSONObject().put(
+                "member_id",
+                memberId?.takeIf { it != ALL_FAMILY_MEMBER_ID } ?: JSONObject.NULL,
+            ), item.title,
         )
     }
 
-    fun delete(session: FamilySession, item: SyncTodoItem) {
-        request(
-            "DELETE",
-            "/rest/v1/todo_items?id=eq.${item.id}&family_id=eq.${session.id}",
-            familyCode = session.code,
-            preferRepresentation = false,
+    suspend fun delete(session: FamilySession, item: SyncTodoItem) {
+        SupabaseSync.submitRevision(
+            session, "todo_items", item.id, item.updatedAt, "delete",
+            label = item.title,
         )
     }
 
