@@ -2147,6 +2147,14 @@ private fun SettingsScreen(
 
     Spacer(Modifier.height(14.dp))
     SettingsSectionCard(
+        title = "Säkerhetskopiering och återställning",
+        subtitle = "Exportera familjens data och återställ saknade uppgifter utan dubbletter.",
+    ) {
+        FamilyBackupSettings(session)
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SettingsSectionCard(
         title = "Utseende",
         subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen.",
     ) {

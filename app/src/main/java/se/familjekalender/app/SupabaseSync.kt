@@ -631,6 +631,132 @@ object SupabaseSync {
             names.toList()
         }
 
+
+    /**
+     * Exports a family-scoped, portable snapshot. The family access code and device
+     * credentials are deliberately excluded. The caller chooses the destination.
+     */
+    suspend fun exportFamilyBackup(session: FamilySession): String =
+        withContext(Dispatchers.IO) {
+            val backup = JSONObject()
+                .put("format", "familjekalender-backup")
+                .put("version", 1)
+                .put("family_id", session.id)
+                .put("exported_at", OffsetDateTime.now().toString())
+            val tables = linkedMapOf(
+                "members" to ("family_members" to "id,name,role,color_argb"),
+                "events" to ("calendar_events" to "id,title,starts_at,ends_at,member_id,source,series_id,location,description,external_id"),
+                "shopping" to ("shopping_items" to "id,name,checked"),
+                "todo" to ("todo_items" to "id,title,checked,member_id"),
+            )
+            tables.forEach { (key, table) ->
+                val (name, columns) = table
+                val result = request(
+                    "GET",
+                    "/rest/v1/$name?select=$columns&family_id=eq.${session.id}&order=id.asc",
+                    familyCode = session.code,
+                )
+                backup.put(key, JSONArray(result))
+            }
+            backup.toString(2)
+        }
+
+    data class FamilyRestoreSummary(
+        val familyMembers: Int,
+        val events: Int,
+        val shopping: Int,
+        val todos: Int,
+    ) {
+        val total: Int get() = familyMembers + events + shopping + todos
+    }
+
+    /**
+     * Same-family restore; insert only absent UUIDs. It never deletes or overwrites newer
+     * cloud records. Re-importing the same file is safe and doesn't create duplicates.
+     * Import order preserves member foreign-key references.
+     */
+    suspend fun restoreFamilyBackup(
+        session: FamilySession,
+        document: String,
+    ): FamilyRestoreSummary = withContext(Dispatchers.IO) {
+        require(document.length <= 15_000_000) { "Säkerhetskopian är för stor." }
+        val backup = JSONObject(document)
+        require(backup.optString("format") == "familjekalender-backup" &&
+            backup.optInt("version") == 1) { "Filformatet stöds inte." }
+        require(backup.optString("family_id") == session.id) {
+            "Säkerhetskopian tillhör en annan familj."
+        }
+
+        data class BackupTable(val key: String, val table: String, val columns: List<String>)
+        val tables = listOf(
+            BackupTable("members", "family_members", listOf("id", "name", "role", "color_argb")),
+            BackupTable("events", "calendar_events",
+                listOf("id", "title", "starts_at", "ends_at", "member_id", "source",
+                    "series_id", "location", "description", "external_id")),
+            BackupTable("shopping", "shopping_items", listOf("id", "name", "checked")),
+            BackupTable("todo", "todo_items", listOf("id", "title", "checked", "member_id")),
+        )
+        // Validate the complete file before making even the first write.
+        val validated = linkedMapOf<String, JSONArray>()
+        var totalRows = 0
+        tables.forEach { table ->
+            val entries = backup.optJSONArray(table.key)
+                ?: error("Säkerhetskopian saknar ${table.key}.")
+            totalRows += entries.length()
+            require(totalRows <= 20_000) { "För många poster i säkerhetskopian." }
+            val safeRows = JSONArray()
+            for (i in 0 until entries.length()) {
+                val input = entries.optJSONObject(i)
+                    ?: error("Ogiltig post i ${table.key}.")
+                val id = input.optString("id")
+                require(runCatching { java.util.UUID.fromString(id) }.isSuccess) {
+                    "Ogiltigt post-ID i ${table.key}."
+                }
+                val row = JSONObject().put("id", id).put("family_id", session.id)
+                table.columns.filter { it != "id" }.forEach { column ->
+                    if (input.has(column)) row.put(column, input.get(column))
+                }
+                val requiredName = if (table.key == "members" || table.key == "shopping")
+                    "name" else "title"
+                require(row.optString(requiredName).isNotBlank()) {
+                    "En post i ${table.key} saknar namn."
+                }
+                if (table.key == "events") {
+                    require(row.optString("starts_at").isNotBlank()) {
+                        "En kalenderhändelse saknar datum."
+                    }
+                }
+                safeRows.put(row)
+            }
+            validated[table.table] = safeRows
+        }
+
+        validated.forEach { (table, rows) ->
+            var index = 0
+            while (index < rows.length()) {
+                val batch = JSONArray()
+                val end = minOf(index + 75, rows.length())
+                for (i in index until end) batch.put(rows.getJSONObject(i))
+                request(
+                    "POST",
+                    "/rest/v1/$table?on_conflict=id",
+                    batch,
+                    session.code,
+                    preferRepresentation = false,
+                    preferExtra = "resolution=ignore-duplicates",
+                )
+                index = end
+            }
+        }
+
+        FamilyRestoreSummary(
+            validated.getValue("family_members").length(),
+            validated.getValue("calendar_events").length(),
+            validated.getValue("shopping_items").length(),
+            validated.getValue("todo_items").length(),
+        )
+    }
+
     private fun normalizeShoppingName(value: String): String =
         value.lowercase(java.util.Locale("sv", "SE")).replace(Regex("[^a-z0-9åäö]+"), " ").trim()
 
@@ -713,7 +839,7 @@ object SupabaseSync {
     private fun request(
         method: String,
         path: String,
-        body: JSONObject? = null,
+        body: Any? = null,
         familyCode: String? = null,
         preferRepresentation: Boolean = true,
         preferExtra: String? = null,
