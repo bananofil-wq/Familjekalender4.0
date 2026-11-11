@@ -479,16 +479,22 @@ private fun SyncedApp(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var selectedTab by remember { mutableIntStateOf(if (initialTab in 0..5) initialTab else 0) }
 
-    // Android system back should navigate inside the app before closing the activity.
-    BackHandler(enabled = selectedTab != 0) {
-        selectedTab = 0
-    }
-
     LaunchedEffect(initialTab) {
         if (initialTab in 0..5) selectedTab = initialTab
     }
     var showAddEvent by remember { mutableStateOf(false) }
     var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
+
+    // Close the active editor first, then return to the calendar from a section.
+    // The Android back button must not exit the app from a nested view.
+    BackHandler(enabled = editEvent != null || showAddEvent || selectedTab != 0) {
+        when {
+            editEvent != null -> editEvent = null
+            showAddEvent -> showAddEvent = false
+            else -> selectedTab = 0
+        }
+    }
+
     var handledEventRequest by remember { mutableStateOf<String?>(null) }
 
     // Opening a notification should select the exact event, not just the calendar tab.
