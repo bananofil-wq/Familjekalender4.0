@@ -150,13 +150,10 @@ internal object TodoSync {
         )
     }
 
-    fun clearChecked(session: FamilySession) {
-        request(
-            "DELETE",
-            "/rest/v1/todo_items?family_id=eq.${session.id}&checked=eq.true",
-            familyCode = session.code,
-            preferRepresentation = false,
-        )
+    suspend fun clearChecked(session: FamilySession, checkedItems: List<SyncTodoItem>) {
+        checkedItems.filter { it.checked }.forEach { item ->
+            delete(session, item)
+        }
     }
 
     private fun request(
@@ -634,7 +631,7 @@ internal fun ToDoScreen(
                                         kotlinx.coroutines.withContext(
                                             kotlinx.coroutines.Dispatchers.IO
                                         ) {
-                                            TodoSync.clearChecked(session)
+                                            TodoSync.clearChecked(session, items)
                                         }
                                     }.onFailure {
                                         error = it.message ?: "Kunde inte rensa"
