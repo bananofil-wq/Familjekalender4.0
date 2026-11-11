@@ -1,6 +1,8 @@
 package se.familjekalender.app
 
 import biweekly.Biweekly
+import java.io.IOException
+import java.util.UUID
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
@@ -162,6 +164,8 @@ object SupabaseSync {
                         )
                     )
                 }
+            }.let { cloud ->
+                (cloud + OfflineMutationQueue.pendingShopping(session)).distinctBy { it.id }
             }
         }
 
@@ -173,19 +177,14 @@ object SupabaseSync {
         withContext(Dispatchers.IO) {
             val body =
                 JSONObject()
+                    .put("id", UUID.randomUUID().toString())
                     .put("family_id", session.id)
                     .put("name", name)
                     .put("checked", false)
             if (!sourceDeviceId.isNullOrBlank()) {
                 body.put("created_by_device_id", sourceDeviceId)
             }
-            request(
-                "POST",
-                "/rest/v1/shopping_items",
-                body,
-                session.code,
-                preferRepresentation = false,
-            )
+            submitOfflineCapableCreation(session, "shopping_items", body)
         }
 
     suspend fun toggleShopping(session: FamilySession, item: SyncShoppingItem) =
@@ -274,6 +273,8 @@ object SupabaseSync {
                         )
                     )
                 }
+            }.let { cloud ->
+                (cloud + OfflineMutationQueue.pendingEvents(session)).distinctBy { it.id }
             }
         }
 
@@ -294,6 +295,7 @@ object SupabaseSync {
                 ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
             val body =
                 JSONObject()
+                    .put("id", UUID.randomUUID().toString())
                     .put("family_id", session.id)
                     .put("title", "🔔 " + title.removePrefix("🔔").trim())
                     .put("starts_at", startsAt)
@@ -302,13 +304,7 @@ object SupabaseSync {
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
             if (seriesId != null) body.put("series_id", seriesId)
-            request(
-                "POST",
-                "/rest/v1/calendar_events",
-                body,
-                session.code,
-                preferRepresentation = false,
-            )
+            submitOfflineCapableCreation(session, "calendar_events", body)
         }
 
     suspend fun addEvent(
@@ -324,6 +320,7 @@ object SupabaseSync {
                 ZonedDateTime.of(date, parsedTime, STOCKHOLM).toOffsetDateTime().toString()
             val body =
                 JSONObject()
+                    .put("id", UUID.randomUUID().toString())
                     .put("family_id", session.id)
                     .put("title", title)
                     .put("starts_at", startsAt)
@@ -331,13 +328,7 @@ object SupabaseSync {
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
-            request(
-                "POST",
-                "/rest/v1/calendar_events",
-                body,
-                session.code,
-                preferRepresentation = false,
-            )
+            submitOfflineCapableCreation(session, "calendar_events", body)
         }
 
     suspend fun addEvent(
@@ -358,6 +349,7 @@ object SupabaseSync {
             val starts = ZonedDateTime.of(date, parsedStart, STOCKHOLM)
             val body =
                 JSONObject()
+                    .put("id", UUID.randomUUID().toString())
                     .put("family_id", session.id)
                     .put("title", title)
                     .put("starts_at", starts.toOffsetDateTime().toString())
@@ -377,13 +369,7 @@ object SupabaseSync {
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
             if (seriesId != null) body.put("series_id", seriesId)
-            request(
-                "POST",
-                "/rest/v1/calendar_events",
-                body,
-                session.code,
-                preferRepresentation = false,
-            )
+            submitOfflineCapableCreation(session, "calendar_events", body)
         }
 
     suspend fun updateEvent(
@@ -893,6 +879,46 @@ object SupabaseSync {
         } finally {
             connection.disconnect()
         }
+    }
+
+    /**
+     * Creates only new, client-identified rows. A lost response cannot create a duplicate
+     * when WorkManager sends the same UUID again. Server HTTP validation failures are
+     * reported to the user, not hidden in the offline queue.
+     */
+    internal fun submitOfflineCapableCreation(
+        session: FamilySession,
+        table: String,
+        body: JSONObject,
+    ) {
+        require(table in setOf("calendar_events", "shopping_items", "todo_items"))
+        if (OfflineMutationQueue.shouldQueue()) {
+            OfflineMutationQueue.enqueue(session, table, body)
+            return
+        }
+        try {
+            request(
+                "POST", "/rest/v1/$table?on_conflict=id", body, session.code,
+                preferRepresentation = false, preferExtra = "resolution=ignore-duplicates",
+            )
+        } catch (networkError: IOException) {
+            OfflineMutationQueue.markNetworkFailure()
+            OfflineMutationQueue.enqueue(session, table, body)
+        }
+    }
+
+    internal suspend fun replayOfflineCreation(
+        session: FamilySession,
+        table: String,
+        body: JSONObject,
+    ) = withContext(Dispatchers.IO) {
+        require(table in setOf("calendar_events", "shopping_items", "todo_items"))
+        require(body.optString("family_id") == session.id)
+        require(runCatching { UUID.fromString(body.optString("id")) }.isSuccess)
+        request(
+            "POST", "/rest/v1/$table?on_conflict=id", body, session.code,
+            preferRepresentation = false, preferExtra = "resolution=ignore-duplicates",
+        )
     }
 
     private fun request(
