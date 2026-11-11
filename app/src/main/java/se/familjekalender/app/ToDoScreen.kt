@@ -294,7 +294,7 @@ internal fun ToDoScreen(
         saved?.let { items = it }
         refresh()
         while (true) {
-            delay(30L * 60L * 1000L)
+            delay(20_000L)
             refresh()
         }
     }
