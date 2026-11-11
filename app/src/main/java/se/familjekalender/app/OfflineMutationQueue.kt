@@ -177,6 +177,8 @@ internal object OfflineMutationQueue {
             .putString(key(session), remaining.toString()).commit()
     }
 
+    fun requestRetry() = schedule()
+
     private fun schedule() {
         if (!::context.isInitialized) return
         val work = OneTimeWorkRequestBuilder<OfflineCreateWorker>()
