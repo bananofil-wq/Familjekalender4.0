@@ -117,15 +117,26 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     1 -> "1 aktivitet idag"
                     else -> "$todayCount aktiviteter idag"
                 }
-                val todo = "✓  ${loaded.openTodos} To-Do    ›"
-                val shopping = "🛒  ${loaded.openShopping} inköp    ›"
+                val prefs = applicationContext.getSharedPreferences(
+                    FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE
+                )
+                val previous = prefs.getString(
+                    FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), null
+                )?.let { runCatching { JSONObject(it) }.getOrNull() }
+                val todo = loaded.openTodos?.let { "✓  $it To-Do    ›" }
+                    ?: previous?.optString("todo")?.takeIf { it.isNotBlank() }
+                    ?: "✓  To-Do    ›"
+                val shopping = loaded.openShopping?.let { "🛒  $it inköp    ›" }
+                    ?: previous?.optString("shopping")?.takeIf { it.isNotBlank() }
+                    ?: "🛒  Inköp    ›"
                 val summary = JSONObject()
                     .put("date", today.toString())
                     .put("status", status)
                     .put("todo", todo)
                     .put("shopping", shopping)
-                applicationContext.getSharedPreferences(FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE)
-                    .edit().putString(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), summary.toString()).apply()
+                prefs.edit()
+                    .putString(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), summary.toString())
+                    .apply()
                 val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
                 manager.updateAppWidget(widgetId, views)
                 manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
