@@ -1108,6 +1108,7 @@ private fun SyncedApp(
                                         entryKind,
                                         recurrence ->
             scope.launch {
+                try {
                 if (entryKind == CalendarEntryKind.REMINDER) {
                     val targetDates =
                         if (recurrence == RecurrenceMode.NONE) {
@@ -1178,6 +1179,14 @@ private fun SyncedApp(
                 refresh()
                 FamilyCalendarWidget.enqueueRefresh(context)
                 showAddEvent = false
+                if (OfflineMutationQueue.pendingCount(session) > 0) {
+                    message = "${OfflineMutationQueue.pendingCount(session)} poster sparades lokalt och väntar på internet."
+                }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    message = "Kunde inte spara allt: ${failure.message}. Kontrollera kalendern före nytt försök."
+                }
             }
         }
     }
