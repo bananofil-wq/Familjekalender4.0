@@ -67,12 +67,15 @@ internal object TodoSync {
                     )
                 )
             }
+        }.let { cloud ->
+            (cloud + OfflineMutationQueue.pendingTodo(session)).distinctBy { it.id }
         }
     }
 
     fun add(session: FamilySession, title: String, memberId: String?): String {
         val body =
             JSONObject()
+                .put("id", java.util.UUID.randomUUID().toString())
                 .put("family_id", session.id)
                 .put("title", title)
                 .put("checked", false)
@@ -81,15 +84,8 @@ internal object TodoSync {
         } else {
             body.put("member_id", memberId)
         }
-        val response =
-            request(
-                "POST",
-                "/rest/v1/todo_items",
-                body,
-                session.code,
-                preferRepresentation = true,
-            )
-        return JSONArray(response).getJSONObject(0).getString("id")
+        SupabaseSync.submitOfflineCapableCreation(session, "todo_items", body)
+        return body.getString("id")
     }
 
     fun notifyAssigned(
