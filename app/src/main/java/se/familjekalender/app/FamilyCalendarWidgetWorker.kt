@@ -3,7 +3,6 @@ package se.familjekalender.app
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
-import android.os.Build
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import java.net.HttpURLConnection
@@ -39,6 +38,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             if (id.isNullOrBlank() || code.isNullOrBlank()) {
                 widgetIds.forEach { widgetId ->
                     cacheRows(widgetId, JSONArray())
+                    applicationContext.getSharedPreferences(FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE)
+                        .edit().remove(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId)).apply()
                     val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
                     views.setTextViewText(
                         R.id.widget_status,
@@ -88,48 +89,43 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 }
 
             val today = LocalDate.now()
-            val tomorrow = today.plusDays(1)
+            val cacheUntil = today.plusDays(13)
             val now = LocalTime.now()
-            val todaysEvents =
-                loaded.events
-                    .filter { it.date == today && isStillRelevantToday(it, now) }
-                    .sortedWith(eventComparator())
-            val tomorrowsEvents =
-                loaded.events
-                    .filter { it.date == tomorrow }
-                    .sortedWith(eventComparator())
-
-            val cachedArray =
-                JSONArray().apply {
-                    appendEvents(todaysEvents, today, loaded.members)
-                    appendEvents(tomorrowsEvents, tomorrow, loaded.members)
+            // Store two weeks, so the next week's overview still works when offline.
+            val upcomingEvents = loaded.events
+                .filter { event ->
+                    !event.date.isBefore(today) && !event.date.isAfter(cacheUntil) &&
+                        (event.date != today || isStillRelevantToday(event, now))
                 }
+                .sortedWith(compareBy<SyncEvent> { it.date }
+                    .thenBy { parseMinute(it.time) ?: Int.MAX_VALUE }
+                    .thenBy { it.title })
+
+            val cachedArray = JSONArray().apply {
+                upcomingEvents.groupBy { it.date }.forEach { (date, dayEvents) ->
+                    appendEvents(dayEvents, date, loaded.members)
+                }
+            }
 
             widgetIds.forEach { widgetId ->
                 cacheRows(widgetId, cachedArray)
-                val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
-                val todayCount = todaysEvents.size
-                views.setTextViewText(
-                    R.id.widget_status,
-                    when (todayCount) {
-                        0 -> "Inga aktiviteter kvar idag"
-                        1 -> "✓ 1 aktivitet kvar idag"
-                        else -> "✓ $todayCount aktiviteter kvar idag"
-                    },
-                )
-                views.setTextViewText(R.id.widget_todo, "✓  ${loaded.openTodos} To-Do    ›")
-                views.setTextViewText(
-                    R.id.widget_shopping,
-                    "🛒  ${loaded.openShopping} inköp    ›",
-                )
-                views.setTextViewText(R.id.widget_updated, "")
-                manager.updateAppWidget(widgetId, views)
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                    manager.notifyAppWidgetViewDataChanged(
-                        widgetId,
-                        R.id.widget_event_list,
-                    )
+                val todayCount = upcomingEvents.count { it.date == today }
+                val status = when (todayCount) {
+                    0 -> "Inga aktiviteter kvar idag"
+                    1 -> "✓ 1 aktivitet kvar idag"
+                    else -> "✓ $todayCount aktiviteter kvar idag"
                 }
+                val todo = "✓  ${loaded.openTodos} To-Do    ›"
+                val shopping = "🛒  ${loaded.openShopping} inköp    ›"
+                val summary = JSONObject()
+                    .put("status", status)
+                    .put("todo", todo)
+                    .put("shopping", shopping)
+                applicationContext.getSharedPreferences(FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE)
+                    .edit().putString(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), summary.toString()).apply()
+                val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
+                manager.updateAppWidget(widgetId, views)
+                manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
             }
 
             Result.success()
@@ -137,10 +133,9 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             widgetIds.forEach { widgetId ->
                 val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
                 views.setTextViewText(R.id.widget_status, "Kunde inte uppdatera just nu")
-                views.setTextViewText(R.id.widget_todo, "✓  To-Do    ›")
-                views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
-                views.setTextViewText(R.id.widget_updated, "")
+                // Keep cached rows and counts when the network is unavailable.
                 manager.updateAppWidget(widgetId, views)
+                manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
             }
             Result.retry()
         }

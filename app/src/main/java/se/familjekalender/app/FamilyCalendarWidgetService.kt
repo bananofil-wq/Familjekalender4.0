@@ -5,7 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 import org.json.JSONArray
 
 class FamilyCalendarWidgetService : RemoteViewsService() {
@@ -33,7 +37,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
         )
 
         private sealed interface Item {
-            data class Header(val text: String) : Item
+            data class Header(val text: String, val dayKey: String) : Item
 
             data class Event(
                 val who: String,
@@ -55,111 +59,98 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
 
         override fun onDataSetChanged() {
             items.clear()
-            val prefs =
-                context.getSharedPreferences(
-                    FamilyCalendarWidget.WIDGET_PREFS,
-                    Context.MODE_PRIVATE,
-                )
-            val cached =
-                prefs.getString(FamilyCalendarWidget.cachedRowsPrefKey(widgetId), "[]")
-                    ?: "[]"
-            val expanded =
-                prefs.getString(FamilyCalendarWidget.expandedGroupPrefKey(widgetId), null)
-
+            val prefs = context.getSharedPreferences(
+                FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE
+            )
+            val cached = prefs.getString(
+                FamilyCalendarWidget.cachedRowsPrefKey(widgetId), "[]"
+            ) ?: "[]"
+            val expandedMember = prefs.getString(
+                FamilyCalendarWidget.expandedGroupPrefKey(widgetId), null
+            )
+            val expandedDay = prefs.getString(
+                FamilyCalendarWidget.expandedDayPrefKey(widgetId), null
+            )
             val rows = mutableListOf<CachedEvent>()
             runCatching {
                 val array = JSONArray(cached)
                 repeat(array.length()) { index ->
                     val obj = array.optJSONObject(index) ?: return@repeat
-                    rows +=
-                        CachedEvent(
-                            date = obj.optString("date"),
-                            memberKey = obj.optString("memberKey"),
-                            who = obj.optString("who"),
-                            activity = obj.optString("activity"),
-                            time = obj.optString("time"),
-                            laundry = obj.optBoolean("laundry", false),
-                        )
+                    rows += CachedEvent(
+                        date = obj.optString("date"),
+                        memberKey = obj.optString("memberKey"),
+                        who = obj.optString("who"),
+                        activity = obj.optString("activity"),
+                        time = obj.optString("time"),
+                        laundry = obj.optBoolean("laundry", false),
+                    )
                 }
             }
 
-            val today = LocalDate.now().toString()
-            val tomorrow = LocalDate.now().plusDays(1).toString()
+            // All seven weekdays are always present, even on days without events.
+            // The user expands a day before its rows are shown.
+            val today = LocalDate.now()
+            val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            repeat(7) { offset ->
+                val date = weekStart.plusDays(offset.toLong())
+                val dateKey = date.toString()
+                val dayRows = rows.filter { it.date == dateKey }
+                val name = when (date) {
+                    today -> "Idag"
+                    today.plusDays(1) -> "Imorgon"
+                    else -> date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
+                        .replaceFirstChar { it.uppercase() }
+                }
+                val count = dayRows.size
+                val activityCount = if (count == 1) "1 aktivitet" else "$count aktiviteter"
+                val isExpanded = expandedDay == dateKey
+                items += Item.Header(
+                    "$name ${date.dayOfMonth}/${date.monthValue} · $activityCount ${if (isExpanded) "▴" else "▾"}",
+                    dayKey = dateKey,
+                )
+                if (!isExpanded) return@repeat
 
-            rows.map { it.date }
-                .distinct()
-                .sorted()
-                .forEach { date ->
-                    val dayRows = rows.filter { it.date == date }
+                if (dayRows.isEmpty()) {
+                    items += Item.Event(who = "", activity = "Inga aktiviteter", time = "")
+                    return@repeat
+                }
 
-                    if (date == tomorrow) {
-                        val count = dayRows.size
-                        items +=
-                            Item.Header(
-                                if (count == 1) {
-                                    "Imorgon • 1 aktivitet"
-                                } else {
-                                    "Imorgon • $count aktiviteter"
-                                }
-                            )
-                    } else if (date != today) {
-                        items += Item.Header(date)
+                val groups = dayRows.groupBy { it.memberKey }.values
+                    .sortedBy { group ->
+                        group.firstOrNull { it.time.isNotBlank() }?.time ?: "99:99"
                     }
-
-                    val groups =
-                        dayRows
-                            .groupBy { it.memberKey }
-                            .values
-                            .sortedBy { group ->
-                                group.firstOrNull { it.time.isNotBlank() }?.time ?: "99:99"
-                            }
-
-                    groups.forEach { group ->
-                        val first = group.first()
-                        if (group.size == 1) {
-                            items +=
-                                Item.Event(
-                                    who = first.who,
-                                    activity = first.activity,
-                                    time = first.time,
-                                    laundry = first.laundry,
+                groups.forEach { group ->
+                    val first = group.first()
+                    if (group.size == 1) {
+                        items += Item.Event(
+                            who = first.who,
+                            activity = first.activity,
+                            time = first.time,
+                            laundry = first.laundry,
+                        )
+                    } else {
+                        val groupKey = "$dateKey|${first.memberKey}"
+                        val memberIsExpanded = expandedMember == groupKey
+                        items += Item.Event(
+                            who = first.who,
+                            activity = "${group.size} aktiviteter ${if (memberIsExpanded) "▴" else "▾"}",
+                            time = if (memberIsExpanded) "" else
+                                group.firstOrNull { it.time.isNotBlank() }?.time.orEmpty(),
+                            groupKey = groupKey,
+                            canToggle = true,
+                        )
+                        if (memberIsExpanded) {
+                            group.forEach { event ->
+                                items += Item.Event(
+                                    who = "",
+                                    activity = event.activity,
+                                    time = event.time,
+                                    laundry = event.laundry,
                                 )
-                        } else {
-                            val groupKey = "$date|${first.memberKey}"
-                            val isExpanded = expanded == groupKey
-                            items +=
-                                Item.Event(
-                                    who = first.who,
-                                    activity = "${group.size} aktiviteter",
-                                    time =
-                                        if (isExpanded) {
-                                            ""
-                                        } else {
-                                            group.firstOrNull { it.time.isNotBlank() }
-                                                ?.time
-                                                .orEmpty()
-                                        },
-                                    groupKey = groupKey,
-                                    canToggle = true,
-                                )
-
-                            if (isExpanded) {
-                                group.forEach { event ->
-                                    items +=
-                                        Item.Event(
-                                            who = "",
-                                            activity = event.activity,
-                                            time = event.time,
-                                            laundry = event.laundry,
-                                        )
-                                }
                             }
                         }
                     }
                 }
-
-            if (items.isEmpty()) {
-                items += Item.Event("Idag", "Lugnt i kalendern", "")
             }
         }
 
@@ -175,6 +166,14 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                     RemoteViews(context.packageName, R.layout.widget_event_header).apply {
                         setTextViewText(R.id.widget_list_header, item.text)
                         WidgetThemeColors.applyHeader(context, this)
+                        setOnClickFillInIntent(
+                            R.id.widget_list_header,
+                            Intent().apply {
+                                putExtra(FamilyCalendarWidget.EXTRA_ITEM_ACTION, FamilyCalendarWidget.ITEM_ACTION_TOGGLE_DAY)
+                                putExtra(FamilyCalendarWidget.EXTRA_GROUP_KEY, item.dayKey)
+                                putExtra(FamilyCalendarWidget.EXTRA_WIDGET_ID, widgetId)
+                            },
+                        )
                     }
 
                 is Item.Event ->
@@ -229,7 +228,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
 
         override fun getItemId(position: Int): Long =
             when (val value = items[position]) {
-                is Item.Header -> ("header:" + value.text + ":" + position).hashCode().toLong()
+                is Item.Header -> ("header:" + value.dayKey).hashCode().toLong()
                 is Item.Event ->
                     (
                         "event:" +
