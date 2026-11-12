@@ -2176,6 +2176,7 @@ private fun SettingsScreen(
     val scope = rememberCoroutineScope()
     var customBackgroundActive by remember { mutableStateOf(hasCustomBackground(context)) }
     var customBackgroundMessage by remember { mutableStateOf("") }
+    var showThemeGallery by remember { mutableStateOf(false) }
     val customBackgroundPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) {
@@ -2294,73 +2295,113 @@ private fun SettingsScreen(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Text(
-                    "Välj bland ${selectableCleanVisualThemes.size} teman. Miniatyrbilder visar hur varje tema ser ut – tryck för att byta. Nuvarande och Nordic Day Planner är bevarade.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .78f),
-                    fontSize = 10.sp,
-                    lineHeight = 14.sp,
-                    modifier = Modifier.padding(top = 2.dp, bottom = 7.dp),
-                )
-    
-                // Small image-like previews instead of color-only text chips.
-                // Preserve the compact three-column grid for Clean settings.
-                selectableCleanVisualThemes.chunked(3).forEach { themes ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.width(93.dp).height(70.dp).clip(RoundedCornerShape(11.dp)),
                     ) {
-                        themes.forEach { theme ->
-                            val selected = cleanVisualTheme == theme
-                            val spec = cleanThemeSpec(theme)
-                            Surface(
-                                modifier = Modifier.weight(1f)
-                                    .clickable { onCleanVisualThemeChanged(theme) },
-                                shape = RoundedCornerShape(11.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                border = BorderStroke(
-                                    if (selected) 2.dp else 1.dp,
-                                    if (selected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.outlineVariant,
-                                ),
-                                shadowElevation = if (selected) 3.dp else 0.dp,
-                            ) {
-                                Column(Modifier.padding(5.dp)) {
-                                    Box(
-                                        Modifier.fillMaxWidth().height(99.dp)
-                                            .clip(RoundedCornerShape(8.dp)),
-                                    ) {
-                                        ThemeMiniature(
-                                            theme = theme,
-                                            widget = false,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                        if (selected) {
-                                            Icon(
-                                                Icons.Default.CheckCircle,
-                                                contentDescription = "Valt",
-                                                tint = Color.White,
-                                                modifier = Modifier.align(Alignment.TopEnd)
-                                                    .padding(4.dp).size(17.dp)
-                                                    .background(spec.accentStrong, CircleShape),
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        theme.label,
-                                        fontSize = 10.sp, lineHeight = 12.sp,
-                                        maxLines = 2, minLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = if (selected) FontWeight.Bold
-                                            else FontWeight.Medium,
-                                    )
-                                }
-                            }
-                        }
-                        repeat(3 - themes.size) { Spacer(Modifier.weight(1f)) }
+                        ThemeMiniature(
+                            theme = cleanVisualTheme,
+                            widget = false,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
-                    Spacer(Modifier.height(7.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            cleanVisualTheme.label,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = { showThemeGallery = true },
+                            modifier = Modifier.fillMaxWidth().height(41.dp),
+                        ) { Text("Välj kalendertema", fontSize = 12.sp) }
+                    }
+                }
+                if (showThemeGallery) {
+                    AlertDialog(
+                        onDismissRequest = { showThemeGallery = false },
+                        title = { Text("Välj kalendertema") },
+                        text = {
+                            Column(
+                                Modifier.fillMaxWidth().heightIn(max = 460.dp)
+                                    .verticalScroll(rememberScrollState()),
+                            ) {
+                                    // Small image-like previews instead of color-only text chips.
+                                    // Preserve the compact three-column grid for Clean settings.
+                                    selectableCleanVisualThemes.chunked(3).forEach { themes ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                                        ) {
+                                            themes.forEach { theme ->
+                                                val selected = cleanVisualTheme == theme
+                                                val spec = cleanThemeSpec(theme)
+                                                Surface(
+                                                    modifier = Modifier.weight(1f)
+                                                        .clickable {
+                                                            onCleanVisualThemeChanged(theme)
+                                                            showThemeGallery = false
+                                                        },
+                                                    shape = RoundedCornerShape(11.dp),
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    border = BorderStroke(
+                                                        if (selected) 2.dp else 1.dp,
+                                                        if (selected) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.outlineVariant,
+                                                    ),
+                                                    shadowElevation = if (selected) 3.dp else 0.dp,
+                                                ) {
+                                                    Column(Modifier.padding(5.dp)) {
+                                                        Box(
+                                                            Modifier.fillMaxWidth().height(99.dp)
+                                                                .clip(RoundedCornerShape(8.dp)),
+                                                        ) {
+                                                            ThemeMiniature(
+                                                                theme = theme,
+                                                                widget = false,
+                                                                modifier = Modifier.fillMaxSize(),
+                                                            )
+                                                            if (selected) {
+                                                                Icon(
+                                                                    Icons.Default.CheckCircle,
+                                                                    contentDescription = "Valt",
+                                                                    tint = Color.White,
+                                                                    modifier = Modifier.align(Alignment.TopEnd)
+                                                                        .padding(4.dp).size(17.dp)
+                                                                        .background(spec.accentStrong, CircleShape),
+                                                                )
+                                                            }
+                                                        }
+                                                        Spacer(Modifier.height(4.dp))
+                                                        Text(
+                                                            theme.label,
+                                                            fontSize = 10.sp, lineHeight = 12.sp,
+                                                            maxLines = 2, minLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                            fontWeight = if (selected) FontWeight.Bold
+                                                                else FontWeight.Medium,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            repeat(3 - themes.size) { Spacer(Modifier.weight(1f)) }
+                                        }
+                                        Spacer(Modifier.height(7.dp))
+                                    }
+                    
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showThemeGallery = false }) { Text("Stäng") }
+                        },
+                    )
                 }
                 Text(
                     "Valt tema: ${cleanVisualTheme.label}",
