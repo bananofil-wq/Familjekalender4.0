@@ -233,12 +233,13 @@ internal fun ToDoScreen(
             .onSuccess {
                 items = it
                 error = ""
-                // The widget must show exactly the same open count as this screen.
-                // A verified empty list explicitly resets the previous cached "1".
-                FamilyCalendarWidget.publishTodoSnapshot(context, session, it)
-                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                // Persist before notifying the widget: otherwise an offline
+                // retry could read an older snapshot and restore a stale badge.
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     runCatching { FamilyOfflineCache.saveTodo(context, session, it) }
                 }
+                // A successfully loaded empty list resets a previous cached "1".
+                FamilyCalendarWidget.publishTodoSnapshot(context, session, it)
             }
             .onFailure {
                 items = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
