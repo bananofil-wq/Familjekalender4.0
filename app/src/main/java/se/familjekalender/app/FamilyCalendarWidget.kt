@@ -120,6 +120,51 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         internal fun cachedFamilyPrefKey(appWidgetId: Int) = "cached_family_$appWidgetId"
 
+        /**
+         * Publish the same validated list count shown by the app immediately,
+         * without waiting for the periodic widget worker.
+         * An empty successful list intentionally writes 0 (not the old cached count).
+         */
+        fun publishTodoSnapshot(
+            context: Context, session: FamilySession, items: List<SyncTodoItem>,
+        ) {
+            publishCounter(context, session, "todo", widgetTodoLabel(widgetOpenTodoCount(items)))
+        }
+
+        fun publishShoppingSnapshot(
+            context: Context, session: FamilySession, items: List<SyncShoppingItem>,
+        ) {
+            publishCounter(context, session, "shopping",
+                widgetShoppingLabel(widgetOpenShoppingCount(items)))
+        }
+
+        private fun publishCounter(
+            context: Context, session: FamilySession, key: String, label: String,
+        ) {
+            val appFamilyId = context.getSharedPreferences("family_calendar", Context.MODE_PRIVATE)
+                .getString("family_id", null)
+            if (appFamilyId != session.id) return
+
+            val manager = AppWidgetManager.getInstance(context)
+            val component = ComponentName(context, FamilyCalendarWidget::class.java)
+            val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
+            val viewId = if (key == "todo") R.id.widget_todo else R.id.widget_shopping
+            manager.getAppWidgetIds(component).forEach { widgetId ->
+                val cacheFamilyId = prefs.getString(cachedFamilyPrefKey(widgetId), null)
+                if (cacheFamilyId != null && cacheFamilyId != session.id) return@forEach
+
+                val old = prefs.getString(cachedSummaryPrefKey(widgetId), null)
+                val values = old?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
+                    ?: org.json.JSONObject()
+                values.put(key, label)
+                prefs.edit().putString(cachedSummaryPrefKey(widgetId), values.toString()).apply()
+                val views = RemoteViews(context.packageName, R.layout.widget_family_calendar)
+                views.setTextViewText(viewId, label)
+                manager.partiallyUpdateAppWidget(widgetId, views)
+            }
+        }
+
+
         private fun networkConstraints() =
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
@@ -411,6 +456,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             fun openTabPendingIntent(tab: Int, requestOffset: Int): PendingIntent {
                 val intent =
                     Intent(context, MainActivity::class.java).apply {
+                        action = Intent.ACTION_VIEW
+                        data = Uri.parse("familjekalender://widget/shortcut/$appWidgetId/$tab")
                         putExtra(MainActivity.EXTRA_OPEN_TAB, tab)
                         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     }

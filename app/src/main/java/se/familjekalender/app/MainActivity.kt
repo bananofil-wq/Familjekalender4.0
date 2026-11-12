@@ -204,6 +204,7 @@ internal fun paletteFor(mode: ThemeMode, date: LocalDate = LocalDate.now()): Sea
 
 class MainActivity : ComponentActivity() {
     private var widgetOpenTab by mutableIntStateOf(-1)
+    private var widgetOpenRequestId by mutableIntStateOf(0)
     private var requestedEventId by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -211,7 +212,7 @@ class MainActivity : ComponentActivity() {
         widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
         setContent {
             ResponsiveApp {
-                FamilyCalendarApp(widgetOpenTab, requestedEventId)
+                FamilyCalendarApp(widgetOpenTab, requestedEventId, widgetOpenRequestId)
                 val popup by FamilyEventPopup.current.collectAsState()
                 popup?.let { event ->
                     val selectedTheme = resolveCleanVisualTheme(
@@ -237,6 +238,9 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
+        // Repeated taps on the same widget shortcut must always navigate again.
+        // Tab value alone does not change after the first tap.
+        if (intent.hasExtra(EXTRA_OPEN_TAB)) widgetOpenRequestId++
     }
 
     companion object {
@@ -256,7 +260,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun FamilyCalendarApp(initialTab: Int = -1, requestedEventId: String? = null) {
+fun FamilyCalendarApp(
+    initialTab: Int = -1,
+    requestedEventId: String? = null,
+    widgetOpenRequestId: Int = 0,
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("family_calendar", 0) }
     val notificationPermissionLauncher =
@@ -384,6 +392,7 @@ fun FamilyCalendarApp(initialTab: Int = -1, requestedEventId: String? = null) {
                             }
                         },
                         initialTab = initialTab,
+                        navigationRequestId = widgetOpenRequestId,
                         requestedEventId = requestedEventId,
                     )
                 }
@@ -463,6 +472,7 @@ private fun SyncedApp(
     onUiLayoutModeSaved: (UiLayoutMode) -> Unit,
     onCleanVisualThemeSaved: (CleanVisualTheme) -> Unit,
     initialTab: Int = -1,
+    navigationRequestId: Int = 0,
     requestedEventId: String? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -484,7 +494,7 @@ private fun SyncedApp(
         selectedTab = 0
     }
 
-    LaunchedEffect(initialTab) {
+    LaunchedEffect(initialTab, navigationRequestId) {
         if (initialTab in 0..5) selectedTab = initialTab
     }
     var showAddEvent by remember { mutableStateOf(false) }
@@ -645,6 +655,7 @@ private fun SyncedApp(
                             runCatching { FamilyOfflineCache.saveShopping(context, session, latest) }
                         }
                     }
+                    FamilyCalendarWidget.publishShoppingSnapshot(context, session, latest)
                     if (message.startsWith("Inköpssynkfel:")) message = ""
                 } catch (cancelled: kotlinx.coroutines.CancellationException) {
                     // Leaving the Shopping tab cancels this coroutine by design.

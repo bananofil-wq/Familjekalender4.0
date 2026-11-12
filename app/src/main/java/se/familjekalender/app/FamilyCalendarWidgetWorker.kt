@@ -159,13 +159,16 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     FamilyOfflineCache.loadTodo(applicationContext, session)?.count { !it.checked }
                 } else null
 
-                val todo = loaded.todos.value?.let { "✓  ${it.count { item -> !item.checked }} To-Do    ›" }
+                // Prefer a locally saved, verified screen snapshot over an older
+                // widget label if the network is temporarily unavailable.
+                val todo = loaded.todos.value?.let { widgetTodoLabel(widgetOpenTodoCount(it)) }
+                    ?: offlineTodo?.let(::widgetTodoLabel)
                     ?: previous?.optString("todo")?.takeIf { it.isNotBlank() }
-                    ?: offlineTodo?.let { "✓  $it To-Do    ›" }
                     ?: "✓  To-Do    ›"
-                val shopping = loaded.shopping.value?.let { "🛒  ${it.count { item -> !item.checked }} inköp    ›" }
+                val shopping = loaded.shopping.value?.let {
+                    widgetShoppingLabel(widgetOpenShoppingCount(it))
+                } ?: offlineShopping?.let(::widgetShoppingLabel)
                     ?: previous?.optString("shopping")?.takeIf { it.isNotBlank() }
-                    ?: offlineShopping?.let { "🛒  $it inköp    ›" }
                     ?: "🛒  Inköp    ›"
                 val status = widgetRefreshStatus(
                     todayCount = upcomingEvents?.let { widgetActivityCountForDay(it, today) },
