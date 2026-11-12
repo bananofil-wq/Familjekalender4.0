@@ -110,6 +110,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         internal fun expandedDayUpdatedOnPrefKey(appWidgetId: Int) = "expanded_day_updated_on_$appWidgetId"
 
+        internal fun collapsedTodayPrefKey(appWidgetId: Int) = "collapsed_today_$appWidgetId"
+
         internal fun cachedSummaryPrefKey(appWidgetId: Int) = "cached_summary_$appWidgetId"
 
         internal fun cachedRowsPrefKey(appWidgetId: Int) = "cached_rows_$appWidgetId"
@@ -215,15 +217,38 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         private fun toggleDay(context: Context, appWidgetId: Int, dateKey: String) {
             val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
+            val todayKey = LocalDate.now().toString()
             val key = expandedDayPrefKey(appWidgetId)
             val expanded = prefs.getString(key, null)
             val editor = prefs.edit()
-            if (expanded == dateKey) {
-                // A second tap returns to automatic selection rather than closing all days.
+
+            // Today's activities stay visible even when another day is manually opened.
+            // A deliberate tap on Today may still collapse/expand them until midnight.
+            val hasTodayActivities = runCatching {
+                val rows = org.json.JSONArray(
+                    prefs.getString(cachedRowsPrefKey(appWidgetId), "[]") ?: "[]"
+                )
+                (0 until rows.length()).any { index ->
+                    rows.optJSONObject(index)?.optString("date") == todayKey
+                }
+            }.getOrDefault(false)
+
+            if (dateKey == todayKey && hasTodayActivities) {
+                val collapsedKey = collapsedTodayPrefKey(appWidgetId)
+                if (prefs.getString(collapsedKey, null) == todayKey) {
+                    editor.remove(collapsedKey)
+                } else {
+                    editor.putString(collapsedKey, todayKey)
+                }
+                // Legacy manual Today selection must not defeat the explicit collapse.
+                if (expanded == todayKey) {
+                    editor.remove(key).remove(expandedDayUpdatedOnPrefKey(appWidgetId))
+                }
+            } else if (expanded == dateKey) {
                 editor.remove(key).remove(expandedDayUpdatedOnPrefKey(appWidgetId))
             } else {
                 editor.putString(key, dateKey)
-                    .putString(expandedDayUpdatedOnPrefKey(appWidgetId), LocalDate.now().toString())
+                    .putString(expandedDayUpdatedOnPrefKey(appWidgetId), todayKey)
             }
             editor.apply()
             AppWidgetManager.getInstance(context)
