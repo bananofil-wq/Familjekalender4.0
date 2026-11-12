@@ -91,7 +91,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             val reminders = todayRows.filter { it.reminder }
             val count = activities.size
             val countLabel = if (count == 1) "1 aktivitet" else "$count aktiviteter"
-            items += Item.Header("▣  Idag ${today.dayOfMonth}/${today.monthValue}  ·  $countLabel")
+            items += Item.Header("Idag ${today.dayOfMonth}/${today.monthValue}  ·  $countLabel")
 
             // Every activity is shown directly; no member/day groups hiding today's rows.
             activities.forEach { items += Item.Event(it) }
