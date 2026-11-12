@@ -5,8 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.DayOfWeek
@@ -18,10 +16,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-private const val WIDGET_SUPABASE_URL = "https://zigychfkpgypjuovgyqq.supabase.co"
-private const val WIDGET_SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZ3ljaGZrcGd5cGp1b3ZneXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2NTI2NzQsImV4cCI6MjEwNDIyODY3NH0.dN4zZ78EDYjPOpQ4-nj21tnFOJG21Hj7dXpm69AuEQc"
-
 class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) :
     CoroutineWorker(appContext, params) {
 
@@ -31,7 +25,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
         val widgetIds = manager.getAppWidgetIds(component)
         if (widgetIds.isEmpty()) return Result.success()
 
-        return runCatching {
+        return try {
             val prefs = applicationContext.getSharedPreferences("family_calendar", 0)
             val id = prefs.getString("family_id", null)
             val name = prefs.getString("family_name", null)
@@ -40,101 +34,153 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             if (id.isNullOrBlank() || code.isNullOrBlank()) {
                 widgetIds.forEach { widgetId ->
                     cacheRows(widgetId, JSONArray())
-                    applicationContext.getSharedPreferences(FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE)
-                        .edit().remove(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId)).apply()
+                    applicationContext.getSharedPreferences(
+                        FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE
+                    ).edit()
+                        .remove(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId))
+                        .remove(FamilyCalendarWidget.cachedFamilyPrefKey(widgetId))
+                        .apply()
                     val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
                     views.setTextViewText(
-                        R.id.widget_status,
-                        "Öppna appen och anslut till familjen",
+                        R.id.widget_status, "Öppna appen och anslut till familjen"
                     )
                     views.setTextViewText(R.id.widget_todo, "✓  To-Do    ›")
                     views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
                     views.setTextViewText(R.id.widget_updated, "")
                     manager.updateAppWidget(widgetId, views)
-                    manager.notifyAppWidgetViewDataChanged(
-                        widgetId,
-                        R.id.widget_event_list,
-                    )
+                    manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
                 }
                 return Result.success()
             }
 
             val session = FamilySession(id, name ?: "Min familj", code)
 
-            // Hämtningarna är oberoende och körs parallellt. Det minskar väntan när
-            // widgeten uppdateras manuellt eller efter den periodiska refreshen.
-            val loaded =
-                coroutineScope {
-                    val eventsDeferred = async { SupabaseSync.loadEvents(session) }
-                    val membersDeferred =
-                        async {
-                            runCatching { SupabaseSync.loadMembers(session) }
-                                .getOrDefault(emptyList())
-                        }
-                    val shoppingDeferred =
-                        async {
-                            runCatching {
-                                SupabaseSync.loadShopping(session).count { !it.checked }
-                            }.getOrNull()
-                        }
-                    val todoDeferred =
-                        async {
-                            runCatching { loadOpenTodoCount(session) }.getOrNull()
-                        }
-
-                    LoadedWidgetData(
-                        events = eventsDeferred.await(),
-                        members = membersDeferred.await().associateBy { it.id },
-                        openShopping = shoppingDeferred.await(),
-                        openTodos = todoDeferred.await(),
-                    )
+            // Each network request has its own error boundary: never let a failed
+            // calendar request hide a successful To-Do or shopping refresh.
+            val loaded = coroutineScope {
+                val events = async { fetchSafely("aktiviteter") { SupabaseSync.loadEvents(session) } }
+                val members = async { fetchSafely("familjemedlemmar") { SupabaseSync.loadMembers(session) } }
+                val shopping = async { fetchSafely("inköp") { SupabaseSync.loadShopping(session) } }
+                val todos = async {
+                    fetchSafely("To-Do") { withContext(Dispatchers.IO) { TodoSync.load(session) } }
                 }
+                LoadedWidgetData(
+                    events = events.await(),
+                    members = members.await(),
+                    shopping = shopping.await(),
+                    todos = todos.await(),
+                )
+            }
 
             val today = LocalDate.now()
             val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             val cacheUntil = weekStart.plusDays(13)
-            // Keep ALL activities from the current week, even after their end time.
-            // Otherwise today's row incorrectly appears empty later in the evening.
-            val upcomingEvents = loaded.events
-                .filter { event ->
-                    !event.date.isBefore(weekStart) && !event.date.isAfter(cacheUntil)
-                }
-                .sortedWith(compareBy<SyncEvent> { it.date }
-                    .thenBy { parseMinute(it.time) ?: Int.MAX_VALUE }
-                    .thenBy { it.title })
 
-            val cachedArray = JSONArray().apply {
-                upcomingEvents.groupBy { it.date }.forEach { (date, dayEvents) ->
-                    appendEvents(dayEvents, date, loaded.members)
+            val events = loaded.events.value ?: FamilyOfflineCache.loadEvents(applicationContext, session)
+            val members = (
+                loaded.members.value ?: FamilyOfflineCache.loadMembers(applicationContext, session)
+                    ?: emptyList()
+            ).associateBy { it.id }
+
+            // An app-side offline snapshot can restore data to a newly created widget.
+            // Existing widget rows are preferred over an older offline snapshot.
+            loaded.events.value?.let {
+                runCatching { FamilyOfflineCache.saveEvents(applicationContext, session, it) }
+            }
+            loaded.members.value?.let {
+                runCatching { FamilyOfflineCache.saveMembers(applicationContext, session, it) }
+            }
+            loaded.shopping.value?.let {
+                runCatching { FamilyOfflineCache.saveShopping(applicationContext, session, it) }
+            }
+            loaded.todos.value?.let {
+                runCatching { FamilyOfflineCache.saveTodo(applicationContext, session, it) }
+            }
+
+            // Keep all activities from this week, even when they have already finished.
+            val upcomingEvents = events?.filter { event ->
+                !event.date.isBefore(weekStart) && !event.date.isAfter(cacheUntil)
+            }?.sortedWith(
+                compareBy<SyncEvent> { it.date }
+                    .thenBy { parseMinute(it.time) ?: Int.MAX_VALUE }
+                    .thenBy { it.title }
+            )
+            val refreshedRows = upcomingEvents?.let { matching ->
+                JSONArray().apply {
+                    matching.groupBy { it.date }.forEach { (date, dayEvents) ->
+                        appendEvents(dayEvents, date, members)
+                    }
                 }
             }
 
             widgetIds.forEach { widgetId ->
-                cacheRows(widgetId, cachedArray)
-                val todayCount = upcomingEvents.count { it.date == today }
-                val status = when (todayCount) {
-                    0 -> "Inga aktiviteter idag"
-                    1 -> "1 aktivitet idag"
-                    else -> "$todayCount aktiviteter idag"
-                }
-                val prefs = applicationContext.getSharedPreferences(
+                val widgetPrefs = applicationContext.getSharedPreferences(
                     FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE
                 )
-                val previous = prefs.getString(
+                val storedFamilyId = widgetPrefs.getString(
+                    FamilyCalendarWidget.cachedFamilyPrefKey(widgetId), null
+                )
+                // Avoid showing cached events from another family after switching.
+                if (storedFamilyId != null && storedFamilyId != session.id) {
+                    widgetPrefs.edit()
+                        .remove(FamilyCalendarWidget.cachedRowsPrefKey(widgetId))
+                        .remove(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId))
+                        .apply()
+                }
+                widgetPrefs.edit()
+                    .putString(FamilyCalendarWidget.cachedFamilyPrefKey(widgetId), session.id)
+                    .apply()
+
+                val previousRows = widgetPrefs.getString(
+                    FamilyCalendarWidget.cachedRowsPrefKey(widgetId), null
+                )?.let { runCatching { JSONArray(it) }.getOrNull() }
+                val hasCurrentRows = previousRows?.let { array ->
+                    (0 until array.length()).any { index ->
+                        val date = array.optJSONObject(index)?.optString("date").orEmpty()
+                        date >= weekStart.toString() && date <= cacheUntil.toString()
+                    }
+                } ?: false
+                if (refreshedRows != null && (
+                        loaded.events.value != null ||
+                            previousRows == null ||
+                            (!hasCurrentRows && refreshedRows.length() > 0)
+                    )
+                ) {
+                    cacheRows(widgetId, refreshedRows)
+                }
+
+                val previous = widgetPrefs.getString(
                     FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), null
                 )?.let { runCatching { JSONObject(it) }.getOrNull() }
-                val todo = loaded.openTodos?.let { "✓  $it To-Do    ›" }
+                val offlineShopping = if (loaded.shopping.value == null) {
+                    FamilyOfflineCache.loadShopping(applicationContext, session)?.count { !it.checked }
+                } else null
+                val offlineTodo = if (loaded.todos.value == null) {
+                    FamilyOfflineCache.loadTodo(applicationContext, session)?.count { !it.checked }
+                } else null
+
+                val todo = loaded.todos.value?.let { "✓  ${it.count { item -> !item.checked }} To-Do    ›" }
                     ?: previous?.optString("todo")?.takeIf { it.isNotBlank() }
+                    ?: offlineTodo?.let { "✓  $it To-Do    ›" }
                     ?: "✓  To-Do    ›"
-                val shopping = loaded.openShopping?.let { "🛒  $it inköp    ›" }
+                val shopping = loaded.shopping.value?.let { "🛒  ${it.count { item -> !item.checked }} inköp    ›" }
                     ?: previous?.optString("shopping")?.takeIf { it.isNotBlank() }
+                    ?: offlineShopping?.let { "🛒  $it inköp    ›" }
                     ?: "🛒  Inköp    ›"
+                val status = widgetRefreshStatus(
+                    todayCount = upcomingEvents?.count { it.date == today },
+                    eventsUpdated = !loaded.events.failed,
+                    membersUpdated = !loaded.members.failed,
+                    todoUpdated = !loaded.todos.failed,
+                    shoppingUpdated = !loaded.shopping.failed,
+                    hasSavedEvents = previousRows != null || refreshedRows != null,
+                )
                 val summary = JSONObject()
                     .put("date", today.toString())
                     .put("status", status)
                     .put("todo", todo)
                     .put("shopping", shopping)
-                prefs.edit()
+                widgetPrefs.edit()
                     .putString(FamilyCalendarWidget.cachedSummaryPrefKey(widgetId), summary.toString())
                     .apply()
                 val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
@@ -142,12 +188,16 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
             }
 
-            Result.success()
-        }.getOrElse {
+            if (loaded.events.failed || loaded.members.failed || loaded.shopping.failed ||
+                loaded.todos.failed
+            ) Result.retry() else Result.success()
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            android.util.Log.e("FamilyCalendarWidget", "Unexpected refresh failure", error)
             widgetIds.forEach { widgetId ->
                 val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
-                views.setTextViewText(R.id.widget_status, "Kunde inte uppdatera just nu")
-                // Keep cached rows and counts when the network is unavailable.
+                views.setTextViewText(R.id.widget_status, "Widgetfel · visar sparad information")
                 manager.updateAppWidget(widgetId, views)
                 manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
             }
@@ -155,11 +205,25 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
         }
     }
 
+    private data class FetchResult<T>(val value: T?, val failed: Boolean)
+
+    private suspend fun <T> fetchSafely(
+        category: String,
+        block: suspend () -> T,
+    ): FetchResult<T> = try {
+        FetchResult(block(), false)
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        android.util.Log.w("FamilyCalendarWidget", "Could not load $category", error)
+        FetchResult(null, true)
+    }
+
     private data class LoadedWidgetData(
-        val events: List<SyncEvent>,
-        val members: Map<String, SyncMember>,
-        val openShopping: Int?,
-        val openTodos: Int?,
+        val events: FetchResult<List<SyncEvent>>,
+        val members: FetchResult<List<SyncMember>>,
+        val shopping: FetchResult<List<SyncShoppingItem>>,
+        val todos: FetchResult<List<SyncTodoItem>>,
     )
 
     private fun JSONArray.appendEvents(
@@ -279,30 +343,4 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
     private fun parseMinute(value: String?): Int? =
         parseLocalTime(value)?.let { it.hour * 60 + it.minute }
 
-    private suspend fun loadOpenTodoCount(session: FamilySession): Int =
-        withContext(Dispatchers.IO) {
-            val path = "/rest/v1/todo_items?select=checked&family_id=eq.${session.id}"
-            val connection = URL("$WIDGET_SUPABASE_URL$path").openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 20_000
-            connection.setRequestProperty("apikey", WIDGET_SUPABASE_ANON_KEY)
-            connection.setRequestProperty(
-                "Authorization",
-                "Bearer $WIDGET_SUPABASE_ANON_KEY",
-            )
-            connection.setRequestProperty("x-family-code", session.code.uppercase())
-            try {
-                if (connection.responseCode !in 200..299) return@withContext 0
-                val text = connection.inputStream.bufferedReader().use { it.readText() }
-                val array = JSONArray(text.ifBlank { "[]" })
-                var count = 0
-                repeat(array.length()) { index ->
-                    if (!array.getJSONObject(index).optBoolean("checked")) count++
-                }
-                count
-            } finally {
-                connection.disconnect()
-            }
-        }
 }
