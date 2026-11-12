@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
+import android.view.View
+import org.json.JSONArray
 import androidx.compose.ui.graphics.toArgb
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -199,8 +201,90 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             views.setPendingIntentTemplate(R.id.widget_event_list, templatePending)
 
             bindActions(context, views, appWidgetId)
+            showWeeklyReminders(context, appWidgetId, views, prefs, today)
             WidgetThemeColors.apply(context, views)
             return views
+        }
+
+        /**
+         * Keep a compact week preview pinned below the scrollable daily agenda.
+         * Uses the existing (family-scoped) widget cache: no second network request
+         * and the content remains available during temporary sync failures.
+         */
+        private fun showWeeklyReminders(
+            context: Context,
+            appWidgetId: Int,
+            views: RemoteViews,
+            prefs: android.content.SharedPreferences,
+            today: LocalDate,
+        ) {
+            val raw = prefs.getString(cachedRowsPrefKey(appWidgetId), null)
+            val reminders = buildList {
+                val json = runCatching { JSONArray(raw ?: "[]") }.getOrNull()
+                    ?: JSONArray()
+                repeat(json.length()) { index ->
+                    val row = json.optJSONObject(index) ?: return@repeat
+                    val title = row.optString("activity").trim()
+                    if (!row.optBoolean("reminder", title.startsWith("🔔"))) return@repeat
+                    val date = runCatching { LocalDate.parse(row.optString("date")) }
+                        .getOrNull() ?: return@repeat
+                    val cleaned = title.removePrefix("🔔").trim()
+                    if (cleaned.isBlank()) return@repeat
+                    add(
+                        WidgetWeeklyReminder(
+                            date = date,
+                            title = cleaned,
+                            time = row.optString("time"),
+                            person = row.optString("who"),
+                        )
+                    )
+                }
+            }
+
+            val preview = weeklyReminderPreview(today, reminders, maxVisible = 3)
+            views.setViewVisibility(
+                R.id.widget_week_reminders,
+                if (preview.visible.isEmpty()) View.GONE else View.VISIBLE,
+            )
+            val rowIds = intArrayOf(
+                R.id.widget_week_reminder_1,
+                R.id.widget_week_reminder_2,
+                R.id.widget_week_reminder_3,
+            )
+            rowIds.forEachIndexed { index, viewId ->
+                val reminder = preview.visible.getOrNull(index)
+                views.setViewVisibility(
+                    viewId, if (reminder == null) View.GONE else View.VISIBLE,
+                )
+                views.setTextViewText(
+                    viewId, reminder?.let { weeklyReminderLabel(it) } ?: "",
+                )
+            }
+            val hasMore = preview.extraCount > 0
+            views.setViewVisibility(
+                R.id.widget_week_reminder_more,
+                if (hasMore) View.VISIBLE else View.GONE,
+            )
+            views.setTextViewText(
+                R.id.widget_week_reminder_more,
+                if (hasMore) "+${preview.extraCount} fler i kalendern  ›" else "",
+            )
+
+            // Only the week summary opens the calendar; the daily ListView remains
+            // independent and scrollable as before.
+            views.setOnClickPendingIntent(
+                R.id.widget_week_reminders_title,
+                openCalendarPendingIntent(context, appWidgetId, 1_020),
+            )
+            rowIds.forEachIndexed { index, viewId ->
+                views.setOnClickPendingIntent(
+                    viewId, openCalendarPendingIntent(context, appWidgetId, 1_021 + index),
+                )
+            }
+            views.setOnClickPendingIntent(
+                R.id.widget_week_reminder_more,
+                openCalendarPendingIntent(context, appWidgetId, 1_025),
+            )
         }
 
         private fun toggleGroup(context: Context, appWidgetId: Int, groupKey: String) {

@@ -153,6 +153,70 @@
         android:clipToPadding="false" />
 
 
+
+    <!-- Pinned below today's scrollable events; only upcoming reminders this week. -->
+    <LinearLayout
+        android:id="@+id/widget_week_reminders"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:orientation="vertical"
+        android:paddingLeft="11dp"
+        android:paddingRight="11dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="9dp"
+        android:background="@drawable/widget_reminder_bg"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingBottom="3dp">
+
+            <ImageView
+                android:layout_width="17dp"
+                android:layout_height="17dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/widget_bell_icon"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/widget_week_reminders_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Påminnelser denna vecka"
+                android:textColor="#FFFFE9BB"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_week_reminder_1"
+            style="@style/WidgetWeekReminderText" />
+        <TextView
+            android:id="@+id/widget_week_reminder_2"
+            style="@style/WidgetWeekReminderText" />
+        <TextView
+            android:id="@+id/widget_week_reminder_3"
+            style="@style/WidgetWeekReminderText" />
+
+        <TextView
+            android:id="@+id/widget_week_reminder_more"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="3dp"
+            android:textColor="#FFFFD58D"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:maxLines="1" />
+    </LinearLayout>
+
+
     <!--
         Compatibility tree for widgets that were already placed on the home screen
         before the scrollable ListView update. Android launchers can reapply the
