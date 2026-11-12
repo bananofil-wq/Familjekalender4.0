@@ -29,7 +29,11 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -208,6 +212,7 @@ internal fun ToDoScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val motionEnabled = appMotionEnabled()
     val realMembers = remember(members) { members.filter { it.id != ALL_FAMILY_MEMBER_ID } }
     val memberById = remember(realMembers) { realMembers.associateBy { it.id } }
@@ -228,6 +233,9 @@ internal fun ToDoScreen(
             .onSuccess {
                 items = it
                 error = ""
+                // The widget must show exactly the same open count as this screen.
+                // A verified empty list explicitly resets the previous cached "1".
+                FamilyCalendarWidget.publishTodoSnapshot(context, session, it)
                 scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     runCatching { FamilyOfflineCache.saveTodo(context, session, it) }
                 }
@@ -297,15 +305,18 @@ internal fun ToDoScreen(
         }
     }
 
-    LaunchedEffect(session.id) {
+    LaunchedEffect(session.id, lifecycle) {
         val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             FamilyOfflineCache.loadTodo(context, session)
         }
         saved?.let { items = it }
-        refresh()
-        while (true) {
-            delay(30L * 60L * 1000L)
-            refresh()
+        // Fetch upon opening and when returning to the foreground. While visible,
+        // sync at a modest interval so updates made on other phones reach the widget.
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                refresh()
+                delay(15_000L)
+            }
         }
     }
 
