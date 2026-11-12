@@ -87,21 +87,20 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                 android.util.Log.w("FamilyCalendarWidget", "Invalid offline widget rows", it)
             }
 
+            // Reminders (including today's) are displayed only in the pinned weekly footer.
             val activities = todayRows.filterNot { it.reminder }
-            val reminders = todayRows.filter { it.reminder }
             val count = activities.size
             val countLabel = if (count == 1) "1 aktivitet" else "$count aktiviteter"
             items += Item.Header("Idag ${today.dayOfMonth}/${today.monthValue}  ·  $countLabel")
 
             // Every activity is shown directly; no member/day groups hiding today's rows.
             activities.forEach { items += Item.Event(it) }
-            reminders.forEach { items += Item.Reminder(it) }
-            if (todayRows.isEmpty()) {
+            if (activities.isEmpty()) {
                 items += Item.Event(
                     CachedEvent(
                         date = todayKey,
                         who = "",
-                        activity = "Inga aktiviteter eller påminnelser idag",
+                        activity = "Inga aktiviteter idag",
                         time = "",
                         laundry = false,
                         reminder = false,
