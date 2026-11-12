@@ -2176,6 +2176,7 @@ private fun SettingsScreen(
     val scope = rememberCoroutineScope()
     var customBackgroundActive by remember { mutableStateOf(hasCustomBackground(context)) }
     var customBackgroundMessage by remember { mutableStateOf("") }
+    var showThemeGallery by remember { mutableStateOf(false) }
     val customBackgroundPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) {
@@ -2205,504 +2206,682 @@ private fun SettingsScreen(
         )
     }
 
-    Text("Inställningar", fontSize = 30.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-    Text("Familj, utseende och anslutningar", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-    Spacer(Modifier.height(18.dp))
+    var expandedCategory by remember { mutableStateOf<String?>(null) }
 
-    SettingsSectionCard(
-        title = session.name,
-        subtitle = "Familjekod · ${session.code}",
-    ) {
-        Button(
-            onClick = onOpenFamily,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Icon(Icons.Default.People, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Hantera familjen")
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { shareFamilyInvite(context, session) },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Icon(Icons.Default.Share, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Bjud in till familjen")
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { copyFamilyCode(context, session.code) },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Icon(Icons.Default.ContentCopy, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Kopiera familjekod")
-        }
-    }
-
+    Text(
+        "Inställningar",
+        fontSize = 27.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(Modifier.height(3.dp))
+    Text(
+        "Välj vad du vill ändra. Bara ett område visas åt gången.",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 12.sp,
+    )
     Spacer(Modifier.height(14.dp))
-    SettingsSectionCard(
-        title = "Säkerhetskopiering och återställning",
-        subtitle = "Exportera familjens data och återställ saknade uppgifter utan dubbletter.",
-    ) {
-        FamilyBackupSettings(session)
-    }
 
-    Spacer(Modifier.height(14.dp))
-    SettingsSectionCard(
-        title = "Offlineåtkomst",
-        subtitle = "Öppna senast synkade aktiviteter, inköp och uppgifter utan internet.",
+    SettingsCategoryCard(
+        title = "Kalenderns utseende",
+        subtitle = "Kalenderläge, teman, färger och bakgrund",
+        icon = Icons.Default.AutoAwesome,
+        expanded = expandedCategory == "utseende",
+        onToggle = { expandedCategory = if (expandedCategory == "utseende") null else "utseende" },
     ) {
-        val savedAt = remember(session.id) { FamilyOfflineCache.lastSavedAt(context, session) }
-        var confirmClear by remember { mutableStateOf(false) }
-        var wasCleared by remember { mutableStateOf(false) }
-        Text(
-            if (wasCleared) "Sparad offlineinformation har rensats från den här telefonen."
-            else if (savedAt == null) "Ingen offlinekopia sparad ännu."
-            else "Senast sparade kalenderuppgifter: $savedAt",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        val queued = remember(session.id) { mutableIntStateOf(OfflineMutationQueue.pendingCount(session)) }
-        Spacer(Modifier.height(7.dp))
-        Text(
-            if (queued.intValue == 0) "Inga aktiviteter, inköp eller To-do väntar på uppladdning."
-            else "${queued.intValue} nya poster väntar på att skickas när internet fungerar.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (queued.intValue > 0) {
-            TextButton(onClick = {
-                OfflineMutationQueue.requestRetry()
-                queued.intValue = OfflineMutationQueue.pendingCount(session)
-            }) { Text("Försök synka väntande poster") }
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { confirmClear = true },
-            modifier = Modifier.fillMaxWidth().height(46.dp),
-        ) { Text("Rensa offlinekopior från telefonen") }
-        if (confirmClear) {
-            AlertDialog(
-                onDismissRequest = { confirmClear = false },
-                title = { Text("Rensa offlinekopior?") },
-                text = { Text("Detta raderar bara senast sparad information på den här telefonen. Ingenting tas bort från familjens gemensamma kalender.") },
-                confirmButton = {
-                    Button(onClick = {
-                        FamilyOfflineCache.clear(context, session)
-                        wasCleared = true
-                        confirmClear = false
-                    }) { Text("Rensa") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { confirmClear = false }) { Text("Avbryt") }
-                },
-            )
-        }
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SettingsSectionCard(
-        title = "Utseende",
-        subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen.",
-    ) {
-        val currentDeviceMemberId =
-            context.getSharedPreferences("family_calendar", 0).getString("device_member_id", null)
-        val isHugoDevice =
-            members.any {
-                it.id == currentDeviceMemberId && it.name.equals("Hugo", ignoreCase = true)
-            }
-
-        UiLayoutMode.values()
-            .filter {
-                it != UiLayoutMode.PERSONAL &&
-                    (it != UiLayoutMode.HUGO_CHILD || isHugoDevice)
-            }
-            .forEach { mode ->
-                val selected = uiLayoutMode == mode
-                Surface(
-                    color =
-                        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f)
-                        else MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier =
-                        Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable {
-                            onUiLayoutChanged(mode)
-                        },
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = selected, onClick = { onUiLayoutChanged(mode) })
-                        Spacer(Modifier.width(4.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(mode.label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                            Text(
-                                mode.description,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp,
-                            )
-                        }
-                    }
+        SettingsSectionCard(
+            title = "Utseende",
+            subtitle = "Samma premiumkänsla, anpassad efter hur ni använder appen.",
+        ) {
+            val currentDeviceMemberId =
+                context.getSharedPreferences("family_calendar", 0).getString("device_member_id", null)
+            val isHugoDevice =
+                members.any {
+                    it.id == currentDeviceMemberId && it.name.equals("Hugo", ignoreCase = true)
                 }
-            }
-
-        if (uiLayoutMode == UiLayoutMode.PERSONAL) {
-            Spacer(Modifier.height(6.dp))
-            PersonalLayoutEditor(
-                prefs = context.getSharedPreferences("family_calendar", 0),
-                activeProfile = personalProfile,
-                revision = personalLayoutRevision,
-                onActiveProfileChanged = onPersonalProfileChanged,
-                onChanged = onPersonalLayoutChanged,
-            )
-        }
-
-        if (uiLayoutMode == UiLayoutMode.MINIMAL) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Clean-tema",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                "Välj bland ${selectableCleanVisualThemes.size} teman. Miniatyrbilder visar hur varje tema ser ut – tryck för att byta. Nuvarande och Nordic Day Planner är bevarade.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .78f),
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-                modifier = Modifier.padding(top = 2.dp, bottom = 7.dp),
-            )
-
-            // Small image-like previews instead of color-only text chips.
-            // Preserve the compact three-column grid for Clean settings.
-            selectableCleanVisualThemes.chunked(3).forEach { themes ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                ) {
-                    themes.forEach { theme ->
-                        val selected = cleanVisualTheme == theme
-                        val spec = cleanThemeSpec(theme)
-                        Surface(
-                            modifier = Modifier.weight(1f)
-                                .clickable { onCleanVisualThemeChanged(theme) },
-                            shape = RoundedCornerShape(11.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(
-                                if (selected) 2.dp else 1.dp,
-                                if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outlineVariant,
-                            ),
-                            shadowElevation = if (selected) 3.dp else 0.dp,
+    
+            UiLayoutMode.values()
+                .filter {
+                    it != UiLayoutMode.PERSONAL &&
+                        (it != UiLayoutMode.HUGO_CHILD || isHugoDevice)
+                }
+                .forEach { mode ->
+                    val selected = uiLayoutMode == mode
+                    Surface(
+                        color =
+                            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f)
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier =
+                            Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable {
+                                onUiLayoutChanged(mode)
+                            },
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(Modifier.padding(5.dp)) {
-                                Box(
-                                    Modifier.fillMaxWidth().height(99.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                ) {
-                                    ThemeMiniature(
-                                        theme = theme,
-                                        widget = false,
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                    if (selected) {
-                                        Icon(
-                                            Icons.Default.CheckCircle,
-                                            contentDescription = "Valt",
-                                            tint = Color.White,
-                                            modifier = Modifier.align(Alignment.TopEnd)
-                                                .padding(4.dp).size(17.dp)
-                                                .background(spec.accentStrong, CircleShape),
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.height(4.dp))
+                            RadioButton(selected = selected, onClick = { onUiLayoutChanged(mode) })
+                            Spacer(Modifier.width(4.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(mode.label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                                 Text(
-                                    theme.label,
-                                    fontSize = 10.sp, lineHeight = 12.sp,
-                                    maxLines = 2, minLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = if (selected) FontWeight.Bold
-                                        else FontWeight.Medium,
+                                    mode.description,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    lineHeight = 16.sp,
                                 )
                             }
                         }
                     }
-                    repeat(3 - themes.size) { Spacer(Modifier.weight(1f)) }
                 }
-                Spacer(Modifier.height(7.dp))
+    
+            if (uiLayoutMode == UiLayoutMode.PERSONAL) {
+                Spacer(Modifier.height(6.dp))
+                PersonalLayoutEditor(
+                    prefs = context.getSharedPreferences("family_calendar", 0),
+                    activeProfile = personalProfile,
+                    revision = personalLayoutRevision,
+                    onActiveProfileChanged = onPersonalProfileChanged,
+                    onChanged = onPersonalLayoutChanged,
+                )
             }
-            Text(
-                "Valt tema: ${cleanVisualTheme.label}",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 3.dp),
-            )
-            Text(
-                cleanVisualTheme.description,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 10.sp,
-                lineHeight = 13.sp,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Färgtema",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.height(6.dp))
-        ThemeMode.values().forEach { mode ->
-            val selected = themeMode == mode
-            Surface(
-                color =
-                    if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f)
-                    else Color.Transparent,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.fillMaxWidth().clickable { onThemeChanged(mode) },
-            ) {
+    
+            if (uiLayoutMode == UiLayoutMode.MINIMAL) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Clean-tema",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    RadioButton(selected = selected, onClick = { onThemeChanged(mode) })
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        mode.label,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Egen bakgrund",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.height(7.dp))
-
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            modifier = Modifier.fillMaxWidth().height(170.dp),
-        ) {
-            Box(Modifier.fillMaxSize()) {
-                if (customBackgroundActive) {
-                    CustomBackgroundImage(Modifier.fillMaxSize())
                     Box(
-                        Modifier.fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = .42f),
-                                    )
-                                )
-                            )
-                    )
-                    Text(
-                        "Egen bakgrund aktiv",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
-                    )
-                } else {
-                    Column(
-                        Modifier.fillMaxSize().padding(18.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        Modifier.width(93.dp).height(70.dp).clip(RoundedCornerShape(11.dp)),
                     ) {
-                        Text(
-                            "Ingen egen bakgrund vald",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            "Säsongsbakgrunden används tills du väljer en bild.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp,
+                        ThemeMiniature(
+                            theme = cleanVisualTheme,
+                            widget = false,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            cleanVisualTheme.label,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedButton(
+                            onClick = { showThemeGallery = true },
+                            modifier = Modifier.fillMaxWidth().height(41.dp),
+                        ) { Text("Välj kalendertema", fontSize = 12.sp) }
+                    }
                 }
+                if (showThemeGallery) {
+                    AlertDialog(
+                        onDismissRequest = { showThemeGallery = false },
+                        title = { Text("Välj kalendertema") },
+                        text = {
+                            Column(
+                                Modifier.fillMaxWidth().heightIn(max = 460.dp)
+                                    .verticalScroll(rememberScrollState()),
+                            ) {
+                                    // Small image-like previews instead of color-only text chips.
+                                    // Preserve the compact three-column grid for Clean settings.
+                                    selectableCleanVisualThemes.chunked(3).forEach { themes ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                                        ) {
+                                            themes.forEach { theme ->
+                                                val selected = cleanVisualTheme == theme
+                                                val spec = cleanThemeSpec(theme)
+                                                Surface(
+                                                    modifier = Modifier.weight(1f)
+                                                        .clickable {
+                                                            onCleanVisualThemeChanged(theme)
+                                                            showThemeGallery = false
+                                                        },
+                                                    shape = RoundedCornerShape(11.dp),
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    border = BorderStroke(
+                                                        if (selected) 2.dp else 1.dp,
+                                                        if (selected) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.outlineVariant,
+                                                    ),
+                                                    shadowElevation = if (selected) 3.dp else 0.dp,
+                                                ) {
+                                                    Column(Modifier.padding(5.dp)) {
+                                                        Box(
+                                                            Modifier.fillMaxWidth().height(99.dp)
+                                                                .clip(RoundedCornerShape(8.dp)),
+                                                        ) {
+                                                            ThemeMiniature(
+                                                                theme = theme,
+                                                                widget = false,
+                                                                modifier = Modifier.fillMaxSize(),
+                                                            )
+                                                            if (selected) {
+                                                                Icon(
+                                                                    Icons.Default.CheckCircle,
+                                                                    contentDescription = "Valt",
+                                                                    tint = Color.White,
+                                                                    modifier = Modifier.align(Alignment.TopEnd)
+                                                                        .padding(4.dp).size(17.dp)
+                                                                        .background(spec.accentStrong, CircleShape),
+                                                                )
+                                                            }
+                                                        }
+                                                        Spacer(Modifier.height(4.dp))
+                                                        Text(
+                                                            theme.label,
+                                                            fontSize = 10.sp, lineHeight = 12.sp,
+                                                            maxLines = 2, minLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                            fontWeight = if (selected) FontWeight.Bold
+                                                                else FontWeight.Medium,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            repeat(3 - themes.size) { Spacer(Modifier.weight(1f)) }
+                                        }
+                                        Spacer(Modifier.height(7.dp))
+                                    }
+                    
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showThemeGallery = false }) { Text("Stäng") }
+                        },
+                    )
+                }
+                Text(
+                    "Valt tema: ${cleanVisualTheme.label}",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                Text(
+                    cleanVisualTheme.description,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    lineHeight = 13.sp,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
-        }
-
-        Spacer(Modifier.height(9.dp))
-        Button(
-            onClick = { customBackgroundPicker.launch("image/*") },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Text(if (customBackgroundActive) "Byt bakgrundsbild" else "Välj bild från mobilen")
-        }
-
-        if (customBackgroundActive) {
-            Spacer(Modifier.height(7.dp))
-            OutlinedButton(
-                onClick = {
-                    removeCustomBackground(context)
-                    customBackgroundActive = false
-                    customBackgroundMessage = "Egen bakgrund borttagen."
-                },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.medium,
-            ) {
-                Text("Ta bort egen bakgrund")
-            }
-        }
-
-        if (customBackgroundMessage.isNotBlank()) {
-            Spacer(Modifier.height(7.dp))
+    
+            Spacer(Modifier.height(8.dp))
             Text(
-                customBackgroundMessage,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 11.sp,
-            )
-        }
-
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "Den egna bilden används före säsongsbakgrunden i Clean och fullständigt/personligt läge. Bilden sparas lokalt på telefonen.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp,
-            lineHeight = 14.sp,
-        )
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SettingsSectionCard(
-        title = "Widget på hemskärmen",
-        subtitle = "Eget tema för widgeten, oberoende av kalendertemat.",
-    ) {
-        WidgetThemeSettings(cleanVisualTheme)
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SettingsSectionCard(
-        title = "SportAdmin",
-        subtitle = "Synka lagets kalender automatiskt var 30:e minut.",
-    ) {
-        OutlinedTextField(
-            value = url,
-            onValueChange = { url = it },
-            label = { Text("Kalenderlänk") },
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (members.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Gäller för",
+                "Färgtema",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
             )
-            Spacer(Modifier.height(4.dp))
-            members.forEach { member ->
-                val selected = memberId == member.id
+            Spacer(Modifier.height(6.dp))
+            ThemeMode.values().forEach { mode ->
+                val selected = themeMode == mode
                 Surface(
-                    color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                    color =
+                        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .10f)
+                        else Color.Transparent,
                     shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth().clickable { memberId = member.id },
+                    modifier = Modifier.fillMaxWidth().clickable { onThemeChanged(mode) },
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = selected, onClick = { memberId = member.id })
-                        Box(
-                            Modifier.size(9.dp)
-                                .clip(CircleShape)
-                                .background(Color(member.colorArgb.toInt()))
+                        RadioButton(selected = selected, onClick = { onThemeChanged(mode) })
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            mode.label,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                         )
-                        Spacer(Modifier.width(9.dp))
-                        Text(member.name, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
                     }
                 }
             }
-        }
-        Spacer(Modifier.height(10.dp))
-        Button(
-            onClick = {
-                onSaveSportSettings(url.trim(), memberId)
-                onImport(url.trim(), memberId)
-            },
-            enabled = url.isNotBlank() && memberId != null,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors =
-                ButtonDefaults.buttonColors(
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .55f),
-                ),
-        ) {
-            Text("Spara och synka")
+    
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Egen bakgrund",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(7.dp))
+    
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth().height(170.dp),
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    if (customBackgroundActive) {
+                        CustomBackgroundImage(Modifier.fillMaxSize())
+                        Box(
+                            Modifier.fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.Transparent,
+                                            Color.Black.copy(alpha = .42f),
+                                        )
+                                    )
+                                )
+                        )
+                        Text(
+                            "Egen bakgrund aktiv",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
+                        )
+                    } else {
+                        Column(
+                            Modifier.fillMaxSize().padding(18.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                "Ingen egen bakgrund vald",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Säsongsbakgrunden används tills du väljer en bild.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                }
+            }
+    
+            Spacer(Modifier.height(9.dp))
+            Button(
+                onClick = { customBackgroundPicker.launch("image/*") },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Text(if (customBackgroundActive) "Byt bakgrundsbild" else "Välj bild från mobilen")
+            }
+    
+            if (customBackgroundActive) {
+                Spacer(Modifier.height(7.dp))
+                OutlinedButton(
+                    onClick = {
+                        removeCustomBackground(context)
+                        customBackgroundActive = false
+                        customBackgroundMessage = "Egen bakgrund borttagen."
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    Text("Ta bort egen bakgrund")
+                }
+            }
+    
+            if (customBackgroundMessage.isNotBlank()) {
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    customBackgroundMessage,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                )
+            }
+    
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Den egna bilden används före säsongsbakgrunden i Clean och fullständigt/personligt läge. Bilden sparas lokalt på telefonen.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+            )
         }
     }
+    Spacer(Modifier.height(9.dp))
 
-    Spacer(Modifier.height(14.dp))
-    SettingsSectionCard(
-        title = "Familjenotiser",
-        subtitle = "Popup-avisering för nya familjeaktiviteter när Android tillåter det.",
+    SettingsCategoryCard(
+        title = "Widget",
+        subtitle = "Tema och utseende på hemskärmen",
+        icon = Icons.Default.CalendarMonth,
+        expanded = expandedCategory == "widget",
+        onToggle = { expandedCategory = if (expandedCategory == "widget") null else "widget" },
     ) {
-        Text(
-            "Nya aktiviteter använder en egen högprioriterad aviseringskanal. " +
-                "Android bestämmer om en popup visas utifrån kanalens behörighet och " +
-                "telefonens Stör ej- och aviseringsinställningar.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(9.dp))
-        OutlinedButton(
-            onClick = { openNotificationSettings(context) },
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-        ) { Text("Hantera popup och ljud") }
-    }
-
-    val notificationPrefs = context.getSharedPreferences("family_calendar", 0)
-    val notificationPermissionRequested =
-        notificationPrefs.getBoolean("notification_permission_requested", false)
-    if (
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        notificationPermissionRequested &&
-        !hasNotificationPermission(context)
-    ) {
-        Spacer(Modifier.height(14.dp))
         SettingsSectionCard(
-            title = "Aviseringar är avstängda",
-            subtitle =
-                "Familjekalendern behöver Androids aviseringsbehörighet för att kunna visa påminnelser och familjenotiser.",
+            title = "Widget på hemskärmen",
+            subtitle = "Eget tema för widgeten, oberoende av kalendertemat.",
+        ) {
+            WidgetThemeSettings(cleanVisualTheme)
+        }
+    }
+    Spacer(Modifier.height(9.dp))
+
+    SettingsCategoryCard(
+        title = "Familj och delning",
+        subtitle = "Medlemmar, inbjudningar och familjekod",
+        icon = Icons.Default.People,
+        expanded = expandedCategory == "familj",
+        onToggle = { expandedCategory = if (expandedCategory == "familj") null else "familj" },
+    ) {
+        SettingsSectionCard(
+            title = session.name,
+            subtitle = "Familjekod · ${session.code}",
         ) {
             Button(
-                onClick = { openNotificationSettings(context) },
+                onClick = onOpenFamily,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = MaterialTheme.shapes.medium,
             ) {
-                Text("Öppna aviseringsinställningar")
+                Icon(Icons.Default.People, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Hantera familjen")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { shareFamilyInvite(context, session) },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Icon(Icons.Default.Share, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Bjud in till familjen")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { copyFamilyCode(context, session.code) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Icon(Icons.Default.ContentCopy, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Kopiera familjekod")
             }
         }
     }
+    Spacer(Modifier.height(9.dp))
 
-    Spacer(Modifier.height(14.dp))
-    AppUpdateSettingsCard()
-    Spacer(Modifier.height(52.dp))
+    SettingsCategoryCard(
+        title = "Aviseringar",
+        subtitle = "Popup, ljud och behörigheter",
+        icon = Icons.Default.CheckCircle,
+        expanded = expandedCategory == "notiser",
+        onToggle = { expandedCategory = if (expandedCategory == "notiser") null else "notiser" },
+    ) {
+        SettingsSectionCard(
+            title = "Familjenotiser",
+            subtitle = "Popup-avisering för nya familjeaktiviteter när Android tillåter det.",
+        ) {
+            Text(
+                "Nya aktiviteter använder en egen högprioriterad aviseringskanal. " +
+                    "Android bestämmer om en popup visas utifrån kanalens behörighet och " +
+                    "telefonens Stör ej- och aviseringsinställningar.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(9.dp))
+            OutlinedButton(
+                onClick = { openNotificationSettings(context) },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) { Text("Hantera popup och ljud") }
+        }
+        Spacer(Modifier.height(12.dp))
+        val notificationPrefs = context.getSharedPreferences("family_calendar", 0)
+        val notificationPermissionRequested =
+            notificationPrefs.getBoolean("notification_permission_requested", false)
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            notificationPermissionRequested &&
+            !hasNotificationPermission(context)
+        ) {
+            Spacer(Modifier.height(14.dp))
+            SettingsSectionCard(
+                title = "Aviseringar är avstängda",
+                subtitle =
+                    "Familjekalendern behöver Androids aviseringsbehörighet för att kunna visa påminnelser och familjenotiser.",
+            ) {
+                Button(
+                    onClick = { openNotificationSettings(context) },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    Text("Öppna aviseringsinställningar")
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(9.dp))
+
+    SettingsCategoryCard(
+        title = "Kalenderkopplingar",
+        subtitle = "SportAdmin och synkronisering",
+        icon = Icons.Default.Share,
+        expanded = expandedCategory == "kopplingar",
+        onToggle = { expandedCategory = if (expandedCategory == "kopplingar") null else "kopplingar" },
+    ) {
+        SettingsSectionCard(
+            title = "SportAdmin",
+            subtitle = "Synka lagets kalender automatiskt var 30:e minut.",
+        ) {
+            OutlinedTextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text("Kalenderlänk") },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (members.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Gäller för",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(4.dp))
+                members.forEach { member ->
+                    val selected = memberId == member.id
+                    Surface(
+                        color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth().clickable { memberId = member.id },
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = selected, onClick = { memberId = member.id })
+                            Box(
+                                Modifier.size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(member.colorArgb.toInt()))
+                            )
+                            Spacer(Modifier.width(9.dp))
+                            Text(member.name, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = {
+                    onSaveSportSettings(url.trim(), memberId)
+                    onImport(url.trim(), memberId)
+                },
+                enabled = url.isNotBlank() && memberId != null,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = MaterialTheme.shapes.medium,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .55f),
+                    ),
+            ) {
+                Text("Spara och synka")
+            }
+        }
+    }
+    Spacer(Modifier.height(9.dp))
+
+    SettingsCategoryCard(
+        title = "Säkerhetskopior och offline",
+        subtitle = "Spara, återställ och hantera lokal data",
+        icon = Icons.Default.Settings,
+        expanded = expandedCategory == "lagring",
+        onToggle = { expandedCategory = if (expandedCategory == "lagring") null else "lagring" },
+    ) {
+        SettingsSectionCard(
+            title = "Säkerhetskopiering och återställning",
+            subtitle = "Exportera familjens data och återställ saknade uppgifter utan dubbletter.",
+        ) {
+            FamilyBackupSettings(session)
+        }
+        Spacer(Modifier.height(12.dp))
+        SettingsSectionCard(
+            title = "Offlineåtkomst",
+            subtitle = "Öppna senast synkade aktiviteter, inköp och uppgifter utan internet.",
+        ) {
+            val savedAt = remember(session.id) { FamilyOfflineCache.lastSavedAt(context, session) }
+            var confirmClear by remember { mutableStateOf(false) }
+            var wasCleared by remember { mutableStateOf(false) }
+            Text(
+                if (wasCleared) "Sparad offlineinformation har rensats från den här telefonen."
+                else if (savedAt == null) "Ingen offlinekopia sparad ännu."
+                else "Senast sparade kalenderuppgifter: $savedAt",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val queued = remember(session.id) { mutableIntStateOf(OfflineMutationQueue.pendingCount(session)) }
+            Spacer(Modifier.height(7.dp))
+            Text(
+                if (queued.intValue == 0) "Inga aktiviteter, inköp eller To-do väntar på uppladdning."
+                else "${queued.intValue} nya poster väntar på att skickas när internet fungerar.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (queued.intValue > 0) {
+                TextButton(onClick = {
+                    OfflineMutationQueue.requestRetry()
+                    queued.intValue = OfflineMutationQueue.pendingCount(session)
+                }) { Text("Försök synka väntande poster") }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { confirmClear = true },
+                modifier = Modifier.fillMaxWidth().height(46.dp),
+            ) { Text("Rensa offlinekopior från telefonen") }
+            if (confirmClear) {
+                AlertDialog(
+                    onDismissRequest = { confirmClear = false },
+                    title = { Text("Rensa offlinekopior?") },
+                    text = { Text("Detta raderar bara senast sparad information på den här telefonen. Ingenting tas bort från familjens gemensamma kalender.") },
+                    confirmButton = {
+                        Button(onClick = {
+                            FamilyOfflineCache.clear(context, session)
+                            wasCleared = true
+                            confirmClear = false
+                        }) { Text("Rensa") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmClear = false }) { Text("Avbryt") }
+                    },
+                )
+            }
+        }
+    }
+    Spacer(Modifier.height(9.dp))
+
+    SettingsCategoryCard(
+        title = "App och uppdateringar",
+        subtitle = "Version och nya uppdateringar",
+        icon = Icons.Default.MoreHoriz,
+        expanded = expandedCategory == "appen",
+        onToggle = { expandedCategory = if (expandedCategory == "appen") null else "appen" },
+    ) {
+        AppUpdateSettingsCard()
+    }
+    Spacer(Modifier.height(9.dp))
+
+    Spacer(Modifier.height(30.dp))
+}
+
+@Composable
+private fun SettingsCategoryCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
+        shape = RoundedCornerShape(19.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(
+            1.dp,
+            if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = .48f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = .48f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle)
+                .padding(horizontal = 15.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(11.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(10.dp).size(21.dp),
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    subtitle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                )
+            }
+            Icon(
+                Icons.Default.KeyboardArrowRight,
+                contentDescription = if (expanded) "Stäng $title" else "Öppna $title",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(21.dp)
+                    .graphicsLayer { rotationZ = if (expanded) 90f else 0f },
+            )
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                content()
+            }
+        }
+    }
 }
 
 @Composable
