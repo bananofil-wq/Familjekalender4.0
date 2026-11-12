@@ -309,10 +309,18 @@ internal object WidgetThemeColors {
         views.setTextColor(R.id.widget_item_who, style.text)
         views.setTextColor(R.id.widget_item_activity, style.text)
         views.setTextColor(R.id.widget_item_time, style.muted)
+        // The graphite time capsule is part of the premium default only.
+        // Other selectable skins keep their original flat time treatment.
+        if (style.skin != Skin.CLASSIC) {
+            views.setInt(R.id.widget_item_time, "setBackgroundResource", android.R.color.transparent)
+        }
     }
 
     fun applyHeader(context: Context, views: RemoteViews) {
         val style = colors(context)
-        views.setTextColor(R.id.widget_list_header, style.muted)
+        views.setTextColor(
+            R.id.widget_list_header,
+            if (style.skin == Skin.CLASSIC) 0xFFF2F5FC.toInt() else style.muted,
+        )
     }
 }

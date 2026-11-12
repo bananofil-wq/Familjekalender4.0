@@ -3,29 +3,47 @@
     android:id="@+id/widget_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="44dp"
+    android:minHeight="43dp"
     android:layout_marginTop="3dp"
-    android:paddingLeft="10dp"
-    android:paddingRight="10dp"
+    android:layout_marginBottom="2dp"
+    android:paddingLeft="9dp"
+    android:paddingRight="7dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="5dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:background="@drawable/widget_event_row_bg">
 
+    <ImageView
+        android:id="@+id/widget_item_accent"
+        android:layout_width="4dp"
+        android:layout_height="22dp"
+        android:layout_marginEnd="10dp"
+        android:src="@drawable/widget_accent_bar"
+        android:contentDescription="@null" />
+
     <TextView
         android:id="@+id/widget_item_who"
-        android:layout_width="72dp"
+        android:layout_width="58dp"
         android:layout_height="wrap_content"
         android:textColor="#FFFFFFFF"
         android:textSize="12sp"
         android:textStyle="bold"
-        android:maxLines="2" />
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:layout_width="1dp"
+        android:layout_height="21dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="7dp"
+        android:background="#5EADBAC6" />
 
     <ImageView
         android:id="@+id/widget_item_laundry_icon"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="3dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginEnd="4dp"
         android:contentDescription="Tvätt"
         android:src="@drawable/ic_laundry_machine"
         android:visibility="gone" />
@@ -35,19 +53,22 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="5dp"
+        android:layout_marginEnd="4dp"
         android:textColor="#F7FFFFFF"
         android:textSize="12sp"
-        android:maxLines="2" />
+        android:maxLines="2"
+        android:ellipsize="end" />
 
     <TextView
         android:id="@+id/widget_item_time"
-        android:layout_width="92dp"
+        android:layout_width="86dp"
         android:layout_height="wrap_content"
-        android:gravity="end"
-        android:textColor="#D8FFFFFF"
+        android:minHeight="27dp"
+        android:paddingLeft="3dp"
+        android:paddingRight="3dp"
+        android:gravity="center"
+        android:textColor="#F4FFFFFF"
         android:textSize="10sp"
+        android:background="@drawable/widget_time_pill"
         android:maxLines="1" />
-
 </LinearLayout>

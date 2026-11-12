@@ -168,7 +168,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     ?: offlineShopping?.let { "🛒  $it inköp    ›" }
                     ?: "🛒  Inköp    ›"
                 val status = widgetRefreshStatus(
-                    todayCount = upcomingEvents?.count { it.date == today },
+                    todayCount = upcomingEvents?.let { widgetActivityCountForDay(it, today) },
                     eventsUpdated = !loaded.events.failed,
                     membersUpdated = !loaded.members.failed,
                     todoUpdated = !loaded.todos.failed,
@@ -236,9 +236,12 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             val who = memberName(memberKey, members)
             val activity = cleanActivityTitle(event.title, event.time, event.endTime, who)
             val laundry = isLaundryEvent(event)
-            val displayActivity =
-                if (laundry) activity.removePrefix("🧺").trimStart()
-                else widgetActivityIcon(activity) + "  " + activity
+            val reminder = widgetIsReminder(event)
+            val displayActivity = when {
+                reminder -> activity.removePrefix("🔔").trimStart()
+                laundry -> activity.removePrefix("🧺").trimStart()
+                else -> widgetActivityIcon(activity) + "  " + activity
+            }
             put(
                 JSONObject()
                     .put("date", date.toString())
@@ -246,6 +249,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     .put("who", who)
                     .put("activity", displayActivity)
                     .put("laundry", laundry)
+                    .put("reminder", reminder)
+                    .put("color", members[memberKey]?.colorArgb?.toInt() ?: 0xFF69B9F4.toInt())
                     .put("time", timeTextOrNull(event).orEmpty())
             )
         }

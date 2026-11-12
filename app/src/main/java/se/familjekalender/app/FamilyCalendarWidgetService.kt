@@ -3,22 +3,22 @@ package se.familjekalender.app
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.format.TextStyle
-import java.time.temporal.TemporalAdjusters
-import java.util.Locale
 import org.json.JSONArray
 
+/**
+ * Today's agenda only. Future days remain available inside the calendar app.
+ * Uses the ordinary RemoteViewsService adapter so scrolling works on Pixel Launcher.
+ */
 class FamilyCalendarWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
-        val widgetId =
-            intent.getIntExtra(
-                AppWidgetManager.EXTRA_APPWIDGET_ID,
-                AppWidgetManager.INVALID_APPWIDGET_ID,
-            )
+        val widgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID,
+        )
         return Factory(applicationContext, widgetId)
     }
 
@@ -29,24 +29,20 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
 
         private data class CachedEvent(
             val date: String,
-            val memberKey: String,
             val who: String,
             val activity: String,
             val time: String,
             val laundry: Boolean,
+            val reminder: Boolean,
+            val color: Int,
         )
 
         private sealed interface Item {
-            data class Header(val text: String, val dayKey: String) : Item
+            data class Header(val text: String) : Item
 
-            data class Event(
-                val who: String,
-                val activity: String,
-                val time: String,
-                val laundry: Boolean = false,
-                val groupKey: String? = null,
-                val canToggle: Boolean = false,
-            ) : Item
+            data class Event(val event: CachedEvent) : Item
+
+            data class Reminder(val event: CachedEvent) : Item
         }
 
         private val items = mutableListOf<Item>()
@@ -65,110 +61,53 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             val cached = prefs.getString(
                 FamilyCalendarWidget.cachedRowsPrefKey(widgetId), "[]"
             ) ?: "[]"
-            val expandedMember = prefs.getString(
-                FamilyCalendarWidget.expandedGroupPrefKey(widgetId), null
-            )
-            val manualDay = prefs.getString(
-                FamilyCalendarWidget.expandedDayPrefKey(widgetId), null
-            )?.takeIf { it.isNotBlank() }
-            val manualDayChangedOn = prefs.getString(
-                FamilyCalendarWidget.expandedDayUpdatedOnPrefKey(widgetId), null
-            )
-            val collapsedTodayOn = prefs.getString(
-                FamilyCalendarWidget.collapsedTodayPrefKey(widgetId), null
-            )
-            val rows = mutableListOf<CachedEvent>()
+            val today = LocalDate.now()
+            val todayKey = today.toString()
+            val todayRows = mutableListOf<CachedEvent>()
             runCatching {
                 val array = JSONArray(cached)
                 repeat(array.length()) { index ->
                     val obj = array.optJSONObject(index) ?: return@repeat
-                    rows += CachedEvent(
-                        date = obj.optString("date"),
-                        memberKey = obj.optString("memberKey"),
+                    // Cached future events are deliberately not rendered, even offline.
+                    if (obj.optString("date") != todayKey) return@repeat
+                    val activity = obj.optString("activity")
+                    todayRows += CachedEvent(
+                        date = todayKey,
                         who = obj.optString("who"),
-                        activity = obj.optString("activity"),
+                        activity = activity,
                         time = obj.optString("time"),
                         laundry = obj.optBoolean("laundry", false),
+                        reminder = obj.optBoolean(
+                            "reminder", activity.trimStart().startsWith("🔔")
+                        ),
+                        color = obj.optInt("color", 0xFF69B9F4.toInt()),
                     )
                 }
+            }.onFailure {
+                android.util.Log.w("FamilyCalendarWidget", "Invalid offline widget rows", it)
             }
 
-            // All seven weekdays are always present, even on days without events.
-            // The user expands a day before its rows are shown.
-            val today = LocalDate.now()
-            val expandedDay = preferredWidgetDay(
-                today = today,
-                eventDates = rows.mapNotNull { runCatching { LocalDate.parse(it.date) }.getOrNull() },
-                manuallySelectedDay = manualDay,
-                manualSelectionDate = manualDayChangedOn,
-            )
-            val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-            repeat(7) { offset ->
-                val date = weekStart.plusDays(offset.toLong())
-                val dateKey = date.toString()
-                val dayRows = rows.filter { it.date == dateKey }
-                val name = when (date) {
-                    today -> "Idag"
-                    today.plusDays(1) -> "Imorgon"
-                    else -> date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("sv", "SE"))
-                        .replaceFirstChar { it.uppercase() }
-                }
-                val count = dayRows.size
-                val activityCount = if (count == 1) "1 aktivitet" else "$count aktiviteter"
-                val isExpanded = widgetDayIsExpanded(
-                    date = date,
-                    today = today,
-                    hasActivities = dayRows.isNotEmpty(),
-                    selectedDay = expandedDay,
-                    collapsedTodayOn = collapsedTodayOn,
-                )
-                items += Item.Header(
-                    "$name ${date.dayOfMonth}/${date.monthValue} · $activityCount ${if (isExpanded) "▴" else "▾"}",
-                    dayKey = dateKey,
-                )
-                if (!isExpanded) return@repeat
+            val activities = todayRows.filterNot { it.reminder }
+            val reminders = todayRows.filter { it.reminder }
+            val count = activities.size
+            val countLabel = if (count == 1) "1 aktivitet" else "$count aktiviteter"
+            items += Item.Header("Idag ${today.dayOfMonth}/${today.monthValue}  ·  $countLabel")
 
-                if (dayRows.isEmpty()) {
-                    items += Item.Event(who = "", activity = "Inga aktiviteter", time = "")
-                    return@repeat
-                }
-
-                val groups = dayRows.groupBy { it.memberKey }.values
-                    .sortedBy { group ->
-                        group.firstOrNull { it.time.isNotBlank() }?.time ?: "99:99"
-                    }
-                groups.forEach { group ->
-                    val first = group.first()
-                    if (group.size == 1) {
-                        items += Item.Event(
-                            who = first.who,
-                            activity = first.activity,
-                            time = first.time,
-                            laundry = first.laundry,
-                        )
-                    } else {
-                        val groupKey = "$dateKey|${first.memberKey}"
-                        val memberIsExpanded = expandedMember == groupKey
-                        items += Item.Event(
-                            who = first.who,
-                            activity = "${group.size} aktiviteter ${if (memberIsExpanded) "▴" else "▾"}",
-                            time = if (memberIsExpanded) "" else
-                                group.firstOrNull { it.time.isNotBlank() }?.time.orEmpty(),
-                            groupKey = groupKey,
-                            canToggle = true,
-                        )
-                        if (memberIsExpanded) {
-                            group.forEach { event ->
-                                items += Item.Event(
-                                    who = "",
-                                    activity = event.activity,
-                                    time = event.time,
-                                    laundry = event.laundry,
-                                )
-                            }
-                        }
-                    }
-                }
+            // Every activity is shown directly; no member/day groups hiding today's rows.
+            activities.forEach { items += Item.Event(it) }
+            reminders.forEach { items += Item.Reminder(it) }
+            if (todayRows.isEmpty()) {
+                items += Item.Event(
+                    CachedEvent(
+                        date = todayKey,
+                        who = "",
+                        activity = "Inga aktiviteter eller påminnelser idag",
+                        time = "",
+                        laundry = false,
+                        reminder = false,
+                        color = 0xFF758595.toInt(),
+                    )
+                )
             }
         }
 
@@ -178,88 +117,74 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             if (position !in items.indices) {
                 return RemoteViews(context.packageName, R.layout.widget_event_item)
             }
-
             return when (val item = items[position]) {
                 is Item.Header ->
                     RemoteViews(context.packageName, R.layout.widget_event_header).apply {
                         setTextViewText(R.id.widget_list_header, item.text)
                         WidgetThemeColors.applyHeader(context, this)
-                        setOnClickFillInIntent(
-                            R.id.widget_list_header,
-                            Intent().apply {
-                                putExtra(FamilyCalendarWidget.EXTRA_ITEM_ACTION, FamilyCalendarWidget.ITEM_ACTION_TOGGLE_DAY)
-                                putExtra(FamilyCalendarWidget.EXTRA_GROUP_KEY, item.dayKey)
-                                putExtra(FamilyCalendarWidget.EXTRA_WIDGET_ID, widgetId)
-                            },
-                        )
                     }
 
                 is Item.Event ->
                     RemoteViews(context.packageName, R.layout.widget_event_item).apply {
-                        setTextViewText(R.id.widget_item_who, item.who)
-                        val laundry = item.laundry ||
-                            item.activity.trimStart().startsWith("tvätt", ignoreCase = true)
+                        val event = item.event
+                        setTextViewText(R.id.widget_item_who, event.who)
+                        val isLaundry = event.laundry ||
+                            event.activity.trimStart().startsWith("tvätt", ignoreCase = true)
                         setTextViewText(
                             R.id.widget_item_activity,
-                            if (laundry) item.activity.replace(Regex("^(\\s*🧺\\s*)+"), "").trimStart()
-                            else item.activity,
+                            if (isLaundry) event.activity
+                                .replace(Regex("^(\\s*🧺\\s*)+"), "").trimStart()
+                            else event.activity,
                         )
                         setViewVisibility(
                             R.id.widget_item_laundry_icon,
-                            if (laundry) android.view.View.VISIBLE else android.view.View.GONE,
+                            if (isLaundry) View.VISIBLE else View.GONE,
                         )
-                        setTextViewText(R.id.widget_item_time, item.time)
+                        setTextViewText(R.id.widget_item_time, event.time)
+                        setViewVisibility(
+                            R.id.widget_item_time,
+                            if (event.time.isBlank()) View.GONE else View.VISIBLE,
+                        )
                         WidgetThemeColors.applyEvent(context, this)
+                        setInt(R.id.widget_item_accent, "setColorFilter", event.color)
+                    }
 
-                        if (item.canToggle && !item.groupKey.isNullOrBlank()) {
-                            // Pixel Launcher kan skicka klicket från TextView-barnet i raden
-                            // i stället för från radens root. Bind därför samma fill-in-intent
-                            // till hela raden och samtliga synliga barn.
-                            fun toggleIntent() =
-                                Intent().apply {
-                                    putExtra(
-                                        FamilyCalendarWidget.EXTRA_ITEM_ACTION,
-                                        FamilyCalendarWidget.ITEM_ACTION_TOGGLE,
-                                    )
-                                    putExtra(
-                                        FamilyCalendarWidget.EXTRA_GROUP_KEY,
-                                        item.groupKey,
-                                    )
-                                    putExtra(
-                                        FamilyCalendarWidget.EXTRA_WIDGET_ID,
-                                        widgetId,
-                                    )
-                                }
-
-                            setOnClickFillInIntent(R.id.widget_item_root, toggleIntent())
-                            setOnClickFillInIntent(R.id.widget_item_who, toggleIntent())
-                            setOnClickFillInIntent(R.id.widget_item_activity, toggleIntent())
-                            setOnClickFillInIntent(R.id.widget_item_time, toggleIntent())
-                        }
+                is Item.Reminder ->
+                    RemoteViews(context.packageName, R.layout.widget_reminder_item).apply {
+                        val event = item.event
+                        val clean = event.activity.trimStart()
+                            .removePrefix("🔔").trimStart()
+                        val who = event.who.takeIf { it.isNotBlank() && it != "Alla" }
+                        setTextViewText(
+                            R.id.widget_reminder_activity,
+                            if (who == null) clean else "$who · $clean",
+                        )
+                        setTextViewText(R.id.widget_reminder_time, event.time)
+                        setViewVisibility(
+                            R.id.widget_reminder_time,
+                            if (event.time.isBlank()) View.GONE else View.VISIBLE,
+                        )
                     }
             }
         }
 
         override fun getLoadingView(): RemoteViews? = null
 
-        override fun getViewTypeCount(): Int = 2
+        override fun getViewTypeCount(): Int = 3
 
         override fun getItemId(position: Int): Long =
-            when (val value = items[position]) {
-                is Item.Header -> ("header:" + value.dayKey).hashCode().toLong()
-                is Item.Event ->
-                    (
-                        "event:" +
-                            value.who +
-                            ":" +
-                            value.activity +
-                            ":" +
-                            value.time +
-                            ":" +
-                            (value.groupKey ?: "") +
-                            ":" +
-                            position
-                    ).hashCode().toLong()
+            when (val item = items[position]) {
+                is Item.Header -> ("today:" + item.text).hashCode().toLong()
+                is Item.Event -> {
+                    val event = item.event
+                    ("event:" + event.who + ":" + event.activity + ":" +
+                        event.time + ":" + position).hashCode().toLong()
+                }
+                is Item.Reminder -> {
+                    val event = item.event
+                    ("reminder:" + event.who + ":" + event.activity + ":" +
+                        event.time + ":" + position).hashCode().toLong()
+                }
             }
 
         override fun hasStableIds(): Boolean = true
