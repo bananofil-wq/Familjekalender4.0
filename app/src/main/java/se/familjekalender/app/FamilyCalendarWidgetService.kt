@@ -74,6 +74,9 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             val manualDayChangedOn = prefs.getString(
                 FamilyCalendarWidget.expandedDayUpdatedOnPrefKey(widgetId), null
             )
+            val collapsedTodayOn = prefs.getString(
+                FamilyCalendarWidget.collapsedTodayPrefKey(widgetId), null
+            )
             val rows = mutableListOf<CachedEvent>()
             runCatching {
                 val array = JSONArray(cached)
@@ -112,7 +115,13 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                 }
                 val count = dayRows.size
                 val activityCount = if (count == 1) "1 aktivitet" else "$count aktiviteter"
-                val isExpanded = expandedDay == dateKey
+                val isExpanded = widgetDayIsExpanded(
+                    date = date,
+                    today = today,
+                    hasActivities = dayRows.isNotEmpty(),
+                    selectedDay = expandedDay,
+                    collapsedTodayOn = collapsedTodayOn,
+                )
                 items += Item.Header(
                     "$name ${date.dayOfMonth}/${date.monthValue} · $activityCount ${if (isExpanded) "▴" else "▾"}",
                     dayKey = dateKey,

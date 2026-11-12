@@ -29,3 +29,20 @@ internal fun preferredWidgetDay(
         ?.toString()
         ?: today.toString()
 }
+
+/**
+ * Today stays expanded whenever it has activities, independently of which other
+ * day the user has opened. The user may deliberately collapse Today until midnight.
+ * Empty Today rows retain the existing manual/fallback selection behaviour.
+ */
+internal fun widgetDayIsExpanded(
+    date: LocalDate,
+    today: LocalDate,
+    hasActivities: Boolean,
+    selectedDay: String,
+    collapsedTodayOn: String?,
+): Boolean = if (date == today && hasActivities) {
+    collapsedTodayOn != today.toString()
+} else {
+    selectedDay == date.toString()
+}

@@ -62,4 +62,40 @@ class WidgetDaySelectionTest {
             sunday, listOf(sunday.plusDays(1)), null, null
         ))
     }
+    @Test fun `today remains open when tomorrow was selected manually`() {
+        val tomorrow = wednesday.plusDays(1)
+        assertEquals(true, widgetDayIsExpanded(
+            date = wednesday, today = wednesday, hasActivities = true,
+            selectedDay = tomorrow.toString(), collapsedTodayOn = null,
+        ))
+        assertEquals(true, widgetDayIsExpanded(
+            date = tomorrow, today = wednesday, hasActivities = true,
+            selectedDay = tomorrow.toString(), collapsedTodayOn = null,
+        ))
+    }
+
+    @Test fun `today may be deliberately collapsed only for that date`() {
+        val tomorrow = wednesday.plusDays(1)
+        assertEquals(false, widgetDayIsExpanded(
+            date = wednesday, today = wednesday, hasActivities = true,
+            selectedDay = tomorrow.toString(), collapsedTodayOn = wednesday.toString(),
+        ))
+        assertEquals(true, widgetDayIsExpanded(
+            date = tomorrow, today = tomorrow, hasActivities = true,
+            selectedDay = wednesday.toString(), collapsedTodayOn = wednesday.toString(),
+        ))
+    }
+
+    @Test fun `empty today still follows manual selection`() {
+        val tomorrow = wednesday.plusDays(1)
+        assertEquals(false, widgetDayIsExpanded(
+            date = wednesday, today = wednesday, hasActivities = false,
+            selectedDay = tomorrow.toString(), collapsedTodayOn = null,
+        ))
+        assertEquals(true, widgetDayIsExpanded(
+            date = wednesday, today = wednesday, hasActivities = false,
+            selectedDay = wednesday.toString(), collapsedTodayOn = null,
+        ))
+    }
+
 }
