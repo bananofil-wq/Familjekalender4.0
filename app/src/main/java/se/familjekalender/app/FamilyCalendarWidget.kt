@@ -114,6 +114,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         internal fun cachedRowsPrefKey(appWidgetId: Int) = "cached_rows_$appWidgetId"
 
+        internal fun cachedFamilyPrefKey(appWidgetId: Int) = "cached_family_$appWidgetId"
+
         private fun networkConstraints() =
             Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
