@@ -527,12 +527,10 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )
             }
 
-            val quickAddIntent = Intent(context, MainActivity::class.java).apply {
+            val quickAddIntent = Intent(context, WidgetQuickAddActivity::class.java).apply {
                 action = Intent.ACTION_VIEW
                 data = Uri.parse("familjekalender://widget/quickadd/$appWidgetId")
-                putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
-                putExtra(MainActivity.EXTRA_WIDGET_QUICK_ADD, true)
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             views.setOnClickPendingIntent(
                 R.id.widget_quick_add,
