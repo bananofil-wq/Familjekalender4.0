@@ -22,12 +22,15 @@ class FamilyListNotificationServiceExtension : INotificationServiceExtension {
 
 /**
  * Routing intentionally ignores untrusted notifications for other families,
- * non-list notifications and calendar event popups. Only the widget worker
- * loads family data; no push content is copied into widget cache.
+ * unrelated notifications and calendar event popups. Recipient-only private
+ * reminder pushes refresh the local encrypted inbox via the widget worker;
+ * no push content is copied into widget cache.
  */
 internal object FamilyListPushRefresh {
     private const val LAST_FAMILY_ID = "family_id"
-    private val listPrefixes = listOf("shopping:", "todo:", "shopping-change:", "todo-change:")
+    private val listPrefixes = listOf(
+        "shopping:", "todo:", "shopping-change:", "todo-change:", "private-reminder:",
+    )
 
     internal fun shouldRefresh(
         activeFamilyId: String?,
