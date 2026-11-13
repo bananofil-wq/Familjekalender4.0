@@ -28,6 +28,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Familjekalendern"
         android:theme="@style/Theme.Familjekalender">
+        <!-- OneSignal runs this when a push arrives, including in the background. -->
+        <meta-data
+            android:name="com.onesignal.NotificationServiceExtension"
+            android:value="se.familjekalender.app.FamilyListNotificationServiceExtension" />
         <service
             android:name=".FamilyLocationService"
             android:exported="false"

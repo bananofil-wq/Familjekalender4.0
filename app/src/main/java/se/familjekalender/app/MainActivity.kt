@@ -664,6 +664,9 @@ private fun SyncedApp(
         }
 
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            // Refresh the home widget whenever the app returns to foreground,
+            // regardless of which tab the user has selected.
+            FamilyCalendarWidget.enqueueRefresh(context)
             while (isActive) {
                 syncExternalCalendars()
                 refresh()
