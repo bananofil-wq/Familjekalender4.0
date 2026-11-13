@@ -48,16 +48,31 @@
         android:src="@drawable/ic_laundry_machine"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/widget_item_activity"
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:layout_marginEnd="4dp"
-        android:textColor="#F7FFFFFF"
-        android:textSize="12sp"
-        android:maxLines="2"
-        android:ellipsize="end" />
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/widget_item_activity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#F7FFFFFF"
+            android:textSize="12sp"
+            android:maxLines="2"
+            android:ellipsize="end" />
+        <TextView
+            android:id="@+id/widget_item_live_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="#FF9CE5CF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_item_time"
