@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
@@ -94,7 +97,10 @@ internal fun FamilyBackupSettings(session: FamilySession) {
         Text(
             "Spara familjens aktiviteter, familjemedlemmar, inköp och To-do i en fil. " +
                 "Kopian innehåller personuppgifter i klartext, så förvara den säkert. " +
-                "Familjekoden och enhetsuppgifter sparas inte."
+                "Familjekoden och enhetsuppgifter sparas inte.",
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 13.sp,
+            lineHeight = 20.sp,
         )
         Spacer(Modifier.height(10.dp))
         Button(
@@ -119,14 +125,23 @@ internal fun FamilyBackupSettings(session: FamilySession) {
         }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
             modifier = Modifier.fillMaxWidth().height(48.dp),
             enabled = !busy,
             onClick = { filePicker.launch(arrayOf("application/json", "text/plain", "*/*")) },
         ) {
             Text("Återställ från säkerhetskopia")
         }
-        Text("Återställning lägger bara tillbaka saknade poster i samma familj. " +
-            "Den tar inte bort eller skriver över nyare information.")
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "Återställning lägger bara tillbaka saknade poster i samma familj. " +
+                "Den tar inte bort eller skriver över nyare information.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+        )
         if (status.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(status, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)

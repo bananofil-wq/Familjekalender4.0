@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -103,6 +104,9 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             fontSize = 12.sp,
         )
         OutlinedButton(
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
             onClick = {
                 context.startActivity(
                     android.content.Intent(context, WidgetQuickAddActivity::class.java).apply {
@@ -144,6 +148,9 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     fontSize = 10.sp,
                 )
                 OutlinedButton(
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
                     onClick = { pickerOpen = true },
                     modifier = Modifier.fillMaxWidth().height(39.dp),
                 ) {
@@ -157,6 +164,9 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             fontSize = 10.sp,
         )
         OutlinedButton(
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
             onClick = { detailsExpanded = !detailsExpanded },
             modifier = Modifier.fillMaxWidth().height(39.dp),
         ) {

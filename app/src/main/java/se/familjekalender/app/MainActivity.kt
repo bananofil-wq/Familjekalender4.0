@@ -874,10 +874,17 @@ private fun SyncedApp(
                     label = "main-tab-content",
                 ) { tab ->
                     val tabModifier =
-                        if (tab == 1) {
-                            Modifier.fillMaxSize()
-                        } else {
-                            Modifier.fillMaxSize()
+                        when (tab) {
+                            1 -> Modifier.fillMaxSize()
+                            4 -> Modifier.fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color(0xFF191323), Color(0xFF100D19))
+                                    )
+                                )
+                                .padding(horizontal = 16.dp, vertical = 18.dp)
+                                .verticalScroll(rememberScrollState())
+                            else -> Modifier.fillMaxSize()
                                 .padding(18.dp)
                                 .verticalScroll(rememberScrollState())
                         }
@@ -993,6 +1000,7 @@ private fun SyncedApp(
                             }
 
                             4 ->
+                                SettingsReadabilityTheme {
                                 SettingsScreen(
                                     session,
                                     members.filter { it.id != ALL_FAMILY_MEMBER_ID },
@@ -1029,6 +1037,7 @@ private fun SyncedApp(
                                     }
                                 }
 
+                                }
                             5 ->
                                 FamilyLocationScreen(
                                     session,
@@ -2350,6 +2359,9 @@ private fun SettingsScreen(
                         )
                         Spacer(Modifier.height(4.dp))
                         OutlinedButton(
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                             onClick = { showThemeGallery = true },
                             modifier = Modifier.fillMaxWidth().height(41.dp),
                         ) { Text("Välj kalendertema", fontSize = 12.sp) }
@@ -2553,6 +2565,9 @@ private fun SettingsScreen(
             if (customBackgroundActive) {
                 Spacer(Modifier.height(7.dp))
                 OutlinedButton(
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                     onClick = {
                         removeCustomBackground(context)
                         customBackgroundActive = false
@@ -2623,6 +2638,9 @@ private fun SettingsScreen(
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                 onClick = { shareFamilyInvite(context, session) },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = MaterialTheme.shapes.medium,
@@ -2633,6 +2651,9 @@ private fun SettingsScreen(
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                 onClick = { copyFamilyCode(context, session.code) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = MaterialTheme.shapes.medium,
@@ -2664,6 +2685,9 @@ private fun SettingsScreen(
             )
             Spacer(Modifier.height(9.dp))
             OutlinedButton(
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                 onClick = { openNotificationSettings(context) },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
             ) { Text("Hantera popup och ljud") }
@@ -2809,6 +2833,9 @@ private fun SettingsScreen(
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                 onClick = { confirmClear = true },
                 modifier = Modifier.fillMaxWidth().height(46.dp),
             ) { Text("Rensa offlinekopior från telefonen") }
@@ -2856,61 +2883,81 @@ private fun SettingsCategoryCard(
     onToggle: () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val frame = RoundedCornerShape(22.dp)
     Card(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
-        shape = RoundedCornerShape(19.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = frame,
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF251F30)),
         border = BorderStroke(
             1.dp,
-            if (expanded) MaterialTheme.colorScheme.primary.copy(alpha = .48f)
-            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = .48f),
+            if (expanded) Color(0xFFAC83ED) else Color(0xFF645777),
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle)
-                .padding(horizontal = 15.dp, vertical = 15.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(11.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(10.dp).size(21.dp),
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    subtitle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                )
-            }
-            Icon(
-                Icons.Default.KeyboardArrowRight,
-                contentDescription = if (expanded) "Stäng $title" else "Öppna $title",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(21.dp)
-                    .graphicsLayer { rotationZ = if (expanded) 90f else 0f },
+        Column(
+            Modifier.fillMaxWidth().background(
+                Brush.verticalGradient(listOf(Color(0xFF302A3C), Color(0xFF211C2C)))
             )
-        }
-        if (expanded) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle)
+                    .padding(horizontal = 15.dp, vertical = 15.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                content()
+                Box(
+                    Modifier.size(44.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color(0xFF9861E7), Color(0xFF6231B2))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(23.dp),
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        color = Color(0xFFFFFFFF),
+                        fontSize = 16.sp,
+                        lineHeight = 21.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        subtitle,
+                        color = Color(0xFFE0DCE9),
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                    )
+                }
+                Icon(
+                    Icons.Default.KeyboardArrowRight,
+                    contentDescription = if (expanded) "Stäng $title" else "Öppna $title",
+                    tint = Color(0xFFE0D3F5),
+                    modifier = Modifier.size(22.dp)
+                        .graphicsLayer { rotationZ = if (expanded) 90f else 0f },
+                )
+            }
+            if (expanded) {
+                Spacer(
+                    Modifier.fillMaxWidth().padding(horizontal = 14.dp)
+                        .height(1.dp).background(Color(0xFF675A76))
+                )
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    content()
+                }
             }
         }
     }
@@ -2923,28 +2970,36 @@ private fun SettingsSectionCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF262231)),
+        shape = RoundedCornerShape(19.dp),
+        border = BorderStroke(1.dp, Color(0xFF685B7A)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(18.dp)) {
+        Column(
+            Modifier.fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(listOf(Color(0xFF302B3A), Color(0xFF24202E)))
+                )
+                .padding(horizontal = 16.dp, vertical = 18.dp)
+        ) {
             Text(
                 title,
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
             )
             if (!subtitle.isNullOrBlank()) {
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(5.dp))
                 Text(
                     subtitle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
+                    color = Color(0xFFE0DCE9),
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
                 )
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
             content()
         }
     }
