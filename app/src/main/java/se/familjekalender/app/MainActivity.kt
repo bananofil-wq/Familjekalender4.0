@@ -3790,6 +3790,13 @@ private fun AddEventDialog(
                     ) {
                         Text("Välj födelsedatum")
                     }
+                } else if (isReminder && keepUntilRemoved) {
+                    OutlinedButton(
+                        onClick = { openSingleDatePicker() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Välj startdatum")
+                    }
                 } else {
                     Row(
                         Modifier.fillMaxWidth(),
