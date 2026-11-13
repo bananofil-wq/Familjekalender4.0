@@ -24,9 +24,10 @@ internal fun upcomingWeekReminders(
     today: LocalDate,
     reminders: List<WidgetWeeklyReminder>,
 ): List<WidgetWeeklyReminder> {
-    val sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+    val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    val sunday = monday.plusDays(6)
     return reminders.asSequence()
-        .filter { !it.date.isBefore(today) && !it.date.isAfter(sunday) }
+        .filter { !it.date.isBefore(monday) && !it.date.isAfter(sunday) }
         .sortedWith(
             compareBy<WidgetWeeklyReminder> { it.date }
                 .thenBy { it.time.ifBlank { "00:00" } }
@@ -66,5 +67,41 @@ internal fun weeklyReminderLabel(
         append(" · ")
         person?.let { append(it).append(": ") }
         append(reminder.title.trim())
+    }
+}
+
+
+/** A perpetual reminder is one stored event, not hundreds of generated events. */
+internal fun isPermanentReminderSource(source: String): Boolean =
+    source.startsWith("reminder_persistent", ignoreCase = true)
+
+internal data class WidgetPermanentReminder(
+    val eventId: String,
+    val startDate: LocalDate,
+    val title: String,
+    val time: String = "",
+    val person: String = "",
+)
+
+internal fun activePermanentReminders(
+    today: LocalDate,
+    reminders: List<WidgetPermanentReminder>,
+): List<WidgetPermanentReminder> =
+    reminders.asSequence()
+        .filter { !it.startDate.isAfter(today) && it.title.isNotBlank() }
+        .distinctBy { it.eventId }
+        .sortedWith(compareBy<WidgetPermanentReminder> { it.startDate }.thenBy { it.title })
+        .toList()
+
+internal fun permanentReminderLabel(reminder: WidgetPermanentReminder): String {
+    val who = reminder.person.takeUnless {
+        it.isBlank() || it == "Alla" || it == "⭐ Alla" || it == "Familj"
+    }
+    val time = reminder.time.takeIf { it.isNotBlank() }
+    return buildString {
+        append("📌 ")
+        who?.let { append(it).append(": ") }
+        append(reminder.title.trim())
+        time?.let { append(" · ").append(it) }
     }
 }

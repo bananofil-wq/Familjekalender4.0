@@ -173,7 +173,7 @@
 
 
 
-    <!-- Pinned below today's scrollable events; only upcoming reminders this week. -->
+    <!-- Pinned after today's activities: complete calendar week plus permanent reminders. -->
     <LinearLayout
         android:id="@+id/widget_week_reminders"
         android:layout_width="match_parent"
@@ -221,6 +221,28 @@
             android:id="@+id/widget_birthday_2"
             style="@style/WidgetWeekReminderText"
             android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_persistent_reminder_1"
+            style="@style/WidgetWeekReminderText"
+            android:textColor="#FFFFE7AF"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_persistent_reminder_2"
+            style="@style/WidgetWeekReminderText"
+            android:textColor="#FFFFE7AF"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_persistent_reminder_more"
+            style="@style/WidgetWeekReminderText"
+            android:textColor="#FFFFD58D"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_week_reminder_empty"
+            style="@style/WidgetWeekReminderText"
+            android:textColor="#FFB9BDCB"
+            android:text="Inga påminnelser denna vecka"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/widget_week_reminder_1"
             style="@style/WidgetWeekReminderText" />

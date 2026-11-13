@@ -99,7 +99,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
 
             // Keep all activities from this week, even when they have already finished.
             val upcomingEvents = events?.filter { event ->
-                !event.date.isBefore(weekStart) && !event.date.isAfter(cacheUntil)
+                (!event.date.isBefore(weekStart) && !event.date.isAfter(cacheUntil)) ||
+                    (isPermanentReminderSource(event.source) && !event.date.isAfter(cacheUntil))
             }?.sortedWith(
                 compareBy<SyncEvent> { it.date }
                     .thenBy { parseMinute(it.time) ?: Int.MAX_VALUE }
@@ -250,6 +251,8 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             put(
                 JSONObject()
                     .put("date", date.toString())
+                    .put("eventId", event.id)
+                    .put("persistent", isPermanentReminderSource(event.source))
                     .put("memberKey", memberKey)
                     .put("who", who)
                     .put("activity", displayActivity)

@@ -292,7 +292,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 repeat(json.length()) { index ->
                     val row = json.optJSONObject(index) ?: return@repeat
                     val title = row.optString("activity").trim()
-                    if (!row.optBoolean("reminder", title.startsWith("🔔"))) return@repeat
+                    if (!row.optBoolean("reminder", title.startsWith("🔔")) ||
+                        row.optBoolean("persistent", false)) return@repeat
                     val date = runCatching { LocalDate.parse(row.optString("date")) }
                         .getOrNull() ?: return@repeat
                     val cleaned = title.removePrefix("🔔").trim()
@@ -308,10 +309,65 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 }
             }
 
-            val preview = if (WidgetFeatureSettings.enabled(
-                    context, WidgetFeatureSettings.WEEK_REMINDERS
-                )) weeklyReminderPreview(today, reminders, maxVisible = 3)
+            val showReminders = WidgetFeatureSettings.enabled(
+                context, WidgetFeatureSettings.WEEK_REMINDERS
+            )
+            val preview = if (showReminders) weeklyReminderPreview(today, reminders, maxVisible = 3)
                 else WidgetWeeklyReminderPreview(emptyList(), 0)
+
+            // A persistent reminder remains in the footer after its start date.
+            // Only one canonical calendar event is stored.
+            val permanent = buildList {
+                val json = runCatching { JSONArray(raw ?: "[]") }.getOrNull() ?: JSONArray()
+                repeat(json.length()) { index ->
+                    val row = json.optJSONObject(index) ?: return@repeat
+                    if (!row.optBoolean("persistent", false)) return@repeat
+                    val date = runCatching { LocalDate.parse(row.optString("date")) }
+                        .getOrNull() ?: return@repeat
+                    val id = row.optString("eventId")
+                    val title = row.optString("activity").trim()
+                    if (id.isBlank() || title.isBlank()) return@repeat
+                    add(WidgetPermanentReminder(
+                        eventId = id,
+                        startDate = date,
+                        title = title,
+                        person = row.optString("who"),
+                        time = row.optString("time"),
+                    ))
+                }
+            }
+            val activePermanent = if (showReminders) activePermanentReminders(today, permanent)
+                else emptyList()
+            val permanentIds = intArrayOf(
+                R.id.widget_persistent_reminder_1, R.id.widget_persistent_reminder_2
+            )
+            permanentIds.forEachIndexed { index, viewId ->
+                val reminder = activePermanent.getOrNull(index)
+                views.setViewVisibility(
+                    viewId, if (reminder == null) View.GONE else View.VISIBLE
+                )
+                views.setTextViewText(viewId, reminder?.let(::permanentReminderLabel) ?: "")
+                if (reminder != null) {
+                    views.setOnClickPendingIntent(
+                        viewId, openCalendarEventPendingIntent(
+                            context, appWidgetId, reminder.eventId, 1_050 + index
+                        )
+                    )
+                }
+            }
+            val extraPermanent = (activePermanent.size - permanentIds.size).coerceAtLeast(0)
+            views.setViewVisibility(
+                R.id.widget_persistent_reminder_more,
+                if (extraPermanent > 0) View.VISIBLE else View.GONE
+            )
+            views.setTextViewText(
+                R.id.widget_persistent_reminder_more,
+                if (extraPermanent > 0) "+$extraPermanent permanenta påminnelser" else ""
+            )
+            views.setOnClickPendingIntent(
+                R.id.widget_persistent_reminder_more,
+                openCalendarPendingIntent(context, appWidgetId, 1_054),
+            )
 
             val birthdays = buildList {
                 val json = runCatching { JSONArray(raw ?: "[]") }.getOrNull() ?: JSONArray()
@@ -330,13 +386,22 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )) widgetUpcomingBirthdays(today, birthdays).take(2) else emptyList()
             views.setViewVisibility(
                 R.id.widget_week_reminders,
-                if (preview.visible.isEmpty() && visibleBirthdays.isEmpty()) View.GONE
-                else View.VISIBLE,
+                if (showReminders || visibleBirthdays.isNotEmpty()) View.VISIBLE else View.GONE,
             )
             views.setTextViewText(
                 R.id.widget_week_reminders_title,
                 if (visibleBirthdays.isEmpty()) "Påminnelser denna vecka"
                 else "Påminnelser & födelsedagar",
+            )
+            val empty = showReminders && preview.visible.isEmpty() &&
+                activePermanent.isEmpty() && visibleBirthdays.isEmpty()
+            views.setViewVisibility(
+                R.id.widget_week_reminder_empty,
+                if (empty) View.VISIBLE else View.GONE,
+            )
+            views.setTextViewText(
+                R.id.widget_week_reminder_empty,
+                "Inga påminnelser denna vecka",
             )
             val birthdayIds = intArrayOf(R.id.widget_birthday_1, R.id.widget_birthday_2)
             birthdayIds.forEachIndexed { index, viewId ->
@@ -491,6 +556,25 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 context,
                 appWidgetId + requestOffset,
                 intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        private fun openCalendarEventPendingIntent(
+            context: Context,
+            appWidgetId: Int,
+            eventId: String,
+            requestOffset: Int,
+        ): PendingIntent {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = Uri.parse("familjekalender://widget/reminder/$appWidgetId/" + Uri.encode(eventId))
+                putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
+                putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, eventId)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            return PendingIntent.getActivity(
+                context, appWidgetId + requestOffset, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         }

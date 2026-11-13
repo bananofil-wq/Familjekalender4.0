@@ -8,7 +8,7 @@ import org.junit.Test
 class WidgetWeeklyRemindersTest {
     private val thursday = LocalDate.of(2026, 11, 12)
 
-    @Test fun `includes today and rest of current Monday to Sunday week only`() {
+    @Test fun `includes the full Monday to Sunday week even for past weekdays`() {
         val rows = listOf(
             WidgetWeeklyReminder(thursday.minusDays(1), "redan passerad"),
             WidgetWeeklyReminder(thursday, "gympapåse"),
@@ -16,7 +16,7 @@ class WidgetWeeklyRemindersTest {
             WidgetWeeklyReminder(thursday.plusDays(4), "nästa måndag"),
         )
         assertEquals(
-            listOf("gympapåse", "söndag"),
+            listOf("redan passerad", "gympapåse", "söndag"),
             upcomingWeekReminders(thursday, rows).map { it.title },
         )
     }
@@ -63,15 +63,50 @@ class WidgetWeeklyRemindersTest {
         assertTrue(label.startsWith("Fre 08:00 · Hugo: Gympapåse"))
     }
 
-    @Test fun `sunday includes only that one remaining day`() {
+    @Test fun `sunday includes Monday to Sunday but not next Monday`() {
         val sunday = LocalDate.of(2026, 11, 15)
         val reminders = listOf(
+            WidgetWeeklyReminder(sunday.minusDays(6), "Måndag"),
             WidgetWeeklyReminder(sunday, "Söndag"),
             WidgetWeeklyReminder(sunday.plusDays(1), "Måndag"),
         )
         assertEquals(
-            listOf("Söndag"),
+            listOf("Måndag", "Söndag"),
             upcomingWeekReminders(sunday, reminders).map { it.title },
         )
     }
+    @Test fun `persistent reminder remains visible after many months without creating duplicates`() {
+        val today = LocalDate.of(2026, 11, 13)
+        val reminder = WidgetPermanentReminder(
+            eventId = "forever-1",
+            startDate = LocalDate.of(2025, 1, 1),
+            title = "Kolla räkningarna",
+        )
+        val list = listOf(reminder, reminder.copy(), reminder.copy(eventId = "new", startDate = today.plusDays(1)))
+        assertEquals(listOf("forever-1"), activePermanentReminders(today, list).map { it.eventId })
+        assertTrue(permanentReminderLabel(reminder).contains("Kolla räkningarna"))
+    }
+
+    @Test fun `permanent reminder source and no-time source are both detected`() {
+        assertTrue(isPermanentReminderSource("reminder_persistent"))
+        assertTrue(isPermanentReminderSource("reminder_persistent_no_time"))
+        assertEquals(false, isPermanentReminderSource("reminder_no_time"))
+    }
+
+    @Test fun `reminders outside current week do not appear in weekly preview`() {
+        val friday = LocalDate.of(2026, 11, 13)
+        assertEquals(
+            listOf("måndag", "söndag"),
+            upcomingWeekReminders(
+                friday,
+                listOf(
+                    WidgetWeeklyReminder(friday.minusDays(5), "förra söndagen"),
+                    WidgetWeeklyReminder(friday.minusDays(4), "måndag"),
+                    WidgetWeeklyReminder(friday.plusDays(2), "söndag"),
+                    WidgetWeeklyReminder(friday.plusDays(3), "nästa måndag"),
+                ),
+            ).map { it.title },
+        )
+    }
+
 }

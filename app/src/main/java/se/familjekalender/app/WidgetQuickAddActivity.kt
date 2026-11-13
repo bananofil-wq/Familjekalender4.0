@@ -203,6 +203,7 @@ private fun WidgetQuickAddSheet(onClose: () -> Unit) {
     var title by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now()) }
     var hasTime by remember { mutableStateOf(true) }
+    var keepUntilRemoved by remember { mutableStateOf(false) }
     var startTime by remember { mutableStateOf(LocalTime.of(9, 0)) }
     var endTime by remember { mutableStateOf(LocalTime.of(10, 0)) }
     var selectedMemberId by remember { mutableStateOf<String?>(null) }
@@ -217,6 +218,7 @@ private fun WidgetQuickAddSheet(onClose: () -> Unit) {
         title = ""
         date = LocalDate.now()
         hasTime = selected == QuickKind.EVENT
+        keepUntilRemoved = false
         startTime = LocalTime.of(9, 0)
         endTime = LocalTime.of(10, 0)
         selectedMemberId = null
@@ -418,6 +420,26 @@ private fun WidgetQuickAddSheet(onClose: () -> Unit) {
                                 }
                             }
                         }
+                        if (selectedKind == QuickKind.REMINDER) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = keepUntilRemoved,
+                                    onCheckedChange = { keepUntilRemoved = it },
+                                    enabled = !saving,
+                                )
+                                Column {
+                                    Text("Utan slutdatum", fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        "Visas tills du tar bort påminnelsen",
+                                        color = QuickAddMuted,
+                                        fontSize = 11.sp,
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     if (selectedKind != QuickKind.SHOPPING) {
@@ -510,6 +532,7 @@ private fun WidgetQuickAddSheet(onClose: () -> Unit) {
                                                     date,
                                                     if (hasTime) startTime.format(timeFormatter) else "",
                                                     selectedMemberId,
+                                                    keepUntilRemoved = keepUntilRemoved,
                                                 )
                                                 QuickKind.TODO -> {
                                                     val id = TodoSync.add(
