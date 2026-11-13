@@ -463,63 +463,40 @@ internal fun ExactCalendarScreen(
             onDismiss = { editEvent = null },
             onSave = { title, date, time, endTime, memberId, entryKind, editScope ->
                 val session = currentFamilySession(context)
-                if (session != null) {
-                    scope.launch {
-                        val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
-                        val targets =
-                            when (editScope) {
-                                SeriesEditScope.THIS -> listOf(event)
-                                SeriesEditScope.THIS_AND_FUTURE ->
-                                    matchingSeries.filter { !it.date.isBefore(event.date) }
-
-                                SeriesEditScope.WHOLE_SERIES -> matchingSeries
-                            }
-                        runCatching {
-                            val splitSeriesId =
-                                when {
-                                    event.seriesId == null -> null
-                                    editScope == SeriesEditScope.THIS_AND_FUTURE ->
-                                        java.util.UUID.randomUUID().toString()
-
-                                    else -> event.seriesId
-                                }
-                            targets.forEach { target ->
-                                val targetDate =
-                                    if (editScope == SeriesEditScope.THIS) date
-                                    else target.date.plusDays(dayShift)
-                                SupabaseSync.updateEvent(
-                                    session,
-                                    target.id,
-                                    title,
-                                    targetDate,
-                                    time,
-                                    endTime,
-                                    memberId,
-                                    source = calendarEventSource(entryKind, time.isNotBlank()),
-                                )
-                                when {
-                                    event.seriesId == null -> Unit
-                                    editScope == SeriesEditScope.THIS ->
-                                        SupabaseSync.updateEventSeriesId(session, target.id, null)
-
-                                    editScope == SeriesEditScope.THIS_AND_FUTURE ->
-                                        SupabaseSync.updateEventSeriesId(
-                                            session,
-                                            target.id,
-                                            splitSeriesId,
-                                        )
-
-                                    editScope == SeriesEditScope.WHOLE_SERIES -> Unit
-                                }
-                            }
-                        }
-                            .onSuccess {
-                                editEvent = null
-                                onSelect(date)
-                                refreshActivity()
-                            }
+                    ?: throw IllegalStateException("Ingen familj är ansluten")
+                val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
+                val targets = when (editScope) {
+                    SeriesEditScope.THIS -> listOf(event)
+                    SeriesEditScope.THIS_AND_FUTURE ->
+                        matchingSeries.filter { !it.date.isBefore(event.date) }
+                    SeriesEditScope.WHOLE_SERIES -> matchingSeries
+                }.ifEmpty { listOf(event) }
+                val splitSeriesId = when {
+                    event.seriesId == null -> null
+                    editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                        java.util.UUID.randomUUID().toString()
+                    else -> event.seriesId
+                }
+                targets.forEach { target ->
+                    val targetDate = if (editScope == SeriesEditScope.THIS) date
+                        else target.date.plusDays(dayShift)
+                    SupabaseSync.updateEvent(
+                        session, target.id, title, targetDate, time, endTime, memberId,
+                        source = calendarEventSource(entryKind, time.isNotBlank()),
+                    )
+                    when {
+                        event.seriesId == null -> Unit
+                        editScope == SeriesEditScope.THIS ->
+                            SupabaseSync.updateEventSeriesId(session, target.id, null)
+                        editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                            SupabaseSync.updateEventSeriesId(session, target.id, splitSeriesId)
+                        editScope == SeriesEditScope.WHOLE_SERIES -> Unit
                     }
                 }
+                editEvent = null
+                onSelect(date)
+                refreshActivity()
+                FamilyCalendarWidget.enqueueRefresh(context)
             },
             onDelete = { deleteScope ->
                 val session = currentFamilySession(context)
@@ -870,7 +847,7 @@ internal fun EditEventDialog(
     members: List<SyncMember>,
     hasSeries: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, LocalDate, String, String?, String?, CalendarEntryKind, SeriesEditScope) -> Unit,
+    onSave: suspend (String, LocalDate, String, String?, String?, CalendarEntryKind, SeriesEditScope) -> Unit,
     onDelete: (SeriesEditScope) -> Unit,
 ) {
     val context = LocalContext.current
@@ -899,6 +876,9 @@ internal fun EditEventDialog(
     var editScope by remember(event.id) { mutableStateOf(SeriesEditScope.THIS) }
     var timePickerRequest by remember(event.id) { mutableStateOf<MaterialTimePickerRequest?>(null) }
     var showDeleteConfirm by remember(event.id) { mutableStateOf(false) }
+    val saveScope = rememberCoroutineScope()
+    var isSaving by remember(event.id) { mutableStateOf(false) }
+    var saveError by remember(event.id) { mutableStateOf<String?>(null) }
 
     fun chooseDate() {
         DatePickerDialog(
@@ -1274,26 +1254,56 @@ internal fun EditEventDialog(
         },
         confirmButton = {
             if (canModify) {
-                Button(
-                    enabled = title.isNotBlank(),
-                    onClick = {
-                        onSave(
-                            when {
-                                birthday -> "🌈 " + title.trim()
-                                isReminder -> "🔔 " + title.removePrefix("🔔").trim()
-                                else -> title.removePrefix("🔔").removePrefix("🧺").trim()
-                            },
-                            date,
-                            if (hasTime) time else "",
-                            if (!hasTime || isReminder) null else endTime.ifBlank { null },
-                            memberId,
-                            entryKind,
-                            editScope,
+                Column(horizontalAlignment = Alignment.End) {
+                    saveError?.let { error ->
+                        Text(
+                            error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp,
+                            modifier = Modifier.padding(bottom = 6.dp),
                         )
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                ) {
-                    Text("Färdig")
+                    }
+                    Button(
+                        enabled = title.isNotBlank() && !isSaving,
+                        onClick = {
+                            if (!isSaving) {
+                                isSaving = true
+                                saveError = null
+                                saveScope.launch {
+                                    try {
+                                        onSave(
+                                            when {
+                                                birthday -> "🌈 " + title.trim()
+                                                isReminder -> "🔔 " + title.removePrefix("🔔").trim()
+                                                else -> title.removePrefix("🔔").removePrefix("🧺").trim()
+                                            },
+                                            date,
+                                            if (hasTime) time else "",
+                                            if (!hasTime || isReminder) null else endTime.ifBlank { null },
+                                            memberId,
+                                            entryKind,
+                                            editScope,
+                                        )
+                                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                        throw cancelled
+                                    } catch (error: Exception) {
+                                        saveError = "Kunde inte spara: " + (error.message ?: "okänt fel")
+                                    } finally {
+                                        isSaving = false
+                                    }
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(17.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(if (isSaving) "Sparar…" else "Färdig")
+                    }
                 }
             }
         },
