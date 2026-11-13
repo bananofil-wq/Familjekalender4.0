@@ -61,7 +61,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.vector.ImageVector
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -126,7 +125,7 @@ private fun QuickAddChoiceCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val (icon, accent, description): Triple<ImageVector, Color, String> = when (kind) {
+    val (icon, accent, description) = when (kind) {
         QuickKind.EVENT -> Triple(Icons.Default.CalendarMonth, Color(0xFFB69AFF), "Planera en tid")
         QuickKind.REMINDER -> Triple(Icons.Default.Notifications, Color(0xFFF1BC86), "Kom ihåg något")
         QuickKind.TODO -> Triple(Icons.Default.CheckCircle, Color(0xFF83D6BD), "En uppgift")
