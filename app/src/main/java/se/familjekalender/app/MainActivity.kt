@@ -1067,63 +1067,39 @@ private fun SyncedApp(
             hasSeries = matchingSeries.size > 1,
             onDismiss = { editEvent = null },
             onSave = { title, date, time, endTime, memberId, entryKind, editScope ->
-                scope.launch {
-                    val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
-                    val targets =
-                        when (editScope) {
-                            SeriesEditScope.THIS -> listOf(event)
-                            SeriesEditScope.THIS_AND_FUTURE ->
-                                matchingSeries.filter { !it.date.isBefore(event.date) }
-                            SeriesEditScope.WHOLE_SERIES -> matchingSeries
-                        }
-                    val effectiveTargets = if (targets.isEmpty()) listOf(event) else targets
-                    runCatching {
-                        val splitSeriesId =
-                            when {
-                                event.seriesId == null -> null
-                                editScope == SeriesEditScope.THIS_AND_FUTURE ->
-                                    java.util.UUID.randomUUID().toString()
-                                else -> event.seriesId
-                            }
-
-                        effectiveTargets.forEach { target ->
-                            val targetDate =
-                                if (editScope == SeriesEditScope.THIS) date
-                                else target.date.plusDays(dayShift)
-                            SupabaseSync.updateEvent(
-                                session,
-                                target.id,
-                                title,
-                                targetDate,
-                                time,
-                                endTime,
-                                memberId,
-                                source = calendarEventSource(entryKind, time.isNotBlank()),
-                            )
-                            when {
-                                event.seriesId == null -> Unit
-                                editScope == SeriesEditScope.THIS ->
-                                    SupabaseSync.updateEventSeriesId(session, target.id, null)
-                                editScope == SeriesEditScope.THIS_AND_FUTURE ->
-                                    SupabaseSync.updateEventSeriesId(
-                                        session,
-                                        target.id,
-                                        splitSeriesId,
-                                    )
-                                editScope == SeriesEditScope.WHOLE_SERIES -> Unit
-                            }
-                        }
-                    }
-                        .onSuccess {
-                            editEvent = null
-                            selectedDate = date
-                            refresh()
-                            FamilyCalendarWidget.enqueueRefresh(context)
-                        }
-                        .onFailure {
-                            message = "Kunde inte spara aktiviteten: ${it.message}"
-                        }
+                val dayShift = java.time.temporal.ChronoUnit.DAYS.between(event.date, date)
+                val targets = when (editScope) {
+                    SeriesEditScope.THIS -> listOf(event)
+                    SeriesEditScope.THIS_AND_FUTURE ->
+                        matchingSeries.filter { !it.date.isBefore(event.date) }
+                    SeriesEditScope.WHOLE_SERIES -> matchingSeries
+                }.ifEmpty { listOf(event) }
+                val splitSeriesId = when {
+                    event.seriesId == null -> null
+                    editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                        java.util.UUID.randomUUID().toString()
+                    else -> event.seriesId
                 }
+                targets.forEach { target ->
+                    val targetDate = if (editScope == SeriesEditScope.THIS) date
+                        else target.date.plusDays(dayShift)
+                    SupabaseSync.updateEvent(
+                        session, target.id, title, targetDate, time, endTime, memberId,
+                        source = calendarEventSource(entryKind, time.isNotBlank()),
+                    )
+                    when {
+                        event.seriesId == null -> Unit
+                        editScope == SeriesEditScope.THIS ->
+                            SupabaseSync.updateEventSeriesId(session, target.id, null)
+                        editScope == SeriesEditScope.THIS_AND_FUTURE ->
+                            SupabaseSync.updateEventSeriesId(session, target.id, splitSeriesId)
+                        editScope == SeriesEditScope.WHOLE_SERIES -> Unit
+                    }
+                }
+                editEvent = null
+                selectedDate = date
+                refresh()
+                FamilyCalendarWidget.enqueueRefresh(context)
             },
             onDelete = { deleteScope ->
                 scope.launch {
@@ -1233,89 +1209,61 @@ private fun SyncedApp(
                                         recurrence,
                                         keepUntilRemoved,
                                         privateOnly ->
-            scope.launch {
-                try {
-                if (entryKind == CalendarEntryKind.REMINDER && privateOnly) {
-                    require(!memberId.isNullOrBlank() && memberId != ALL_FAMILY_MEMBER_ID) {
-                        "Välj en familjemedlem som privat mottagare"
-                    }
-                    PrivateReminderSync.send(
-                        context, session, memberId, title,
-                        dates.minOrNull() ?: LocalDate.now(),
-                        startTime, keepUntilRemoved,
+            if (entryKind == CalendarEntryKind.REMINDER && privateOnly) {
+                require(!memberId.isNullOrBlank() && memberId != ALL_FAMILY_MEMBER_ID) {
+                    "Välj en familjemedlem som privat mottagare"
+                }
+                PrivateReminderSync.send(
+                    context, session, memberId, title,
+                    dates.minOrNull() ?: LocalDate.now(),
+                    startTime, keepUntilRemoved,
+                )
+            } else if (entryKind == CalendarEntryKind.REMINDER) {
+                val targetDates = when {
+                    keepUntilRemoved -> listOf(dates.minOrNull()!!)
+                    recurrence == RecurrenceMode.NONE -> dates.sorted()
+                    else -> dates.sorted().flatMap { recurringDates(it, recurrence) }
+                        .distinct().sorted()
+                }
+                val seriesId = if (keepUntilRemoved || recurrence == RecurrenceMode.NONE)
+                    null else java.util.UUID.randomUUID().toString()
+                targetDates.forEach { date ->
+                    SupabaseSync.addReminder(
+                        session, title, date, startTime, memberId, seriesId,
+                        keepUntilRemoved = keepUntilRemoved,
                     )
-                } else if (entryKind == CalendarEntryKind.REMINDER) {
-                    val targetDates = when {
-                        keepUntilRemoved -> listOf(dates.minOrNull()!!)
-                        recurrence == RecurrenceMode.NONE -> dates.sorted()
-                        else -> dates.sorted()
-                            .flatMap { recurringDates(it, recurrence) }
-                            .distinct().sorted()
-                    }
-                    val seriesId = if (keepUntilRemoved || recurrence == RecurrenceMode.NONE)
-                        null else java.util.UUID.randomUUID().toString()
-                    targetDates.forEach { date ->
-                        SupabaseSync.addReminder(
-                            session, title, date, startTime, memberId, seriesId,
-                            keepUntilRemoved = keepUntilRemoved,
-                        )
-                    }
-                } else if (birthday) {
-                    val today = LocalDate.now()
-                    val month = dates.first().monthValue
-                    val day = dates.first().dayOfMonth
-                    for (year in today.year..(today.year + 20)) {
-                        val birthdayDate =
-                            runCatching { LocalDate.of(year, month, day) }.getOrNull() ?: continue
-                        SupabaseSync.addEvent(
-                            session,
-                            "🌈 $title",
-                            birthdayDate,
-                            "09:00",
-                            null,
-                            memberId,
-                        )
-                    }
-                } else {
-                    val targetDates =
-                        if (recurrence == RecurrenceMode.NONE) {
-                            dates.sorted()
-                        } else {
-                            dates
-                                .sorted()
-                                .flatMap { recurringDates(it, recurrence) }
-                                .distinct()
-                                .sorted()
-                        }
-                    val seriesId =
-                        if (recurrence == RecurrenceMode.NONE) null
-                        else java.util.UUID.randomUUID().toString()
-                    targetDates.forEach { date ->
-                        SupabaseSync.addEvent(
-                            session,
-                            title,
-                            date,
-                            startTime,
-                            endTime,
-                            memberId,
-                            seriesId,
-                            source = if (entryKind == CalendarEntryKind.LAUNDRY) "laundry" else "manual",
-                        )
-                    }
                 }
-                refresh()
-                FamilyCalendarWidget.enqueueRefresh(context)
-                showAddEvent = false
-                addEventInitialKind = CalendarEntryKind.ACTIVITY
-                val pending = OfflineMutationQueue.pendingCount(session)
-                if (pending > 0) {
-                    message = "$pending poster sparades lokalt och väntar på internet."
+            } else if (birthday) {
+                val today = LocalDate.now()
+                val month = dates.first().monthValue
+                val day = dates.first().dayOfMonth
+                for (year in today.year..(today.year + 20)) {
+                    val birthdayDate = runCatching { LocalDate.of(year, month, day) }
+                        .getOrNull() ?: continue
+                    SupabaseSync.addEvent(
+                        session, "🌈 $title", birthdayDate, "09:00", null, memberId,
+                    )
                 }
-                } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                    throw cancelled
-                } catch (failure: Exception) {
-                    message = "Kunde inte spara allt: ${failure.message}. Kontrollera kalendern före nytt försök."
+            } else {
+                val targetDates = if (recurrence == RecurrenceMode.NONE) dates.sorted()
+                    else dates.sorted().flatMap { recurringDates(it, recurrence) }
+                        .distinct().sorted()
+                val seriesId = if (recurrence == RecurrenceMode.NONE) null
+                    else java.util.UUID.randomUUID().toString()
+                targetDates.forEach { date ->
+                    SupabaseSync.addEvent(
+                        session, title, date, startTime, endTime, memberId, seriesId,
+                        source = if (entryKind == CalendarEntryKind.LAUNDRY) "laundry" else "manual",
+                    )
                 }
+            }
+            refresh()
+            FamilyCalendarWidget.enqueueRefresh(context)
+            showAddEvent = false
+            addEventInitialKind = CalendarEntryKind.ACTIVITY
+            val pending = OfflineMutationQueue.pendingCount(session)
+            if (pending > 0) {
+                message = "$pending poster sparades lokalt och väntar på internet."
             }
         }
     }
@@ -3410,7 +3358,7 @@ private fun AddEventDialog(
     lightStyle: Boolean = false,
     nordicDarkStyle: Boolean = false,
     onDismiss: () -> Unit,
-    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, CalendarEntryKind, RecurrenceMode, Boolean, Boolean) -> Unit,
+    onAdd: suspend (String, String, String, String?, List<LocalDate>, Boolean, CalendarEntryKind, RecurrenceMode, Boolean, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val dialogBackground =
@@ -3452,9 +3400,12 @@ private fun AddEventDialog(
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale("sv", "SE")) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
-    var hasTime by remember { mutableStateOf(true) }
-    var startTime by remember { mutableStateOf<LocalTime?>(null) }
-    var endTime by remember { mutableStateOf<LocalTime?>(null) }
+    val saveScope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
+    var hasTime by remember(initialKind) { mutableStateOf(initialKind != CalendarEntryKind.REMINDER) }
+    var startTime by remember { mutableStateOf<LocalTime?>(LocalTime.of(9, 0)) }
+    var endTime by remember { mutableStateOf<LocalTime?>(LocalTime.of(10, 0)) }
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
@@ -3772,9 +3723,9 @@ private fun AddEventDialog(
                         ),
                         modifier = Modifier.fillMaxWidth().clickable {
                             hasTime = !hasTime
-                            if (!hasTime) {
-                                startTime = null
-                                endTime = null
+                            if (hasTime) {
+                                if (startTime == null) startTime = LocalTime.of(9, 0)
+                                if (endTime == null) endTime = LocalTime.of(10, 0)
                             }
                         },
                     ) {
@@ -3786,9 +3737,9 @@ private fun AddEventDialog(
                                 checked = !hasTime,
                                 onCheckedChange = { checked ->
                                     hasTime = !checked
-                                    if (checked) {
-                                        startTime = null
-                                        endTime = null
+                                    if (!checked) {
+                                        if (startTime == null) startTime = LocalTime.of(9, 0)
+                                        if (endTime == null) endTime = LocalTime.of(10, 0)
                                     }
                                 },
                             )
@@ -3935,38 +3886,67 @@ private fun AddEventDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    val selectedStartTime =
-                        if (!hasTime && !isBirthday) "" else startTime?.format(timeFormatter) ?: "09:00"
-                    val selectedEndTime =
-                        if (!hasTime && !isBirthday) "" else endTime?.format(timeFormatter) ?: "10:00"
-                    onAdd(
-                        title.trim(),
-                        selectedStartTime,
-                        selectedEndTime,
-                        memberId,
-                        dates.toList(),
-                        isBirthday,
-                        entryKind,
-                        recurrence,
-                        isReminder && keepUntilRemoved,
-                        isReminder && privateOnly,
+            Column(horizontalAlignment = Alignment.End) {
+                saveError?.let { error ->
+                    Text(
+                        error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 6.dp),
                     )
-                },
-                enabled =
-                    title.isNotBlank() &&
-                            dates.isNotEmpty() &&
-                            (isBirthday || !hasTime || (isReminder && startTime != null) || (startTime != null && endTime != null)) &&
-                            (!isReminder || !privateOnly ||
-                                (!memberId.isNullOrBlank() && memberId != ALL_FAMILY_MEMBER_ID)),
-                colors =
-                    ButtonDefaults.buttonColors(
+                }
+                Button(
+                    onClick = {
+                        if (!saving) {
+                            saving = true
+                            saveError = null
+                            val selectedStartTime =
+                                if (!hasTime && !isBirthday) "" else startTime?.format(timeFormatter) ?: "09:00"
+                            val selectedEndTime =
+                                if (!hasTime && !isBirthday) "" else endTime?.format(timeFormatter) ?: "10:00"
+                            saveScope.launch {
+                                try {
+                                    onAdd(
+                                        title.trim(),
+                                        selectedStartTime,
+                                        selectedEndTime,
+                                        memberId,
+                                        dates.toList(),
+                                        isBirthday,
+                                        entryKind,
+                                        recurrence,
+                                        isReminder && keepUntilRemoved,
+                                        isReminder && privateOnly,
+                                    )
+                                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                    throw cancelled
+                                } catch (error: Exception) {
+                                    saveError = "Kunde inte spara: " + (error.message ?: "okänt fel")
+                                } finally {
+                                    saving = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !saving &&
+                        title.isNotBlank() &&
+                        dates.isNotEmpty() &&
+                        (isBirthday || !hasTime || (isReminder && startTime != null) ||
+                            (startTime != null && endTime != null)) &&
+                        (!isReminder || !privateOnly ||
+                            (!memberId.isNullOrBlank() && memberId != ALL_FAMILY_MEMBER_ID)),
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = dialogAccent,
                         contentColor = Color.White,
                     ),
-            ) {
-                Text("Färdig")
+                ) {
+                    if (saving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(17.dp), strokeWidth = 2.dp,
+                            color = Color.White,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (saving) "Sparar…" else "Färdig")
+                }
             }
         },
         dismissButton = {
