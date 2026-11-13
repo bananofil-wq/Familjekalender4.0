@@ -64,12 +64,23 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 val todos = async {
                     fetchSafely("To-Do") { withContext(Dispatchers.IO) { TodoSync.load(session) } }
                 }
-                LoadedWidgetData(
+                val privateInbox = async {
+                    try {
+                        PrivateReminderSync.refreshInbox(applicationContext, session)
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        // Do not interrupt ordinary family widget refresh on private sync errors.
+                    }
+                }
+                val result = LoadedWidgetData(
                     events = events.await(),
                     members = members.await(),
                     shopping = shopping.await(),
                     todos = todos.await(),
                 )
+                privateInbox.await()
+                result
             }
 
             val today = LocalDate.now()
