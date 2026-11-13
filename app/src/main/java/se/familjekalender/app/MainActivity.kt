@@ -211,6 +211,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
+        intent.getStringExtra(EXTRA_OPEN_EVENT_ID)?.let { eventId ->
+            requestedEventId = "calendar:" + eventId + "#" + widgetOpenRequestId
+        }
         if (intent.getBooleanExtra(EXTRA_WIDGET_QUICK_ADD, false)) widgetQuickAddRequestId++
         setContent {
             ResponsiveApp {
@@ -243,11 +246,15 @@ class MainActivity : ComponentActivity() {
         // Repeated taps on the same widget shortcut must always navigate again.
         // Tab value alone does not change after the first tap.
         if (intent.hasExtra(EXTRA_OPEN_TAB)) widgetOpenRequestId++
+        intent.getStringExtra(EXTRA_OPEN_EVENT_ID)?.let { eventId ->
+            requestedEventId = "calendar:" + eventId + "#" + widgetOpenRequestId
+        }
         if (intent.getBooleanExtra(EXTRA_WIDGET_QUICK_ADD, false)) widgetQuickAddRequestId++
     }
 
     companion object {
         const val EXTRA_OPEN_TAB = "open_tab"
+        const val EXTRA_OPEN_EVENT_ID = "open_event_id"
         const val EXTRA_WIDGET_QUICK_ADD = "widget_quick_add"
     }
 
@@ -529,7 +536,7 @@ private fun SyncedApp(
                     .sortedWith(compareBy<SyncEvent> { it.date.isBefore(LocalDate.now()) }.thenBy { it.date })
                     .firstOrNull()
             } else {
-                val eventId = requested.removePrefix("calendar:")
+                val eventId = requested.removePrefix("calendar:").substringBefore("#")
                 events.firstOrNull { it.id == eventId }
             }
 
@@ -1205,31 +1212,24 @@ private fun SyncedApp(
                                         dates,
                                         birthday,
                                         entryKind,
-                                        recurrence ->
+                                        recurrence,
+                                        keepUntilRemoved ->
             scope.launch {
                 try {
                 if (entryKind == CalendarEntryKind.REMINDER) {
-                    val targetDates =
-                        if (recurrence == RecurrenceMode.NONE) {
-                            dates.sorted()
-                        } else {
-                            dates
-                                .sorted()
-                                .flatMap { recurringDates(it, recurrence) }
-                                .distinct()
-                                .sorted()
-                        }
-                    val seriesId =
-                        if (recurrence == RecurrenceMode.NONE) null
-                        else java.util.UUID.randomUUID().toString()
+                    val targetDates = when {
+                        keepUntilRemoved -> listOf(dates.minOrNull()!!)
+                        recurrence == RecurrenceMode.NONE -> dates.sorted()
+                        else -> dates.sorted()
+                            .flatMap { recurringDates(it, recurrence) }
+                            .distinct().sorted()
+                    }
+                    val seriesId = if (keepUntilRemoved || recurrence == RecurrenceMode.NONE)
+                        null else java.util.UUID.randomUUID().toString()
                     targetDates.forEach { date ->
                         SupabaseSync.addReminder(
-                            session,
-                            title,
-                            date,
-                            startTime,
-                            memberId,
-                            seriesId,
+                            session, title, date, startTime, memberId, seriesId,
+                            keepUntilRemoved = keepUntilRemoved,
                         )
                     }
                 } else if (birthday) {
@@ -3382,7 +3382,7 @@ private fun AddEventDialog(
     lightStyle: Boolean = false,
     nordicDarkStyle: Boolean = false,
     onDismiss: () -> Unit,
-    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, CalendarEntryKind, RecurrenceMode) -> Unit,
+    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, CalendarEntryKind, RecurrenceMode, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val dialogBackground =
@@ -3441,6 +3441,7 @@ private fun AddEventDialog(
     val isReminder = entryKind == CalendarEntryKind.REMINDER
     val isLaundry = entryKind == CalendarEntryKind.LAUNDRY
     var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }
+    var keepUntilRemoved by remember { mutableStateOf(false) }
     val dates = remember { mutableStateListOf(selectedDate) }
 
     fun openSingleDatePicker() {
@@ -3597,14 +3598,60 @@ private fun AddEventDialog(
                     Text("Upprepning", fontWeight = FontWeight.Bold)
                     RecurrenceMode.values().forEach { mode ->
                         Row(
-                            Modifier.fillMaxWidth().clickable { recurrence = mode },
+                            Modifier.fillMaxWidth().clickable {
+                                recurrence = mode
+                                if (mode != RecurrenceMode.NONE) keepUntilRemoved = false
+                            },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(
                                 selected = recurrence == mode,
-                                onClick = { recurrence = mode },
+                                onClick = {
+                                    recurrence = mode
+                                    if (mode != RecurrenceMode.NONE) keepUntilRemoved = false
+                                },
                             )
                             Text(mode.label)
+                        }
+                    }
+                }
+
+                if (isReminder) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            keepUntilRemoved = !keepUntilRemoved
+                            if (keepUntilRemoved) {
+                                recurrence = RecurrenceMode.NONE
+                                if (dates.size > 1) {
+                                    val first = dates.minOrNull()!!
+                                    dates.clear()
+                                    dates.add(first)
+                                }
+                            }
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = keepUntilRemoved,
+                            onCheckedChange = { checked ->
+                                keepUntilRemoved = checked
+                                if (checked) {
+                                    recurrence = RecurrenceMode.NONE
+                                    if (dates.size > 1) {
+                                        val first = dates.minOrNull()!!
+                                        dates.clear()
+                                        dates.add(first)
+                                    }
+                                }
+                            },
+                        )
+                        Column {
+                            Text("Utan slutdatum", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Ligger kvar i widgeten tills du tar bort påminnelsen",
+                                color = dialogMuted,
+                                fontSize = 11.sp,
+                            )
                         }
                     }
                 }
@@ -3819,6 +3866,7 @@ private fun AddEventDialog(
                         isBirthday,
                         entryKind,
                         recurrence,
+                        isReminder && keepUntilRemoved,
                     )
                 },
                 enabled =
