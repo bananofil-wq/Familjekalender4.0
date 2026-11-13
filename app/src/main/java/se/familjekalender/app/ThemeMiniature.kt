@@ -59,7 +59,10 @@ internal fun ThemeMiniature(
             WidgetThemeColors.Skin.FAMILY -> Color(0xFFFFF6EF) to Color(0xFFF5EAE6)
             WidgetThemeColors.Skin.CRYSTAL -> Color(0xFFEAF4FD) to Color(0xFFD6E9F8)
             WidgetThemeColors.Skin.NEON -> Color(0xFF1C2739) to Color(0xFF0E1423)
-            WidgetThemeColors.Skin.CLASSIC, WidgetThemeColors.Skin.GLASS -> null
+            WidgetThemeColors.Skin.CLASSIC, WidgetThemeColors.Skin.GLASS,
+            WidgetThemeColors.Skin.FOREST_WOOD, WidgetThemeColors.Skin.OBSIDIAN,
+            WidgetThemeColors.Skin.CARBON_RED, WidgetThemeColors.Skin.MIST_FOREST,
+            WidgetThemeColors.Skin.NORDIC_DUSK -> null
         }
     val baseTop = widgetSurfaces?.first
         ?: if (theme == null) Color(0xE82D2A35) else spec.backgroundTop
