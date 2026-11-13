@@ -285,6 +285,7 @@ object SupabaseSync {
         time: String,
         memberId: String?,
         seriesId: String? = null,
+        keepUntilRemoved: Boolean = false,
     ) =
         withContext(Dispatchers.IO) {
             val noTime = time.isBlank()
@@ -299,7 +300,15 @@ object SupabaseSync {
                     .put("family_id", session.id)
                     .put("title", "🔔 " + title.removePrefix("🔔").trim())
                     .put("starts_at", startsAt)
-                    .put("source", if (noTime) "reminder_no_time" else "reminder")
+                    .put(
+                        "source",
+                        when {
+                            keepUntilRemoved && noTime -> "reminder_persistent_no_time"
+                            keepUntilRemoved -> "reminder_persistent"
+                            noTime -> "reminder_no_time"
+                            else -> "reminder"
+                        },
+                    )
             if (memberId == null || memberId == ALL_FAMILY_MEMBER_ID)
                 body.put("member_id", JSONObject.NULL)
             else body.put("member_id", memberId)
