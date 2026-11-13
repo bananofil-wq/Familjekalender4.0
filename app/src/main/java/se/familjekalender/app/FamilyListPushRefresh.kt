@@ -29,19 +29,29 @@ internal object FamilyListPushRefresh {
     private const val LAST_FAMILY_ID = "family_id"
     private val listPrefixes = listOf("shopping:", "todo:", "shopping-change:", "todo-change:")
 
-    internal fun shouldRefresh(payload: JSONObject?, activeFamilyId: String?): Boolean {
-        if (activeFamilyId.isNullOrBlank() || payload == null) return false
-        if (payload.optString("family_id") != activeFamilyId) return false
-        val key = payload.optString("dedupe_key")
-        return payload.optString("type") == "family_list_changed" ||
-            listPrefixes.any { key.startsWith(it) }
+    internal fun shouldRefresh(
+        activeFamilyId: String?,
+        notificationFamilyId: String?,
+        dedupeKey: String?,
+        notificationType: String?,
+    ): Boolean {
+        if (activeFamilyId.isNullOrBlank() || notificationFamilyId != activeFamilyId) {
+            return false
+        }
+        return notificationType == "family_list_changed" ||
+            listPrefixes.any { dedupeKey.orEmpty().startsWith(it) }
     }
 
     fun onIncomingPush(context: Context, payload: JSONObject?) {
+        if (payload == null) return
         val appContext = context.applicationContext
         val id = appContext.getSharedPreferences("family_calendar", Context.MODE_PRIVATE)
             .getString(LAST_FAMILY_ID, null)
-        if (!shouldRefresh(payload, id)) return
+        if (!shouldRefresh(
+                id, payload.optString("family_id"),
+                payload.optString("dedupe_key"), payload.optString("type"),
+            )
+        ) return
         FamilyCalendarWidget.enqueueRefresh(appContext)
     }
 }
