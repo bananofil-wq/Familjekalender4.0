@@ -11,7 +11,4 @@
         android:fillColor="#FFFFFF" android:fillAlpha=".014"/>
     <path android:pathData="M248,0 L320,0 L320,58 Z"
         android:fillColor="#C6D5EC" android:fillAlpha=".085"/>
-    <path android:pathData="M6,8 L314,8 Q315,8 315,12"
-        android:fillColor="#00000000" android:strokeColor="#D6E3FA"
-        android:strokeAlpha=".17" android:strokeWidth=".9"/>
 </vector>
