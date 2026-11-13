@@ -39,6 +39,7 @@ import androidx.core.content.FileProvider
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.UnknownHostException
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -47,6 +48,13 @@ import org.json.JSONObject
 
 private const val LATEST_RELEASE_API =
     "https://api.github.com/repos/bananofil-wq/Familjekalender4.0/releases/latest"
+private const val LATEST_RELEASE_WEB =
+    "https://github.com/bananofil-wq/Familjekalender4.0/releases/latest"
+private const val RELEASE_DOWNLOAD_PREFIX =
+    "https://github.com/bananofil-wq/Familjekalender4.0/releases/download/"
+private val TRUSTED_TAG_URL = Regex(
+    """^https://github\.com/bananofil-wq/Familjekalender4\.0/releases/tag/v(\d+(?:\.\d+){3})/?$"""
+)
 
 private data class AvailableUpdate(
     val version: String,
@@ -68,8 +76,50 @@ private fun isNewerVersion(candidate: String, current: String): Boolean {
     return false
 }
 
+private fun findUpdateViaWebsite(currentVersion: String): AvailableUpdate? {
+    // GitHub's public /releases/latest URL redirects to the actual release tag.
+    // No API host or page scraping is required. Validate the final URL before
+    // deriving the expected APK name from our signed-release workflow.
+    val connection = (URL(LATEST_RELEASE_WEB).openConnection() as HttpURLConnection).apply {
+        connectTimeout = 10_000
+        readTimeout = 10_000
+        instanceFollowRedirects = true
+        requestMethod = "GET"
+        setRequestProperty("User-Agent", "Familjekalender-Android/$currentVersion")
+    }
+    try {
+        val status = connection.responseCode
+        if (status !in 200..299) error("GitHubs webbplats svarade med HTTP $status")
+        val version = TRUSTED_TAG_URL.matchEntire(connection.url.toString())
+            ?.groupValues?.get(1)
+            ?: error("Kunde inte läsa versionsnumret från GitHubs webbplats")
+        if (!isNewerVersion(version, currentVersion)) return null
+        return AvailableUpdate(
+            version = version,
+            downloadUrl = "${RELEASE_DOWNLOAD_PREFIX}v$version/Familjekalender-$version.apk",
+        )
+    } finally {
+        connection.disconnect()
+    }
+}
+
 private suspend fun findAvailableUpdate(currentVersion: String): AvailableUpdate? =
     withContext(Dispatchers.IO) {
+        try {
+            findUpdateViaApi(currentVersion)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (apiError: Exception) {
+            try {
+                findUpdateViaWebsite(currentVersion)
+            } catch (webError: Exception) {
+                webError.addSuppressed(apiError)
+                throw webError
+            }
+        }
+    }
+
+private fun findUpdateViaApi(currentVersion: String): AvailableUpdate? {
         val connection =
             (URL(LATEST_RELEASE_API).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 10_000
@@ -81,7 +131,7 @@ private suspend fun findAvailableUpdate(currentVersion: String): AvailableUpdate
 
         try {
             val responseCode = connection.responseCode
-            if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) return@withContext null
+            if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) return null
             if (responseCode !in 200..299) {
                 error("GitHub svarade med HTTP $responseCode")
             }
@@ -90,10 +140,10 @@ private suspend fun findAvailableUpdate(currentVersion: String): AvailableUpdate
             val release = JSONObject(json)
             val version = release.optString("tag_name").removePrefix("v")
             if (version.isBlank() || !isNewerVersion(version, currentVersion)) {
-                return@withContext null
+                return null
             }
 
-            val assets = release.optJSONArray("assets") ?: return@withContext null
+            val assets = release.optJSONArray("assets") ?: return null
             var apkUrl: String? = null
             for (index in 0 until assets.length()) {
                 val asset = assets.optJSONObject(index) ?: continue
@@ -108,7 +158,24 @@ private suspend fun findAvailableUpdate(currentVersion: String): AvailableUpdate
         } finally {
             connection.disconnect()
         }
+}
+
+private fun updateCheckFailureMessage(error: Throwable): String {
+    if (error is UnknownHostException || error.suppressed.any { it is UnknownHostException }) {
+        return "Telefonen får inte kontakt med GitHub. Prova mobildata eller Wi-Fi, " +
+            "kontrollera eventuell privat DNS och försök igen. " +
+            "Du kan också öppna nedladdningssidan i webbläsaren."
     }
+    return "Kunde inte kontrollera uppdateringar: ${error.message ?: "okänt fel"}. " +
+        "Du kan öppna nedladdningssidan i webbläsaren."
+}
+
+private fun openReleasePage(context: Context) {
+    context.startActivity(
+        Intent(Intent.ACTION_VIEW, Uri.parse(LATEST_RELEASE_WEB))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
+}
 
 private fun canInstallPackages(context: Context): Boolean =
     Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
@@ -397,8 +464,7 @@ internal fun AppUpdateSettingsCard() {
                             .onFailure { error ->
                                 availableUpdate = null
                                 statusIsError = true
-                                statusText =
-                                    "Kunde inte kontrollera uppdateringar: ${error.message ?: "okänt fel"}"
+                                statusText = updateCheckFailureMessage(error)
                             }
                         checking = false
                     }
@@ -408,6 +474,15 @@ internal fun AppUpdateSettingsCard() {
                 shape = MaterialTheme.shapes.medium,
             ) {
                 Text(if (checking) "Kontrollerar…" else "Sök efter uppdatering")
+            }
+
+            Spacer(Modifier.height(8.dp))
+            TextButton(
+                onClick = { openReleasePage(context) },
+                enabled = !updating,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Öppna nedladdningssidan i webbläsaren")
             }
 
             availableUpdate?.let { update ->
