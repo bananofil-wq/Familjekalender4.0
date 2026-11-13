@@ -240,7 +240,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                 Text("Tryck på en bild för att se temat ovanför.",
                                     color = Color(0xFFD5D7DE), fontSize = 12.sp)
                                 Spacer(Modifier.height(12.dp))
-                                options.chunked(4).forEach { pair ->
+                                options.chunked(3).forEach { pair ->
                                     Row(Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         pair.forEach { option ->
@@ -252,7 +252,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                                     .clickable { previewChoice = option.value },
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                             ) {
-                                                Box(Modifier.fillMaxWidth().height(111.dp)
+                                                Box(Modifier.fillMaxWidth().height(146.dp)
                                                     .clip(RoundedCornerShape(12.dp))
                                                     .background(Color(0xFF131720))) {
                                                     WidgetMaterialPreview(
@@ -280,7 +280,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                                 )
                                             }
                                         }
-                                        repeat(4 - pair.size) {
+                                        repeat(3 - pair.size) {
                                             Spacer(Modifier.weight(1f))
                                         }
                                     }
