@@ -74,7 +74,13 @@ private class WidgetSampleView(context: Context) : View(context) {
         }
 
         // Same background, badge, action, row and reminder resources as real widgets.
-        bg(artwork.background, 0, 0, 360, 510)
+        val referenceMaterial = WidgetReferenceArtwork.bitmap(themeChoice)
+        if (referenceMaterial != null) {
+            canvas.drawBitmap(referenceMaterial, null,
+                android.graphics.RectF(0f, 0f, 360f, 510f), fill)
+        } else {
+            bg(artwork.background, 0, 0, 360, 510)
+        }
         bg(artwork.badgeDay, 15, 18, 72, 49)
         bg(artwork.badgeNumber, 15, 49, 72, 90)
         label("FRE", 28f, 40f, 15f, palette.dayInk, true)
