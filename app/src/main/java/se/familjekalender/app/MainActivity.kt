@@ -1213,10 +1213,20 @@ private fun SyncedApp(
                                         birthday,
                                         entryKind,
                                         recurrence,
-                                        keepUntilRemoved ->
+                                        keepUntilRemoved,
+                                        privateOnly ->
             scope.launch {
                 try {
-                if (entryKind == CalendarEntryKind.REMINDER) {
+                if (entryKind == CalendarEntryKind.REMINDER && privateOnly) {
+                    require(!memberId.isNullOrBlank() && memberId != ALL_FAMILY_MEMBER_ID) {
+                        "Välj en familjemedlem som privat mottagare"
+                    }
+                    PrivateReminderSync.send(
+                        context, session, memberId, title,
+                        dates.minOrNull() ?: LocalDate.now(),
+                        startTime, keepUntilRemoved,
+                    )
+                } else if (entryKind == CalendarEntryKind.REMINDER) {
                     val targetDates = when {
                         keepUntilRemoved -> listOf(dates.minOrNull()!!)
                         recurrence == RecurrenceMode.NONE -> dates.sorted()
@@ -3382,7 +3392,7 @@ private fun AddEventDialog(
     lightStyle: Boolean = false,
     nordicDarkStyle: Boolean = false,
     onDismiss: () -> Unit,
-    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, CalendarEntryKind, RecurrenceMode, Boolean) -> Unit,
+    onAdd: (String, String, String, String?, List<LocalDate>, Boolean, CalendarEntryKind, RecurrenceMode, Boolean, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val dialogBackground =
@@ -3442,6 +3452,7 @@ private fun AddEventDialog(
     val isLaundry = entryKind == CalendarEntryKind.LAUNDRY
     var recurrence by remember { mutableStateOf(RecurrenceMode.NONE) }
     var keepUntilRemoved by remember { mutableStateOf(false) }
+    var privateOnly by remember { mutableStateOf(false) }
     val dates = remember { mutableStateListOf(selectedDate) }
 
     fun openSingleDatePicker() {
@@ -3600,7 +3611,10 @@ private fun AddEventDialog(
                         Row(
                             Modifier.fillMaxWidth().clickable {
                                 recurrence = mode
-                                if (mode != RecurrenceMode.NONE) keepUntilRemoved = false
+                                if (mode != RecurrenceMode.NONE) {
+                                    keepUntilRemoved = false
+                                    privateOnly = false
+                                }
                             },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -3608,7 +3622,10 @@ private fun AddEventDialog(
                                 selected = recurrence == mode,
                                 onClick = {
                                     recurrence = mode
-                                    if (mode != RecurrenceMode.NONE) keepUntilRemoved = false
+                                    if (mode != RecurrenceMode.NONE) {
+                                        keepUntilRemoved = false
+                                        privateOnly = false
+                                    }
                                 },
                             )
                             Text(mode.label)
@@ -3617,6 +3634,48 @@ private fun AddEventDialog(
                 }
 
                 if (isReminder) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            privateOnly = !privateOnly
+                            if (privateOnly) {
+                                recurrence = RecurrenceMode.NONE
+                                if (dates.size > 1) {
+                                    val first = dates.minOrNull()!!
+                                    dates.clear()
+                                    dates.add(first)
+                                }
+                            }
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = privateOnly,
+                            onCheckedChange = { checked ->
+                                privateOnly = checked
+                                if (checked) {
+                                    recurrence = RecurrenceMode.NONE
+                                    if (dates.size > 1) {
+                                        val first = dates.minOrNull()!!
+                                        dates.clear()
+                                        dates.add(first)
+                                    }
+                                }
+                            },
+                        )
+                        Column {
+                            Text("Privat – enbart vald mottagare", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Skickas krypterat och syns inte i familjens kalender",
+                                color = dialogMuted,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                    if (privateOnly &&
+                        (memberId.isNullOrBlank() || memberId == ALL_FAMILY_MEMBER_ID)) {
+                        Text("Välj mottagare längre ner",
+                            color = dialogAccent, fontSize = 11.sp)
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable {
                             keepUntilRemoved = !keepUntilRemoved
@@ -3790,7 +3849,7 @@ private fun AddEventDialog(
                     ) {
                         Text("Välj födelsedatum")
                     }
-                } else if (isReminder && keepUntilRemoved) {
+                } else if (isReminder && (keepUntilRemoved || privateOnly)) {
                     OutlinedButton(
                         onClick = { openSingleDatePicker() },
                         modifier = Modifier.fillMaxWidth(),
@@ -3874,12 +3933,15 @@ private fun AddEventDialog(
                         entryKind,
                         recurrence,
                         isReminder && keepUntilRemoved,
+                        isReminder && privateOnly,
                     )
                 },
                 enabled =
                     title.isNotBlank() &&
                             dates.isNotEmpty() &&
-                            (isBirthday || !hasTime || (isReminder && startTime != null) || (startTime != null && endTime != null)),
+                            (isBirthday || !hasTime || (isReminder && startTime != null) || (startTime != null && endTime != null)) &&
+                            (!isReminder || !privateOnly ||
+                                (!memberId.isNullOrBlank() && memberId != ALL_FAMILY_MEMBER_ID)),
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = dialogAccent,
