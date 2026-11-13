@@ -554,6 +554,21 @@ private fun SyncedApp(
     var loadedFromNetwork by remember(session.id) { mutableStateOf(false) }
     val deviceMemberId = remember { appPrefs.getString("device_member_id", null) }
 
+    // Register a phone-specific encrypted inbox after the user picks their identity.
+    // This mailbox is never added to shared events or offline family snapshots.
+    LaunchedEffect(session.id, deviceMemberId) {
+        if (!deviceMemberId.isNullOrBlank()) {
+            try {
+                PrivateReminderSync.refreshInbox(context, session)
+                FamilyCalendarWidget.enqueueRefresh(context)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Offline and older app versions can continue using public calendar data.
+            }
+        }
+    }
+
     // Show the last saved family data immediately if the phone starts without internet.
     LaunchedEffect(session.id) {
         val cached = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
