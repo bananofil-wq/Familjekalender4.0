@@ -183,7 +183,7 @@ class FamilyCalendarWidget : AppWidgetProvider() {
 
         fun schedulePeriodicRefresh(context: Context) {
             val request =
-                PeriodicWorkRequestBuilder<FamilyCalendarWidgetWorker>(30, TimeUnit.MINUTES)
+                PeriodicWorkRequestBuilder<FamilyCalendarWidgetWorker>(15, TimeUnit.MINUTES)
                     .setConstraints(networkConstraints())
                     .build()
             WorkManager.getInstance(context.applicationContext)
