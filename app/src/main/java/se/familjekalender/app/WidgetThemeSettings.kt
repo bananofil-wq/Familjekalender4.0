@@ -102,6 +102,18 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
         )
+        OutlinedButton(
+            onClick = {
+                context.startActivity(
+                    android.content.Intent(context, WidgetQuickAddActivity::class.java).apply {
+                        putExtra(WidgetQuickAddActivity.EXTRA_PRIVATE_INBOX, true)
+                    }
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("🔒 Mina privata påminnelser")
+        }
         // Small thumbnail of currently selected skin. The previous full-size
         // static widget mockup took too much space in Settings.
         Row(
