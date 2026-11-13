@@ -19,10 +19,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -37,25 +39,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
 
-private data class WidgetThemeOption(
-    val value: String,
-    val title: String,
-    val theme: CleanVisualTheme?,
-)
+private data class WidgetThemeOption(val value: String, val title: String)
 
-/** Widget style choice is saved independently of the calendar's selected design. */
 @Composable
 internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     val context = LocalContext.current
-    var selected by remember { mutableStateOf(WidgetThemeColors.savedChoice(context)) }
+    var activeChoice by remember { mutableStateOf(WidgetThemeColors.savedChoice(context)) }
+    var previewChoice by remember { mutableStateOf(activeChoice) }
     var pickerOpen by remember { mutableStateOf(false) }
     var detailsExpanded by remember { mutableStateOf(false) }
+
+    // Only seven choices. Existing "Nuvarande" is the protected original widget.
+    val options = listOf(
+        WidgetThemeOption(WidgetThemeColors.ORIGINAL, "Nuvarande"),
+        WidgetThemeOption(CleanVisualTheme.OAK_WOOD.name, "Trä"),
+    ) + WidgetThemeColors.premiumLooks.map { WidgetThemeOption(it.id, it.title) }
+    fun displayTitle(value: String): String =
+        options.firstOrNull { it.value == value }?.title
+            ?: if (value == CleanVisualTheme.CURRENT.name) "Nuvarande" else "Nuvarande"
+
     val featureOptions = remember {
         listOf(
             WidgetFeatureSettings.WEEK_REMINDERS to "Veckans påminnelser",
@@ -72,44 +82,50 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
         })
     }
 
-    val options = remember {
-        // Exactly seven user-selectable widgets. Calendar theme choices are unchanged.
-        listOf(
-            WidgetThemeOption(CleanVisualTheme.CURRENT.name, "Nuvarande", CleanVisualTheme.CURRENT),
-            WidgetThemeOption(CleanVisualTheme.OAK_WOOD.name, "Trä", CleanVisualTheme.OAK_WOOD),
-        ) + WidgetThemeColors.premiumLooks.map { WidgetThemeOption(it.id, it.title, null) }
-    }
-    val selectedOption = options.firstOrNull { it.value == selected }
-        ?: WidgetThemeOption(WidgetThemeColors.ORIGINAL, "Tidigare originalwidget", null)
-    val selectedPremium = WidgetThemeColors.premiumLook(selected)
-    val selectedTheme = when (selected) {
-        WidgetThemeColors.ORIGINAL -> null
-        WidgetThemeColors.FOLLOW_CALENDAR -> calendarTheme
-        else -> selectedOption.theme
-    }
-
-    fun choose(value: String) {
-        selected = value
-        WidgetThemeColors.saveChoice(context, value)
-        FamilyCalendarWidget.refreshTheme(context)
-        pickerOpen = false
-    }
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             "Widgettema",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            "Sju utvalda widgetteman. Kalenderns utseende påverkas inte.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 12.sp,
+            "Välj mellan sju widgetteman. Kalenderns eget tema påverkas inte.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
         )
+        // Even before the chooser opens, the selected widget is visible in Settings.
+        WidgetMaterialPreview(
+            choice = activeChoice,
+            modifier = Modifier.fillMaxWidth().height(218.dp).clip(RoundedCornerShape(17.dp)),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    displayTitle(activeChoice), color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                )
+                Text(
+                    "Aktivt widgettema", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                )
+            }
+            Button(
+                onClick = {
+                    previewChoice = activeChoice
+                    pickerOpen = true
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFB78AFF),
+                    contentColor = Color(0xFF1D1529),
+                ),
+                shape = RoundedCornerShape(13.dp),
+            ) { Text("Byt tema", fontWeight = FontWeight.Bold) }
+        }
+
         OutlinedButton(
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
             onClick = {
                 context.startActivity(
                     android.content.Intent(context, WidgetQuickAddActivity::class.java).apply {
@@ -118,88 +134,31 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                 )
             },
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("🔒 Mina privata påminnelser")
-        }
-        // Small thumbnail of currently selected skin. The previous full-size
-        // static widget mockup took too much space in Settings.
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.width(110.dp).height(84.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-            ) {
-                if (selectedPremium != null) {
-                    PremiumWidgetMiniature(selectedPremium, Modifier.fillMaxSize())
-                } else {
-                    ThemeMiniature(
-                        theme = selectedTheme,
-                        widget = true,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    selectedOption.title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "Widgettema valt separat",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp,
-                )
-                OutlinedButton(
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ),
-                    onClick = { pickerOpen = true },
-                    modifier = Modifier.fillMaxWidth().height(39.dp),
-                ) {
-                    Text("Byt tema", fontSize = 12.sp)
-                }
-            }
-        }
-        Text(
-            "Kalender: ${calendarTheme.label}   •   Widget: ${selectedOption.title}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp,
-        )
+        ) { Text("Mina privata påminnelser") }
+
         OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ),
             onClick = { detailsExpanded = !detailsExpanded },
-            modifier = Modifier.fillMaxWidth().height(39.dp),
         ) {
-            Text(
-                if (detailsExpanded) "Dölj widgetinnehåll" else "Anpassa widgetinnehåll",
-                fontSize = 12.sp,
-            )
+            Text(if (detailsExpanded) "Dölj widgetinnehåll" else "Anpassa widgetinnehåll")
         }
         if (detailsExpanded) {
-            Text(
-                "Välj vilken information som ska visas. Utseendet ändras inte.",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text("Välj vad som visas i widgeten. Dessa inställningar påverkar inte temat.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             featureOptions.forEach { (key, label) ->
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        label,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Text(label, Modifier.weight(1f), fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface)
                     androidx.compose.material3.Switch(
                         checked = featureValues[key] ?: true,
                         onCheckedChange = { enabled ->
@@ -213,91 +172,157 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     }
 
     if (pickerOpen) {
-        AlertDialog(
+        // Full-screen chooser stays in Settings. Tapping a thumbnail ONLY previews;
+        // it never saves the theme until the user presses Apply.
+        Dialog(
             onDismissRequest = { pickerOpen = false },
-            title = { Text("Välj widgettema", color = MaterialTheme.colorScheme.onSurface) },
-            text = {
-                Column(
-                    Modifier.fillMaxWidth().heightIn(max = 470.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(7.dp),
-                ) {
-                    Text(
-                        "Små förhandsbilder av varje tema. Tryck för att välja.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 11.sp,
-                    )
-                    options.chunked(2).forEach { pair ->
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                color = Color(0xFF0D1017),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Column(Modifier.fillMaxSize().padding(top = 14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 19.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        TextButton(onClick = { pickerOpen = false }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Tillbaka",
+                                tint = Color.White)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("Widgettema", fontSize = 23.sp,
+                                fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Förhandsvisa och byt widget direkt här.",
+                                color = Color(0xFFD6D8DF), fontSize = 12.sp)
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
+                            .padding(horizontal = 15.dp),
+                        verticalArrangement = Arrangement.spacedBy(13.dp),
+                    ) {
+                        Surface(
+                            color = Color(0xFF1C222B), shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, Color(0xFF414A57)),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            pair.forEach { option ->
-                                val active = selected == option.value
-                                val theme = when (option.value) {
-                                    WidgetThemeColors.ORIGINAL -> null
-                                    WidgetThemeColors.FOLLOW_CALENDAR -> calendarTheme
-                                    else -> option.theme
-                                }
-                                Surface(
-                                    modifier = Modifier.weight(1f)
-                                        .clickable { choose(option.value) },
-                                    shape = RoundedCornerShape(11.dp),
-                                    color = MaterialTheme.colorScheme.surface,
-                                    border = BorderStroke(
-                                        if (active) 2.dp else 1.dp,
-                                        if (active) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.outlineVariant,
-                                    ),
-                                ) {
-                                    Column(Modifier.padding(5.dp)) {
-                                        Box(
-                                            Modifier.fillMaxWidth().height(105.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
-                                        ) {
-                                            val premium = WidgetThemeColors.premiumLook(option.value)
-                                            if (premium != null) {
-                                                PremiumWidgetMiniature(premium, Modifier.fillMaxSize())
-                                            } else {
-                                                ThemeMiniature(
-                                                    theme = theme,
-                                                    widget = true,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                )
-                                            }
-                                            if (active) {
-                                                Icon(
-                                                    Icons.Default.CheckCircle,
-                                                    contentDescription = "Vald",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.align(Alignment.TopEnd)
-                                                        .padding(3.dp).size(18.dp),
+                            Column(
+                                Modifier.fillMaxWidth().padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Text("Förhandsvisning", color = Color.White,
+                                    fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "Så ser den valda widgetens material och detaljer ut.",
+                                    color = Color(0xFFD5D7DE), fontSize = 12.sp,
+                                )
+                                WidgetMaterialPreview(
+                                    choice = previewChoice,
+                                    modifier = Modifier.fillMaxWidth().height(460.dp)
+                                        .clip(RoundedCornerShape(22.dp)),
+                                )
+                                Text("Exempeldata visas. Dina egna aktiviteter ändras inte.",
+                                    color = Color(0xFFCAD0DA), fontSize = 11.sp)
+                            }
+                        }
+                        Surface(
+                            color = Color(0xFF1C222B), shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, Color(0xFF414A57)),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                Text("Välj tema", color = Color.White, fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold)
+                                Text("Tryck på en bild för att se temat ovanför.",
+                                    color = Color(0xFFD5D7DE), fontSize = 12.sp)
+                                Spacer(Modifier.height(12.dp))
+                                options.chunked(4).forEach { pair ->
+                                    Row(Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        pair.forEach { option ->
+                                            val chosen = previewChoice == option.value ||
+                                                (option.value == WidgetThemeColors.ORIGINAL &&
+                                                previewChoice == CleanVisualTheme.CURRENT.name)
+                                            Column(
+                                                modifier = Modifier.weight(1f)
+                                                    .clickable { previewChoice = option.value },
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                            ) {
+                                                Box(Modifier.fillMaxWidth().height(111.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(Color(0xFF131720))) {
+                                                    WidgetMaterialPreview(
+                                                        option.value, Modifier.fillMaxSize())
+                                                    if (chosen) {
+                                                        Icon(
+                                                            Icons.Default.CheckCircle,
+                                                            contentDescription = "Förhandsvalt",
+                                                            tint = Color(0xFFE9C68B),
+                                                            modifier = Modifier.align(Alignment.TopEnd)
+                                                                .padding(3.dp).size(18.dp),
+                                                        )
+                                                    }
+                                                }
+                                                Text(option.title, fontSize = 10.sp,
+                                                    color = if (chosen) Color(0xFFFFE1AE)
+                                                        else Color(0xFFF1F1F4),
+                                                    fontWeight = if (chosen) FontWeight.Bold
+                                                        else FontWeight.Normal,
+                                                    maxLines = 2,
+                                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    modifier = Modifier.padding(top = 5.dp)
+                                                        .heightIn(min = 25.dp),
                                                 )
                                             }
                                         }
-                                        Spacer(Modifier.height(5.dp))
-                                        Text(
-                                            option.title,
-                                            fontSize = 11.sp,
-                                            lineHeight = 13.sp,
-                                            fontWeight = if (active) FontWeight.Bold
-                                                else FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            maxLines = 2,
-                                            minLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
+                                        repeat(4 - pair.size) {
+                                            Spacer(Modifier.weight(1f))
+                                        }
                                     }
+                                    Spacer(Modifier.height(8.dp))
                                 }
                             }
-                            repeat(2 - pair.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(Color(0xFF0D1017))
+                            .padding(horizontal = 17.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(onClick = { pickerOpen = false },
+                            modifier = Modifier.weight(1f)) {
+                            Text("Avbryt", color = Color(0xFFE7C592),
+                                fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = {
+                                WidgetThemeColors.saveChoice(context, previewChoice)
+                                FamilyCalendarWidget.refreshTheme(context)
+                                activeChoice = previewChoice
+                                pickerOpen = false
+                            },
+                            modifier = Modifier.weight(2.7f).height(52.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE7BE83),
+                                contentColor = Color(0xFF241B16),
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Text("Använd detta widgettema",
+                                fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                maxLines = 1)
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { pickerOpen = false }) { Text("Stäng") }
-            },
-        )
+            }
+        }
     }
 }

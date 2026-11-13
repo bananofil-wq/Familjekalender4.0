@@ -356,6 +356,67 @@ internal object WidgetThemeColors {
         Skin.CLASSIC, Skin.GLASS -> null
     }
 
+    data class PreviewMaterials(
+        val background: Int,
+        val badgeDay: Int,
+        val badgeNumber: Int,
+        val todo: Int,
+        val shopping: Int,
+        val refresh: Int,
+        val row: Int,
+        val reminder: Int,
+        val reminderRow: Int,
+        val weekBadge: Int,
+    )
+
+    fun previewPalette(choice: String): Palette =
+        premiumLook(choice)?.let { premiumPalette(it) }
+            ?: if (choice == ORIGINAL) palette(null)
+            else palette(resolveCleanVisualTheme(choice))
+
+    fun previewMaterials(choice: String): PreviewMaterials {
+        val style = previewPalette(choice)
+        val premium = premiumLook(choice)
+        val control = if (style.skin == Skin.CLASSIC) R.drawable.widget_refresh_bg
+            else controlResource(style.skin)
+        val rem = when (premium?.skin) {
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder
+            else -> R.drawable.widget_reminder_bg
+        }
+        val remRow = when (premium?.skin) {
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder_row
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder_row
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder_row
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder_row
+            else -> R.drawable.widget_reminder_line_bg
+        }
+        val week = when (premium?.skin) {
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_week_badge
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_week_badge
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_week_badge
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_week_badge
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_week_badge
+            else -> R.drawable.widget_reminder_week_badge
+        }
+        return PreviewMaterials(
+            background = style.root ?: R.drawable.widget_background,
+            badgeDay = style.badgeDay ?: R.drawable.widget_date_badge_top,
+            badgeNumber = style.badgeNumber ?: R.drawable.widget_date_badge_bottom,
+            todo = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_green else control,
+            shopping = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_blue else control,
+            refresh = control,
+            row = style.row ?: R.drawable.widget_event_row_bg,
+            reminder = rem,
+            reminderRow = remRow,
+            weekBadge = week,
+        )
+    }
+
     /** Widget previews use the same palette as actual RemoteViews. Classic/Nuvarande remain unchanged. */
     internal fun forPreview(theme: CleanVisualTheme?): Palette = palette(theme)
 
