@@ -232,6 +232,25 @@ internal object PrivateReminderSync {
             "POST", "/rest/v1/private_reminder_envelopes",
             envelopes, session.code, preferRepresentation = false,
         )
+        // The ciphertext is already stored. Alert only the intended member's
+        // devices, without ever putting the private title in a push payload.
+        // Failure to deliver a push must not cause a duplicate send on retry.
+        try {
+            SupabaseSync.request(
+                "POST", "/functions/v1/notify-family",
+                JSONObject()
+                    .put("family_id", session.id)
+                    .put("title", "Ny privat påminnelse")
+                    .put("body", "Du har fått en privat påminnelse.")
+                    .put("target_member_id", recipientMemberId)
+                    .put("dedupe_key", "private-reminder:" + UUID.randomUUID()),
+                session.code, preferRepresentation = false,
+            )
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.w(TAG, "Private reminder stored; recipient push was not delivered", error)
+        }
         devices.length()
     }
 
