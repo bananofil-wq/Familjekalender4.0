@@ -11,11 +11,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +31,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -44,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -101,6 +114,60 @@ private enum class QuickKind(val label: String) {
     REMINDER("Påminnelse"),
     TODO("To-do"),
     SHOPPING("Inköp"),
+}
+
+private val QuickAddText = Color(0xFFF8F7FD)
+private val QuickAddMuted = Color(0xFFB4B4C8)
+
+@Composable
+private fun QuickAddChoiceCard(
+    kind: QuickKind,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val (icon, accent, description) = when (kind) {
+        QuickKind.EVENT -> Triple(Icons.Default.CalendarMonth, Color(0xFFB69AFF), "Planera en tid")
+        QuickKind.REMINDER -> Triple(Icons.Default.Notifications, Color(0xFFF1BC86), "Kom ihåg något")
+        QuickKind.TODO -> Triple(Icons.Default.CheckCircle, Color(0xFF83D6BD), "En uppgift")
+        QuickKind.SHOPPING -> Triple(Icons.Default.ShoppingCart, Color(0xFF91BAFF), "Handla något")
+    }
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(106.dp),
+        shape = RoundedCornerShape(19.dp),
+        color = Color(0xFF2A2B38),
+        contentColor = QuickAddText,
+        border = BorderStroke(1.dp, accent.copy(alpha = .38f)),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Box(
+                modifier = Modifier.size(35.dp).background(
+                    accent.copy(alpha = .17f),
+                    RoundedCornerShape(11.dp),
+                ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    kind.label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = QuickAddText,
+                )
+                Text(description, fontSize = 10.sp, color = QuickAddMuted)
+            }
+        }
+    }
 }
 
 @Composable
@@ -164,24 +231,70 @@ private fun WidgetQuickAddSheet(onClose: () -> Unit) {
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().heightIn(max = 660.dp),
-            shape = RoundedCornerShape(26.dp),
-            color = Color(0xFF282630),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = .16f)),
-            shadowElevation = 18.dp,
+            shape = RoundedCornerShape(28.dp),
+            color = Color(0xFF20212D),
+            contentColor = QuickAddText,
+            border = BorderStroke(1.dp, Color(0xFF686078).copy(alpha = .72f)),
+            shadowElevation = 24.dp,
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                    .padding(22.dp),
-                verticalArrangement = Arrangement.spacedBy(11.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (kind == null) "Lägg till" else kind!!.label,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 23.sp,
-                        fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF2A283A), Color(0xFF20212D)),
+                        ),
                     )
-                    TextButton(onClick = onClose, enabled = !saving) { Text("Stäng") }
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier.size(43.dp).background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF9F67EF), Color(0xFF6338A7)),
+                            ),
+                            RoundedCornerShape(14.dp),
+                        ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            if (kind == null) "Lägg till" else kind!!.label,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = QuickAddText,
+                        )
+                        Text(
+                            if (kind == null) "Vad vill du skapa?"
+                            else "Direkt från hemskärmen",
+                            fontSize = 11.sp,
+                            color = QuickAddMuted,
+                        )
+                    }
+                    IconButton(
+                        onClick = onClose,
+                        enabled = !saving,
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Stäng",
+                            tint = QuickAddMuted,
+                            modifier = Modifier.size(21.dp),
+                        )
+                    }
                 }
 
                 if (session == null) {
@@ -190,29 +303,39 @@ private fun WidgetQuickAddSheet(onClose: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else if (kind == null) {
-                    Text(
-                        "Skapa direkt från hemskärmen utan att öppna kalendern.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     listOf(
                         listOf(QuickKind.EVENT, QuickKind.REMINDER),
                         listOf(QuickKind.TODO, QuickKind.SHOPPING),
                     ).forEach { group ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             group.forEach { option ->
-                                OutlinedButton(
+                                QuickAddChoiceCard(
+                                    kind = option,
                                     onClick = { openMode(option) },
                                     modifier = Modifier.weight(1f),
-                                    border = BorderStroke(1.dp, Color(0xFF78658F)),
-                                ) {
-                                    Text(option.label, fontSize = 13.sp)
-                                }
+                                )
                             }
                         }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF84D1B5),
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            "  Synkas med familjen",
+                            color = QuickAddMuted,
+                            fontSize = 11.sp,
+                        )
                     }
                 } else {
                     val selectedKind = kind!!
