@@ -433,8 +433,12 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             )
             views.setTextViewText(
                 R.id.widget_week_reminders_title,
-                if (visibleBirthdays.isEmpty()) "Påminnelser denna vecka"
+                if (visibleBirthdays.isEmpty()) "Veckans påminnelser"
                 else "Påminnelser & födelsedagar",
+            )
+            views.setTextViewText(
+                R.id.widget_week_reminders_week,
+                "V${today.get(WeekFields.ISO.weekOfWeekBasedYear())}",
             )
             val empty = showReminders && preview.visible.isEmpty() &&
                 activePermanent.isEmpty() && visibleBirthdays.isEmpty() &&
@@ -485,6 +489,10 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(
                 R.id.widget_week_reminders_title,
                 openCalendarPendingIntent(context, appWidgetId, 1_020),
+            )
+            views.setOnClickPendingIntent(
+                R.id.widget_week_reminders_week,
+                openCalendarPendingIntent(context, appWidgetId, 1_026),
             )
             rowIds.forEachIndexed { index, viewId ->
                 views.setOnClickPendingIntent(

@@ -178,12 +178,12 @@
         android:id="@+id/widget_week_reminders"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="6dp"
         android:orientation="vertical"
-        android:paddingLeft="11dp"
-        android:paddingRight="11dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="9dp"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="11dp"
         android:background="@drawable/widget_reminder_bg"
         android:visibility="gone">
 
@@ -192,11 +192,13 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingBottom="3dp">
+            android:paddingLeft="4dp"
+            android:paddingRight="4dp"
+            android:paddingBottom="5dp">
 
             <ImageView
-                android:layout_width="17dp"
-                android:layout_height="17dp"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:layout_marginEnd="8dp"
                 android:src="@drawable/widget_bell_icon"
                 android:contentDescription="@null" />
@@ -206,9 +208,22 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Påminnelser denna vecka"
-                android:textColor="#FFFFE9BB"
+                android:text="Veckans påminnelser"
+                android:textColor="#FFF2F5FA"
                 android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/widget_week_reminders_week"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/widget_reminder_week_badge"
+                android:text="V46"
+                android:textColor="#FFF0CEA0"
+                android:textSize="10sp"
                 android:textStyle="bold"
                 android:maxLines="1" />
         </LinearLayout>
@@ -272,7 +287,8 @@
             android:id="@+id/widget_week_reminder_more"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingTop="3dp"
+            android:paddingLeft="13dp"
+            android:paddingTop="5dp"
             android:textColor="#FFFFD58D"
             android:textSize="10sp"
             android:textStyle="bold"

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Compact inset reminder cards with a quiet warm accent, not a gold box. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#E13B4652"
+                android:endColor="#E8242B36"/>
+            <corners android:radius="12dp"/>
+            <stroke android:width="0.7dp" android:color="#687C8999"/>
+        </shape>
+    </item>
+    <item android:gravity="left|center_vertical" android:left="4dp">
+        <shape android:shape="rectangle">
+            <size android:width="3dp" android:height="17dp"/>
+            <solid android:color="#EAC18A55"/>
+            <corners android:radius="3dp"/>
+        </shape>
+    </item>
+</layer-list>
