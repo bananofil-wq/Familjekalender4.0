@@ -930,13 +930,14 @@ object SupabaseSync {
         )
     }
 
-    private fun request(
+    internal fun request(
         method: String,
         path: String,
         body: Any? = null,
         familyCode: String? = null,
         preferRepresentation: Boolean = true,
         preferExtra: String? = null,
+        extraHeaders: Map<String, String> = emptyMap(),
     ): String {
         val connection = URL("$SUPABASE_URL$path").openConnection() as HttpURLConnection
         return try {
@@ -946,6 +947,10 @@ object SupabaseSync {
             connection.setRequestProperty("apikey", SUPABASE_ANON_KEY)
             connection.setRequestProperty("Authorization", "Bearer $SUPABASE_ANON_KEY")
             connection.setRequestProperty("Content-Type", "application/json")
+            extraHeaders.forEach { (key, value) ->
+                require(key == "x-private-device-token") { "Ogiltig extra HTTP-header" }
+                connection.setRequestProperty(key, value)
+            }
             if (!familyCode.isNullOrBlank()) {
                 connection.setRequestProperty("x-family-code", familyCode.uppercase())
             }
