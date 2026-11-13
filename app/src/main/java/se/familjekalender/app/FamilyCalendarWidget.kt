@@ -312,6 +312,48 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val showReminders = WidgetFeatureSettings.enabled(
                 context, WidgetFeatureSettings.WEEK_REMINDERS
             )
+            val privateReminders = if (showReminders) {
+                val main = context.getSharedPreferences("family_calendar", Context.MODE_PRIVATE)
+                val familyId = main.getString("family_id", null)
+                val familyCode = main.getString("family_code", null)
+                if (!familyId.isNullOrBlank() && !familyCode.isNullOrBlank()) {
+                    PrivateReminderSync.visibleThisWeek(
+                        PrivateReminderSync.cached(context, FamilySession(
+                            familyId, main.getString("family_name", "Min familj") ?: "Min familj",
+                            familyCode,
+                        )), today
+                    )
+                } else emptyList()
+            } else emptyList()
+            val privateIds = intArrayOf(
+                R.id.widget_private_reminder_1, R.id.widget_private_reminder_2
+            )
+            privateIds.forEachIndexed { index, viewId ->
+                val entry = privateReminders.getOrNull(index)
+                views.setViewVisibility(
+                    viewId, if (entry == null) View.GONE else View.VISIBLE
+                )
+                views.setTextViewText(
+                    viewId, entry?.let { "🔒 " + it.text + if (it.from.isNotBlank())
+                        " · Från " + it.from else "" } ?: ""
+                )
+                views.setOnClickPendingIntent(
+                    viewId, openPrivateInboxIntent(context, appWidgetId, 1_060 + index),
+                )
+            }
+            val extraPrivate = (privateReminders.size - 2).coerceAtLeast(0)
+            views.setViewVisibility(
+                R.id.widget_private_reminder_more,
+                if (extraPrivate > 0) View.VISIBLE else View.GONE,
+            )
+            views.setTextViewText(
+                R.id.widget_private_reminder_more,
+                if (extraPrivate > 0) "+$extraPrivate fler privata påminnelser" else "",
+            )
+            views.setOnClickPendingIntent(
+                R.id.widget_private_reminder_more,
+                openPrivateInboxIntent(context, appWidgetId, 1_062),
+            )
             val preview = if (showReminders) weeklyReminderPreview(today, reminders, maxVisible = 3)
                 else WidgetWeeklyReminderPreview(emptyList(), 0)
 
@@ -386,7 +428,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )) widgetUpcomingBirthdays(today, birthdays).take(2) else emptyList()
             views.setViewVisibility(
                 R.id.widget_week_reminders,
-                if (showReminders || visibleBirthdays.isNotEmpty()) View.VISIBLE else View.GONE,
+                if (showReminders || visibleBirthdays.isNotEmpty() ||
+                    privateReminders.isNotEmpty()) View.VISIBLE else View.GONE,
             )
             views.setTextViewText(
                 R.id.widget_week_reminders_title,
@@ -394,7 +437,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 else "Påminnelser & födelsedagar",
             )
             val empty = showReminders && preview.visible.isEmpty() &&
-                activePermanent.isEmpty() && visibleBirthdays.isEmpty()
+                activePermanent.isEmpty() && visibleBirthdays.isEmpty() &&
+                privateReminders.isEmpty()
             views.setViewVisibility(
                 R.id.widget_week_reminder_empty,
                 if (empty) View.VISIBLE else View.GONE,
@@ -556,6 +600,23 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 context,
                 appWidgetId + requestOffset,
                 intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        private fun openPrivateInboxIntent(
+            context: Context,
+            appWidgetId: Int,
+            requestOffset: Int,
+        ): PendingIntent {
+            val intent = Intent(context, WidgetQuickAddActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = Uri.parse("familjekalender://widget/private/$appWidgetId/$requestOffset")
+                putExtra(WidgetQuickAddActivity.EXTRA_PRIVATE_INBOX, true)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            return PendingIntent.getActivity(
+                context, appWidgetId + requestOffset, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         }
