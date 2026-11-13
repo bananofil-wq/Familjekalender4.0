@@ -1,17 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="2dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#55000000"/>
-            <corners android:radius="18dp"/>
-        </shape>
-    </item>
-    <item android:bottom="2dp">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#DA32483A" android:centerColor="#DB1A3226" android:endColor="#DB1A3226"/>
-            <corners android:radius="18dp"/>
-            <stroke android:width="1dp" android:color="#C18AB59C"/>
-        </shape>
-    </item>
-    <item android:drawable="@drawable/widget_material_forest" android:bottom="2dp"/>
-</layer-list>
+<!-- Refined material: one quiet gradient and one hairline edge; no overlay textures. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#EF3B5045"
+        android:endColor="#EF283D33"/>
+    <corners android:radius="18dp"/>
+    <stroke android:width="0.6dp" android:color="#7796AE92"/>
+</shape>

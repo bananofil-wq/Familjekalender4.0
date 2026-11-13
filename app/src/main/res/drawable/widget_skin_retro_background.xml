@@ -1,17 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="3dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#55000000"/>
-            <corners android:radius="30dp"/>
-        </shape>
-    </item>
-    <item android:bottom="3dp">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#F01B354D" android:centerColor="#F011273A" android:endColor="#F0091929"/>
-            <corners android:radius="30dp"/>
-            <stroke android:width="1dp" android:color="#B979D2C0"/>
-        </shape>
-    </item>
-    <item android:drawable="@drawable/widget_material_retro" android:bottom="3dp"/>
-</layer-list>
+<!-- Refined material: one quiet gradient and one hairline edge; no overlay textures. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#F0283A44"
+        android:endColor="#F0182834"/>
+    <corners android:radius="30dp"/>
+    <stroke android:width="0.8dp" android:color="#7F8DA5A6"/>
+</shape>

@@ -39,19 +39,28 @@ internal fun ThemeMiniature(
     // Widgeten använder egna RemoteViews-material; använd deras faktiska grundtoner
     // i miniatyren i stället för kalenderns bakgrundsfärger.
     val widgetSurfaces = if (!widget || theme == null ||
-        selectedTheme == CleanVisualTheme.CURRENT || wood) null else when (selectedTheme) {
-        CleanVisualTheme.NORDIC_DAY_PLANNER -> Color(0xFFE7F3FD) to Color(0xFFE1EDF7)
-        CleanVisualTheme.PURE_CALENDAR -> Color(0xFFFFFFFF) to Color(0xFFF6F9FC)
-        CleanVisualTheme.FAMILY_SPECTRUM -> Color(0xFFFDECE0) to Color(0xFFF9E3D8)
-        CleanVisualTheme.CRYSTAL_GLASS -> Color(0xFFB2D9F5) to Color(0xFFB6CCE8)
-        CleanVisualTheme.NEON_PULSE -> Color(0xFF192638) to Color(0xFF0B0D18)
-        CleanVisualTheme.COPPER -> Color(0xFF412925) to Color(0xFF191214)
-        CleanVisualTheme.TITANIUM -> Color(0xFFE4E9EC) to Color(0xFFAEB7C0)
-        CleanVisualTheme.CARBON_FIBER -> Color(0xFF101824) to Color(0xFF030811)
-        CleanVisualTheme.HIPPIE -> Color(0xFFFFE9A0) to Color(0xFFFFD49B)
-        CleanVisualTheme.GOTHAM_NIGHT -> Color(0xFF0B2138) to Color(0xFF030C1C)
-        else -> null
-    }
+        selectedTheme == CleanVisualTheme.CURRENT) null else when (WidgetThemeColors.forPreview(theme).skin) {
+            WidgetThemeColors.Skin.WOOD -> Color(0xFF2D241F) to Color(0xFF1D191A)
+            WidgetThemeColors.Skin.COPPER -> Color(0xFF2D292D) to Color(0xFF171921)
+            WidgetThemeColors.Skin.TITANIUM -> Color(0xFFF1F5F7) to Color(0xFFDDE5EB)
+            WidgetThemeColors.Skin.CARBON -> Color(0xFF202731) to Color(0xFF10151E)
+            WidgetThemeColors.Skin.HIPPIE -> Color(0xFFFFF6EE) to Color(0xFFF3E5F1)
+            WidgetThemeColors.Skin.LIGHT -> Color(0xFFF8FBFE) to Color(0xFFE5EEF7)
+            WidgetThemeColors.Skin.DARK -> Color(0xFF2B3340) to Color(0xFF18202A)
+            WidgetThemeColors.Skin.FOREST -> Color(0xFF253931) to Color(0xFF152923)
+            WidgetThemeColors.Skin.GOLD -> Color(0xFF222120) to Color(0xFF121417)
+            WidgetThemeColors.Skin.PASTEL -> Color(0xFFF9F2FD) to Color(0xFFF1E8F8)
+            WidgetThemeColors.Skin.GOTHAM -> Color(0xFF1C3246) to Color(0xFF0C1A2A)
+            WidgetThemeColors.Skin.RETRO -> Color(0xFF283A44) to Color(0xFF182834)
+            WidgetThemeColors.Skin.SAGE -> Color(0xFFF4F7F0) to Color(0xFFE5EDE1)
+            WidgetThemeColors.Skin.PAPER -> Color(0xFFFFFAF1) to Color(0xFFF0E9DE)
+            WidgetThemeColors.Skin.NORDIC -> Color(0xFFF6FAFD) to Color(0xFFE7F1F9)
+            WidgetThemeColors.Skin.PURE -> Color(0xFFFFFFFF) to Color(0xFFF1F7FC)
+            WidgetThemeColors.Skin.FAMILY -> Color(0xFFFFF6EF) to Color(0xFFF5EAE6)
+            WidgetThemeColors.Skin.CRYSTAL -> Color(0xFFEAF4FD) to Color(0xFFD6E9F8)
+            WidgetThemeColors.Skin.NEON -> Color(0xFF1C2739) to Color(0xFF0E1423)
+            WidgetThemeColors.Skin.CLASSIC, WidgetThemeColors.Skin.GLASS -> null
+        }
     val baseTop = widgetSurfaces?.first
         ?: if (theme == null) Color(0xE82D2A35) else spec.backgroundTop
     val baseBottom = widgetSurfaces?.second
@@ -59,7 +68,7 @@ internal fun ThemeMiniature(
     val ink = if (theme == null) Color.White else spec.text
     val panel = if (theme == null) Color(0xA940414D) else spec.panelMid
     val bright = if (theme == null) Color(0xFFB998F9) else spec.accentStrong
-    val widgetStyle = if (widget && theme != null && !wood &&
+    val widgetStyle = if (widget && theme != null &&
         selectedTheme != CleanVisualTheme.CURRENT) WidgetThemeColors.forPreview(theme) else null
 
     Canvas(modifier) {
@@ -75,7 +84,7 @@ internal fun ThemeMiniature(
             cornerRadius = CornerRadius(10f*sc),
         )
         // Material signatures: grain, checker-weave, metal brushing, playful circles.
-        if (wood) {
+        if (wood && !widget) {
             for(i in 0..35) {
                 val y = (i * 3.7f) * sc
                 val drift = sin(i * .82).toFloat() * sc * 2f
@@ -85,19 +94,19 @@ internal fun ThemeMiniature(
                 )
             }
         }
-        if (carbon) {
+        if (carbon && !widget) {
             for(i in 0..30) for(j in 0..13) {
                 if ((i+j)%2==0) rect(i*6f, j*9f, 5.7f,4.3f,Color(0x2CFFFFFF),.7f)
             }
         }
-        if (metal) {
+        if (metal && !widget) {
             for(i in 0..65) {
                 val y=i*h/65f
                 drawLine(Color.White.copy(alpha=if(i%4==0) .13f else .04f),
                     Offset(0f,y),Offset(w,y),.55f*sc)
             }
         }
-        if (hippie) {
+        if (hippie && !widget) {
             listOf(Offset(w*.9f,h*.17f),Offset(w*.09f,h*.8f),Offset(w*.8f,h*.86f))
                 .forEachIndexed { i,pt ->
                     drawCircle(listOf(Color(0x88EB6B8E),Color(0x88F4B642),Color(0x8868B7A8))[i],
@@ -169,7 +178,7 @@ internal fun ThemeMiniature(
                 if(i==0)bright else ink.copy(alpha=.55f),
                 2f*sc, Offset((23f+i*28f)*sc,150f*sc))
         }
-        if (wood) {
+        if (wood && !widget) {
             // Tiny brass corner dots: enough to tell it apart from plain beige themes.
             listOf(Offset(6f,6f),Offset(154f,6f),Offset(6f,if (widget) 113f else 118f),
                 Offset(154f,if (widget) 113f else 118f)).forEach {

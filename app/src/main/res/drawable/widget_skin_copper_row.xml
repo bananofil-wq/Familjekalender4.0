@@ -1,20 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="1dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#36000000"/>
-            <corners android:radius="18dp"/>
-        </shape>
-    </item>
-    <item android:bottom="1dp">
-        <shape android:shape="rectangle">
-            <!-- One clean rounded row per activity, without oversized artwork or inner frame. -->
-            <gradient android:angle="0"
-                android:startColor="#F24A2D28"
-                android:centerColor="#F2744836"
-                android:endColor="#F23D2927"/>
-            <corners android:radius="18dp"/>
-            <stroke android:width="1dp" android:color="#B6D4A17A"/>
-        </shape>
-    </item>
-</layer-list>
+<!-- Refined material: one quiet gradient and one hairline edge; no overlay textures. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#EF453A3F"
+        android:endColor="#EF2A272D"/>
+    <corners android:radius="18dp"/>
+    <stroke android:width="0.6dp" android:color="#809E756A"/>
+</shape>

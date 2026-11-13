@@ -1,21 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="2dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#4A000000"/>
-            <corners android:radius="30dp"/>
-        </shape>
-    </item>
-    <item android:bottom="2dp">
-        <shape android:shape="rectangle">
-            <!-- Horizontal specular reflection: warm copper metal, not brown wood. -->
-            <gradient android:angle="0"
-                android:startColor="#F1513028"
-                android:centerColor="#F1824B36"
-                android:endColor="#F1472B27"/>
-            <corners android:radius="30dp"/>
-            <stroke android:width="1dp" android:color="#D6C08A67"/>
-        </shape>
-    </item>
-    <item android:drawable="@drawable/widget_material_copper" android:bottom="2dp"/>
-</layer-list>
+<!-- Refined material: one quiet gradient and one hairline edge; no overlay textures. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#F02D292D"
+        android:endColor="#F0171921"/>
+    <corners android:radius="30dp"/>
+    <stroke android:width="0.8dp" android:color="#809E756A"/>
+</shape>

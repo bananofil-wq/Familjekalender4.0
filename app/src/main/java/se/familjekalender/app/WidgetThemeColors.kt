@@ -165,6 +165,7 @@ internal object WidgetThemeColors {
     )
 
     private fun tone(skin: Skin): BadgeTone? = when (skin) {
+        Skin.WOOD -> BadgeTone(0xFFD2A96F.toInt(), 0xFF29231F.toInt(), 0xFF2D2117.toInt(), 0xFFFFF8EF.toInt(), 0xFF342C29.toInt(), 0xFF70553D.toInt(), 0xFFFFFFFF.toInt())
         Skin.COPPER -> BadgeTone(0xFFBC7651.toInt(), 0xFF3E2721.toInt(), 0xFFFFF9F2.toInt(), 0xFFFFF2E4.toInt(), 0xFF382523.toInt(), 0xFF885037.toInt(), 0xFFFFF2E4.toInt())
         Skin.TITANIUM -> BadgeTone(0xFF576D7C.toInt(), 0xFFEFF2F4.toInt(), 0xFFFFFFFF.toInt(), 0xFF253544.toInt(), 0xFFE3E9EC.toInt(), 0xFFCBD4DC.toInt(), 0xFF253544.toInt())
         Skin.CARBON -> BadgeTone(0xFF1977A3.toInt(), 0xFF101B2A.toInt(), 0xFFFFFFFF.toInt(), 0xFFF9FAFC.toInt(), 0xFF1E2A39.toInt(), 0xFF214563.toInt(), 0xFFF9FAFC.toInt())
@@ -183,10 +184,11 @@ internal object WidgetThemeColors {
         Skin.FAMILY -> BadgeTone(0xFFE56F58.toInt(), 0xFFFFF6E9.toInt(), 0xFFFFFFFF.toInt(), 0xFF453B35.toInt(), 0xFFFFFDF6.toInt(), 0xFFE6F4F2.toInt(), 0xFF453B35.toInt())
         Skin.CRYSTAL -> BadgeTone(0xFF6399D2.toInt(), 0xFFF2F9FE.toInt(), 0xFFFFFFFF.toInt(), 0xFF254769.toInt(), 0xFFEAF4FC.toInt(), 0xFFC8E0F6.toInt(), 0xFF254769.toInt())
         Skin.NEON -> BadgeTone(0xFF1AA9C4.toInt(), 0xFF10121F.toInt(), 0xFF102E3B.toInt(), 0xFFF9FCFF.toInt(), 0xFF172133.toInt(), 0xFF263456.toInt(), 0xFFF9FCFF.toInt())
-        Skin.CLASSIC, Skin.WOOD, Skin.GLASS -> null
+        Skin.CLASSIC, Skin.GLASS -> null
     }
 
     private fun badgeDayResource(skin: Skin): Int? = when (skin) {
+        Skin.WOOD -> R.drawable.widget_wood_approved_badge_day
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_day
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_day
         Skin.CARBON -> R.drawable.widget_skin_carbon_badge_day
@@ -205,10 +207,11 @@ internal object WidgetThemeColors {
         Skin.FAMILY -> R.drawable.widget_skin_family_badge_day
         Skin.CRYSTAL -> R.drawable.widget_skin_crystal_badge_day
         Skin.NEON -> R.drawable.widget_skin_neon_badge_day
-        Skin.CLASSIC, Skin.WOOD, Skin.GLASS -> null
+        Skin.CLASSIC, Skin.GLASS -> null
     }
 
     private fun badgeNumberResource(skin: Skin): Int? = when (skin) {
+        Skin.WOOD -> R.drawable.widget_wood_approved_badge_number
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_number
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_number
         Skin.CARBON -> R.drawable.widget_skin_carbon_badge_number
@@ -227,10 +230,33 @@ internal object WidgetThemeColors {
         Skin.FAMILY -> R.drawable.widget_skin_family_badge_number
         Skin.CRYSTAL -> R.drawable.widget_skin_crystal_badge_number
         Skin.NEON -> R.drawable.widget_skin_neon_badge_number
-        Skin.CLASSIC, Skin.WOOD, Skin.GLASS -> null
+        Skin.CLASSIC, Skin.GLASS -> null
     }
 
-    /** Used both by RemoteViews and its settings miniature; never changes the original/wood. */
+    private fun refinedPreviewSurfaces(skin: Skin): Pair<Int, Int>? = when (skin) {
+        Skin.WOOD -> 0xFF342C29.toInt() to 0xFF70553D.toInt()
+        Skin.COPPER -> 0xFF393238.toInt() to 0xFF6B463A.toInt()
+        Skin.TITANIUM -> 0xFFF1F6FA.toInt() to 0xFFB4D0E3.toInt()
+        Skin.CARBON -> 0xFF353E49.toInt() to 0xFF314C65.toInt()
+        Skin.HIPPIE -> 0xFFFCF6F8.toInt() to 0xFFF2C6B1.toInt()
+        Skin.LIGHT -> 0xFFF8FAFC.toInt() to 0xFFB9D9F8.toInt()
+        Skin.DARK -> 0xFF3B4653.toInt() to 0xFF526276.toInt()
+        Skin.FOREST -> 0xFF354B40.toInt() to 0xFF436A55.toInt()
+        Skin.GOLD -> 0xFF353333.toInt() to 0xFF684E36.toInt()
+        Skin.PASTEL -> 0xFFFBF5FC.toInt() to 0xFFDFC8F5.toInt()
+        Skin.GOTHAM -> 0xFF2D4558.toInt() to 0xFF456883.toInt()
+        Skin.RETRO -> 0xFF374B56.toInt() to 0xFF52777C.toInt()
+        Skin.SAGE -> 0xFFF4F8F1.toInt() to 0xFFC7DDC4.toInt()
+        Skin.PAPER -> 0xFFFFFDF8.toInt() to 0xFFE1D0B9.toInt()
+        Skin.NORDIC -> 0xFFF6FAFD.toInt() to 0xFFC4E0F4.toInt()
+        Skin.PURE -> 0xFFFCFEFF.toInt() to 0xFFC7E1F8.toInt()
+        Skin.FAMILY -> 0xFFFFF9F4.toInt() to 0xFFCDE8E4.toInt()
+        Skin.CRYSTAL -> 0xFFF2F9FF.toInt() to 0xFFB4D9F4.toInt()
+        Skin.NEON -> 0xFF293950.toInt() to 0xFF2A5B6B.toInt()
+        Skin.CLASSIC, Skin.GLASS -> null
+    }
+
+    /** Widget previews use the same palette as actual RemoteViews. Classic/Nuvarande remain unchanged. */
     internal fun forPreview(theme: CleanVisualTheme?): Palette = palette(theme)
 
     fun colors(context: Context): Palette = palette(selectedTheme(context))
@@ -253,17 +279,19 @@ internal object WidgetThemeColors {
         } else if (isLight) 0xFF536575.toInt() else 0xFFE1CEB7.toInt()
         val accent = cleanThemeSpec(theme).accentStrong.toArgb()
         val tone = tone(selectedSkin)
+        val refinedPreview = refinedPreviewSurfaces(selectedSkin)
         return Palette(
             selectedSkin, backgroundResource(selectedSkin), rowResource(selectedSkin),
             text, muted, accent, if (isLight) 0xFF1E2B35.toInt() else 0xFFFFFFFF.toInt(),
             badgeDayResource(selectedSkin), badgeNumberResource(selectedSkin),
             tone?.dayInk ?: 0xFFFFFFFF.toInt(),
             tone?.numberInk ?: 0xFF19191D.toInt(),
-            tone?.controlInk ?: text,
+            if (selectedSkin == Skin.GLASS) (tone?.controlInk ?: text)
+            else if (isLight) 0xFF23313F.toInt() else 0xFFFFFFFF.toInt(),
             tone?.dayColor ?: 0xFFFF646F.toInt(),
             tone?.numberColor ?: 0xFFFFFFFF.toInt(),
-            tone?.rowColor ?: 0xFF41414D.toInt(),
-            tone?.controlColor ?: 0xFF26684E.toInt(),
+            refinedPreview?.first ?: tone?.rowColor ?: 0xFF41414D.toInt(),
+            refinedPreview?.second ?: tone?.controlColor ?: 0xFF26684E.toInt(),
         )
     }
 
@@ -273,6 +301,13 @@ internal object WidgetThemeColors {
         // Apply the classic resources as well, so switching BACK from a selected
         // skin fully restores the original widget without re-adding it to the launcher.
         style.root?.let { views.setInt(R.id.widget_root, "setBackgroundResource", it) }
+        if (style.skin == Skin.CLASSIC || style.skin == Skin.GLASS) {
+            // Protect the established Nuvarande/Original date badge after changing themes.
+            views.setInt(R.id.widget_badge_day, "setBackgroundResource", R.drawable.widget_date_badge_top)
+            views.setInt(R.id.widget_badge_number, "setBackgroundResource", R.drawable.widget_date_badge_bottom)
+            views.setTextColor(R.id.widget_badge_day, 0xFFFFFFFF.toInt())
+            views.setTextColor(R.id.widget_badge_number, 0xFF19191D.toInt())
+        }
         style.badgeDay?.let { views.setInt(R.id.widget_badge_day, "setBackgroundResource", it) }
         style.badgeNumber?.let { views.setInt(R.id.widget_badge_number, "setBackgroundResource", it) }
         if (style.badgeDay != null) {
