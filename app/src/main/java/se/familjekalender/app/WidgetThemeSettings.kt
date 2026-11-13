@@ -73,12 +73,15 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     }
 
     val options = remember {
+        // Exactly seven user-selectable widgets. Calendar theme choices are unchanged.
         listOf(
-            WidgetThemeOption(WidgetThemeColors.ORIGINAL, "Originalwidget", null),
-            WidgetThemeOption(WidgetThemeColors.FOLLOW_CALENDAR, "Samma som kalendern", null),
-        ) + selectableCleanVisualThemes.map { WidgetThemeOption(it.name, it.label, it) }
+            WidgetThemeOption(CleanVisualTheme.CURRENT.name, "Nuvarande", CleanVisualTheme.CURRENT),
+            WidgetThemeOption(CleanVisualTheme.OAK_WOOD.name, "Trä", CleanVisualTheme.OAK_WOOD),
+        ) + WidgetThemeColors.premiumLooks.map { WidgetThemeOption(it.id, it.title, null) }
     }
-    val selectedOption = options.firstOrNull { it.value == selected } ?: options.first()
+    val selectedOption = options.firstOrNull { it.value == selected }
+        ?: WidgetThemeOption(WidgetThemeColors.ORIGINAL, "Tidigare originalwidget", null)
+    val selectedPremium = WidgetThemeColors.premiumLook(selected)
     val selectedTheme = when (selected) {
         WidgetThemeColors.ORIGINAL -> null
         WidgetThemeColors.FOLLOW_CALENDAR -> calendarTheme
@@ -99,7 +102,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            "Widgeten kan ha ett annat tema än kalendern.",
+            "Sju utvalda widgetteman. Kalenderns utseende påverkas inte.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
         )
@@ -129,11 +132,15 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                 Modifier.width(110.dp).height(84.dp)
                     .clip(RoundedCornerShape(12.dp)),
             ) {
-                ThemeMiniature(
-                    theme = selectedTheme,
-                    widget = true,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                if (selectedPremium != null) {
+                    PremiumWidgetMiniature(selectedPremium, Modifier.fillMaxSize())
+                } else {
+                    ThemeMiniature(
+                        theme = selectedTheme,
+                        widget = true,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -248,11 +255,16 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                             Modifier.fillMaxWidth().height(105.dp)
                                                 .clip(RoundedCornerShape(8.dp)),
                                         ) {
-                                            ThemeMiniature(
-                                                theme = theme,
-                                                widget = true,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
+                                            val premium = WidgetThemeColors.premiumLook(option.value)
+                                            if (premium != null) {
+                                                PremiumWidgetMiniature(premium, Modifier.fillMaxSize())
+                                            } else {
+                                                ThemeMiniature(
+                                                    theme = theme,
+                                                    widget = true,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                )
+                                            }
                                             if (active) {
                                                 Icon(
                                                     Icons.Default.CheckCircle,

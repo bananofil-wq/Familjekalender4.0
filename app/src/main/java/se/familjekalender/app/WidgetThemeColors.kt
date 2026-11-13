@@ -20,6 +20,7 @@ internal object WidgetThemeColors {
         CLASSIC, WOOD, COPPER, TITANIUM, CARBON, HIPPIE, LIGHT, DARK,
         GLASS, FOREST, GOLD, PASTEL, GOTHAM, RETRO, SAGE, PAPER,
         NORDIC, PURE, FAMILY, CRYSTAL, NEON,
+        FOREST_WOOD,         OBSIDIAN,         CARBON_RED,         MIST_FOREST,         NORDIC_DUSK,
     }
 
     data class Palette(
@@ -41,25 +42,93 @@ internal object WidgetThemeColors {
         val controlPreview: Int = 0xFF26684E.toInt(),
     )
 
+
+    /** The five additional, widget-only matte 3D designs; no calendar theme is affected. */
+    data class PremiumLook(
+        val id: String,
+        val title: String,
+        val description: String,
+        val skin: Skin,
+        val backgroundTop: Int,
+        val backgroundBottom: Int,
+        val rowTone: Int,
+        val controlTone: Int,
+        val text: Int,
+        val muted: Int,
+        val accent: Int,
+        val dayInk: Int,
+        val numberInk: Int,
+        val controlInk: Int,
+        val dayFill: Int,
+        val numberFill: Int,
+    )
+
+    val premiumLooks: List<PremiumLook> = listOf(
+        PremiumLook(
+            "PREMIUM_FOREST_WOOD", "Skogsträ", "Mörkt valnötsträ, mjuk 3D och diskreta gröna detaljer", Skin.FOREST_WOOD,
+            0xFF2F241E.toInt(), 0xFF171615.toInt(), 0xFF493930.toInt(), 0xFF705342.toInt(),
+            0xFFFFF7ED.toInt(), 0xFFE5D4BE.toInt(), 0xFFD1AA7D.toInt(),
+            0xFF2F2117.toInt(), 0xFFFFF7E8.toInt(), 0xFFFFF7ED.toInt(),
+            0xFFD4AE7D.toInt(), 0xFF26201C.toInt()
+        ),
+        PremiumLook(
+            "PREMIUM_OBSIDIAN", "Obsidian", "Matt svart sten, tunna mässingsådror och precisa detaljer", Skin.OBSIDIAN,
+            0xFF1C1C1D.toInt(), 0xFF0D0F11.toInt(), 0xFF343334.toInt(), 0xFF4C453C.toInt(),
+            0xFFF8F4ED.toInt(), 0xFFD8D2C9.toInt(), 0xFFDCB887.toInt(),
+            0xFF281E16.toInt(), 0xFFFFF8EB.toInt(), 0xFFF8F4ED.toInt(),
+            0xFFD9BC8F.toInt(), 0xFF1C1B19.toInt()
+        ),
+        PremiumLook(
+            "PREMIUM_CARBON_RED", "Kolfiber Röd", "Tyst kolfibermönster, grafit och dämpade röda accenter", Skin.CARBON_RED,
+            0xFF28292B.toInt(), 0xFF121416.toInt(), 0xFF383A3D.toInt(), 0xFF3C4043.toInt(),
+            0xFFFAF8F8.toInt(), 0xFFD8D0D0.toInt(), 0xFFE88A84.toInt(),
+            0xFFFFFFFF.toInt(), 0xFFFCF6F5.toInt(), 0xFFFAF8F8.toInt(),
+            0xFFC36663.toInt(), 0xFF18191C.toInt()
+        ),
+        PremiumLook(
+            "PREMIUM_MIST_FOREST", "Frostdimma", "Frostat skogsglas, mjuka skuggor och lugn blågrön ton", Skin.MIST_FOREST,
+            0xFF49616B.toInt(), 0xFF293F49.toInt(), 0xFF5B717A.toInt(), 0xFF718D98.toInt(),
+            0xFFF9FEFF.toInt(), 0xFFE2F0F0.toInt(), 0xFFD1E8E9.toInt(),
+            0xFF29414C.toInt(), 0xFFFFFFFF.toInt(), 0xFFF9FEFF.toInt(),
+            0xFFBBD3D9.toInt(), 0xFF304B57.toInt()
+        ),
+        PremiumLook(
+            "PREMIUM_NORDIC_DUSK", "Nordisk skymning", "Mörk fjällblå kväll, matt glas och en lågmäld solnedgång", Skin.NORDIC_DUSK,
+            0xFF34485A.toInt(), 0xFF172838.toInt(), 0xFF455868.toInt(), 0xFF577285.toInt(),
+            0xFFFFF9F3.toInt(), 0xFFE3E6E5.toInt(), 0xFFECC39D.toInt(),
+            0xFF2A313A.toInt(), 0xFFFFFDF9.toInt(), 0xFFFFF9F3.toInt(),
+            0xFFE6B888.toInt(), 0xFF243847.toInt()
+        )
+    )
+
+    fun premiumLook(choice: String): PremiumLook? =
+        premiumLooks.firstOrNull { it.id == choice }
+
+    private fun isSupportedChoice(choice: String): Boolean =
+        choice == ORIGINAL ||
+        choice == CleanVisualTheme.CURRENT.name ||
+        choice == CleanVisualTheme.OAK_WOOD.name ||
+        premiumLook(choice) != null
+
     /** Legacy widget installations keep their current dark glass appearance. */
-    fun savedChoice(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(PREF_KEY, ORIGINAL) ?: ORIGINAL
+    fun savedChoice(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val stored = prefs.getString(PREF_KEY, ORIGINAL) ?: ORIGINAL
+        if (isSupportedChoice(stored)) return stored
+        // Legacy widget-only selections are retired from the picker. Preserve
+        // current and approved wood choices without touching calendar settings.
+        prefs.edit().putString(PREF_KEY, CleanVisualTheme.CURRENT.name).apply()
+        return CleanVisualTheme.CURRENT.name
+    }
 
     fun selectedTheme(context: Context): CleanVisualTheme? {
-        val saved = savedChoice(context)
-        if (saved == ORIGINAL) return null
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val name = if (saved == FOLLOW_CALENDAR) {
-            prefs.getString("clean_visual_theme", CleanVisualTheme.CURRENT.name)
-        } else saved
-        return resolveCleanVisualTheme(name)
+        val selected = savedChoice(context)
+        if (selected == ORIGINAL || premiumLook(selected) != null) return null
+        return resolveCleanVisualTheme(selected)
     }
 
     fun saveChoice(context: Context, choice: String) {
-        val valid = choice == ORIGINAL || choice == FOLLOW_CALENDAR ||
-            selectableCleanVisualThemes.any { it.name == choice }
-        if (!valid) return
+        if (!isSupportedChoice(choice)) return
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(PREF_KEY, choice).apply()
     }
@@ -87,6 +156,11 @@ internal object WidgetThemeColors {
     }
 
     private fun backgroundResource(skin: Skin): Int? = when (skin) {
+        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_background
+        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_background
+        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_background
+        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_background
+        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_background
         Skin.CLASSIC -> null
             Skin.WOOD -> R.drawable.widget_wood_approved_background
             Skin.COPPER -> R.drawable.widget_skin_copper_background
@@ -111,6 +185,11 @@ internal object WidgetThemeColors {
     }
 
     private fun rowResource(skin: Skin): Int? = when (skin) {
+        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_row
+        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_row
+        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_row
+        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_row
+        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_row
         Skin.CLASSIC -> null
             Skin.WOOD -> R.drawable.widget_wood_approved_row
             Skin.COPPER -> R.drawable.widget_skin_copper_row
@@ -135,6 +214,11 @@ internal object WidgetThemeColors {
     }
 
     private fun controlResource(skin: Skin): Int = when (skin) {
+        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_control
+        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_control
+        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_control
+        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_control
+        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_control
         Skin.CLASSIC -> R.drawable.widget_refresh_bg
         Skin.WOOD -> R.drawable.widget_wood_approved_control
         Skin.COPPER -> R.drawable.widget_skin_copper_control
@@ -165,6 +249,7 @@ internal object WidgetThemeColors {
     )
 
     private fun tone(skin: Skin): BadgeTone? = when (skin) {
+        Skin.FOREST_WOOD, Skin.OBSIDIAN, Skin.CARBON_RED, Skin.MIST_FOREST, Skin.NORDIC_DUSK -> null
         Skin.WOOD -> BadgeTone(0xFFD2A96F.toInt(), 0xFF29231F.toInt(), 0xFF2D2117.toInt(), 0xFFFFF8EF.toInt(), 0xFF342C29.toInt(), 0xFF70553D.toInt(), 0xFFFFFFFF.toInt())
         Skin.COPPER -> BadgeTone(0xFFBC7651.toInt(), 0xFF3E2721.toInt(), 0xFFFFF9F2.toInt(), 0xFFFFF2E4.toInt(), 0xFF382523.toInt(), 0xFF885037.toInt(), 0xFFFFF2E4.toInt())
         Skin.TITANIUM -> BadgeTone(0xFF576D7C.toInt(), 0xFFEFF2F4.toInt(), 0xFFFFFFFF.toInt(), 0xFF253544.toInt(), 0xFFE3E9EC.toInt(), 0xFFCBD4DC.toInt(), 0xFF253544.toInt())
@@ -188,6 +273,11 @@ internal object WidgetThemeColors {
     }
 
     private fun badgeDayResource(skin: Skin): Int? = when (skin) {
+        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_badge_day
+        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_badge_day
+        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_badge_day
+        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_badge_day
+        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_badge_day
         Skin.WOOD -> R.drawable.widget_wood_approved_badge_day
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_day
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_day
@@ -211,6 +301,11 @@ internal object WidgetThemeColors {
     }
 
     private fun badgeNumberResource(skin: Skin): Int? = when (skin) {
+        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_badge_number
+        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_badge_number
+        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_badge_number
+        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_badge_number
+        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_badge_number
         Skin.WOOD -> R.drawable.widget_wood_approved_badge_number
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_number
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_number
@@ -234,6 +329,11 @@ internal object WidgetThemeColors {
     }
 
     private fun refinedPreviewSurfaces(skin: Skin): Pair<Int, Int>? = when (skin) {
+        Skin.FOREST_WOOD -> 0xFF493930.toInt() to 0xFF705342.toInt()
+        Skin.OBSIDIAN -> 0xFF343334.toInt() to 0xFF4C453C.toInt()
+        Skin.CARBON_RED -> 0xFF383A3D.toInt() to 0xFF3C4043.toInt()
+        Skin.MIST_FOREST -> 0xFF5B717A.toInt() to 0xFF718D98.toInt()
+        Skin.NORDIC_DUSK -> 0xFF455868.toInt() to 0xFF577285.toInt()
         Skin.WOOD -> 0xFF342C29.toInt() to 0xFF70553D.toInt()
         Skin.COPPER -> 0xFF393238.toInt() to 0xFF6B463A.toInt()
         Skin.TITANIUM -> 0xFFF1F6FA.toInt() to 0xFFB4D0E3.toInt()
@@ -259,7 +359,19 @@ internal object WidgetThemeColors {
     /** Widget previews use the same palette as actual RemoteViews. Classic/Nuvarande remain unchanged. */
     internal fun forPreview(theme: CleanVisualTheme?): Palette = palette(theme)
 
-    fun colors(context: Context): Palette = palette(selectedTheme(context))
+    private fun premiumPalette(look: PremiumLook) = Palette(
+        look.skin, backgroundResource(look.skin), rowResource(look.skin),
+        look.text, look.muted, look.accent, look.text,
+        badgeDayResource(look.skin), badgeNumberResource(look.skin),
+        look.dayInk, look.numberInk, look.controlInk,
+        look.dayFill, look.numberFill, look.rowTone, look.controlTone,
+    )
+
+    fun colors(context: Context): Palette {
+        val selection = savedChoice(context)
+        return premiumLook(selection)?.let { premiumPalette(it) }
+            ?: palette(selectedTheme(context))
+    }
 
     private fun palette(theme: CleanVisualTheme?): Palette {
         if (theme == null) {
@@ -298,6 +410,7 @@ internal object WidgetThemeColors {
     /** Only add style actions; never replace the widget's date, event data, or click actions. */
     fun apply(context: Context, views: RemoteViews) {
         val style = colors(context)
+        val premium = premiumLook(savedChoice(context))
         // Apply the classic resources as well, so switching BACK from a selected
         // skin fully restores the original widget without re-adding it to the launcher.
         style.root?.let { views.setInt(R.id.widget_root, "setBackgroundResource", it) }
@@ -337,6 +450,49 @@ internal object WidgetThemeColors {
             if (style.badgeDay != null) {
                 views.setTextColor(R.id.widget_refresh, style.controlInk)
             }
+        }
+
+        // All new skins theme their reminder card too; switching back restores
+        // the exact established Nuvarande/Trä reminder resources.
+        val reminderBackground = when (premium?.skin) {
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder
+            else -> R.drawable.widget_reminder_bg
+        }
+        val reminderRow = when (premium?.skin) {
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder_row
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder_row
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder_row
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder_row
+            else -> R.drawable.widget_reminder_line_bg
+        }
+        val weekBadge = when (premium?.skin) {
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_week_badge
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_week_badge
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_week_badge
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_week_badge
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_week_badge
+            else -> R.drawable.widget_reminder_week_badge
+        }
+        views.setInt(R.id.widget_week_reminders, "setBackgroundResource", reminderBackground)
+        views.setInt(R.id.widget_week_reminders_week, "setBackgroundResource", weekBadge)
+        views.setTextColor(R.id.widget_week_reminders_week,
+            premium?.accent ?: 0xFFF0CEA0.toInt())
+        intArrayOf(
+            R.id.widget_birthday_1, R.id.widget_birthday_2,
+            R.id.widget_private_reminder_1, R.id.widget_private_reminder_2,
+            R.id.widget_private_reminder_more,
+            R.id.widget_persistent_reminder_1, R.id.widget_persistent_reminder_2,
+            R.id.widget_persistent_reminder_more,
+            R.id.widget_week_reminder_empty,
+            R.id.widget_week_reminder_1, R.id.widget_week_reminder_2,
+            R.id.widget_week_reminder_3,
+        ).forEach { id ->
+            views.setInt(id, "setBackgroundResource", reminderRow)
         }
     }
 

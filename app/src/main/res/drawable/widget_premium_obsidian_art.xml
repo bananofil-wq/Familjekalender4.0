@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp" android:height="680dp"
+    android:viewportWidth="360" android:viewportHeight="680">
+    <!-- Restrained, low-opacity details: never compete with the schedule content. -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#24E2B888" android:strokeWidth="1.2" android:pathData="M282,0 L287,58 L316,84 L295,135 L343,172 L328,214 L360,232"/>
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#1BE0B784" android:strokeWidth="1" android:pathData="M0,510 L35,495 L54,520 L99,508 L119,552 L168,540 L185,590 L222,606 L249,675"/>
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#1454B4A1" android:strokeWidth="1.5" android:pathData="M335,0 L310,38 L350,104 L333,161 L359,195 M0,552 L56,531 L88,572 L148,563"/>
+</vector>

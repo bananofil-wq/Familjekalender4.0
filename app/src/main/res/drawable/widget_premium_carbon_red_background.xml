@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:top="3dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#55000000"/><corners android:radius="29dp"/>
+        </shape>
+    </item>
+    <item android:bottom="2dp">
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#F428292B"
+                android:endColor="#F5121416"/>
+            <corners android:radius="29dp"/>
+            <stroke android:width="0.9dp" android:color="#9A7A6668"/>
+        </shape>
+    </item>
+    <item android:drawable="@drawable/widget_premium_carbon_red_art" android:bottom="2dp"/>
+</layer-list>
