@@ -79,6 +79,9 @@ internal object FamilyEventPopup {
     }
 
     private fun receivePush(data: JSONObject?, notificationId: String, title: String, body: String) {
+        if (::appContext.isInitialized) {
+            FamilyListPushRefresh.onIncomingPush(appContext, data)
+        }
         val type = data?.optString("type").orEmpty()
         if (type != "calendar_event_created" && type != "event_created") return
         val id = data?.optString("event_id").orEmpty()
