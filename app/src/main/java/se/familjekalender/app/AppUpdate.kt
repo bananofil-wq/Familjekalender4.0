@@ -154,7 +154,7 @@ private fun findUpdateViaApi(currentVersion: String): AvailableUpdate? {
                 }
             }
 
-            apkUrl?.let { AvailableUpdate(version, it) }
+            return apkUrl?.let { AvailableUpdate(version, it) }
         } finally {
             connection.disconnect()
         }
