@@ -42,6 +42,25 @@ private class WidgetSampleView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
+
+        // Premium themes: show the approved screenshot, not a hand-drawn
+        // approximation. Fit to device proportions without distortion.
+        WidgetReferenceImages.previewResource(themeChoice)?.let { res ->
+            val drawable = graphicCache.getOrPut(res) {
+                context.getDrawable(res)?.mutate() ?: return
+            }
+            val iw = drawable.intrinsicWidth.coerceAtLeast(1).toFloat()
+            val ih = drawable.intrinsicHeight.coerceAtLeast(1).toFloat()
+            val scaleFactor = minOf(width.toFloat() / iw, height.toFloat() / ih)
+            val dw = iw * scaleFactor
+            val dh = ih * scaleFactor
+            val left = ((width - dw) / 2f).toInt()
+            val top = ((height - dh) / 2f).toInt()
+            drawable.setBounds(left, top, left + dw.toInt(), top + dh.toInt())
+            drawable.draw(canvas)
+            return
+        }
+
         val palette = WidgetThemeColors.previewPalette(themeChoice)
         val artwork = WidgetThemeColors.previewMaterials(themeChoice)
         val scale = minOf(width / 360f, height / 510f)
