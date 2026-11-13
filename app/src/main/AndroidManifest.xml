@@ -115,6 +115,13 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".WidgetQuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Familjekalender.WidgetQuickAdd"
+            android:excludeFromRecents="true"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait"
             android:exported="true">
