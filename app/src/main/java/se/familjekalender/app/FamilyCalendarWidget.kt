@@ -20,6 +20,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.WeekFields
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -204,7 +205,23 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 values?.optString("status") else null
             val fallbackStatus = if (prefs.contains(cachedRowsPrefKey(appWidgetId)))
                 "Visar sparade aktiviteter" else "Uppdaterar…"
-            views.setTextViewText(R.id.widget_status, summaryStatus ?: fallbackStatus)
+            val statusText = summaryStatus ?: fallbackStatus
+            val weekPrefix = if (WidgetFeatureSettings.enabled(
+                    context, WidgetFeatureSettings.WEEK_NUMBER
+                )) "Vecka ${today.get(WeekFields.ISO.weekOfWeekBasedYear())} · " else ""
+            views.setTextViewText(R.id.widget_status, weekPrefix + statusText)
+            val partialSync = summaryStatus != null && (
+                "ej uppdaterat" in summaryStatus ||
+                    "kunde inte" in summaryStatus ||
+                    "visar sparade" in summaryStatus
+            )
+            views.setViewVisibility(
+                R.id.widget_warning,
+                if (partialSync && WidgetFeatureSettings.enabled(
+                        context, WidgetFeatureSettings.SYNC_WARNING
+                    )) View.VISIBLE else View.GONE,
+            )
+            views.setTextViewText(R.id.widget_warning, "⚠ Vissa uppgifter kan vara inaktuella")
             views.setTextViewText(R.id.widget_todo, values?.optString("todo") ?: "✓  To-Do    ›")
             views.setTextViewText(R.id.widget_shopping, values?.optString("shopping") ?: "🛒  Inköp    ›")
             val dateText =
@@ -248,6 +265,11 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             bindActions(context, views, appWidgetId)
             showWeeklyReminders(context, appWidgetId, views, prefs, today)
             WidgetThemeColors.apply(context, views)
+            views.setViewVisibility(
+                R.id.widget_quick_add,
+                if (WidgetFeatureSettings.enabled(context, WidgetFeatureSettings.QUICK_ADD))
+                    View.VISIBLE else View.GONE,
+            )
             return views
         }
 
@@ -286,11 +308,45 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 }
             }
 
-            val preview = weeklyReminderPreview(today, reminders, maxVisible = 3)
+            val preview = if (WidgetFeatureSettings.enabled(
+                    context, WidgetFeatureSettings.WEEK_REMINDERS
+                )) weeklyReminderPreview(today, reminders, maxVisible = 3)
+                else WidgetWeeklyReminderPreview(emptyList(), 0)
+
+            val birthdays = buildList {
+                val json = runCatching { JSONArray(raw ?: "[]") }.getOrNull() ?: JSONArray()
+                repeat(json.length()) { index ->
+                    val row = json.optJSONObject(index) ?: return@repeat
+                    if (!row.optBoolean("birthday", false)) return@repeat
+                    val date = runCatching { LocalDate.parse(row.optString("date")) }
+                        .getOrNull() ?: return@repeat
+                    val title = row.optString("activity").trim()
+                    if (title.isBlank()) return@repeat
+                    add(WidgetUpcomingBirthday(date, title, row.optString("who")))
+                }
+            }
+            val visibleBirthdays = if (WidgetFeatureSettings.enabled(
+                    context, WidgetFeatureSettings.BIRTHDAYS
+                )) widgetUpcomingBirthdays(today, birthdays).take(2) else emptyList()
             views.setViewVisibility(
                 R.id.widget_week_reminders,
-                if (preview.visible.isEmpty()) View.GONE else View.VISIBLE,
+                if (preview.visible.isEmpty() && visibleBirthdays.isEmpty()) View.GONE
+                else View.VISIBLE,
             )
+            views.setTextViewText(
+                R.id.widget_week_reminders_title,
+                if (visibleBirthdays.isEmpty()) "Påminnelser denna vecka"
+                else "Påminnelser & födelsedagar",
+            )
+            val birthdayIds = intArrayOf(R.id.widget_birthday_1, R.id.widget_birthday_2)
+            birthdayIds.forEachIndexed { index, viewId ->
+                val birthday = visibleBirthdays.getOrNull(index)
+                views.setViewVisibility(viewId, if (birthday == null) View.GONE else View.VISIBLE)
+                views.setTextViewText(viewId, birthday?.let(::widgetBirthdayLabel) ?: "")
+                views.setOnClickPendingIntent(
+                    viewId, openCalendarPendingIntent(context, appWidgetId, 1_030 + index),
+                )
+            }
             val rowIds = intArrayOf(
                 R.id.widget_week_reminder_1,
                 R.id.widget_week_reminder_2,
@@ -399,6 +455,8 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             }
         }
 
+        fun refreshFromCache(context: Context) = refreshAllWidgetsFromCache(context)
+
         private fun refreshAllWidgetsFromCache(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val component = ComponentName(context, FamilyCalendarWidget::class.java)
@@ -469,6 +527,20 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 )
             }
 
+            val quickAddIntent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = Uri.parse("familjekalender://widget/quickadd/$appWidgetId")
+                putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
+                putExtra(MainActivity.EXTRA_WIDGET_QUICK_ADD, true)
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            views.setOnClickPendingIntent(
+                R.id.widget_quick_add,
+                PendingIntent.getActivity(
+                    context, appWidgetId + 15_000, quickAddIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
             views.setOnClickPendingIntent(R.id.widget_todo, openTabPendingIntent(2, 20_000))
             views.setOnClickPendingIntent(R.id.widget_shopping, openTabPendingIntent(1, 30_000))
 

@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import java.time.LocalDate
+import java.time.LocalTime
 import org.json.JSONArray
 
 /**
@@ -34,6 +35,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             val time: String,
             val laundry: Boolean,
             val reminder: Boolean,
+            val birthday: Boolean,
             val color: Int,
         )
 
@@ -80,6 +82,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                         reminder = obj.optBoolean(
                             "reminder", activity.trimStart().startsWith("🔔")
                         ),
+                        birthday = obj.optBoolean("birthday", false),
                         color = obj.optInt("color", 0xFF69B9F4.toInt()),
                     )
                 }
@@ -88,7 +91,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             }
 
             // Reminders (including today's) are displayed only in the pinned weekly footer.
-            val activities = todayRows.filterNot { it.reminder }
+            val activities = todayRows.filterNot { it.reminder || it.birthday }
             val count = activities.size
             val countLabel = if (count == 1) "1 aktivitet" else "$count aktiviteter"
             items += Item.Header("Idag ${today.dayOfMonth}/${today.monthValue}  ·  $countLabel")
@@ -104,6 +107,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                         time = "",
                         laundry = false,
                         reminder = false,
+                        birthday = false,
                         color = 0xFF758595.toInt(),
                     )
                 )
@@ -140,6 +144,14 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                             if (isLaundry) View.VISIBLE else View.GONE,
                         )
                         setTextViewText(R.id.widget_item_time, event.time)
+                        val liveStatus = if (WidgetFeatureSettings.enabled(
+                                context, WidgetFeatureSettings.LIVE_STATUS
+                            )) widgetLiveStatus(event.time, LocalTime.now()) else ""
+                        setTextViewText(R.id.widget_item_live_status, liveStatus)
+                        setViewVisibility(
+                            R.id.widget_item_live_status,
+                            if (liveStatus.isBlank()) View.GONE else View.VISIBLE,
+                        )
                         setViewVisibility(
                             R.id.widget_item_time,
                             if (event.time.isBlank()) View.GONE else View.VISIBLE,

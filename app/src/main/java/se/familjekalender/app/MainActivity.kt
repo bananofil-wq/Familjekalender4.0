@@ -205,14 +205,16 @@ internal fun paletteFor(mode: ThemeMode, date: LocalDate = LocalDate.now()): Sea
 class MainActivity : ComponentActivity() {
     private var widgetOpenTab by mutableIntStateOf(-1)
     private var widgetOpenRequestId by mutableIntStateOf(0)
+    private var widgetQuickAddRequestId by mutableIntStateOf(0)
     private var requestedEventId by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         widgetOpenTab = intent.getIntExtra(EXTRA_OPEN_TAB, -1)
+        if (intent.getBooleanExtra(EXTRA_WIDGET_QUICK_ADD, false)) widgetQuickAddRequestId++
         setContent {
             ResponsiveApp {
-                FamilyCalendarApp(widgetOpenTab, requestedEventId, widgetOpenRequestId)
+                FamilyCalendarApp(widgetOpenTab, requestedEventId, widgetOpenRequestId, widgetQuickAddRequestId)
                 val popup by FamilyEventPopup.current.collectAsState()
                 popup?.let { event ->
                     val selectedTheme = resolveCleanVisualTheme(
@@ -241,10 +243,12 @@ class MainActivity : ComponentActivity() {
         // Repeated taps on the same widget shortcut must always navigate again.
         // Tab value alone does not change after the first tap.
         if (intent.hasExtra(EXTRA_OPEN_TAB)) widgetOpenRequestId++
+        if (intent.getBooleanExtra(EXTRA_WIDGET_QUICK_ADD, false)) widgetQuickAddRequestId++
     }
 
     companion object {
         const val EXTRA_OPEN_TAB = "open_tab"
+        const val EXTRA_WIDGET_QUICK_ADD = "widget_quick_add"
     }
 
     override fun onStart() {
@@ -264,6 +268,7 @@ fun FamilyCalendarApp(
     initialTab: Int = -1,
     requestedEventId: String? = null,
     widgetOpenRequestId: Int = 0,
+    widgetQuickAddRequestId: Int = 0,
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("family_calendar", 0) }
@@ -394,6 +399,7 @@ fun FamilyCalendarApp(
                         initialTab = initialTab,
                         navigationRequestId = widgetOpenRequestId,
                         requestedEventId = requestedEventId,
+                        quickAddRequestId = widgetQuickAddRequestId,
                     )
                 }
             }
@@ -474,6 +480,7 @@ private fun SyncedApp(
     initialTab: Int = -1,
     navigationRequestId: Int = 0,
     requestedEventId: String? = null,
+    quickAddRequestId: Int = 0,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -498,6 +505,14 @@ private fun SyncedApp(
         if (initialTab in 0..5) selectedTab = initialTab
     }
     var showAddEvent by remember { mutableStateOf(false) }
+    var showWidgetQuickAdd by remember { mutableStateOf(false) }
+    var addEventInitialKind by remember { mutableStateOf(CalendarEntryKind.ACTIVITY) }
+    LaunchedEffect(quickAddRequestId) {
+        if (quickAddRequestId > 0) {
+            selectedTab = 0
+            showWidgetQuickAdd = true
+        }
+    }
     var editEvent by remember { mutableStateOf<SyncEvent?>(null) }
     var handledEventRequest by remember { mutableStateOf<String?>(null) }
 
@@ -1134,16 +1149,56 @@ private fun SyncedApp(
         )
     }
 
+    if (showWidgetQuickAdd) {
+        AlertDialog(
+            onDismissRequest = { showWidgetQuickAdd = false },
+            title = { Text("Lägg till") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    listOf("Aktivitet", "Påminnelse", "To-do", "Inköp").forEachIndexed { index, label ->
+                        TextButton(
+                            onClick = {
+                                showWidgetQuickAdd = false
+                                when (index) {
+                                    0, 1 -> {
+                                        selectedTab = 0
+                                        selectedDate = LocalDate.now()
+                                        addEventInitialTitle = ""
+                                        addEventInitialKind = if (index == 1)
+                                            CalendarEntryKind.REMINDER else CalendarEntryKind.ACTIVITY
+                                        showAddEvent = true
+                                    }
+                                    2 -> selectedTab = 2
+                                    else -> selectedTab = 1
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showWidgetQuickAdd = false }) { Text("Stäng") }
+            },
+        )
+    }
+
     if (showAddEvent) {
         AddEventDialog(
             members,
             selectedDate,
             addEventInitialTitle,
+            initialKind = addEventInitialKind,
             lightStyle = uiLayoutMode == UiLayoutMode.MINIMAL &&
                 cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER,
             nordicDarkStyle = uiLayoutMode == UiLayoutMode.MINIMAL &&
                 cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
-            onDismiss = { showAddEvent = false }) { title,
+            onDismiss = {
+                showAddEvent = false
+                addEventInitialKind = CalendarEntryKind.ACTIVITY
+            }) { title,
                                         startTime,
                                         endTime,
                                         memberId,
@@ -1223,6 +1278,7 @@ private fun SyncedApp(
                 refresh()
                 FamilyCalendarWidget.enqueueRefresh(context)
                 showAddEvent = false
+                addEventInitialKind = CalendarEntryKind.ACTIVITY
                 val pending = OfflineMutationQueue.pendingCount(session)
                 if (pending > 0) {
                     message = "$pending poster sparades lokalt och väntar på internet."
@@ -3322,6 +3378,7 @@ private fun AddEventDialog(
     members: List<SyncMember>,
     selectedDate: LocalDate,
     initialTitle: String = "",
+    initialKind: CalendarEntryKind = CalendarEntryKind.ACTIVITY,
     lightStyle: Boolean = false,
     nordicDarkStyle: Boolean = false,
     onDismiss: () -> Unit,
@@ -3374,9 +3431,10 @@ private fun AddEventDialog(
     var showEndTimePicker by remember { mutableStateOf(false) }
     var memberId by remember { mutableStateOf<String?>(members.firstOrNull()?.id) }
     var isBirthday by remember { mutableStateOf(false) }
-    var entryKind by remember(initialTitle) {
+    var entryKind by remember(initialTitle, initialKind) {
         mutableStateOf(
-            if (initialTitle.trim().equals("Tvätt", ignoreCase = true)) CalendarEntryKind.LAUNDRY
+            if (initialKind == CalendarEntryKind.REMINDER) CalendarEntryKind.REMINDER
+            else if (initialTitle.trim().equals("Tvätt", ignoreCase = true)) CalendarEntryKind.LAUNDRY
             else CalendarEntryKind.ACTIVITY
         )
     }

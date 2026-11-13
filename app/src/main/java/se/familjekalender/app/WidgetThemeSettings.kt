@@ -54,6 +54,22 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     val context = LocalContext.current
     var selected by remember { mutableStateOf(WidgetThemeColors.savedChoice(context)) }
     var pickerOpen by remember { mutableStateOf(false) }
+    var detailsExpanded by remember { mutableStateOf(false) }
+    val featureOptions = remember {
+        listOf(
+            WidgetFeatureSettings.WEEK_REMINDERS to "Veckans påminnelser",
+            WidgetFeatureSettings.LIVE_STATUS to "Pågår / börjar snart",
+            WidgetFeatureSettings.BIRTHDAYS to "Födelsedagar inom 7 dagar",
+            WidgetFeatureSettings.QUICK_ADD to "Snabbknappen +",
+            WidgetFeatureSettings.SYNC_WARNING to "Varning vid synkfel",
+            WidgetFeatureSettings.WEEK_NUMBER to "Veckonummer",
+        )
+    }
+    var featureValues by remember {
+        mutableStateOf(featureOptions.associate { (key, _) ->
+            key to WidgetFeatureSettings.enabled(context, key)
+        })
+    }
 
     val options = remember {
         listOf(
@@ -128,6 +144,43 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 10.sp,
         )
+        OutlinedButton(
+            onClick = { detailsExpanded = !detailsExpanded },
+            modifier = Modifier.fillMaxWidth().height(39.dp),
+        ) {
+            Text(
+                if (detailsExpanded) "Dölj widgetinnehåll" else "Anpassa widgetinnehåll",
+                fontSize = 12.sp,
+            )
+        }
+        if (detailsExpanded) {
+            Text(
+                "Välj vilken information som ska visas. Utseendet ändras inte.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            featureOptions.forEach { (key, label) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    Text(
+                        label,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    androidx.compose.material3.Switch(
+                        checked = featureValues[key] ?: true,
+                        onCheckedChange = { enabled ->
+                            featureValues = featureValues + (key to enabled)
+                            WidgetFeatureSettings.setEnabled(context, key, enabled)
+                        },
+                    )
+                }
+            }
+        }
     }
 
     if (pickerOpen) {

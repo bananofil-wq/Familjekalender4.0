@@ -281,6 +281,8 @@ internal object WidgetThemeColors {
         }
         views.setTextColor(R.id.widget_date, style.text)
         views.setTextColor(R.id.widget_status, style.muted)
+        views.setTextColor(R.id.widget_warning, style.muted)
+        views.setTextColor(R.id.widget_quick_add, style.text)
         views.setTextColor(R.id.widget_refresh, style.text)
         if (style.skin == Skin.CLASSIC) {
             // Restore the original date/shortcut/control surfaces after a theme change.
@@ -308,6 +310,7 @@ internal object WidgetThemeColors {
         style.row?.let { views.setInt(R.id.widget_item_root, "setBackgroundResource", it) }
         views.setTextColor(R.id.widget_item_who, style.text)
         views.setTextColor(R.id.widget_item_activity, style.text)
+        views.setTextColor(R.id.widget_item_live_status, style.muted)
         views.setTextColor(R.id.widget_item_time, style.muted)
         // The graphite time capsule is part of the premium default only.
         // Other selectable skins keep their original flat time treatment.

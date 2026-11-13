@@ -68,7 +68,26 @@
                 android:textColor="#D8FFFFFF"
                 android:textSize="12sp"
                 android:maxLines="2" />
+            <TextView
+                android:id="@+id/widget_warning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFD58D"
+                android:textSize="10sp"
+                android:maxLines="1"
+                android:visibility="gone" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_quick_add"
+            android:layout_width="32dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="3dp"
+            android:gravity="center"
+            android:text="+"
+            android:textColor="#FFFFFFFF"
+            android:textSize="26sp"
+            android:contentDescription="Lägg till i familjekalendern" />
 
         <TextView
             android:id="@+id/widget_refresh"
@@ -194,6 +213,14 @@
                 android:maxLines="1" />
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/widget_birthday_1"
+            style="@style/WidgetWeekReminderText"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_birthday_2"
+            style="@style/WidgetWeekReminderText"
+            android:visibility="gone" />
         <TextView
             android:id="@+id/widget_week_reminder_1"
             style="@style/WidgetWeekReminderText" />

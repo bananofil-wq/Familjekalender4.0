@@ -240,8 +240,10 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
             val activity = cleanActivityTitle(event.title, event.time, event.endTime, who)
             val laundry = isLaundryEvent(event)
             val reminder = widgetIsReminder(event)
+            val birthday = widgetIsBirthday(event)
             val displayActivity = when {
                 reminder -> activity.removePrefix("🔔").trimStart()
+                birthday -> activity.removePrefix("🌈").trimStart()
                 laundry -> activity.removePrefix("🧺").trimStart()
                 else -> widgetActivityIcon(activity) + "  " + activity
             }
@@ -253,6 +255,7 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                     .put("activity", displayActivity)
                     .put("laundry", laundry)
                     .put("reminder", reminder)
+                    .put("birthday", birthday)
                     .put("color", members[memberKey]?.colorArgb?.toInt() ?: 0xFF69B9F4.toInt())
                     .put("time", timeTextOrNull(event).orEmpty())
             )

@@ -9,4 +9,4 @@ internal fun widgetIsReminder(event: SyncEvent): Boolean =
         event.title.trimStart().startsWith("🔔")
 
 internal fun widgetActivityCountForDay(events: List<SyncEvent>, day: java.time.LocalDate): Int =
-    events.count { it.date == day && !widgetIsReminder(it) }
+    events.count { it.date == day && !widgetIsReminder(it) && !widgetIsBirthday(it) }
