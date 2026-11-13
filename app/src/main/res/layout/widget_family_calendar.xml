@@ -222,6 +222,21 @@
             style="@style/WidgetWeekReminderText"
             android:visibility="gone" />
         <TextView
+            android:id="@+id/widget_private_reminder_1"
+            style="@style/WidgetWeekReminderText"
+            android:textColor="#FFD9BBFF"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_private_reminder_2"
+            style="@style/WidgetWeekReminderText"
+            android:textColor="#FFD9BBFF"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/widget_private_reminder_more"
+            style="@style/WidgetWeekReminderText"
+            android:textColor="#FFD9BBFF"
+            android:visibility="gone" />
+        <TextView
             android:id="@+id/widget_persistent_reminder_1"
             style="@style/WidgetWeekReminderText"
             android:textColor="#FFFFE7AF"
