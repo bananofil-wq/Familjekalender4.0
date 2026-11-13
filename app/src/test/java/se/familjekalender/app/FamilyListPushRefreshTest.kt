@@ -12,6 +12,15 @@ class FamilyListPushRefreshTest {
         assertTrue(FamilyListPushRefresh.shouldRefresh(family, family, "todo:def", null))
     }
 
+    @Test fun `recipient private reminder push refreshes widget`() {
+        assertTrue(FamilyListPushRefresh.shouldRefresh(
+            family, family, "private-reminder:abc", null,
+        ))
+        assertFalse(FamilyListPushRefresh.shouldRefresh(
+            family, "other", "private-reminder:abc", null,
+        ))
+    }
+
     @Test fun `family list change data is recognized`() {
         assertTrue(FamilyListPushRefresh.shouldRefresh(
             family, family, null, "family_list_changed",
