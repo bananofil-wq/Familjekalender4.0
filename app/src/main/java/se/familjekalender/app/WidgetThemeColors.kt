@@ -475,6 +475,26 @@ internal object WidgetThemeColors {
         // Apply the classic resources as well, so switching BACK from a selected
         // skin fully restores the original widget without re-adding it to the launcher.
         style.root?.let { views.setInt(R.id.widget_root, "setBackgroundResource", it) }
+        // The reference artwork is the actual widget background, not a mock preview.
+        // Existing live event rows, counters, scrolling and PendingIntents sit above it.
+        val material = WidgetReferenceArtwork.bitmap(savedChoice(context))
+        if (material != null) {
+            views.setImageViewBitmap(R.id.widget_premium_art, material)
+            views.setViewVisibility(R.id.widget_premium_art, android.view.View.VISIBLE)
+            views.setInt(R.id.widget_quick_add, "setBackgroundResource",
+                controlResource(style.skin))
+            views.setViewVisibility(R.id.widget_refresh, android.view.View.GONE)
+            views.setViewVisibility(R.id.widget_section_separator, android.view.View.GONE)
+            views.setTextColor(R.id.widget_week_reminders_title, style.text)
+        } else {
+            // Reverting to either approved legacy theme must be lossless.
+            views.setViewVisibility(R.id.widget_premium_art, android.view.View.GONE)
+            views.setInt(R.id.widget_quick_add, "setBackgroundResource",
+                android.R.color.transparent)
+            views.setViewVisibility(R.id.widget_refresh, android.view.View.VISIBLE)
+            views.setViewVisibility(R.id.widget_section_separator, android.view.View.VISIBLE)
+            views.setTextColor(R.id.widget_week_reminders_title, 0xFFF2F5FA.toInt())
+        }
         if (style.skin == Skin.CLASSIC || style.skin == Skin.GLASS) {
             // Protect the established Nuvarande/Original date badge after changing themes.
             views.setInt(R.id.widget_badge_day, "setBackgroundResource", R.drawable.widget_date_badge_top)
