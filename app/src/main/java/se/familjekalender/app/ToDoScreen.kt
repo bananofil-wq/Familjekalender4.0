@@ -343,13 +343,13 @@ internal fun ToDoScreen(
                 Text(
                     "To-Do",
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 27.sp,
+                    fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     "Familjens gemensamma uppgifter",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
+                    fontSize = 13.sp,
                 )
             }
             Surface(
@@ -579,13 +579,11 @@ internal fun ToDoScreen(
                             border =
                                 BorderStroke(
                                     1.dp,
-                                    if (index == 0)
-                                        SettingsMatchedPalette.expandedBorder
-                                    else SettingsMatchedPalette.border,
+                                    SettingsMatchedPalette.border,
                                 ),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Column(Modifier.fillMaxWidth().settingsMatchedFill(20.dp).padding(horizontal = 11.dp, vertical = 9.dp)) {
+                            Column(Modifier.fillMaxWidth().settingsMatchedFill(20.dp).padding(horizontal = 15.dp, vertical = 12.dp)) {
                                 Row(
                                     Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
