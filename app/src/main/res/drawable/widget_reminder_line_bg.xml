@@ -1,18 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact inset reminder cards with a quiet warm accent, not a gold box. -->
+<!-- Nuvarande: miniature 3D inset, with warm left index marker. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
+    <item android:top="2dp">
         <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#E13B4652"
-                android:endColor="#E8242B36"/>
-            <corners android:radius="12dp"/>
-            <stroke android:width="0.7dp" android:color="#687C8999"/>
+            <solid android:color="#88040A14"/>
+            <corners android:radius="13dp"/>
         </shape>
     </item>
-    <item android:gravity="left|center_vertical" android:left="4dp">
+    <item android:bottom="1dp">
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#F34A5869"
+                android:centerColor="#F5354252" android:endColor="#F01D2735"/>
+            <corners android:radius="12dp"/>
+            <stroke android:width="0.8dp" android:color="#9A869BB2"/>
+        </shape>
+    </item>
+    <item android:left="2dp" android:right="2dp" android:top="2dp"
+        android:height="10dp" android:gravity="top">
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#51C5DBF3"
+                android:endColor="#00ADC3D9"/>
+            <corners android:topLeftRadius="10dp" android:topRightRadius="10dp"/>
+        </shape>
+    </item>
+    <item android:gravity="left|center_vertical" android:left="5dp">
         <shape android:shape="rectangle">
             <size android:width="3dp" android:height="17dp"/>
-            <solid android:color="#EAC18A55"/>
+            <gradient android:angle="270" android:startColor="#FFFFD59C"
+                android:endColor="#C895572C"/>
             <corners android:radius="3dp"/>
         </shape>
     </item>

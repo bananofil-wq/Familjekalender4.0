@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <gradient android:angle="270" android:startColor="#FFFF6D75" android:endColor="#FFE94651" />
-    <corners android:topLeftRadius="13dp" android:topRightRadius="13dp" />
-    <stroke android:width="1dp" android:color="#99FFFFFF" />
-</shape>
+<!-- Red glossy enamel strip of the original floating calendar tile. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#FFFF9EA5"
+                android:centerColor="#FFED6978" android:endColor="#FFD53C50"/>
+            <corners android:topLeftRadius="13dp" android:topRightRadius="13dp"/>
+            <stroke android:width="0.9dp" android:color="#BAFFF4F4"/>
+        </shape>
+    </item>
+    <item android:left="2dp" android:right="2dp" android:top="1dp"
+        android:height="8dp" android:gravity="top">
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#95FFFFFF"
+                android:endColor="#08FFFFFF"/>
+            <corners android:topLeftRadius="12dp" android:topRightRadius="12dp"/>
+        </shape>
+    </item>
+</layer-list>
