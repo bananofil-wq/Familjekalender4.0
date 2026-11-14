@@ -36,7 +36,7 @@
             android:gravity="center_vertical">
 
             <LinearLayout
-                android:layout_width="61dp"
+                android:layout_width="69dp"
                 android:layout_height="70dp"
                 android:orientation="vertical">
 
@@ -66,7 +66,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="13dp"
+                android:layout_marginStart="17dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -217,9 +217,9 @@
                 android:paddingBottom="4dp">
                 <ImageView
                     android:id="@+id/widget_week_bell"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_marginEnd="12dp"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="17dp"
                     android:src="@drawable/widget_bell_icon"
                     android:contentDescription="@null" />
                 <TextView
@@ -238,8 +238,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:paddingLeft="8dp"
-                    android:paddingRight="8dp"
+                    android:paddingLeft="14dp"
+                    android:paddingRight="14dp"
                     android:paddingTop="3dp"
                     android:paddingBottom="3dp"
                     android:background="@drawable/widget_reminder_week_badge"
