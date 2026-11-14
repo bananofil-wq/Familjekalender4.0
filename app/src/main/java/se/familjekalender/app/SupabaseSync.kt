@@ -219,14 +219,78 @@ object SupabaseSync {
             }
         }
 
-    suspend fun clearChecked(session: FamilySession) =
+    /**
+     * Remove only the completed rows the person actually confirmed, never every
+     * checked row that might have appeared on another device in the meantime.
+     */
+    suspend fun clearChecked(session: FamilySession, confirmed: List<SyncShoppingItem>) =
         withContext(Dispatchers.IO) {
+            confirmed.filter { it.checked }.map { UUID.fromString(it.id).toString() }
+                .distinct().chunked(40).forEach { ids ->
+                    request(
+                        "DELETE",
+                        "/rest/v1/shopping_items?family_id=eq.${session.id}" +
+                            "&checked=eq.true&id=in.(${ids.joinToString(",")})",
+                        familyCode = session.code,
+                        preferRepresentation = false,
+                    )
+                }
+        }
+
+    /** A single deliberate deletion, independent of checked/completed state. */
+    suspend fun deleteShopping(session: FamilySession, item: SyncShoppingItem) =
+        withContext(Dispatchers.IO) {
+            val id = UUID.fromString(item.id).toString()
             request(
                 "DELETE",
-                "/rest/v1/shopping_items?family_id=eq.${session.id}&checked=eq.true",
+                "/rest/v1/shopping_items?family_id=eq.${session.id}&id=eq.$id",
                 familyCode = session.code,
                 preferRepresentation = false,
             )
+        }
+
+    suspend fun renameShopping(session: FamilySession, item: SyncShoppingItem, newName: String) =
+        withContext(Dispatchers.IO) {
+            val cleaned = newName.trim()
+            require(cleaned.isNotBlank()) { "Varan måste ha ett namn." }
+            require(cleaned.length <= 250) { "Varunamnet är för långt." }
+            val id = UUID.fromString(item.id).toString()
+            request(
+                "PATCH",
+                "/rest/v1/shopping_items?family_id=eq.${session.id}&id=eq.$id",
+                JSONObject().put("name", cleaned)
+                    .put("updated_at", OffsetDateTime.now().toString()),
+                session.code,
+                preferRepresentation = false,
+            )
+        }
+
+    /**
+     * Undo individual deletion or clearing completed items, keeping their original
+     * UUIDs and checked states. Ignore duplicate IDs if another phone restored them.
+     */
+    suspend fun restoreShopping(session: FamilySession, deleted: List<SyncShoppingItem>) =
+        withContext(Dispatchers.IO) {
+            deleted.distinctBy { it.id }.chunked(40).forEach { batch ->
+                val rows = JSONArray()
+                batch.forEach { item ->
+                    rows.put(
+                        JSONObject()
+                            .put("id", UUID.fromString(item.id).toString())
+                            .put("family_id", session.id)
+                            .put("name", item.name)
+                            .put("checked", item.checked)
+                    )
+                }
+                request(
+                    "POST",
+                    "/rest/v1/shopping_items?on_conflict=id",
+                    rows,
+                    session.code,
+                    preferRepresentation = false,
+                    preferExtra = "resolution=ignore-duplicates",
+                )
+            }
         }
 
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> =

@@ -903,34 +903,92 @@ private fun SyncedApp(
                                             cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
                                     onBack = { selectedTab = 0 },
                                     onAdd = { name ->
-                                        scope.launch {
-                                            try {
+                                        try {
+                                            val existingDone = shopping.firstOrNull {
+                                                it.checked &&
+                                                    SmartShoppingCatalog.normalized(it.name) ==
+                                                    SmartShoppingCatalog.normalized(name)
+                                            }
+                                            if (existingDone != null) {
+                                                SupabaseSync.toggleShopping(session, existingDone)
+                                            } else {
                                                 SupabaseSync.addShopping(
                                                     session,
                                                     name,
                                                     appPrefs.getString("push_device_id", null),
                                                 )
-                                                refresh()
-                                                if (OfflineMutationQueue.pendingCount(session) > 0) {
-                                                    message = "Inköpet är sparat på telefonen och synkas när nätet fungerar."
-                                                }
-                                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                                                throw cancelled
-                                            } catch (failure: Exception) {
-                                                message = "Kunde inte lägga till inköpet: ${failure.message}"
                                             }
+                                            refresh()
+                                            if (OfflineMutationQueue.pendingCount(session) > 0) {
+                                                message = "Inköpet är sparat på telefonen och synkas när nätet fungerar."
+                                            }
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte lägga till varan: ${failure.message}"
+                                            false
                                         }
                                     },
                                     onToggle = { item ->
-                                        scope.launch {
+                                        try {
                                             SupabaseSync.toggleShopping(session, item)
                                             refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ändra varan: ${failure.message}"
+                                            false
                                         }
                                     },
-                                    onClear = {
-                                        scope.launch {
-                                            SupabaseSync.clearChecked(session)
+                                    onClear = { selected ->
+                                        try {
+                                            SupabaseSync.clearChecked(session, selected)
                                             refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ta bort klara varor: ${failure.message}"
+                                            refresh()
+                                            false
+                                        }
+                                    },
+                                    onDelete = { item ->
+                                        try {
+                                            SupabaseSync.deleteShopping(session, item)
+                                            refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ta bort varan: ${failure.message}"
+                                            false
+                                        }
+                                    },
+                                    onRename = { item, newName ->
+                                        try {
+                                            SupabaseSync.renameShopping(session, item, newName)
+                                            refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ändra namnet: ${failure.message}"
+                                            false
+                                        }
+                                    },
+                                    onRestore = { deleted ->
+                                        try {
+                                            SupabaseSync.restoreShopping(session, deleted)
+                                            refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ångra borttagningen: ${failure.message}"
+                                            false
                                         }
                                     },
                                 )
@@ -1347,9 +1405,12 @@ private fun ShoppingScreen(
     lightMode: Boolean = false,
     nordicDarkMode: Boolean = false,
     onBack: () -> Unit,
-    onAdd: (String) -> Unit,
-    onToggle: (SyncShoppingItem) -> Unit,
-    onClear: () -> Unit,
+    onAdd: suspend (String) -> Boolean,
+    onToggle: suspend (SyncShoppingItem) -> Boolean,
+    onClear: suspend (List<SyncShoppingItem>) -> Boolean,
+    onDelete: suspend (SyncShoppingItem) -> Boolean,
+    onRename: suspend (SyncShoppingItem, String) -> Boolean,
+    onRestore: suspend (List<SyncShoppingItem>) -> Boolean,
 ) {
     val themedSurfaceMode = lightMode || nordicDarkMode
     val context = LocalContext.current
@@ -1359,6 +1420,41 @@ private fun ShoppingScreen(
     var searchQuery by remember { mutableStateOf("") }
     var menuExpanded by remember { mutableStateOf(false) }
     var showClearConfirmation by remember { mutableStateOf(false) }
+    var completedExpanded by remember { mutableStateOf(true) }
+    var itemMenuId by remember { mutableStateOf<String?>(null) }
+    var editingItem by remember { mutableStateOf<SyncShoppingItem?>(null) }
+    var editingName by remember { mutableStateOf("") }
+    var deletingItem by remember { mutableStateOf<SyncShoppingItem?>(null) }
+    var busyIds by remember { mutableStateOf(setOf<String>()) }
+    var bulkBusy by remember { mutableStateOf(false) }
+    val shoppingScope = rememberCoroutineScope()
+    val shoppingSnackbar = remember { SnackbarHostState() }
+    val currentItems by rememberUpdatedState(items)
+
+    fun toggleWithUndo(item: SyncShoppingItem) {
+        if (item.id in busyIds) return
+        busyIds = busyIds + item.id
+        shoppingScope.launch {
+            try {
+                if (onToggle(item)) {
+                    busyIds = busyIds - item.id
+                    val result = shoppingSnackbar.showSnackbar(
+                        message = if (item.checked) item.name + " tillbaka i listan"
+                            else item.name + " markerad som klar",
+                        actionLabel = "Ångra",
+                        duration = SnackbarDuration.Long,
+                    )
+                    if (result == SnackbarResult.ActionPerformed &&
+                        currentItems.firstOrNull { it.id == item.id }?.checked == !item.checked
+                    ) {
+                        onToggle(item.copy(checked = !item.checked))
+                    }
+                }
+            } finally {
+                busyIds = busyIds - item.id
+            }
+        }
+    }
 
     val voiceLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -1751,7 +1847,7 @@ private fun ShoppingScreen(
                                     ReferenceShoppingCheck(
                                         checked = false,
                                         lightMode = themedSurfaceMode,
-                                        onClick = { onToggle(item) },
+                                        onClick = { toggleWithUndo(item) },
                                     )
                                     Spacer(Modifier.width(5.dp))
 
@@ -1789,16 +1885,38 @@ private fun ShoppingScreen(
                                     }
 
                                     Spacer(Modifier.width(6.dp))
-                                    IconButton(
-                                        onClick = { },
-                                        modifier = Modifier.size(24.dp),
-                                    ) {
-                                        Icon(
-                                            Icons.Default.MoreVert,
-                                            contentDescription = "Mer för ${item.name}",
-                                            tint = if (themedSurfaceMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .78f),
-                                            modifier = Modifier.size(17.dp),
-                                        )
+                                    Box {
+                                        IconButton(
+                                            onClick = { itemMenuId = item.id },
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Default.MoreVert,
+                                                contentDescription = "Ändra eller ta bort " + item.name,
+                                                tint = pageMuted,
+                                                modifier = Modifier.size(19.dp),
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = itemMenuId == item.id,
+                                            onDismissRequest = { itemMenuId = null },
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Ändra namn") },
+                                                onClick = {
+                                                    itemMenuId = null
+                                                    editingItem = item
+                                                    editingName = item.name
+                                                },
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Ta bort vara") },
+                                                onClick = {
+                                                    itemMenuId = null
+                                                    deletingItem = item
+                                                },
+                                            )
+                                        }
                                     }
                                 }
 
@@ -1818,29 +1936,166 @@ private fun ShoppingScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(18.dp),
-                            color = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else SettingsMatchedPalette.surface,
-                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
+                            color = softSurface,
+                            border = BorderStroke(1.dp, border),
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = cyan)
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "${checkedItems.size} klara",
-                                    modifier = Modifier.weight(1f),
-                                    color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .78f),
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                TextButton(onClick = { showClearConfirmation = true }) {
-                                    Text("Rensa", color = blue)
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .padding(start = 12.dp, end = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Row(
+                                        modifier = Modifier.weight(1f).clickable {
+                                            completedExpanded = !completedExpanded
+                                        },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = cyan,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Column {
+                                            Text(
+                                                "Klara · " + checkedItems.size,
+                                                color = pageText,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                            )
+                                            Text(
+                                                if (completedExpanded) "Bocka ur för att ångra"
+                                                else "Visa klara varor",
+                                                color = pageMuted,
+                                                fontSize = 10.sp,
+                                            )
+                                        }
+                                    }
+                                    TextButton(
+                                        enabled = !bulkBusy,
+                                        onClick = {
+                                            if (!bulkBusy) {
+                                                bulkBusy = true
+                                                shoppingScope.launch {
+                                                    try {
+                                                        var restored = 0
+                                                        checkedItems.forEach { item ->
+                                                            if (onToggle(item)) restored++
+                                                        }
+                                                        shoppingSnackbar.showSnackbar(
+                                                            "Återställda: " + restored +
+                                                                " av " + checkedItems.size,
+                                                        )
+                                                    } finally {
+                                                        bulkBusy = false
+                                                    }
+                                                }
+                                            }
+                                        },
+                                    ) {
+                                        Text("Ångra alla", color = blue, fontSize = 11.sp)
+                                    }
+                                    TextButton(
+                                        enabled = !bulkBusy,
+                                        onClick = { showClearConfirmation = true },
+                                    ) {
+                                        Text("Rensa", color = blue, fontSize = 11.sp)
+                                    }
+                                }
+                                if (completedExpanded) {
+                                    HorizontalDivider(color = border)
+                                    checkedItems.forEachIndexed { index, checked ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .heightIn(min = 56.dp)
+                                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            ReferenceShoppingCheck(
+                                                checked = true,
+                                                lightMode = themedSurfaceMode,
+                                                onClick = { toggleWithUndo(checked) },
+                                            )
+                                            Spacer(Modifier.width(9.dp))
+                                            ShoppingProductPicture(
+                                                name = checked.name,
+                                                modifier = Modifier.size(39.dp),
+                                                loadPhoto = false,
+                                            )
+                                            Spacer(Modifier.width(9.dp))
+                                            Text(
+                                                checked.name,
+                                                modifier = Modifier.weight(1f),
+                                                color = pageMuted,
+                                                fontSize = 13.sp,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                                textDecoration =
+                                                    androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                                            )
+                                            Box {
+                                                IconButton(
+                                                    onClick = { itemMenuId = checked.id },
+                                                    modifier = Modifier.size(32.dp),
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.MoreVert,
+                                                        contentDescription = "Ändra eller ta bort " + checked.name,
+                                                        tint = pageMuted,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
+                                                }
+                                                DropdownMenu(
+                                                    expanded = itemMenuId == checked.id,
+                                                    onDismissRequest = { itemMenuId = null },
+                                                ) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("Ångra avbockning") },
+                                                        onClick = {
+                                                            itemMenuId = null
+                                                            toggleWithUndo(checked)
+                                                        },
+                                                    )
+                                                    DropdownMenuItem(
+                                                        text = { Text("Ändra namn") },
+                                                        onClick = {
+                                                            itemMenuId = null
+                                                            editingItem = checked
+                                                            editingName = checked.name
+                                                        },
+                                                    )
+                                                    DropdownMenuItem(
+                                                        text = { Text("Ta bort vara") },
+                                                        onClick = {
+                                                            itemMenuId = null
+                                                            deletingItem = checked
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        if (index != checkedItems.lastIndex) {
+                                            HorizontalDivider(
+                                                Modifier.padding(start = 50.dp),
+                                                color = border,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+
+            SnackbarHost(
+                hostState = shoppingSnackbar,
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 90.dp),
+            )
 
             if (typedName.isNotBlank()) {
                 Surface(
@@ -1953,14 +2208,28 @@ private fun ShoppingScreen(
                             val namesAlreadyPresent = openItems
                                 .map { SmartShoppingCatalog.normalized(it.name) }
                                 .toMutableSet()
-                            text
-                                .split(',', ';', '\n')
+                            val newNames = text.split(',', ';', '\n')
                                 .map { it.trim() }
                                 .filter { it.isNotBlank() }
                                 .filter { namesAlreadyPresent.add(SmartShoppingCatalog.normalized(it)) }
-                                .forEach(onAdd)
-                            text = ""
-                            previewPhotoName = null
+                            if (newNames.isEmpty()) {
+                                shoppingScope.launch {
+                                    shoppingSnackbar.showSnackbar("Varan finns redan på listan")
+                                }
+                            } else {
+                                shoppingScope.launch {
+                                    val failed = mutableListOf<String>()
+                                    newNames.forEach { name ->
+                                        if (!onAdd(name)) failed.add(name)
+                                    }
+                                    text = failed.joinToString(", ")
+                                    previewPhotoName = null
+                                    shoppingSnackbar.showSnackbar(
+                                        if (failed.isEmpty()) "Varor tillagda: " + newNames.size
+                                        else "Kunde inte lägga till " + failed.size + " varor",
+                                    )
+                                }
+                            }
                         },
                         enabled = text.isNotBlank(),
                         modifier = Modifier.size(50.dp),
@@ -2034,17 +2303,31 @@ private fun ShoppingScreen(
     if (showClearConfirmation) {
         AlertDialog(
             onDismissRequest = { showClearConfirmation = false },
-            title = { Text("Rensa bockade?") },
+            title = { Text("Ta bort klara varor?") },
             text = {
                 Text(
-                    "${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan."
+                    "Du tar bort " + checkedItems.size +
+                        " klara varor från familjens inköpslista. " +
+                        "Du kan ångra borttagningen direkt efteråt."
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showClearConfirmation = false
-                        onClear()
+                        val snapshot = checkedItems.toList()
+                        shoppingScope.launch {
+                            if (onClear(snapshot)) {
+                                val result = shoppingSnackbar.showSnackbar(
+                                    snapshot.size.toString() + " klara varor borttagna",
+                                    actionLabel = "Ångra",
+                                    duration = SnackbarDuration.Long,
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    onRestore(snapshot)
+                                }
+                            }
+                        }
                     }
                 ) {
                     Text("Ta bort")
@@ -2052,8 +2335,75 @@ private fun ShoppingScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmation = false }) {
-                    Text("Avbryt")
+                    Text("Behåll")
                 }
+            },
+        )
+    }
+
+    deletingItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { deletingItem = null },
+            title = { Text("Ta bort vara?") },
+            text = { Text("Ta bort ”" + item.name + "” från inköpslistan?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deletingItem = null
+                    shoppingScope.launch {
+                        if (onDelete(item)) {
+                            val result = shoppingSnackbar.showSnackbar(
+                                item.name + " borttagen",
+                                actionLabel = "Ångra",
+                                duration = SnackbarDuration.Long,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                onRestore(listOf(item))
+                            }
+                        }
+                    }
+                }) {
+                    Text("Ta bort")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingItem = null }) { Text("Avbryt") }
+            },
+        )
+    }
+
+    editingItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { editingItem = null },
+            title = { Text("Ändra vara") },
+            text = {
+                OutlinedTextField(
+                    value = editingName,
+                    onValueChange = { editingName = it },
+                    label = { Text("Varunamn") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = editingName.isNotBlank(),
+                    onClick = {
+                        val renamed = editingName.trim()
+                        editingItem = null
+                        shoppingScope.launch {
+                            if (renamed != item.name) {
+                                if (onRename(item, renamed)) {
+                                    shoppingSnackbar.showSnackbar("Varan uppdaterad")
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Spara")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingItem = null }) { Text("Avbryt") }
             },
         )
     }
