@@ -44,7 +44,8 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="10sp"
                 android:textStyle="bold"
-                android:maxLines="1" />
+                android:maxLines="1"
+        android:includeFontPadding="false" />
 
             <TextView
                 android:id="@+id/widget_badge_number"
@@ -55,7 +56,8 @@
                 android:textColor="#FF19191D"
                 android:textSize="22sp"
                 android:textStyle="bold"
-                android:maxLines="1" />
+                android:maxLines="1"
+        android:includeFontPadding="false" />
         </LinearLayout>
 
         <LinearLayout
@@ -72,7 +74,9 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:maxLines="2" />
+                android:maxLines="2"
+        android:gravity="center_vertical"
+        android:includeFontPadding="false" />
 
             <TextView
                 android:id="@+id/widget_status"
@@ -81,7 +85,9 @@
                 android:layout_marginTop="2dp"
                 android:textColor="#D8FFFFFF"
                 android:textSize="12sp"
-                android:maxLines="2" />
+                android:maxLines="2"
+        android:gravity="center_vertical"
+        android:includeFontPadding="false" />
             <TextView
                 android:id="@+id/widget_warning"
                 android:layout_width="match_parent"
@@ -103,7 +109,8 @@
             android:textColor="#FFFFFFFF"
             android:textSize="27sp"
             android:textStyle="bold"
-            android:contentDescription="Lägg till i familjekalendern" />
+            android:contentDescription="Lägg till i familjekalendern"
+        android:includeFontPadding="false" />
 
         <TextView
             android:id="@+id/widget_refresh"
@@ -116,7 +123,8 @@
             android:textColor="#FFFFFFFF"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:contentDescription="Uppdatera" />
+            android:contentDescription="Uppdatera"
+        android:includeFontPadding="false" />
     </LinearLayout>
 
     <LinearLayout
@@ -131,14 +139,16 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:gravity="center_vertical"
-            android:paddingLeft="13dp"
-            android:paddingRight="12dp"
+            android:gravity="center"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:background="@drawable/widget_action_green"
             android:textColor="#FFFFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:maxLines="1" />
+            android:maxLines="1"
+        android:textAlignment="center"
+        android:includeFontPadding="false" />
 
         <TextView
             android:layout_width="8dp"
@@ -150,14 +160,16 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:gravity="center_vertical"
-            android:paddingLeft="13dp"
-            android:paddingRight="12dp"
+            android:gravity="center"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:background="@drawable/widget_action_blue"
             android:textColor="#FFFFFFFF"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:maxLines="1" />
+            android:maxLines="1"
+        android:textAlignment="center"
+        android:includeFontPadding="false" />
     </LinearLayout>
 
     <TextView
@@ -230,7 +242,9 @@
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:includeFontPadding="false" />
 
             <TextView
                 android:id="@+id/widget_week_reminders_week"
@@ -245,7 +259,8 @@
                 android:textColor="#FFF0CEA0"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:maxLines="1" />
+                android:maxLines="1"
+        android:includeFontPadding="false" />
         </LinearLayout>
 
         <TextView
