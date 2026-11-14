@@ -414,7 +414,9 @@ internal object WidgetThemeColors {
             badgeNumber = style.badgeNumber ?: R.drawable.widget_date_badge_bottom,
             todo = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_green else control,
             shopping = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_blue else control,
-            refresh = if (premium != null) quickAddResource(style.skin) else control,
+            refresh = if (premium != null) quickAddResource(style.skin)
+                else if (style.skin == Skin.CLASSIC) R.drawable.widget_add_gloss
+                else control,
             row = if (style.skin == Skin.CARBON_RED)
                 R.drawable.widget_carbon_red_flat_event
                 else style.row ?: R.drawable.widget_event_row_bg,
@@ -513,7 +515,7 @@ internal object WidgetThemeColors {
             // Reverting to either approved legacy theme must be lossless.
             views.setViewVisibility(R.id.widget_premium_art, android.view.View.GONE)
             views.setInt(R.id.widget_quick_add, "setBackgroundResource",
-                android.R.color.transparent)
+                R.drawable.widget_add_gloss)
             views.setViewVisibility(R.id.widget_refresh, android.view.View.VISIBLE)
             views.setViewVisibility(R.id.widget_section_separator, android.view.View.VISIBLE)
             views.setTextColor(R.id.widget_week_reminders_title, 0xFFF2F5FA.toInt())
