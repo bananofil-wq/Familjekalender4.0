@@ -57,6 +57,16 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     var pickerOpen by remember { mutableStateOf(false) }
     var detailsExpanded by remember { mutableStateOf(false) }
 
+    // A thumbnail changes the actual Android home-screen widget immediately.
+    // Previously this only set previewChoice; the widget stayed unchanged
+    // unless users found a separate confirmation at the bottom of the dialog.
+    fun applyWidgetChoice(choice: String) {
+        WidgetThemeColors.saveChoice(context, choice)
+        previewChoice = choice
+        activeChoice = choice
+        FamilyCalendarWidget.refreshTheme(context)
+    }
+
     // Only seven choices. Existing "Nuvarande" is the protected original widget.
     val options = listOf(
         WidgetThemeOption(WidgetThemeColors.ORIGINAL, "Nuvarande"),
@@ -172,8 +182,8 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     }
 
     if (pickerOpen) {
-        // Full-screen chooser stays in Settings. Tapping a thumbnail ONLY previews;
-        // it never saves the theme until the user presses Apply.
+        // Full-screen chooser stays in Settings. Tapping any thumbnail
+        // applies the chosen theme without an extra confirmation step.
         Dialog(
             onDismissRequest = { pickerOpen = false },
             properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -196,7 +206,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                         Column(Modifier.weight(1f)) {
                             Text("Widgettema", fontSize = 23.sp,
                                 fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("Förhandsvisa och byt widget direkt här.",
+                            Text("Tryck på en bild för att byta tema direkt.",
                                 color = Color(0xFFD6D8DF), fontSize = 12.sp)
                         }
                     }
@@ -214,7 +224,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                 Modifier.fillMaxWidth().padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                Text("Förhandsvisning", color = Color.White,
+                                Text("Valt widgettema", color = Color.White,
                                     fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     "Så ser den valda widgetens material och detaljer ut.",
@@ -237,7 +247,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                             Column(Modifier.fillMaxWidth().padding(12.dp)) {
                                 Text("Välj tema", color = Color.White, fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold)
-                                Text("Tryck på en bild för att se temat ovanför.",
+                                Text("Tryck på en bild – temat aktiveras direkt.",
                                     color = Color(0xFFD5D7DE), fontSize = 12.sp)
                                 Spacer(Modifier.height(12.dp))
                                 options.chunked(3).forEach { pair ->
@@ -249,7 +259,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                                 previewChoice == CleanVisualTheme.CURRENT.name)
                                             Column(
                                                 modifier = Modifier.weight(1f)
-                                                    .clickable { previewChoice = option.value },
+                                                    .clickable { applyWidgetChoice(option.value) },
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                             ) {
                                                 Box(Modifier.fillMaxWidth().height(146.dp)
@@ -260,7 +270,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                                     if (chosen) {
                                                         Icon(
                                                             Icons.Default.CheckCircle,
-                                                            contentDescription = "Förhandsvalt",
+                                                            contentDescription = "Aktivt widgettema",
                                                             tint = Color(0xFFE9C68B),
                                                             modifier = Modifier.align(Alignment.TopEnd)
                                                                 .padding(3.dp).size(18.dp),
@@ -303,12 +313,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                 fontWeight = FontWeight.Bold)
                         }
                         Button(
-                            onClick = {
-                                WidgetThemeColors.saveChoice(context, previewChoice)
-                                FamilyCalendarWidget.refreshTheme(context)
-                                activeChoice = previewChoice
-                                pickerOpen = false
-                            },
+                            onClick = { pickerOpen = false },
                             modifier = Modifier.weight(2.7f).height(52.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFE7BE83),
@@ -316,7 +321,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                             ),
                             shape = RoundedCornerShape(16.dp),
                         ) {
-                            Text("Använd detta widgettema",
+                            Text("Klar – temat är aktiverat",
                                 fontSize = 13.sp, fontWeight = FontWeight.Bold,
                                 maxLines = 1)
                         }

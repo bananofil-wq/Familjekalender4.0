@@ -159,7 +159,15 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                     ?: org.json.JSONObject()
                 values.put(key, label)
                 prefs.edit().putString(cachedSummaryPrefKey(widgetId), values.toString()).apply()
-                val views = RemoteViews(context.packageName, R.layout.widget_family_calendar)
+                // A partial RemoteViews update MUST use the layout currently
+                // installed for that widget. Publishing counters with the old
+                // classic layout against a premium widget could invalidate
+                // touch targets and leave the selected skin visually stale.
+                val layoutId = if (WidgetThemeColors.premiumLook(
+                        WidgetThemeColors.savedChoice(context)
+                    ) != null) R.layout.widget_family_calendar_premium
+                    else R.layout.widget_family_calendar
+                val views = RemoteViews(context.packageName, layoutId)
                 views.setTextViewText(viewId, label)
                 manager.partiallyUpdateAppWidget(widgetId, views)
             }
@@ -265,13 +273,19 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 }
             views.setRemoteAdapter(R.id.widget_event_list, serviceIntent)
 
+            // Collection items need BOTH a mutable activity PendingIntent
+            // template and an item-level fill-in Intent. The old broadcast
+            // template was never filled in, so tapping an agenda row did nothing.
+            // Explicit activity intents navigate correctly from Pixel Launcher.
             val templateIntent =
-                Intent(context, FamilyCalendarWidget::class.java).apply {
-                    action = ACTION_ITEM
-                    data = Uri.parse("familjekalender://widget/item/$appWidgetId")
+                Intent(context, MainActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    data = Uri.parse("familjekalender://widget/event/$appWidgetId")
+                    putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
             val templatePending =
-                PendingIntent.getBroadcast(
+                PendingIntent.getActivity(
                     context,
                     40_000 + appWidgetId,
                     templateIntent,
