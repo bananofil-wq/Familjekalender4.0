@@ -31,8 +31,9 @@
         android:textStyle="bold"
         android:textSize="11sp"
         android:maxLines="1"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -52,8 +53,9 @@
         android:maxLines="2"
         android:textColor="#FFF1ECE4"
         android:textSize="11sp"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 
     <TextView
         android:id="@+id/widget_reminder_time"
@@ -64,6 +66,7 @@
         android:textSize="10sp"
         android:maxLines="1"
         android:visibility="gone"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 </LinearLayout>
