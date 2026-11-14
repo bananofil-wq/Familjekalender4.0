@@ -1,29 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Embossed sapphire shortcut with subdued cyan glow. -->
+<!-- Raised sapphire: drop shadow instead of broad glossy reflection. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="4dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#B4000917"/><corners android:radius="25dp"/>
-        </shape>
-    </item>
-    <item android:top="1dp" android:bottom="2dp">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#F039688B"
-                android:centerColor="#F01D405B" android:endColor="#FB101E33"/>
-            <corners android:radius="25dp"/>
-            <stroke android:width="1.3dp" android:color="#DA87D8FF"/>
-        </shape>
-    </item>
-    <item android:left="3dp" android:right="3dp" android:top="2dp"
-        android:height="18dp" android:gravity="top">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#68E5F6FF"
-                android:endColor="#00C9EEFF"/>
-            <corners android:topLeftRadius="23dp" android:topRightRadius="23dp"/>
-        </shape>
-    </item>
-    <item android:left="8dp" android:right="8dp" android:bottom="4dp"
-        android:height="1dp" android:gravity="bottom">
-        <shape android:shape="rectangle"><solid android:color="#4D91DFFF"/></shape>
-    </item>
+ <item android:top="7dp"><shape android:shape="rectangle">
+  <solid android:color="#DB020D1A"/><corners android:radius="25dp"/></shape></item>
+ <item android:left="1dp" android:right="1dp" android:top="4dp" android:bottom="2dp">
+  <shape android:shape="rectangle"><solid android:color="#AA123D5C"/><corners android:radius="24dp"/></shape></item>
+ <item android:bottom="6dp">
+  <shape android:shape="rectangle">
+   <gradient android:angle="270" android:startColor="#F1295876"
+    android:centerColor="#F0153B56" android:endColor="#FF0B243A"/>
+   <corners android:radius="24dp"/>
+   <stroke android:width="1.2dp" android:color="#DB5CA8D7"/>
+  </shape>
+ </item>
+ <item android:left="4dp" android:right="4dp" android:top="2dp" android:height="8dp" android:gravity="top">
+  <shape android:shape="rectangle">
+   <gradient android:angle="270" android:startColor="#2EC6E7FA" android:endColor="#00C6E7FA"/>
+   <corners android:topLeftRadius="21dp" android:topRightRadius="21dp"/>
+  </shape>
+ </item>
 </layer-list>
