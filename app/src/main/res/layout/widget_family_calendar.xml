@@ -75,8 +75,9 @@
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:maxLines="2"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 
             <TextView
                 android:id="@+id/widget_status"
@@ -86,8 +87,9 @@
                 android:textColor="#D8FFFFFF"
                 android:textSize="12sp"
                 android:maxLines="2"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
             <TextView
                 android:id="@+id/widget_warning"
                 android:layout_width="match_parent"
@@ -243,8 +245,9 @@
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 
             <TextView
                 android:id="@+id/widget_week_reminders_week"
@@ -260,7 +263,8 @@
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:maxLines="1"
-        android:includeFontPadding="false" />
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
         </LinearLayout>
 
         <TextView
@@ -328,7 +332,9 @@
             android:textSize="10sp"
             android:textStyle="bold"
             android:visibility="gone"
-            android:maxLines="1" />
+            android:maxLines="1"
+        android:gravity="center"
+        android:textAlignment="center" />
     </LinearLayout>
 
 
