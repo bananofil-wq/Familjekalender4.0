@@ -394,7 +394,7 @@ internal object WidgetThemeColors {
         val rem = when (premium?.skin) {
             Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
             Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
+            Skin.CARBON_RED -> R.drawable.widget_carbon_red_flat_reminder
             Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
             Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
@@ -402,7 +402,7 @@ internal object WidgetThemeColors {
         val remRow = when (premium?.skin) {
             Skin.FOREST_WOOD -> R.drawable.widget_clean_forest_wood_reminder_row
             Skin.OBSIDIAN -> R.drawable.widget_clean_obsidian_reminder_row
-            Skin.CARBON_RED -> R.drawable.widget_clean_carbon_red_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_carbon_red_flat_reminder_row
             Skin.MIST_FOREST -> R.drawable.widget_clean_mist_forest_reminder_row
             Skin.NORDIC_DUSK -> R.drawable.widget_clean_nordic_dusk_reminder_row
             else -> R.drawable.widget_reminder_line_bg
@@ -550,7 +550,7 @@ internal object WidgetThemeColors {
             views.setTextColor(R.id.widget_shopping, 0xFFFFFFFF.toInt())
         } else {
             // All three controls get the same bespoke material as the selected theme.
-            val control = controlResource(style.skin)
+            val control = if (style.skin == Skin.CARBON_RED) R.drawable.widget_carbon_red_flat_control else controlResource(style.skin)
             views.setInt(R.id.widget_todo, "setBackgroundResource", control)
             views.setInt(R.id.widget_shopping, "setBackgroundResource", control)
             views.setInt(R.id.widget_refresh, "setBackgroundResource", control)
@@ -566,7 +566,7 @@ internal object WidgetThemeColors {
         val reminderBackground = when (premium?.skin) {
             Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
             Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
+            Skin.CARBON_RED -> R.drawable.widget_carbon_red_flat_reminder
             Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
             Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
@@ -574,7 +574,7 @@ internal object WidgetThemeColors {
         val reminderRow = when (premium?.skin) {
             Skin.FOREST_WOOD -> R.drawable.widget_clean_forest_wood_reminder_row
             Skin.OBSIDIAN -> R.drawable.widget_clean_obsidian_reminder_row
-            Skin.CARBON_RED -> R.drawable.widget_clean_carbon_red_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_carbon_red_flat_reminder_row
             Skin.MIST_FOREST -> R.drawable.widget_clean_mist_forest_reminder_row
             Skin.NORDIC_DUSK -> R.drawable.widget_clean_nordic_dusk_reminder_row
             else -> R.drawable.widget_reminder_line_bg
