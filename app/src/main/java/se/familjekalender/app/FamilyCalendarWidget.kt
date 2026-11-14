@@ -701,16 +701,22 @@ class FamilyCalendarWidget : AppWidgetProvider() {
          * Restyle existing widgets WITHOUT rebuilding their RemoteViews or blanking their
          * To-Do/shopping counts, date status and pending click intents.
          */
-        fun refreshTheme(context: Context) {
+        /**
+         * Force a full host-side widget replacement after theme selection.
+         * Return the actual number of installed widgets refreshed, rather than
+         * silently reporting success when no widget is installed.
+         */
+        fun refreshTheme(context: Context): Int {
             val manager = AppWidgetManager.getInstance(context)
             val component = ComponentName(context, FamilyCalendarWidget::class.java)
-            manager.getAppWidgetIds(component).forEach { appWidgetId ->
-                // The premium layout has different geometry and view IDs.
-                // Rebuild from the cache instead of applying the classic layout
-                // as an incompatible partial update.
+            val widgetIds = manager.getAppWidgetIds(component)
+            widgetIds.forEach { appWidgetId ->
+                // Rebuild the complete RemoteViews: a partial update cannot
+                // safely change between classic and premium layout IDs.
                 manager.updateAppWidget(appWidgetId, baseViews(context, appWidgetId))
                 manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
             }
+            return widgetIds.size
         }
 
         fun refreshFromCache(context: Context) = refreshAllWidgetsFromCache(context)
