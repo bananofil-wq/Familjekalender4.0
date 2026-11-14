@@ -209,7 +209,7 @@
             android:visibility="gone">
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="32dp"
+                android:layout_height="42dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:paddingLeft="6dp"
@@ -229,7 +229,7 @@
                     android:layout_weight="1"
                     android:text="Veckans påminnelser"
                     android:textColor="#FFFFFFFF"
-                    android:textSize="16sp"
+                    android:textSize="17sp"
                     android:textStyle="bold"
                     android:maxLines="1"
                     android:ellipsize="end" />
@@ -253,22 +253,26 @@
                 android:id="@+id/widget_week_reminder_empty"
                 style="@style/WidgetWeekReminderText"
                 android:textSize="14sp"
+                android:minHeight="44dp"
                 android:text="Inga påminnelser denna vecka"
                 android:visibility="gone" />
             <TextView
                 android:id="@+id/widget_week_reminder_1"
                 style="@style/WidgetWeekReminderText"
                 android:textSize="14sp"
+                android:minHeight="44dp"
                 android:visibility="gone" />
             <TextView
                 android:id="@+id/widget_week_reminder_2"
                 style="@style/WidgetWeekReminderText"
                 android:textSize="14sp"
+                android:minHeight="44dp"
                 android:visibility="gone" />
             <TextView
                 android:id="@+id/widget_week_reminder_3"
                 style="@style/WidgetWeekReminderText"
                 android:textSize="14sp"
+                android:minHeight="44dp"
                 android:visibility="gone" />
             <TextView
                 android:id="@+id/widget_week_reminder_more"
