@@ -1,11 +1,13 @@
 package se.familjekalender.app
 
 /**
- * Source-faithful widget images cropped from the approved reference.
- * Preview images are exactly the reference artwork; material images have
- * the sample labels removed and can sit beneath live RemoteViews.
+ * Five premium visual skins based on the approved material references.
+ * The drawable labelled "material" contains only an empty surface:
+ * no sample labels, controls, events or fake reminder frames.
  *
- * This never changes the existing "Nuvarande" or "Trä" themes.
+ * The theme chooser and the actual RemoteViews use the same clean material,
+ * combined with live text and independent clickable component drawables.
+ * The original "Nuvarande" and "Trä" widgets are unchanged.
  */
 internal object WidgetReferenceImages {
     fun image(skin: WidgetThemeColors.Skin, part: String): Int? = when (skin) {

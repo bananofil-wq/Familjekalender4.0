@@ -43,24 +43,6 @@ private class WidgetSampleView(context: Context) : View(context) {
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
 
-        // Premium themes: show the approved screenshot, not a hand-drawn
-        // approximation. Fit to device proportions without distortion.
-        WidgetReferenceImages.previewResource(themeChoice)?.let { res ->
-            val drawable = graphicCache.getOrPut(res) {
-                context.getDrawable(res)?.mutate() ?: return
-            }
-            val iw = drawable.intrinsicWidth.coerceAtLeast(1).toFloat()
-            val ih = drawable.intrinsicHeight.coerceAtLeast(1).toFloat()
-            val scaleFactor = minOf(width.toFloat() / iw, height.toFloat() / ih)
-            val dw = iw * scaleFactor
-            val dh = ih * scaleFactor
-            val left = ((width - dw) / 2f).toInt()
-            val top = ((height - dh) / 2f).toInt()
-            drawable.setBounds(left, top, left + dw.toInt(), top + dh.toInt())
-            drawable.draw(canvas)
-            return
-        }
-
         val palette = WidgetThemeColors.previewPalette(themeChoice)
         val artwork = WidgetThemeColors.previewMaterials(themeChoice)
         val scale = minOf(width / 360f, height / 510f)
@@ -93,13 +75,10 @@ private class WidgetSampleView(context: Context) : View(context) {
         }
 
         // Same background, badge, action, row and reminder resources as real widgets.
-        val referenceMaterial = WidgetReferenceArtwork.bitmap(themeChoice)
-        if (referenceMaterial != null) {
-            canvas.drawBitmap(referenceMaterial, null,
-                android.graphics.RectF(0f, 0f, 360f, 510f), fill)
-        } else {
-            bg(artwork.background, 0, 0, 360, 510)
-        }
+        // Preview the same clean material and component drawables as the
+        // installed widget. Never preview a flattened image with baked text.
+        val material = WidgetReferenceImages.image(palette.skin, "material")
+        bg(material ?: artwork.background, 0, 0, 360, 510)
         bg(artwork.badgeDay, 15, 18, 72, 49)
         bg(artwork.badgeNumber, 15, 49, 72, 90)
         label("FRE", 28f, 40f, 15f, palette.dayInk, true)
