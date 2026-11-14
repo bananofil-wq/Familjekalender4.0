@@ -390,11 +390,11 @@ internal object WidgetThemeColors {
         val control = if (style.skin == Skin.CLASSIC) R.drawable.widget_refresh_bg
             else controlResource(style.skin)
         val rem = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder
-            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder
-            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder
-            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder
+            Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
         }
         val remRow = when (premium?.skin) {
@@ -558,11 +558,11 @@ internal object WidgetThemeColors {
         // All new skins theme their reminder card too; switching back restores
         // the exact established Nuvarande/Trä reminder resources.
         val reminderBackground = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder
-            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder
-            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder
-            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder
+            Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
         }
         val reminderRow = when (premium?.skin) {
