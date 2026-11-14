@@ -134,7 +134,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                         R.layout.widget_event_header_premium else R.layout.widget_event_header).apply {
                         setTextViewText(R.id.widget_list_header, item.text)
                         // Header navigates to the calendar; it is never decorative.
-                        setOnClickFillInIntent(R.id.widget_list_header, Intent().apply {
+                        setOnClickFillInIntent(R.id.widget_list_header_root, Intent().apply {
                             putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
                         })
                         WidgetThemeColors.applyHeader(context, this)
@@ -185,6 +185,12 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                 is Item.Reminder ->
                     RemoteViews(context.packageName, R.layout.widget_reminder_item).apply {
                         val event = item.event
+                        setOnClickFillInIntent(R.id.widget_reminder_root, Intent().apply {
+                            putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
+                            if (event.eventId.isNotBlank()) {
+                                putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, event.eventId)
+                            }
+                        })
                         val clean = event.activity.trimStart()
                             .removePrefix("🔔").trimStart()
                         val who = event.who.takeIf { it.isNotBlank() && it != "Alla" }
