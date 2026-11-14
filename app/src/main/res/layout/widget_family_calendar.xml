@@ -237,10 +237,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
-                android:background="@drawable/widget_reminder_week_badge"
+                android:background="@android:color/transparent"
+                android:gravity="center"
+                android:paddingLeft="1dp"
+                android:paddingRight="1dp"
                 android:text="V46"
                 android:textColor="#FFF0CEA0"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:maxLines="1" />
         </LinearLayout>
