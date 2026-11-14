@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original photo-based surface, but WITHOUT the sample names, dates or
+     clipped 00/V46 left in the first set of reference crops. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/widget_photo_obsidian_row" />
+    <item android:left="11dp" android:gravity="left|center_vertical">
+        <shape android:shape="rectangle">
+            <size android:width="4dp" android:height="21dp" />
+            <solid android:color="#C4A377" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+</layer-list>
