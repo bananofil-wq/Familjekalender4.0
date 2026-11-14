@@ -1987,13 +1987,13 @@ private fun ShoppingHeaderButton(
         color =
             if (active) accent.copy(alpha = .18f)
             else if (lightMode) MaterialTheme.colorScheme.surfaceVariant
-            else Color(0xAA173652),
+            else SettingsMatchedPalette.surface,
         border =
             BorderStroke(
                 1.dp,
                 if (active) accent.copy(alpha = .62f)
                 else if (lightMode) MaterialTheme.colorScheme.outlineVariant
-                else Color.White.copy(alpha = .10f),
+                else SettingsMatchedPalette.border,
             ),
         modifier = Modifier.size(39.dp).clickable(onClick = onClick),
     ) {
@@ -2004,7 +2004,7 @@ private fun ShoppingHeaderButton(
                 tint =
                     if (active) accent
                     else if (lightMode) MaterialTheme.colorScheme.onSurface
-                    else Color.White.copy(alpha = .82f),
+                    else SettingsMatchedPalette.subText,
                 modifier = Modifier.size(19.dp),
             )
         }
@@ -2115,13 +2115,13 @@ private fun PremiumShoppingAction(
         modifier = modifier.height(52.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color =
-            if (selected) Color(0xFF68B8FF).copy(alpha = .20f)
-            else Color(0xB2183453),
+            if (selected) SettingsMatchedPalette.accent.copy(alpha = .20f)
+            else SettingsMatchedPalette.surface,
         border =
             androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (selected) Color(0xFF68B8FF).copy(alpha = .72f)
-                else Color.White.copy(alpha = .10f),
+                if (selected) SettingsMatchedPalette.accent.copy(alpha = .72f)
+                else SettingsMatchedPalette.border,
             ),
     ) {
         Row(
@@ -2129,7 +2129,7 @@ private fun PremiumShoppingAction(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            Text(icon, color = Color(0xFF75E8F2), fontSize = 16.sp)
+            Text(icon, color = SettingsMatchedPalette.accent, fontSize = 16.sp)
             Spacer(Modifier.width(6.dp))
             Text(
                 label,
