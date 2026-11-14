@@ -13,7 +13,9 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -335,9 +337,13 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            colors = CardDefaults.cardColors(containerColor = SettingsMatchedPalette.surface),
+            border = BorderStroke(1.dp, SettingsMatchedPalette.border),
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                Modifier.fillMaxWidth().settingsMatchedFill().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "Platsdelning",
@@ -546,10 +552,11 @@ fun FamilyLocationScreen(session: FamilySession, members: List<SyncMember>) {
         if (places.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { showAddPlace = true },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                colors = CardDefaults.cardColors(containerColor = SettingsMatchedPalette.surface),
                 shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, SettingsMatchedPalette.border),
             ) {
-                Column(Modifier.padding(18.dp)) {
+                Column(Modifier.fillMaxWidth().settingsMatchedFill(18.dp).padding(18.dp)) {
                     Text("Inga destinationer ännu", fontWeight = FontWeight.Bold)
                     Text(
                         "Lägg till till exempel Hemma, Skola eller Jobb för ankomst- och avresenotiser.",
@@ -711,7 +718,15 @@ private fun LocationMemberStrip(
             ) {
                 Box(
                     modifier =
-                        Modifier.size(50.dp).clip(CircleShape).background(Color(member.colorArgb)),
+                        Modifier.size(50.dp).clip(CircleShape)
+                            .background(Color(member.colorArgb))
+                            .border(
+                                2.dp,
+                                if (selectedMemberId == member.id)
+                                    SettingsMatchedPalette.expandedBorder
+                                else SettingsMatchedPalette.border,
+                                CircleShape,
+                            ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(
@@ -758,7 +773,8 @@ internal fun LocationMapCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = SettingsMatchedPalette.surface),
+        border = BorderStroke(1.dp, SettingsMatchedPalette.border),
     ) {
         Box(Modifier.fillMaxWidth().height(mapHeight)) {
             AndroidView(
@@ -922,27 +938,22 @@ private fun LocationQuickAction(
     Column(
         modifier =
             modifier
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(18.dp))
+                .background(SettingsMatchedPalette.cardGradient())
+                .border(1.dp, SettingsMatchedPalette.border, RoundedCornerShape(18.dp))
                 .clickable(onClick = onClick)
                 .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(icon, contentDescription = text, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(5.dp))
-        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        SettingsMatchedIconTile(icon)
+        Spacer(Modifier.height(7.dp))
+        Text(text, color = SettingsMatchedPalette.subText, fontSize = 12.sp)
     }
 }
 
 @Composable
 private fun LocationIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.padding(9.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-    }
+    SettingsMatchedIconTile(icon)
 }
 
 @Composable
@@ -980,9 +991,13 @@ private fun DestinationCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = SettingsMatchedPalette.surface),
+        border = BorderStroke(1.dp, SettingsMatchedPalette.border),
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            Modifier.fillMaxWidth().settingsMatchedFill(18.dp).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LocationIcon(Icons.Default.Place)
                 Spacer(Modifier.width(12.dp))
