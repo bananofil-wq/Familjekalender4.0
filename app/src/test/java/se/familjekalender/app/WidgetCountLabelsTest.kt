@@ -19,6 +19,13 @@ class WidgetCountLabelsTest {
         assertEquals(1, widgetOpenTodoCount(items))
     }
 
+    @Test fun `premium shortcut labels keep live counts but not platform emoji`() {
+        assertEquals("4 inköp    ›", widgetPremiumShortcutLabel(widgetShoppingLabel(4)))
+        assertEquals("1 To-Do    ›", widgetPremiumShortcutLabel(widgetTodoLabel(1)))
+        assertEquals("0 inköp    ›", widgetPremiumShortcutLabel(widgetShoppingLabel(0)))
+        assertEquals("Redan formaterad", widgetPremiumShortcutLabel("Redan formaterad"))
+    }
+
     @Test fun `shopping count also excludes checked items`() {
         val items = listOf(
             SyncShoppingItem("a", "Mjölk", true),
