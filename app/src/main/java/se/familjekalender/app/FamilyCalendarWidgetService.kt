@@ -120,15 +120,22 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             if (position !in items.indices) {
                 return RemoteViews(context.packageName, R.layout.widget_event_item)
             }
+            // All five photographic widget skins use the same larger, precise
+            // content geometry. Existing Nuvarande/Trä rows remain untouched.
+            val premium = WidgetThemeColors.premiumLook(
+                WidgetThemeColors.savedChoice(context)
+            ) != null
             return when (val item = items[position]) {
                 is Item.Header ->
-                    RemoteViews(context.packageName, R.layout.widget_event_header).apply {
+                    RemoteViews(context.packageName, if (premium)
+                        R.layout.widget_event_header_premium else R.layout.widget_event_header).apply {
                         setTextViewText(R.id.widget_list_header, item.text)
                         WidgetThemeColors.applyHeader(context, this)
                     }
 
                 is Item.Event ->
-                    RemoteViews(context.packageName, R.layout.widget_event_item).apply {
+                    RemoteViews(context.packageName, if (premium)
+                        R.layout.widget_event_item_premium else R.layout.widget_event_item).apply {
                         val event = item.event
                         setTextViewText(R.id.widget_item_who, event.who)
                         val isLaundry = event.laundry ||
