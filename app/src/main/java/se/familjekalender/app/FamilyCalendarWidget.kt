@@ -159,7 +159,15 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                     ?: org.json.JSONObject()
                 values.put(key, label)
                 prefs.edit().putString(cachedSummaryPrefKey(widgetId), values.toString()).apply()
-                val views = RemoteViews(context.packageName, R.layout.widget_family_calendar)
+                // A partial RemoteViews update MUST use the layout currently
+                // installed for that widget. Publishing counters with the old
+                // classic layout against a premium widget could invalidate
+                // touch targets and leave the selected skin visually stale.
+                val layoutId = if (WidgetThemeColors.premiumLook(
+                        WidgetThemeColors.savedChoice(context)
+                    ) != null) R.layout.widget_family_calendar_premium
+                    else R.layout.widget_family_calendar
+                val views = RemoteViews(context.packageName, layoutId)
                 views.setTextViewText(viewId, label)
                 manager.partiallyUpdateAppWidget(widgetId, views)
             }
