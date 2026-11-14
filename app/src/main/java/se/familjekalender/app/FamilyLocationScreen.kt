@@ -714,12 +714,15 @@ private fun LocationMemberStrip(
         members.forEach { member ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(60.dp).clickable { onSelect(member.id) },
+                modifier = Modifier.width(68.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable { onSelect(member.id) }
+                    .padding(vertical = 6.dp),
             ) {
                 Box(
                     modifier =
                         Modifier.size(50.dp).clip(CircleShape)
-                            .background(Color(member.colorArgb))
+                            .background(SettingsMatchedPalette.cardGradient())
                             .border(
                                 2.dp,
                                 if (selectedMemberId == member.id)
@@ -733,7 +736,7 @@ private fun LocationMemberStrip(
                         modifier =
                             Modifier.size(if (selectedMemberId == member.id) 40.dp else 42.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface),
+                                .background(Color(member.colorArgb).copy(alpha = .78f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -745,7 +748,7 @@ private fun LocationMemberStrip(
                     }
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(member.name, fontSize = 10.sp, maxLines = 1)
+                Text(member.name, color = SettingsMatchedPalette.subText, fontSize = 11.sp, maxLines = 1)
             }
         }
     }
@@ -942,7 +945,7 @@ private fun LocationQuickAction(
                 .background(SettingsMatchedPalette.cardGradient())
                 .border(1.dp, SettingsMatchedPalette.border, RoundedCornerShape(18.dp))
                 .clickable(onClick = onClick)
-                .padding(vertical = 10.dp),
+                .padding(vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SettingsMatchedIconTile(icon)
