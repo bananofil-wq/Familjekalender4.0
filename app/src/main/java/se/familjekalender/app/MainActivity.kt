@@ -1762,6 +1762,13 @@ private fun ShoppingScreen(
                 }
             }
 
+            SnackbarHost(
+                hostState = shoppingSnackbar,
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 90.dp),
+            )
+
             if (typedName.isNotBlank()) {
                 Surface(
                     modifier = Modifier.align(Alignment.BottomCenter)
@@ -1873,14 +1880,28 @@ private fun ShoppingScreen(
                             val namesAlreadyPresent = openItems
                                 .map { SmartShoppingCatalog.normalized(it.name) }
                                 .toMutableSet()
-                            text
-                                .split(',', ';', '\n')
+                            val newNames = text.split(',', ';', '\n')
                                 .map { it.trim() }
                                 .filter { it.isNotBlank() }
                                 .filter { namesAlreadyPresent.add(SmartShoppingCatalog.normalized(it)) }
-                                .forEach(onAdd)
-                            text = ""
-                            previewPhotoName = null
+                            if (newNames.isEmpty()) {
+                                shoppingScope.launch {
+                                    shoppingSnackbar.showSnackbar("Varan finns redan på listan")
+                                }
+                            } else {
+                                shoppingScope.launch {
+                                    val failed = mutableListOf<String>()
+                                    newNames.forEach { name ->
+                                        if (!onAdd(name)) failed.add(name)
+                                    }
+                                    text = failed.joinToString(", ")
+                                    previewPhotoName = null
+                                    shoppingSnackbar.showSnackbar(
+                                        if (failed.isEmpty()) "Varor tillagda: " + newNames.size
+                                        else "Kunde inte lägga till " + failed.size + " varor",
+                                    )
+                                }
+                            }
                         },
                         enabled = text.isNotBlank(),
                         modifier = Modifier.size(50.dp),
