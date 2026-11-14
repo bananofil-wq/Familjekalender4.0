@@ -43,23 +43,11 @@ private class WidgetSampleView(context: Context) : View(context) {
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
 
-        // Show the ACTUAL user-supplied image (lossless crop). Never approximate
-        // the premium photo in this screen using separate mock UI components.
-        WidgetReferenceImages.previewResource(themeChoice)?.let { reference ->
-            val drawable = graphicCache.getOrPut(reference) {
-                context.getDrawable(reference)?.mutate() ?: return
-            }
-            val iw = drawable.intrinsicWidth.coerceAtLeast(1).toFloat()
-            val ih = drawable.intrinsicHeight.coerceAtLeast(1).toFloat()
-            val scale = minOf(width / iw, height / ih)
-            val w = (iw * scale).toInt()
-            val h = (ih * scale).toInt()
-            val x = (width - w) / 2
-            val y = (height - h) / 2
-            drawable.setBounds(x, y, x + w, y + h)
-            drawable.draw(canvas)
-            return
-        }
+        // Previously the chooser displayed a FLATTENED ideal reference while
+        // the installed widget used different drawables. That is misleading:
+        // render the very same clean material, controls and row components
+        // that RemoteViews will actually install instead.
+        val premium = WidgetThemeColors.premiumLook(themeChoice) != null
 
         val palette = WidgetThemeColors.previewPalette(themeChoice)
         val artwork = WidgetThemeColors.previewMaterials(themeChoice)
@@ -128,26 +116,27 @@ private class WidgetSampleView(context: Context) : View(context) {
             }
         }
 
-        bg(artwork.reminder, 10, 303, 350, 497)
+        val footerTop = if (premium) 326 else 303
+        bg(artwork.reminder, 10, footerTop, 350, 497)
         // Same real bell icon and theme tint as the home-screen widget.
         graphicCache.getOrPut(R.drawable.widget_bell_icon) {
             context.getDrawable(R.drawable.widget_bell_icon)?.mutate() ?: return
         }.apply {
             setTint(palette.accent)
-            setBounds(22, 315, 45, 341)
+            setBounds(22, footerTop + 12, 45, footerTop + 38)
             draw(canvas)
         }
-        label("Veckans påminnelser", 59f, 336f, 18f, palette.text, true)
-        bg(artwork.weekBadge, 294, 315, 339, 343)
-        label("V46", 303f, 334f, 15f, palette.accent, true)
+        label("Veckans påminnelser", 59f, footerTop + 33f, 18f, palette.text, true)
+        bg(artwork.weekBadge, 294, footerTop + 10, 339, footerTop + 38)
+        label("V46", 303f, footerTop + 29f, 15f, palette.text, true)
         val reminders = listOf(
             "Mån · Kim: Kompressor", "Tis · Hugo: Simning",
             "Tis 08:00 · Viggo: BVC"
         )
         reminders.forEachIndexed { i, value ->
-            val top = 353 + i*45
-            bg(artwork.reminderRow, 19, top, 341, top+39)
-            label(value, 39f, top+26f, 15f, palette.text)
+            val top = (if (premium) 373 else 353) + i*(if (premium) 39 else 45)
+            bg(artwork.reminderRow, 19, top, 341, top+(if (premium) 35 else 39))
+            label(value, 39f, top+25f, 15f, palette.text)
         }
         canvas.restore()
     }
