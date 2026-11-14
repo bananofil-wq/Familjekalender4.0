@@ -119,26 +119,54 @@
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>
-    <TextView android:id="@+id/widget_aurora_battery" android:layout_width="40dp" android:layout_height="85dp"
-        android:layout_marginTop="170dp" android:layout_marginStart="12dp"
-        android:background="@drawable/widget_aurora_tab" android:gravity="center"
-        android:text="84% ⚡" android:textColor="#FFF2EAF1" android:textSize="15sp"
-        android:rotation="0" android:contentDescription="84% ⚡"/>
-    <TextView android:id="@+id/widget_todo" android:layout_width="40dp" android:layout_height="91dp"
-        android:layout_marginTop="257dp" android:layout_marginStart="12dp"
-        android:background="@drawable/widget_aurora_tab" android:gravity="center"
-        android:text="Att göra" android:textColor="#FFF2EAF1" android:textSize="15sp"
-        android:rotation="0" android:contentDescription="Att göra"/>
-    <TextView android:id="@+id/widget_aurora_activity_tab" android:layout_width="41dp" android:layout_height="116dp"
-        android:layout_marginTop="385dp" android:layout_marginStart="9dp"
-        android:background="@drawable/widget_aurora_tab" android:gravity="center"
-        android:text="Aktivitet" android:textColor="#FFF2EAF1" android:textSize="15sp"
-        android:rotation="0" android:contentDescription="Aktivitet"/>
-    <TextView android:id="@+id/widget_shopping" android:layout_width="41dp" android:layout_height="91dp"
-        android:layout_marginTop="398dp" android:layout_gravity="right" android:layout_marginEnd="12dp"
-        android:background="@drawable/widget_aurora_tab" android:gravity="center"
-        android:text="Inköp" android:textColor="#FFF2EAF1" android:textSize="15sp"
-        android:rotation="0" android:contentDescription="Inköp"/>
+    <FrameLayout android:layout_width="41dp" android:layout_height="85dp"
+        android:layout_marginTop="170dp"
+        android:layout_marginStart="12dp"
+        android:background="@drawable/widget_aurora_tab">
+        <TextView android:id="@+id/widget_aurora_battery"
+            android:layout_width="85dp" android:layout_height="41dp"
+            android:layout_gravity="center" android:gravity="center"
+            android:rotation="-90" android:text="84% ⚡"
+            android:textColor="#FFF2EAF1" android:textSize="15sp"
+            android:singleLine="true" android:includeFontPadding="false"
+            android:contentDescription="84% ⚡"/>
+    </FrameLayout>
+    <FrameLayout android:layout_width="41dp" android:layout_height="91dp"
+        android:layout_marginTop="257dp"
+        android:layout_marginStart="12dp"
+        android:background="@drawable/widget_aurora_tab">
+        <TextView android:id="@+id/widget_todo"
+            android:layout_width="91dp" android:layout_height="41dp"
+            android:layout_gravity="center" android:gravity="center"
+            android:rotation="-90" android:text="Att göra"
+            android:textColor="#FFF2EAF1" android:textSize="15sp"
+            android:singleLine="true" android:includeFontPadding="false"
+            android:contentDescription="Att göra"/>
+    </FrameLayout>
+    <FrameLayout android:layout_width="41dp" android:layout_height="116dp"
+        android:layout_marginTop="385dp"
+        android:layout_marginStart="9dp"
+        android:background="@drawable/widget_aurora_tab">
+        <TextView android:id="@+id/widget_aurora_activity_tab"
+            android:layout_width="116dp" android:layout_height="41dp"
+            android:layout_gravity="center" android:gravity="center"
+            android:rotation="-90" android:text="Aktivitet"
+            android:textColor="#FFF2EAF1" android:textSize="15sp"
+            android:singleLine="true" android:includeFontPadding="false"
+            android:contentDescription="Aktivitet"/>
+    </FrameLayout>
+    <FrameLayout android:layout_width="41dp" android:layout_height="91dp"
+        android:layout_marginTop="398dp"
+        android:layout_gravity="top|right" android:layout_marginEnd="12dp"
+        android:background="@drawable/widget_aurora_tab">
+        <TextView android:id="@+id/widget_shopping"
+            android:layout_width="91dp" android:layout_height="41dp"
+            android:layout_gravity="center" android:gravity="center"
+            android:rotation="-90" android:text="Inköp"
+            android:textColor="#FFF2EAF1" android:textSize="15sp"
+            android:singleLine="true" android:includeFontPadding="false"
+            android:contentDescription="Inköp"/>
+    </FrameLayout>
     <!-- These compatibility IDs keep existing sync and RemoteViews notifications safe. -->
     <TextView android:id="@+id/widget_status" android:layout_width="0dp"
         android:layout_height="0dp" android:visibility="gone"/>
