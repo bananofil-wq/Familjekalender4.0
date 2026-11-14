@@ -3,7 +3,7 @@
     android:id="@+id/widget_root" android:layout_width="match_parent"
     android:layout_height="match_parent" android:background="@drawable/widget_aurora_background">
     <!-- Selected in the EXISTING widget picker; no new appwidget provider. -->
-    <View android:layout_width="114dp" android:layout_height="30dp"
+    <TextView android:text="" android:layout_width="114dp" android:layout_height="30dp"
         android:layout_gravity="top|center_horizontal" android:layout_marginTop="13dp"
         android:background="@android:color/black"/>
     <TextView android:layout_width="55dp" android:layout_height="47dp"
@@ -30,28 +30,28 @@
         <FrameLayout android:layout_width="122dp" android:layout_height="102dp"
             android:layout_gravity="top|right" android:layout_marginEnd="12dp"
             android:layout_marginTop="16dp">
-            <View android:layout_width="47dp" android:layout_height="47dp"
+            <TextView android:text="" android:layout_width="47dp" android:layout_height="47dp"
                 android:layout_marginStart="66dp" android:layout_marginTop="7dp"
                 android:background="@drawable/widget_aurora_sun"/>
-            <View android:layout_width="94dp" android:layout_height="39dp"
+            <TextView android:text="" android:layout_width="94dp" android:layout_height="39dp"
                 android:layout_marginStart="6dp" android:layout_marginTop="29dp"
                 android:background="@drawable/widget_aurora_cloud"/>
-            <View android:layout_width="46dp" android:layout_height="45dp"
+            <TextView android:text="" android:layout_width="46dp" android:layout_height="45dp"
                 android:layout_marginStart="20dp" android:layout_marginTop="16dp"
                 android:background="@drawable/widget_aurora_cloud"/>
-            <View android:layout_width="42dp" android:layout_height="40dp"
+            <TextView android:text="" android:layout_width="42dp" android:layout_height="40dp"
                 android:layout_marginStart="53dp" android:layout_marginTop="21dp"
                 android:background="@drawable/widget_aurora_cloud"/>
-            <View android:layout_width="8dp" android:layout_height="15dp"
+            <TextView android:text="" android:layout_width="8dp" android:layout_height="15dp"
                 android:layout_marginStart="31dp" android:layout_marginTop="73dp"
                 android:background="@drawable/widget_aurora_drop"/>
-            <View android:layout_width="8dp" android:layout_height="15dp"
+            <TextView android:text="" android:layout_width="8dp" android:layout_height="15dp"
                 android:layout_marginStart="52dp" android:layout_marginTop="81dp"
                 android:background="@drawable/widget_aurora_drop"/>
-            <View android:layout_width="8dp" android:layout_height="15dp"
+            <TextView android:text="" android:layout_width="8dp" android:layout_height="15dp"
                 android:layout_marginStart="73dp" android:layout_marginTop="74dp"
                 android:background="@drawable/widget_aurora_drop"/>
-            <View android:layout_width="8dp" android:layout_height="15dp"
+            <TextView android:text="" android:layout_width="8dp" android:layout_height="15dp"
                 android:layout_marginStart="94dp" android:layout_marginTop="82dp"
                 android:background="@drawable/widget_aurora_drop"/>
         </FrameLayout>
@@ -97,7 +97,7 @@
                 <TextView android:layout_width="19dp" android:layout_height="wrap_content"
                     android:text="💡" android:textSize="14sp"/>
             </LinearLayout>
-            <View android:layout_width="match_parent" android:layout_height="1dp"
+            <TextView android:text="" android:layout_width="match_parent" android:layout_height="1dp"
                 android:background="#6DFFFFFF"/>
             <LinearLayout android:layout_width="match_parent" android:layout_height="43dp"
                 android:gravity="center_vertical" android:orientation="horizontal">
