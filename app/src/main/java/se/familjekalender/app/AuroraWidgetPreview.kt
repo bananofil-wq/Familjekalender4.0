@@ -23,6 +23,7 @@ internal fun AuroraWidgetPreview(modifier: Modifier = Modifier) {
                 )
                 private val designWidthPx = 390f * context.resources.displayMetrics.density
                 private val designHeightPx = 844f * context.resources.displayMetrics.density
+                private val visiblePreviewHeightPx = 510f * context.resources.displayMetrics.density
 
                 init {
                     clipChildren = true
@@ -35,13 +36,13 @@ internal fun AuroraWidgetPreview(modifier: Modifier = Modifier) {
                 override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
                     super.onSizeChanged(w, h, oldw, oldh)
                     if (w == 0 || h == 0) return
-                    val scale = min(w / designWidthPx, h / designHeightPx)
+                    val scale = min(w / designWidthPx, h / visiblePreviewHeightPx)
                     preview.pivotX = 0f
                     preview.pivotY = 0f
                     preview.scaleX = scale
                     preview.scaleY = scale
                     preview.translationX = (w - designWidthPx * scale) / 2f
-                    preview.translationY = (h - designHeightPx * scale) / 2f
+                    preview.translationY = 0f
                 }
             }
         },
