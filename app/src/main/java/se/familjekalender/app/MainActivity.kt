@@ -903,34 +903,92 @@ private fun SyncedApp(
                                             cleanVisualTheme == CleanVisualTheme.NORDIC_DAY_PLANNER_DARK,
                                     onBack = { selectedTab = 0 },
                                     onAdd = { name ->
-                                        scope.launch {
-                                            try {
+                                        try {
+                                            val existingDone = shopping.firstOrNull {
+                                                it.checked &&
+                                                    SmartShoppingCatalog.normalized(it.name) ==
+                                                    SmartShoppingCatalog.normalized(name)
+                                            }
+                                            if (existingDone != null) {
+                                                SupabaseSync.toggleShopping(session, existingDone)
+                                            } else {
                                                 SupabaseSync.addShopping(
                                                     session,
                                                     name,
                                                     appPrefs.getString("push_device_id", null),
                                                 )
-                                                refresh()
-                                                if (OfflineMutationQueue.pendingCount(session) > 0) {
-                                                    message = "Inköpet är sparat på telefonen och synkas när nätet fungerar."
-                                                }
-                                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                                                throw cancelled
-                                            } catch (failure: Exception) {
-                                                message = "Kunde inte lägga till inköpet: ${failure.message}"
                                             }
+                                            refresh()
+                                            if (OfflineMutationQueue.pendingCount(session) > 0) {
+                                                message = "Inköpet är sparat på telefonen och synkas när nätet fungerar."
+                                            }
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte lägga till varan: ${failure.message}"
+                                            false
                                         }
                                     },
                                     onToggle = { item ->
-                                        scope.launch {
+                                        try {
                                             SupabaseSync.toggleShopping(session, item)
                                             refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ändra varan: ${failure.message}"
+                                            false
                                         }
                                     },
-                                    onClear = {
-                                        scope.launch {
-                                            SupabaseSync.clearChecked(session)
+                                    onClear = { selected ->
+                                        try {
+                                            SupabaseSync.clearChecked(session, selected)
                                             refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ta bort klara varor: ${failure.message}"
+                                            refresh()
+                                            false
+                                        }
+                                    },
+                                    onDelete = { item ->
+                                        try {
+                                            SupabaseSync.deleteShopping(session, item)
+                                            refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ta bort varan: ${failure.message}"
+                                            false
+                                        }
+                                    },
+                                    onRename = { item, newName ->
+                                        try {
+                                            SupabaseSync.renameShopping(session, item, newName)
+                                            refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ändra namnet: ${failure.message}"
+                                            false
+                                        }
+                                    },
+                                    onRestore = { deleted ->
+                                        try {
+                                            SupabaseSync.restoreShopping(session, deleted)
+                                            refresh()
+                                            true
+                                        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                            throw cancelled
+                                        } catch (failure: Exception) {
+                                            message = "Kunde inte ångra borttagningen: ${failure.message}"
+                                            false
                                         }
                                     },
                                 )
