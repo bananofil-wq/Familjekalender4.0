@@ -116,7 +116,7 @@ private class WidgetSampleView(context: Context) : View(context) {
             }
         }
 
-        val footerTop = if (premium) 326 else 303
+        val footerTop = if (premium) 314 else 303
         bg(artwork.reminder, 10, footerTop, 350, 497)
         // Same real bell icon and theme tint as the home-screen widget.
         graphicCache.getOrPut(R.drawable.widget_bell_icon) {
@@ -134,8 +134,8 @@ private class WidgetSampleView(context: Context) : View(context) {
             "Tis 08:00 · Viggo: BVC"
         )
         reminders.forEachIndexed { i, value ->
-            val top = (if (premium) 373 else 353) + i*(if (premium) 39 else 45)
-            bg(artwork.reminderRow, 19, top, 341, top+(if (premium) 35 else 39))
+            val top = (if (premium) 360 else 353) + i*(if (premium) 43 else 45)
+            bg(artwork.reminderRow, 19, top, 341, top+(if (premium) 37 else 39))
             label(value, 39f, top+25f, 15f, palette.text)
         }
         canvas.restore()
