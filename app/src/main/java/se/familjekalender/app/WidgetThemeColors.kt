@@ -185,11 +185,11 @@ internal object WidgetThemeColors {
     }
 
     private fun rowResource(skin: Skin): Int? = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_row
-        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_row
-        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_row
-        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_row
-        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_row
+        Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_row
+        Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_row
+        Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_row
+        Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_row
+        Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_row
         Skin.CLASSIC -> null
             Skin.WOOD -> R.drawable.widget_wood_approved_row
             Skin.COPPER -> R.drawable.widget_skin_copper_row
@@ -214,11 +214,11 @@ internal object WidgetThemeColors {
     }
 
     private fun controlResource(skin: Skin): Int = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_control
-        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_control
-        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_control
-        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_control
-        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_control
+        Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_control
+        Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_control
+        Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_control
+        Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_control
+        Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_control
         Skin.CLASSIC -> R.drawable.widget_refresh_bg
         Skin.WOOD -> R.drawable.widget_wood_approved_control
         Skin.COPPER -> R.drawable.widget_skin_copper_control
@@ -244,11 +244,11 @@ internal object WidgetThemeColors {
 
     /** Dedicated square photographic + button; do not stretch wide shortcut pills. */
     private fun quickAddResource(skin: Skin): Int = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_add
-        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_add
-        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_add
-        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_add
-        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_add
+        Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_add
+        Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_add
+        Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_add
+        Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_add
+        Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_add
         else -> controlResource(skin)
     }
 
@@ -390,11 +390,11 @@ internal object WidgetThemeColors {
         val control = if (style.skin == Skin.CLASSIC) R.drawable.widget_refresh_bg
             else controlResource(style.skin)
         val rem = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
-            Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
-            Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
-            Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
+            Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
         }
         val remRow = when (premium?.skin) {
@@ -558,11 +558,11 @@ internal object WidgetThemeColors {
         // All new skins theme their reminder card too; switching back restores
         // the exact established Nuvarande/Trä reminder resources.
         val reminderBackground = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
-            Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
-            Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
-            Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
+            Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
         }
         val reminderRow = when (premium?.skin) {

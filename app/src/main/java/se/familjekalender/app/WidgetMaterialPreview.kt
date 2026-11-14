@@ -43,6 +43,24 @@ private class WidgetSampleView(context: Context) : View(context) {
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
 
+        // Show the ACTUAL user-supplied image (lossless crop). Never approximate
+        // the premium photo in this screen using separate mock UI components.
+        WidgetReferenceImages.previewResource(themeChoice)?.let { reference ->
+            val drawable = graphicCache.getOrPut(reference) {
+                context.getDrawable(reference)?.mutate() ?: return
+            }
+            val iw = drawable.intrinsicWidth.coerceAtLeast(1).toFloat()
+            val ih = drawable.intrinsicHeight.coerceAtLeast(1).toFloat()
+            val scale = minOf(width / iw, height / ih)
+            val w = (iw * scale).toInt()
+            val h = (ih * scale).toInt()
+            val x = (width - w) / 2
+            val y = (height - h) / 2
+            drawable.setBounds(x, y, x + w, y + h)
+            drawable.draw(canvas)
+            return
+        }
+
         val palette = WidgetThemeColors.previewPalette(themeChoice)
         val artwork = WidgetThemeColors.previewMaterials(themeChoice)
         val scale = minOf(width / 360f, height / 510f)

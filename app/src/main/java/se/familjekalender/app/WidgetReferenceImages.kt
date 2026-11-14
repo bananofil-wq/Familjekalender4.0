@@ -1,19 +1,17 @@
 package se.familjekalender.app
 
 /**
- * Five premium visual skins based on the approved material references.
- * The drawable labelled "material" contains only an empty surface:
- * no sample labels, controls, events or fake reminder frames.
- *
- * The theme chooser and the actual RemoteViews use the same clean material,
- * combined with live text and independent clickable component drawables.
- * The original "Nuvarande" and "Trä" widgets are unchanged.
+ * The five premium widgets are sourced from the five EXACT user-supplied
+ * reference photographs. Preview is a lossless pixel crop of the user's
+ * source, not a model-generated redesign. Live widget materials only clean
+ * printed sample fields so real activities can be rendered on top.
+ * No calendar theme is changed.
  */
 internal object WidgetReferenceImages {
     fun image(skin: WidgetThemeColors.Skin, part: String): Int? = when (skin) {
         WidgetThemeColors.Skin.FOREST_WOOD -> when (part) {
-            "preview" -> R.drawable.widget_ref_forest_wood_preview
-            "material" -> R.drawable.widget_ref_forest_wood_material
+            "preview" -> R.drawable.widget_exact_forest_wood_reference
+            "material" -> R.drawable.widget_exact_forest_wood_material
             "control" -> R.drawable.widget_ref_forest_wood_control
             "row" -> R.drawable.widget_ref_forest_wood_row
             "reminder_row" -> R.drawable.widget_ref_forest_wood_reminder_row
@@ -25,8 +23,8 @@ internal object WidgetReferenceImages {
             else -> null
         }
         WidgetThemeColors.Skin.OBSIDIAN -> when (part) {
-            "preview" -> R.drawable.widget_ref_obsidian_preview
-            "material" -> R.drawable.widget_ref_obsidian_material
+            "preview" -> R.drawable.widget_exact_obsidian_reference
+            "material" -> R.drawable.widget_exact_obsidian_material
             "control" -> R.drawable.widget_ref_obsidian_control
             "row" -> R.drawable.widget_ref_obsidian_row
             "reminder_row" -> R.drawable.widget_ref_obsidian_reminder_row
@@ -38,8 +36,8 @@ internal object WidgetReferenceImages {
             else -> null
         }
         WidgetThemeColors.Skin.CARBON_RED -> when (part) {
-            "preview" -> R.drawable.widget_ref_carbon_red_preview
-            "material" -> R.drawable.widget_ref_carbon_red_material
+            "preview" -> R.drawable.widget_exact_carbon_red_reference
+            "material" -> R.drawable.widget_exact_carbon_red_material
             "control" -> R.drawable.widget_ref_carbon_red_control
             "row" -> R.drawable.widget_ref_carbon_red_row
             "reminder_row" -> R.drawable.widget_ref_carbon_red_reminder_row
@@ -51,8 +49,8 @@ internal object WidgetReferenceImages {
             else -> null
         }
         WidgetThemeColors.Skin.MIST_FOREST -> when (part) {
-            "preview" -> R.drawable.widget_ref_mist_forest_preview
-            "material" -> R.drawable.widget_ref_mist_forest_material
+            "preview" -> R.drawable.widget_exact_mist_forest_reference
+            "material" -> R.drawable.widget_exact_mist_forest_material
             "control" -> R.drawable.widget_ref_mist_forest_control
             "row" -> R.drawable.widget_ref_mist_forest_row
             "reminder_row" -> R.drawable.widget_ref_mist_forest_reminder_row
@@ -64,8 +62,8 @@ internal object WidgetReferenceImages {
             else -> null
         }
         WidgetThemeColors.Skin.NORDIC_DUSK -> when (part) {
-            "preview" -> R.drawable.widget_ref_nordic_dusk_preview
-            "material" -> R.drawable.widget_ref_nordic_dusk_material
+            "preview" -> R.drawable.widget_exact_nordic_dusk_reference
+            "material" -> R.drawable.widget_exact_nordic_dusk_material
             "control" -> R.drawable.widget_ref_nordic_dusk_control
             "row" -> R.drawable.widget_ref_nordic_dusk_row
             "reminder_row" -> R.drawable.widget_ref_nordic_dusk_reminder_row
