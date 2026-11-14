@@ -10,3 +10,9 @@ internal fun widgetOpenShoppingCount(items: List<SyncShoppingItem>): Int =
 internal fun widgetTodoLabel(count: Int): String = "✓  $count To-Do    ›"
 
 internal fun widgetShoppingLabel(count: Int): String = "🛒  $count inköp    ›"
+
+/** Premium widgets show a real accent-tinted icon in a separate ImageView.
+ * Strip the emoji/check glyph only for those widgets; classic layout is unchanged.
+ */
+internal fun widgetPremiumShortcutLabel(label: String): String =
+    label.removePrefix("✓").removePrefix("🛒").trimStart()
