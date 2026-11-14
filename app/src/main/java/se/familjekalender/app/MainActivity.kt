@@ -1663,12 +1663,12 @@ private fun ShoppingScreen(
                 ) { (category, categoryItems) ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(22.dp),
                         color = glass,
                         border = BorderStroke(1.dp, border),
-                        shadowElevation = 8.dp,
+                        shadowElevation = 0.dp,
                     ) {
-                        Column(Modifier.fillMaxWidth().settingsMatchedFill(20.dp)) {
+                        Column(Modifier.fillMaxWidth().settingsMatchedFill(22.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1709,8 +1709,8 @@ private fun ShoppingScreen(
                                 Row(
                                     modifier =
                                         Modifier.fillMaxWidth()
-                                            .height(56.dp)
-                                            .padding(horizontal = 7.dp, vertical = 4.dp),
+                                            .height(60.dp)
+                                            .padding(horizontal = 12.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     ReferenceShoppingCheck(
@@ -1725,9 +1725,9 @@ private fun ShoppingScreen(
                                         shape = RoundedCornerShape(12.dp),
                                         color =
                                             if (themedSurfaceMode) MaterialTheme.colorScheme.primaryContainer
-                                            else SettingsMatchedPalette.surface,
+                                            else SettingsMatchedPalette.sectionSurface,
                                         border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
-                                        shadowElevation = 3.dp,
+                                        shadowElevation = 0.dp,
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Text(shoppingProductEmoji(item.name), fontSize = 24.sp)
@@ -1815,7 +1815,7 @@ private fun ShoppingScreen(
                 shape = RoundedCornerShape(24.dp),
                 color = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else SettingsMatchedPalette.surface,
                 border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
-                shadowElevation = 14.dp,
+                shadowElevation = 0.dp,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().settingsMatchedFill(24.dp).padding(6.dp),
