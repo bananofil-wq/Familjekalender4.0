@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,6 +54,7 @@ internal fun SettingsMatchedIconTile(
 ) {
     Box(
         modifier = modifier.size(44.dp)
+            .shadow(7.dp, RoundedCornerShape(13.dp), ambientColor = SettingsMatchedPalette.accentDeep.copy(alpha = .38f), spotColor = SettingsMatchedPalette.accentDeep.copy(alpha = .42f))
             .clip(RoundedCornerShape(13.dp))
             .background(SettingsMatchedPalette.iconGradient()),
         contentAlignment = Alignment.Center,
