@@ -195,7 +195,14 @@ class FamilyCalendarWidget : AppWidgetProvider() {
         }
 
         fun baseViews(context: Context, appWidgetId: Int): RemoteViews {
-            val views = RemoteViews(context.packageName, R.layout.widget_family_calendar)
+            // Premium widgets use the compact responsive layout. The two
+            // established themes keep their existing scroll layout unchanged.
+            val premiumWidget = WidgetThemeColors.premiumLook(
+                WidgetThemeColors.savedChoice(context)
+            ) != null
+            val layoutId = if (premiumWidget) R.layout.widget_family_calendar_premium
+                else R.layout.widget_family_calendar
+            val views = RemoteViews(context.packageName, layoutId)
             val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
             val summary = prefs.getString(cachedSummaryPrefKey(appWidgetId), null)
             val values = summary?.let { runCatching { org.json.JSONObject(it) }.getOrNull() }
@@ -203,25 +210,35 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val savedDate = values?.optString("date").orEmpty()
             val summaryStatus = if (savedDate.isEmpty() || savedDate == today.toString())
                 values?.optString("status") else null
-            val fallbackStatus = if (prefs.contains(cachedRowsPrefKey(appWidgetId)))
-                "Visar sparade aktiviteter" else "Uppdaterar…"
-            val statusText = summaryStatus ?: fallbackStatus
+            // Count exactly the same today's non-reminder rows as the ListView.
+            // A partial network refresh must never replace this short heading
+            // with a multi-line diagnostic. Keep refresh failures in the worker logs.
+            val cachedCount = prefs.getString(cachedRowsPrefKey(appWidgetId), null)
+                ?.let { json ->
+                    runCatching {
+                        val rows = JSONArray(json)
+                        (0 until rows.length()).count { index ->
+                            val item = rows.optJSONObject(index)
+                            item != null && item.optString("date") == today.toString() &&
+                                !item.optBoolean("reminder", false) &&
+                                !item.optBoolean("birthday", false)
+                        }
+                    }.getOrNull()
+                }
+            val count = cachedCount
+                ?: Regex("""(\\d+)\\s+aktiviteter?""")
+                    .find(summaryStatus.orEmpty())?.groupValues?.get(1)?.toIntOrNull()
+            val statusText = when {
+                count == 1 -> "1 aktivitet idag"
+                count != null -> "$count aktiviteter idag"
+                else -> "Uppdaterar…"
+            }
             val weekPrefix = if (WidgetFeatureSettings.enabled(
                     context, WidgetFeatureSettings.WEEK_NUMBER
                 )) "Vecka ${today.get(WeekFields.ISO.weekOfWeekBasedYear())} · " else ""
             views.setTextViewText(R.id.widget_status, weekPrefix + statusText)
-            val partialSync = summaryStatus != null && (
-                "ej uppdaterat" in summaryStatus ||
-                    "kunde inte" in summaryStatus ||
-                    "visar sparade" in summaryStatus
-            )
-            views.setViewVisibility(
-                R.id.widget_warning,
-                if (partialSync && WidgetFeatureSettings.enabled(
-                        context, WidgetFeatureSettings.SYNC_WARNING
-                    )) View.VISIBLE else View.GONE,
-            )
-            views.setTextViewText(R.id.widget_warning, "⚠ Vissa uppgifter kan vara inaktuella")
+            // Sync diagnostics belong in app settings; not in the widget's title.
+            views.setViewVisibility(R.id.widget_warning, View.GONE)
             views.setTextViewText(R.id.widget_todo, values?.optString("todo") ?: "✓  To-Do    ›")
             views.setTextViewText(R.id.widget_shopping, values?.optString("shopping") ?: "🛒  Inköp    ›")
             val dateText =

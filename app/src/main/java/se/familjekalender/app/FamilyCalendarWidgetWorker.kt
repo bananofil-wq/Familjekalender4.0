@@ -211,8 +211,9 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
         } catch (error: Exception) {
             android.util.Log.e("FamilyCalendarWidget", "Unexpected refresh failure", error)
             widgetIds.forEach { widgetId ->
+                // Keep the concise cached activity count instead of replacing the
+                // header with a sync diagnostic that wraps across several lines.
                 val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
-                views.setTextViewText(R.id.widget_status, "Widgetfel · visar sparad information")
                 manager.updateAppWidget(widgetId, views)
                 manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
             }
