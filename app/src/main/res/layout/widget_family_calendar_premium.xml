@@ -95,8 +95,8 @@
 
         <TextView
             android:id="@+id/widget_quick_add"
-            android:layout_width="32dp"
-            android:layout_height="36dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_marginStart="3dp"
             android:gravity="center"
             android:text="+"
@@ -213,6 +213,7 @@
             android:paddingBottom="5dp">
 
             <ImageView
+                android:id="@+id/widget_week_bell"
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:layout_marginEnd="8dp"

@@ -185,11 +185,11 @@ internal object WidgetThemeColors {
     }
 
     private fun rowResource(skin: Skin): Int? = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_row
-        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_row
-        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_row
-        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_row
-        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_row
+        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_row
+        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_row
+        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_row
+        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_row
+        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_row
         Skin.CLASSIC -> null
             Skin.WOOD -> R.drawable.widget_wood_approved_row
             Skin.COPPER -> R.drawable.widget_skin_copper_row
@@ -214,11 +214,11 @@ internal object WidgetThemeColors {
     }
 
     private fun controlResource(skin: Skin): Int = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_control
-        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_control
-        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_control
-        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_control
-        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_control
+        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_control
+        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_control
+        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_control
+        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_control
+        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_control
         Skin.CLASSIC -> R.drawable.widget_refresh_bg
         Skin.WOOD -> R.drawable.widget_wood_approved_control
         Skin.COPPER -> R.drawable.widget_skin_copper_control
@@ -240,6 +240,16 @@ internal object WidgetThemeColors {
         Skin.FAMILY -> R.drawable.widget_skin_family_control
         Skin.CRYSTAL -> R.drawable.widget_skin_crystal_control
         Skin.NEON -> R.drawable.widget_skin_neon_control
+    }
+
+    /** Dedicated square photographic + button; do not stretch wide shortcut pills. */
+    private fun quickAddResource(skin: Skin): Int = when (skin) {
+        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_add
+        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_add
+        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_add
+        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_add
+        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_add
+        else -> controlResource(skin)
     }
 
     private data class BadgeTone(
@@ -409,7 +419,7 @@ internal object WidgetThemeColors {
             badgeNumber = style.badgeNumber ?: R.drawable.widget_date_badge_bottom,
             todo = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_green else control,
             shopping = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_blue else control,
-            refresh = control,
+            refresh = if (premium != null) quickAddResource(style.skin) else control,
             row = style.row ?: R.drawable.widget_event_row_bg,
             reminder = rem,
             reminderRow = remRow,
@@ -474,7 +484,16 @@ internal object WidgetThemeColors {
         val premium = premiumLook(savedChoice(context))
         // Apply the classic resources as well, so switching BACK from a selected
         // skin fully restores the original widget without re-adding it to the launcher.
-        style.root?.let { views.setInt(R.id.widget_root, "setBackgroundResource", it) }
+        if (premium != null) {
+            // The reference artwork already contains its complete polished frame.
+            // Avoid painting a second XML border behind that image.
+            views.setInt(R.id.widget_root, "setBackgroundResource",
+                android.R.color.transparent)
+        } else {
+            style.root?.let {
+                views.setInt(R.id.widget_root, "setBackgroundResource", it)
+            }
+        }
         // The reference artwork is the actual widget background, not a mock preview.
         // Existing live event rows, counters, scrolling and PendingIntents sit above it.
         val materialResource = WidgetReferenceImages.image(style.skin, "material")
@@ -484,7 +503,8 @@ internal object WidgetThemeColors {
             views.setImageViewResource(R.id.widget_premium_art, materialResource)
             views.setViewVisibility(R.id.widget_premium_art, android.view.View.VISIBLE)
             views.setInt(R.id.widget_quick_add, "setBackgroundResource",
-                controlResource(style.skin))
+                quickAddResource(style.skin))
+            views.setInt(R.id.widget_week_bell, "setColorFilter", premium!!.accent)
             views.setViewVisibility(R.id.widget_refresh, android.view.View.GONE)
             views.setViewVisibility(R.id.widget_section_separator, android.view.View.GONE)
             views.setTextColor(R.id.widget_week_reminders_title, style.text)
