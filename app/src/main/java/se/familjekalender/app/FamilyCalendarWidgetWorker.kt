@@ -88,6 +88,19 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                 result
             }
 
+            // Aurora reuses the app's existing Open-Meteo cache, with a fresh
+            // location-based reading whenever its normal widget refresh runs.
+            // Other widget themes never incur this extra request.
+            if (WidgetThemeColors.savedChoice(applicationContext) == WidgetThemeColors.AURORA) {
+                try {
+                    CleanWeatherService.loadCurrent(applicationContext)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Offline / no location permission: show a dash, never a fake 8°.
+                }
+            }
+
             val today = LocalDate.now()
             val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             val cacheUntil = weekStart.plusDays(13)
