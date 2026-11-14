@@ -1,5 +1,6 @@
 package se.familjekalender.app
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +13,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,40 +20,37 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * The user explicitly chose to keep only the protected, original "Nuvarande"
- * home-screen widget. No theme picker or other widget designs are exposed here.
- * Calendar themes are managed elsewhere and are not modified.
+ * Exactly two independent widget designs: protected Nuvarande and the uploaded
+ * Solnedgång reference. Switching changes only the home-screen widget.
  */
 @Composable
 internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     val context = LocalContext.current
     var detailsExpanded by remember { mutableStateOf(false) }
     var refreshStatus by remember { mutableStateOf<String?>(null) }
+    var activeChoice by remember { mutableStateOf(WidgetThemeColors.savedChoice(context)) }
 
-    fun restoreCurrentWidget() {
-        WidgetThemeColors.saveChoice(context, WidgetThemeColors.ORIGINAL)
+    fun chooseWidget(choice: String) {
+        WidgetThemeColors.saveChoice(context, choice)
+        activeChoice = WidgetThemeColors.savedChoice(context)
         refreshStatus = try {
             val count = FamilyCalendarWidget.refreshTheme(context.applicationContext)
             if (count == 0) {
-                "Nuvarande är valt. Ingen widget finns på hemskärmen ännu."
+                "Valet är sparat. Lägg till Familjekalendern på hemskärmen."
             } else {
-                "Nuvarande är valt. Uppdatering skickad till $count widget(ar)."
+                "${if (choice == WidgetThemeColors.SUNSET) "Solnedgång" else "Nuvarande"} är vald. Uppdatering skickad till $count widget(ar)."
             }
         } catch (error: Exception) {
-            android.util.Log.e("WidgetThemeSettings", "Could not refresh original widget", error)
-            "Nuvarande är sparat, men Android kunde inte uppdatera widgeten."
+            android.util.Log.e("WidgetThemeSettings", "Could not update widget", error)
+            "Valet är sparat, men Android kunde inte uppdatera widgeten."
         }
-    }
-
-    // Automatically restore the original widget when visiting Settings.
-    // The provider also restores it on APK replacement and widget updates.
-    LaunchedEffect(Unit) {
-        restoreCurrentWidget()
     }
 
     val featureOptions = remember {
@@ -73,36 +70,49 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Widget", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Widget",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            "Nuvarande",
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            "Detta är den enda widgeten. Kalenderns egna teman påverkas inte.",
+            "Välj widget här och se förhandsvisningen direkt. Kalenderns teman ändras inte.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
         )
-        WidgetMaterialPreview(
-            choice = WidgetThemeColors.ORIGINAL,
-            modifier = Modifier.fillMaxWidth().height(218.dp)
-                .clip(RoundedCornerShape(17.dp)),
-        )
-        OutlinedButton(
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth(),
-            onClick = { restoreCurrentWidget() },
-        ) { Text("Uppdatera Nuvarande") }
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Nuvarande", style = MaterialTheme.typography.titleSmall)
+                WidgetMaterialPreview(
+                    choice = WidgetThemeColors.ORIGINAL,
+                    modifier = Modifier.fillMaxWidth().height(190.dp)
+                        .clip(RoundedCornerShape(15.dp)),
+                )
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { chooseWidget(WidgetThemeColors.ORIGINAL) },
+                ) {
+                    Text(if (activeChoice == WidgetThemeColors.ORIGINAL) "Vald: Nuvarande" else "Välj Nuvarande")
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Solnedgång", style = MaterialTheme.typography.titleSmall)
+                Image(
+                    painter = painterResource(R.drawable.widget_sunset_preview),
+                    contentDescription = "Exakt bildreferens för Solnedgång-widgeten",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxWidth().height(190.dp)
+                        .clip(RoundedCornerShape(15.dp)),
+                )
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { chooseWidget(WidgetThemeColors.SUNSET) },
+                ) {
+                    Text(if (activeChoice == WidgetThemeColors.SUNSET) "Vald: Solnedgång" else "Välj Solnedgång")
+                }
+            }
+        }
         refreshStatus?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
-            )
+            Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
         OutlinedButton(
             onClick = {
@@ -122,7 +132,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
 
         if (detailsExpanded) {
             Text(
-                "Välj vad som visas i Nuvarande. Detta påverkar inte kalenderns tema.",
+                "Välj vad som visas i den aktiva widgeten. Kalenderns tema påverkas inte.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
             )
@@ -143,6 +153,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                         onCheckedChange = { enabled ->
                             featureValues = featureValues + (key to enabled)
                             WidgetFeatureSettings.setEnabled(context, key, enabled)
+                            FamilyCalendarWidget.refreshTheme(context.applicationContext)
                         },
                     )
                 }
