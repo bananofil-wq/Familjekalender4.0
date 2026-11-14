@@ -292,6 +292,13 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                                     .background(Color(0xFF131720))) {
                                                     WidgetMaterialPreview(
                                                         option.value, Modifier.fillMaxSize())
+                                                    // Native AndroidView previews can consume taps before
+                                                    // the parent Compose Column does. Keep a transparent
+                                                    // Compose click surface directly above each preview.
+                                                    Spacer(
+                                                        Modifier.matchParentSize()
+                                                            .clickable { applyWidgetChoice(option.value) }
+                                                    )
                                                     if (chosen) {
                                                         Icon(
                                                             Icons.Default.CheckCircle,
