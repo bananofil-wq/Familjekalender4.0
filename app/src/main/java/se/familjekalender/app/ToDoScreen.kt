@@ -760,7 +760,7 @@ private fun TodoAssigneeChip(
     muted: Boolean = false,
 ) {
     val accent =
-        if (member == null) Color(0xFFFFD75E)
+        if (member == null) SettingsMatchedPalette.accent
         else runCatching { Color(member.colorArgb.toInt()) }.getOrDefault(MaterialTheme.colorScheme.primary)
     val label = member?.name ?: "Hela familjen"
 
