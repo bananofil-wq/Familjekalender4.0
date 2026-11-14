@@ -11,6 +11,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitXY"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
         android:visibility="gone"
         android:contentDescription="@null" />
 
@@ -97,6 +100,8 @@
 
             <TextView
                 android:id="@+id/widget_quick_add"
+                android:clickable="true"
+                android:focusable="true"
                 android:layout_width="46dp"
                 android:layout_height="52dp"
                 android:layout_marginStart="5dp"
@@ -124,6 +129,9 @@
 
             <TextView
                 android:id="@+id/widget_todo"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Öppna To-Do"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
@@ -144,6 +152,9 @@
 
             <TextView
                 android:id="@+id/widget_shopping"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Öppna inköpslistan"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
