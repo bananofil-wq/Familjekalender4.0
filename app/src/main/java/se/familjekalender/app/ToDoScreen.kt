@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -335,13 +336,15 @@ internal fun ToDoScreen(
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            SettingsMatchedIconTile(Icons.Default.CheckCircle)
             Column(Modifier.weight(1f)) {
                 Text(
                     "To-Do",
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Black,
+                    fontSize = 27.sp,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     "Familjens gemensamma uppgifter",
@@ -370,12 +373,12 @@ internal fun ToDoScreen(
         }
 
         Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = SettingsMatchedPalette.surface,
             shape = RoundedCornerShape(26.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+            border = BorderStroke(1.dp, SettingsMatchedPalette.border),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(Modifier.padding(18.dp)) {
+            Column(Modifier.fillMaxWidth().settingsMatchedFill().padding(18.dp)) {
                 Row(
                     Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -426,12 +429,12 @@ internal fun ToDoScreen(
         }
 
         Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
+            color = SettingsMatchedPalette.surface,
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = .09f)),
+            border = BorderStroke(1.dp, SettingsMatchedPalette.border),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(Modifier.padding(14.dp)) {
+            Column(Modifier.fillMaxWidth().settingsMatchedFill().padding(14.dp)) {
                 Text(
                     "NY UPPGIFT",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -524,9 +527,9 @@ internal fun ToDoScreen(
             ) {
                 if (openItems.isEmpty()) {
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f),
+                        color = SettingsMatchedPalette.surface,
                         shape = RoundedCornerShape(22.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        border = BorderStroke(1.dp, SettingsMatchedPalette.border),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
@@ -571,18 +574,18 @@ internal fun ToDoScreen(
                     openItems.forEachIndexed { index, item ->
                         val assignee = item.memberId?.let(memberById::get)
                         Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            color = SettingsMatchedPalette.surface,
                             shape = RoundedCornerShape(20.dp),
                             border =
                                 BorderStroke(
                                     1.dp,
                                     if (index == 0)
-                                        MaterialTheme.colorScheme.primary.copy(alpha = .24f)
-                                    else MaterialTheme.colorScheme.outlineVariant,
+                                        SettingsMatchedPalette.expandedBorder
+                                    else SettingsMatchedPalette.border,
                                 ),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp)) {
+                            Column(Modifier.fillMaxWidth().settingsMatchedFill(20.dp).padding(horizontal = 11.dp, vertical = 9.dp)) {
                                 Row(
                                     Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -667,9 +670,9 @@ internal fun ToDoScreen(
                     }
 
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .42f),
+                        color = SettingsMatchedPalette.surface,
                         shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        border = BorderStroke(1.dp, SettingsMatchedPalette.border),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column {
@@ -762,9 +765,9 @@ private fun TodoAssigneeChip(
     val label = member?.name ?: "Hela familjen"
 
     Surface(
-        color = if (muted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f) else accent.copy(alpha = .10f),
+        color = SettingsMatchedPalette.surface,
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, accent.copy(alpha = if (muted) .15f else .28f)),
+        border = BorderStroke(1.dp, if (muted) SettingsMatchedPalette.border else accent.copy(alpha = .30f)),
         modifier = modifier.clickable(onClick = onClick),
     ) {
         Row(
