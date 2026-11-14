@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.toArgb
 internal object WidgetThemeColors {
     const val PREF_KEY = "widget_visual_theme"
     const val ORIGINAL = "ORIGINAL_WIDGET"
+    const val SUNSET = "PREMIUM_SUNSET"
     const val FOLLOW_CALENDAR = "FOLLOW_CALENDAR"
     private const val PREFS = "family_calendar"
 
@@ -98,6 +99,13 @@ internal object WidgetThemeColors {
             0xFFFFF9F3.toInt(), 0xFFE3E6E5.toInt(), 0xFFECC39D.toInt(),
             0xFF2A313A.toInt(), 0xFFFFFDF9.toInt(), 0xFFFFF9F3.toInt(),
             0xFFE6B888.toInt(), 0xFF243847.toInt()
+        ),
+        PremiumLook(
+            SUNSET, "Solnedgång", "Originalfotot med bärnstensguld, skog och matta mörka 3D-paneler", Skin.FOREST_WOOD,
+            0xFF433123.toInt(), 0xFF1B1612.toInt(), 0xFF292727.toInt(), 0xFF39312A.toInt(),
+            0xFFFFFAF3.toInt(), 0xFFD4C4B6.toInt(), 0xFFE4AF6C.toInt(),
+            0xFF2A1C13.toInt(), 0xFFFFF8E8.toInt(), 0xFFFFF8F2.toInt(),
+            0xFFE7BC84.toInt(), 0xFF24201C.toInt()
         )
     )
 
@@ -105,24 +113,25 @@ internal object WidgetThemeColors {
         premiumLooks.firstOrNull { it.id == choice }
 
     /**
-     * Only "Nuvarande" is supported. Old premium and wood widget selections
-     * are migrated to the original dark family widget at the first read.
-     * This preference is independent of the calendar's appearance settings.
+     * Keep the protected Nuvarande widget as default. Sunset is the sole additional
+     * image-accurate option; deprecated theme IDs migrate to Nuvarande.
+     * Calendar themes and per-person data are independent of this preference.
      */
     fun savedChoice(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getString(PREF_KEY, ORIGINAL) != ORIGINAL) {
-            prefs.edit().putString(PREF_KEY, ORIGINAL).commit()
+        val choice = prefs.getString(PREF_KEY, ORIGINAL)
+        return if (choice == SUNSET) SUNSET else {
+            if (choice != ORIGINAL) prefs.edit().putString(PREF_KEY, ORIGINAL).apply()
+            ORIGINAL
         }
-        return ORIGINAL
     }
 
     fun selectedTheme(context: Context): CleanVisualTheme? = null
 
     fun saveChoice(context: Context, choice: String) {
-        // Reject legacy and premium widget theme selections. Only Nuvarande remains.
+        val normalized = if (choice == SUNSET) SUNSET else ORIGINAL
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(PREF_KEY, ORIGINAL).commit()
+            .edit().putString(PREF_KEY, normalized).commit()
     }
 
     private fun skin(theme: CleanVisualTheme): Skin = when (theme) {
@@ -481,6 +490,7 @@ internal object WidgetThemeColors {
     fun apply(context: Context, views: RemoteViews) {
         val style = colors(context)
         val premium = premiumLook(savedChoice(context))
+        val sunset = savedChoice(context) == SUNSET
         // Apply the classic resources as well, so switching BACK from a selected
         // skin fully restores the original widget without re-adding it to the launcher.
         if (premium != null) {
@@ -613,11 +623,38 @@ internal object WidgetThemeColors {
                     (10f * d).toInt(), (5f * d).toInt())
             }
         }
+        if (sunset) {
+            // The artwork is derived from the user's uploaded photograph.
+            // Text and data live in RemoteViews; never bake example events into the widget.
+            views.setImageViewResource(R.id.widget_premium_art, R.drawable.widget_sunset_material)
+            views.setInt(R.id.widget_quick_add, "setBackgroundResource", R.drawable.widget_sunset_add)
+            views.setInt(R.id.widget_badge_day, "setBackgroundResource", R.drawable.widget_sunset_badge_day)
+            views.setInt(R.id.widget_badge_number, "setBackgroundResource", R.drawable.widget_sunset_badge_number)
+            views.setInt(R.id.widget_todo, "setBackgroundResource", R.drawable.widget_sunset_control)
+            views.setInt(R.id.widget_shopping, "setBackgroundResource", R.drawable.widget_sunset_control)
+            views.setInt(R.id.widget_week_reminders, "setBackgroundResource", R.drawable.widget_sunset_reminder_panel)
+            views.setInt(R.id.widget_week_reminders_week, "setBackgroundResource", R.drawable.widget_sunset_week_badge)
+            intArrayOf(
+                R.id.widget_birthday_1, R.id.widget_birthday_2,
+                R.id.widget_private_reminder_1, R.id.widget_private_reminder_2,
+                R.id.widget_private_reminder_more,
+                R.id.widget_persistent_reminder_1, R.id.widget_persistent_reminder_2,
+                R.id.widget_persistent_reminder_more,
+                R.id.widget_week_reminder_empty,
+                R.id.widget_week_reminder_1, R.id.widget_week_reminder_2,
+                R.id.widget_week_reminder_3,
+            ).forEach { id ->
+                views.setInt(id, "setBackgroundResource", R.drawable.widget_sunset_reminder)
+            }
+        }
     }
 
     fun applyEvent(context: Context, views: RemoteViews) {
         val style = colors(context)
-        if (style.skin == Skin.CARBON_RED) {
+        if (savedChoice(context) == SUNSET) {
+            views.setInt(R.id.widget_item_root, "setBackgroundResource",
+                R.drawable.widget_sunset_event)
+        } else if (style.skin == Skin.CARBON_RED) {
             // Separate matte event cards sit directly on the carbon background.
             views.setInt(R.id.widget_item_root, "setBackgroundResource",
                 R.drawable.widget_carbon_red_flat_event)
