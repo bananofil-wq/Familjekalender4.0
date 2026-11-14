@@ -75,7 +75,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             if (refreshed == 0) {
                 "Temat är sparat, men Android hittar ingen aktiv widget att uppdatera."
             } else {
-                "Temat är sparat. $refreshed widget(ar) har fått en fullständig uppdatering."
+                "Temat sparat. Uppdateringsbegäran skickad till $refreshed widget(ar)."
             }
         } catch (error: Exception) {
             android.util.Log.e("WidgetThemeSettings", "Widget theme refresh failed", error)
@@ -235,6 +235,15 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                                 color = Color(0xFFD6D8DF), fontSize = 12.sp)
                         }
                     }
+                    widgetApplyStatus?.let { status ->
+                        Text(
+                            text = status,
+                            color = Color(0xFFE0DBD6),
+                            fontSize = 12.sp,
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 5.dp),
+                        )
+                    }
                     Column(
                         modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
                             .padding(horizontal = 15.dp),
@@ -341,11 +350,11 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     ) {
                         TextButton(onClick = { pickerOpen = false },
                             modifier = Modifier.weight(1f)) {
-                            Text("Avbryt", color = Color(0xFFE7C592),
+                            Text("Stäng", color = Color(0xFFE7C592),
                                 fontWeight = FontWeight.Bold)
                         }
                         Button(
-                            onClick = { pickerOpen = false },
+                            onClick = { applyWidgetChoice(previewChoice) },
                             modifier = Modifier.weight(2.7f).height(52.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFE7BE83),
@@ -353,7 +362,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                             ),
                             shape = RoundedCornerShape(16.dp),
                         ) {
-                            Text("Klar – temat är aktiverat",
+                            Text("Uppdatera widget igen",
                                 fontSize = 13.sp, fontWeight = FontWeight.Bold,
                                 maxLines = 1)
                         }
