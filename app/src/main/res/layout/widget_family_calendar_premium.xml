@@ -127,46 +127,77 @@
             android:gravity="center"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/widget_todo"
-                android:clickable="true"
-                android:focusable="true"
-                android:contentDescription="Öppna To-Do"
+            <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:paddingLeft="8dp"
-                android:paddingRight="8dp"
-                android:background="@drawable/widget_action_green"
-                android:textColor="#FFFFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:layout_weight="1">
+                <TextView
+                    android:id="@+id/widget_todo"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Öppna To-Do"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="8dp"
+                    android:background="@drawable/widget_action_green"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+                <ImageView
+                    android:id="@+id/widget_todo_icon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="20dp"
+                    android:src="@drawable/widget_premium_todo_icon"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:importantForAccessibility="no"
+                    android:contentDescription="@null" />
+            </FrameLayout>
 
             <TextView
                 android:layout_width="12dp"
                 android:layout_height="1dp"
                 android:text="" />
 
-            <TextView
-                android:id="@+id/widget_shopping"
-                android:clickable="true"
-                android:focusable="true"
-                android:contentDescription="Öppna inköpslistan"
+            <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:paddingLeft="8dp"
-                android:paddingRight="8dp"
-                android:background="@drawable/widget_action_blue"
-                android:textColor="#FFFFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:layout_weight="1">
+                <TextView
+                    android:id="@+id/widget_shopping"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Öppna inköpslistan"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:paddingLeft="26dp"
+                    android:paddingRight="8dp"
+                    android:background="@drawable/widget_action_blue"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+                <ImageView
+                    android:id="@+id/widget_shopping_icon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:layout_marginStart="21dp"
+                    android:src="@drawable/widget_premium_shopping_icon"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:importantForAccessibility="no"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
         </LinearLayout>
 
         <TextView
