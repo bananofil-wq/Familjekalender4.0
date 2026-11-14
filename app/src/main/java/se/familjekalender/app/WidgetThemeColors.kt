@@ -14,6 +14,9 @@ internal object WidgetThemeColors {
     const val PREF_KEY = "widget_visual_theme"
     const val ORIGINAL = "ORIGINAL_WIDGET"
     const val SUNSET = "PREMIUM_SUNSET"
+    // One-time upgrade: the user asked for Solnedgång, but the old APK
+    // persisted ORIGINAL_WIDGET even after the new style was installed.
+    private const val SUNSET_ACTIVATED = "widget_sunset_activated_20261114_v2"
     const val FOLLOW_CALENDAR = "FOLLOW_CALENDAR"
     private const val PREFS = "family_calendar"
 
@@ -113,25 +116,36 @@ internal object WidgetThemeColors {
         premiumLooks.firstOrNull { it.id == choice }
 
     /**
-     * Keep the protected Nuvarande widget as default. Sunset is the sole additional
-     * image-accurate option; deprecated theme IDs migrate to Nuvarande.
-     * Calendar themes and per-person data are independent of this preference.
+     * The Solnedgång rollout must migrate a previously installed Nuvarande
+     * widget as well, otherwise the launcher keeps the old blue layout forever.
+     * Migration runs once, not on every Settings visit; future manual switches
+     * between Nuvarande and Solnedgång are retained exactly.
      */
     fun savedChoice(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val choice = prefs.getString(PREF_KEY, ORIGINAL)
-        return if (choice == SUNSET) SUNSET else {
-            if (choice != ORIGINAL) prefs.edit().putString(PREF_KEY, ORIGINAL).apply()
-            ORIGINAL
+        if (!prefs.getBoolean(SUNSET_ACTIVATED, false)) {
+            prefs.edit()
+                .putString(PREF_KEY, SUNSET)
+                .putBoolean(SUNSET_ACTIVATED, true)
+                .commit()
+            return SUNSET
+        }
+        val choice = prefs.getString(PREF_KEY, SUNSET)
+        return if (choice == ORIGINAL || choice == SUNSET) choice else {
+            prefs.edit().putString(PREF_KEY, SUNSET).apply()
+            SUNSET
         }
     }
 
     fun selectedTheme(context: Context): CleanVisualTheme? = null
 
-    fun saveChoice(context: Context, choice: String) {
-        val normalized = if (choice == SUNSET) SUNSET else ORIGINAL
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(PREF_KEY, normalized).commit()
+    fun saveChoice(context: Context, choice: String): Boolean {
+        val normalized = if (choice == ORIGINAL) ORIGINAL else SUNSET
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(PREF_KEY, normalized)
+            .putBoolean(SUNSET_ACTIVATED, true)
+            .commit()
     }
 
     private fun skin(theme: CleanVisualTheme): Skin = when (theme) {
@@ -630,8 +644,8 @@ internal object WidgetThemeColors {
             views.setInt(R.id.widget_quick_add, "setBackgroundResource", R.drawable.widget_sunset_add)
             views.setInt(R.id.widget_badge_day, "setBackgroundResource", R.drawable.widget_sunset_badge_day)
             views.setInt(R.id.widget_badge_number, "setBackgroundResource", R.drawable.widget_sunset_badge_number)
-            views.setInt(R.id.widget_todo, "setBackgroundResource", R.drawable.widget_sunset_control)
-            views.setInt(R.id.widget_shopping, "setBackgroundResource", R.drawable.widget_sunset_control)
+            views.setInt(R.id.widget_todo, "setBackgroundResource", R.drawable.widget_sunset_control_clean)
+            views.setInt(R.id.widget_shopping, "setBackgroundResource", R.drawable.widget_sunset_control_clean)
             views.setInt(R.id.widget_week_reminders, "setBackgroundResource", R.drawable.widget_sunset_reminder_panel)
             views.setInt(R.id.widget_week_reminders_week, "setBackgroundResource", R.drawable.widget_sunset_week_badge)
             intArrayOf(
@@ -644,7 +658,7 @@ internal object WidgetThemeColors {
                 R.id.widget_week_reminder_1, R.id.widget_week_reminder_2,
                 R.id.widget_week_reminder_3,
             ).forEach { id ->
-                views.setInt(id, "setBackgroundResource", R.drawable.widget_sunset_reminder)
+                views.setInt(id, "setBackgroundResource", R.drawable.widget_sunset_reminder_clean)
             }
         }
     }
@@ -653,7 +667,7 @@ internal object WidgetThemeColors {
         val style = colors(context)
         if (savedChoice(context) == SUNSET) {
             views.setInt(R.id.widget_item_root, "setBackgroundResource",
-                R.drawable.widget_sunset_event)
+                R.drawable.widget_sunset_event_clean)
         } else if (style.skin == Skin.CARBON_RED) {
             // Separate matte event cards sit directly on the carbon background.
             views.setInt(R.id.widget_item_root, "setBackgroundResource",
