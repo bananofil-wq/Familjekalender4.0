@@ -1,25 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Nuvarande: compact raised + control with smoked-chrome bevel. -->
+<!-- Lifted square, restrained light strip rather than mirror shine. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="4dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#AC040913"/><corners android:radius="12dp"/>
-        </shape>
-    </item>
-    <item android:bottom="2dp">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#B56C7B90"
-                android:centerColor="#E02D394A" android:endColor="#EE111927"/>
-            <corners android:radius="12dp"/>
-            <stroke android:width="0.9dp" android:color="#A7B8C8DA"/>
-        </shape>
-    </item>
-    <item android:left="2dp" android:right="2dp" android:top="2dp"
-        android:height="13dp" android:gravity="top">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#68E4F2FF"
-                android:endColor="#00FFFFFF"/>
-            <corners android:topLeftRadius="10dp" android:topRightRadius="10dp"/>
-        </shape>
-    </item>
+ <item android:top="6dp"><shape android:shape="rectangle">
+  <solid android:color="#CE030710"/><corners android:radius="12dp"/></shape></item>
+ <item android:bottom="5dp"><shape android:shape="rectangle">
+  <gradient android:angle="270" android:startColor="#EE46576C"
+   android:centerColor="#F32A394B" android:endColor="#FE111D2C"/>
+  <corners android:radius="12dp"/>
+  <stroke android:width="1dp" android:color="#A99EB1C5"/>
+ </shape></item>
+ <item android:left="3dp" android:right="3dp" android:top="2dp"
+   android:height="7dp" android:gravity="top">
+  <shape android:shape="rectangle"><solid android:color="#27C9E2F9"/>
+   <corners android:topLeftRadius="9dp" android:topRightRadius="9dp"/></shape>
+ </item>
 </layer-list>
