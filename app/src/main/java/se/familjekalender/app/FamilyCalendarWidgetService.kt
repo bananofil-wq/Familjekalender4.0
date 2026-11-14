@@ -29,6 +29,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
     ) : RemoteViewsFactory {
 
         private data class CachedEvent(
+            val eventId: String,
             val date: String,
             val who: String,
             val activity: String,
@@ -74,6 +75,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                     if (obj.optString("date") != todayKey) return@repeat
                     val activity = obj.optString("activity")
                     todayRows += CachedEvent(
+                        eventId = obj.optString("eventId"),
                         date = todayKey,
                         who = obj.optString("who"),
                         activity = activity,
@@ -101,6 +103,7 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
             if (activities.isEmpty()) {
                 items += Item.Event(
                     CachedEvent(
+                        eventId = "",
                         date = todayKey,
                         who = "",
                         activity = "Inga aktiviteter idag",
@@ -130,6 +133,10 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                     RemoteViews(context.packageName, if (premium)
                         R.layout.widget_event_header_premium else R.layout.widget_event_header).apply {
                         setTextViewText(R.id.widget_list_header, item.text)
+                        // Header navigates to the calendar; it is never decorative.
+                        setOnClickFillInIntent(R.id.widget_list_header, Intent().apply {
+                            putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
+                        })
                         WidgetThemeColors.applyHeader(context, this)
                     }
 
@@ -137,6 +144,14 @@ class FamilyCalendarWidgetService : RemoteViewsService() {
                     RemoteViews(context.packageName, if (premium)
                         R.layout.widget_event_item_premium else R.layout.widget_event_item).apply {
                         val event = item.event
+                        // The launcher requires item-specific fill-in intents on
+                        // collection views. Without this, row tap targets are inert.
+                        setOnClickFillInIntent(R.id.widget_item_root, Intent().apply {
+                            putExtra(MainActivity.EXTRA_OPEN_TAB, 0)
+                            if (event.eventId.isNotBlank()) {
+                                putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, event.eventId)
+                            }
+                        })
                         setTextViewText(R.id.widget_item_who, event.who)
                         val isLaundry = event.laundry ||
                             event.activity.trimStart().startsWith("tvätt", ignoreCase = true)
