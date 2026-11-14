@@ -96,8 +96,23 @@ private class WidgetSampleView(context: Context) : View(context) {
         label("+", 316f, 53f, 34f, palette.controlInk, true)
         bg(artwork.todo, 13, 105, 173, 151)
         bg(artwork.shopping, 186, 105, 347, 151)
-        label("✓  1 To-Do   ›", 31f, 134f, 18f, palette.controlInk, true)
-        label("🛒  4 inköp  ›", 204f, 134f, 18f, palette.controlInk, true)
+        if (premium) {
+            fun symbol(res: Int, left: Int) {
+                val icon = graphicCache.getOrPut(res) {
+                    context.getDrawable(res)?.mutate() ?: return
+                }
+                icon.setTint(palette.accent)
+                icon.setBounds(left, 116, left + 24, 140)
+                icon.draw(canvas)
+            }
+            symbol(R.drawable.widget_premium_todo_icon, 33)
+            symbol(R.drawable.widget_premium_shopping_icon, 203)
+            label("1 To-Do   ›", 65f, 134f, 18f, palette.controlInk, true)
+            label("4 inköp  ›", 238f, 134f, 18f, palette.controlInk, true)
+        } else {
+            label("✓  1 To-Do   ›", 31f, 134f, 18f, palette.controlInk, true)
+            label("🛒  4 inköp  ›", 204f, 134f, 18f, palette.controlInk, true)
+        }
 
         label("▣  Idag 13/11  ·  2 aktiviteter", 17f, 182f, 15f, palette.text, true)
         val rows = listOf(191 to "Hugo", 239 to "Bella")
