@@ -129,8 +129,10 @@ internal object WidgetThemeColors {
 
     fun saveChoice(context: Context, choice: String) {
         if (!isSupportedChoice(choice)) return
+        // Save synchronously before publishing updated RemoteViews.
+        // A theme switch must survive an Activity recreation or process restart.
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(PREF_KEY, choice).apply()
+            .edit().putString(PREF_KEY, choice).commit()
     }
 
     private fun skin(theme: CleanVisualTheme): Skin = when (theme) {
