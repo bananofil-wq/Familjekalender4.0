@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Low-contrast metallic reflections: richer than flat navy, never opaque. -->
+<!-- Desaturated low-key diagonal satin grain, not bright reflective stripes. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="1dp" android:height="1dp"
     android:viewportWidth="320" android:viewportHeight="380">
     <clip-path android:pathData="M28,0 L292,0 Q320,0 320,28 L320,352 Q320,380 292,380 L28,380 Q0,380 0,352 L0,28 Q0,0 28,0 Z"/>
     <path android:pathData="M146,-25 L206,-25 L36,380 L-24,380 Z"
-        android:fillColor="#C4E7FF" android:fillAlpha=".026"/>
+        android:fillColor="#C4E7FF" android:fillAlpha=".011"/>
     <path android:pathData="M200,-30 L212,-30 L41,380 L29,380 Z"
-        android:fillColor="#F2FAFF" android:fillAlpha=".046"/>
+        android:fillColor="#F2FAFF" android:fillAlpha=".022"/>
     <path android:pathData="M232,-30 L270,-30 L100,380 L62,380 Z"
-        android:fillColor="#D3E9FF" android:fillAlpha=".020"/>
+        android:fillColor="#D3E9FF" android:fillAlpha=".010"/>
     <path android:pathData="M281,-24 L291,-24 L121,380 L111,380 Z"
-        android:fillColor="#FFFFFF" android:fillAlpha=".016"/>
+        android:fillColor="#FFFFFF" android:fillAlpha=".008"/>
     <path android:pathData="M242,0 L320,0 L320,69 Z"
-        android:fillColor="#C6D5EC" android:fillAlpha=".100"/>
+        android:fillColor="#C6D5EC" android:fillAlpha=".048"/>
 </vector>
