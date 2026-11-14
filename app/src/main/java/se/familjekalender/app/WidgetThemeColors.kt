@@ -248,7 +248,7 @@ internal object WidgetThemeColors {
     private fun quickAddResource(skin: Skin): Int = when (skin) {
         Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_add
         Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_add
-        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_add
+        Skin.CARBON_RED -> R.drawable.widget_carbon_red_flat_add
         Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_add
         Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_add
         else -> controlResource(skin)
@@ -389,8 +389,11 @@ internal object WidgetThemeColors {
     fun previewMaterials(choice: String): PreviewMaterials {
         val style = previewPalette(choice)
         val premium = premiumLook(choice)
-        val control = if (style.skin == Skin.CLASSIC) R.drawable.widget_refresh_bg
-            else controlResource(style.skin)
+        val control = when (style.skin) {
+            Skin.CLASSIC -> R.drawable.widget_refresh_bg
+            Skin.CARBON_RED -> R.drawable.widget_carbon_red_flat_control
+            else -> controlResource(style.skin)
+        }
         val rem = when (premium?.skin) {
             Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
             Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
@@ -422,7 +425,9 @@ internal object WidgetThemeColors {
             todo = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_green else control,
             shopping = if (style.skin == Skin.CLASSIC) R.drawable.widget_action_blue else control,
             refresh = if (premium != null) quickAddResource(style.skin) else control,
-            row = style.row ?: R.drawable.widget_event_row_bg,
+            row = if (style.skin == Skin.CARBON_RED)
+                R.drawable.widget_carbon_red_flat_event
+                else style.row ?: R.drawable.widget_event_row_bg,
             reminder = rem,
             reminderRow = remRow,
             weekBadge = week,
