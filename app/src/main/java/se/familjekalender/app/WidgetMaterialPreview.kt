@@ -91,7 +91,7 @@ private class WidgetSampleView(context: Context) : View(context) {
         bg(artwork.todo, 13, 105, 173, 151)
         bg(artwork.shopping, 186, 105, 347, 151)
         label("✓  1 To-Do   ›", 31f, 134f, 18f, palette.controlInk, true)
-        label("4 inköp  ›", 230f, 134f, 18f, palette.controlInk, true)
+        label("🛒  4 inköp  ›", 204f, 134f, 18f, palette.controlInk, true)
 
         label("▣  Idag 13/11  ·  2 aktiviteter", 17f, 182f, 15f, palette.text, true)
         val rows = listOf(191 to "Hugo", 239 to "Bella")
@@ -111,7 +111,14 @@ private class WidgetSampleView(context: Context) : View(context) {
         }
 
         bg(artwork.reminder, 10, 303, 350, 497)
-        label("♧", 26f, 337f, 23f, palette.accent, true)
+        // Same real bell icon and theme tint as the home-screen widget.
+        graphicCache.getOrPut(R.drawable.widget_bell_icon) {
+            context.getDrawable(R.drawable.widget_bell_icon)?.mutate() ?: return
+        }.apply {
+            setTint(palette.accent)
+            setBounds(22, 315, 45, 341)
+            draw(canvas)
+        }
         label("Veckans påminnelser", 59f, 336f, 18f, palette.text, true)
         bg(artwork.weekBadge, 294, 315, 339, 343)
         label("V46", 303f, 334f, 15f, palette.accent, true)
