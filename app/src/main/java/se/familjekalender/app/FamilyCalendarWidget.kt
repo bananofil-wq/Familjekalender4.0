@@ -226,7 +226,7 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                     }.getOrNull()
                 }
             val count = cachedCount
-                ?: Regex("""(\\d+)\\s+aktiviteter?""")
+                ?: Regex("""(\d+)\s+aktiviteter?""")
                     .find(summaryStatus.orEmpty())?.groupValues?.get(1)?.toIntOrNull()
             val statusText = when {
                 count == 1 -> "1 aktivitet idag"
