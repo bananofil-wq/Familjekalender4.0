@@ -533,7 +533,7 @@ internal object WidgetThemeColors {
         views.setTextColor(R.id.widget_date, style.text)
         views.setTextColor(R.id.widget_status, style.muted)
         views.setTextColor(R.id.widget_warning, style.muted)
-        views.setTextColor(R.id.widget_quick_add, style.text)
+        views.setTextColor(R.id.widget_quick_add, premium?.accent ?: style.text)
         views.setTextColor(R.id.widget_refresh, style.text)
         if (style.skin == Skin.CLASSIC) {
             // Restore the original date/shortcut/control surfaces after a theme change.
