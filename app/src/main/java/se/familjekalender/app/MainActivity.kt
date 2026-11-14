@@ -1603,334 +1603,157 @@ private fun ShoppingScreen(
                                     onDismissRequest = { menuExpanded = false },
                                 ) {
                                     if (checkedItems.isNotEmpty()) {
-                                        DropdownMenuItem(
-                                            text = { Text("Rensa bockade") },
-                                            onClick = {
-                                                menuExpanded = false
-                                                showClearConfirmation = true
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (searchExpanded) {
-                    item {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text("Sök i inköpslistan…") },
-                            leadingIcon = {
-                                Icon(Icons.Default.Search, contentDescription = null, tint = blue)
-                            },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            colors =
-                                OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = blue.copy(alpha = .75f),
-                                    unfocusedBorderColor = if (themedSurfaceMode) border else SettingsMatchedPalette.border,
-                                    focusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else SettingsMatchedPalette.surface,
-                                    unfocusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else SettingsMatchedPalette.surface,
-                                ),
-                        )
-                    }
-                }
-
-                item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(22.dp),
-                        color = softSurface,
-                        border = BorderStroke(1.dp, border),
-                        shadowElevation = 8.dp,
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().settingsMatchedFill(22.dp).padding(horizontal = 18.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            ShoppingSummaryStat(
-                                value = openItems.size,
-                                label = "kvar",
-                                progress = if (total == 0) 0f else openItems.size.toFloat() / total,
-                                accent = orange,
-                                lightMode = themedSurfaceMode,
-                                modifier = Modifier.weight(1f),
-                            )
-                            VerticalDivider(Modifier.height(48.dp), color = if (themedSurfaceMode) border else SettingsMatchedPalette.border)
-                            ShoppingSummaryStat(
-                                value = done,
-                                label = "klara",
-                                progress = if (total == 0) 0f else done.toFloat() / total,
-                                accent = cyan,
-                                lightMode = themedSurfaceMode,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            "Sortera:",
-                            color = pageMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Box {
-                            Surface(
-                                modifier = Modifier.clickable { sortMenuExpanded = true },
-                                shape = RoundedCornerShape(12.dp),
-                                color = softSurface,
-                                border = BorderStroke(1.dp, border),
-                            ) {
-                                Row(
-                                    Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(sortMode, color = pageText, fontSize = 12.sp)
-                                    Spacer(Modifier.width(4.dp))
-                                    Icon(
-                                        Icons.Default.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = pageMuted,
-                                        modifier = Modifier.size(15.dp),
-                                    )
-                                }
-                            }
-                            DropdownMenu(
-                                expanded = sortMenuExpanded,
-                                onDismissRequest = { sortMenuExpanded = false },
-                            ) {
-                                listOf("Butiksordning", "A–Ö", "Senaste").forEach { mode ->
-                                    DropdownMenuItem(
-                                        text = { Text(mode) },
-                                        onClick = {
-                                            sortMode = mode
-                                            sortMenuExpanded = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        availableCategories.forEach { category ->
-                            val selected = selectedCategory == category
-                            Surface(
-                                modifier = Modifier.clickable { selectedCategory = category },
-                                shape = RoundedCornerShape(17.dp),
-                                color =
-                                    if (selected) blue
-                                    else if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant
-                                    else SettingsMatchedPalette.surface,
-                                border =
-                                    BorderStroke(
-                                        1.dp,
-                                        if (selected) blue.copy(alpha = .45f)
-                                        else if (themedSurfaceMode) border
-                                        else SettingsMatchedPalette.border,
-                                    ),
-                                shadowElevation = if (selected) 8.dp else 0.dp,
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                                ) {
-                                    Text(
-                                        if (category == "Alla") "▦" else categoryEmoji[category] ?: "•",
-                                        fontSize = 15.sp,
-                                    )
-                                    Text(
-                                        category,
-                                        color = if (selected) Color.White else pageText,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (visibleGroups.isEmpty()) {
                     item {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(22.dp),
-                            color = glass,
-                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
+                            shape = RoundedCornerShape(18.dp),
+                            color = softSurface,
+                            border = BorderStroke(1.dp, border),
                         ) {
-                            Text(
-                                if (items.isEmpty()) "Lägg till första varan nedan."
-                                else "Inga varor matchar filtret.",
-                                modifier = Modifier.padding(22.dp),
-                                color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .7f),
-                                fontSize = 12.sp,
-                            )
-                        }
-                    }
-                }
-
-                items(
-                    items = visibleGroups,
-                    key = { it.first },
-                ) { (category, categoryItems) ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = glass,
-                        border = BorderStroke(1.dp, border),
-                        shadowElevation = 8.dp,
-                    ) {
-                        Column(Modifier.fillMaxWidth().settingsMatchedFill(20.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(categoryEmoji[category] ?: "🛒", fontSize = 21.sp)
-                                Spacer(Modifier.width(9.dp))
-                                Text(
-                                    category,
-                                    modifier = Modifier.weight(1f),
-                                    color = pageText,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Surface(
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = if (themedSurfaceMode) MaterialTheme.colorScheme.primaryContainer else Color.Black.copy(alpha = .20f),
-                                ) {
-                                    Text(
-                                        "${categoryItems.size} kvar",
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        color = if (themedSurfaceMode) MaterialTheme.colorScheme.onPrimaryContainer else Color.White.copy(alpha = .88f),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                                Spacer(Modifier.width(3.dp))
-                                Icon(
-                                    Icons.Default.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = if (themedSurfaceMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .8f),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-
-                            HorizontalDivider(color = if (themedSurfaceMode) border else SettingsMatchedPalette.border)
-
-                            categoryItems.forEachIndexed { index, item ->
+                            Column {
                                 Row(
-                                    modifier =
-                                        Modifier.fillMaxWidth()
-                                            .height(56.dp)
-                                            .padding(horizontal = 7.dp, vertical = 4.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                        .padding(start = 12.dp, end = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    ReferenceShoppingCheck(
-                                        checked = false,
-                                        lightMode = themedSurfaceMode,
-                                        onClick = { toggleWithUndo(item) },
-                                    )
-                                    Spacer(Modifier.width(5.dp))
-
-                                    Surface(
-                                        modifier = Modifier.size(42.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        color =
-                                            if (themedSurfaceMode) MaterialTheme.colorScheme.primaryContainer
-                                            else SettingsMatchedPalette.surface,
-                                        border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
-                                        shadowElevation = 3.dp,
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            ShoppingProductPicture(item.name, Modifier.fillMaxSize())
-                                        }
-                                    }
-
-                                    Spacer(Modifier.width(7.dp))
-                                    Column(Modifier.weight(1f).padding(end = 4.dp)) {
-                                        Text(
-                                            item.name,
-                                            color = pageText,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        )
-                                        Spacer(Modifier.height(1.dp))
-                                        Text(
-                                            shoppingItemMeta(item.name),
-                                            color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .58f),
-                                            fontSize = 8.sp,
-                                            maxLines = 1,
-                                        )
-                                    }
-
-                                    Spacer(Modifier.width(6.dp))
-                                    IconButton(
-                                        onClick = { },
-                                        modifier = Modifier.size(24.dp),
+                                    Row(
+                                        modifier = Modifier.weight(1f).clickable {
+                                            completedExpanded = !completedExpanded
+                                        },
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
-                                            Icons.Default.MoreVert,
-                                            contentDescription = "Mer för ${item.name}",
-                                            tint = if (themedSurfaceMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .78f),
-                                            modifier = Modifier.size(17.dp),
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = cyan,
+                                            modifier = Modifier.size(20.dp),
                                         )
+                                        Spacer(Modifier.width(6.dp))
+                                        Column {
+                                            Text(
+                                                "Klara · " + checkedItems.size,
+                                                color = pageText,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                            )
+                                            Text(
+                                                if (completedExpanded) "Bocka ur för att ångra"
+                                                else "Visa klara varor",
+                                                color = pageMuted,
+                                                fontSize = 10.sp,
+                                            )
+                                        }
+                                    }
+                                    TextButton(
+                                        enabled = !bulkBusy,
+                                        onClick = {
+                                            if (!bulkBusy) {
+                                                bulkBusy = true
+                                                shoppingScope.launch {
+                                                    try {
+                                                        var restored = 0
+                                                        checkedItems.forEach { item ->
+                                                            if (onToggle(item)) restored++
+                                                        }
+                                                        shoppingSnackbar.showSnackbar(
+                                                            "Återställda: " + restored +
+                                                                " av " + checkedItems.size,
+                                                        )
+                                                    } finally {
+                                                        bulkBusy = false
+                                                    }
+                                                }
+                                            }
+                                        },
+                                    ) {
+                                        Text("Ångra alla", color = blue, fontSize = 11.sp)
+                                    }
+                                    TextButton(
+                                        enabled = !bulkBusy,
+                                        onClick = { showClearConfirmation = true },
+                                    ) {
+                                        Text("Rensa", color = blue, fontSize = 11.sp)
                                     }
                                 }
-
-                                if (index != categoryItems.lastIndex) {
-                                    HorizontalDivider(
-                                        color = if (themedSurfaceMode) border else SettingsMatchedPalette.border,
-                                        modifier = Modifier.padding(start = 55.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (checkedItems.isNotEmpty()) {
-                    item {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else SettingsMatchedPalette.surface,
-                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = cyan)
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "${checkedItems.size} klara",
-                                    modifier = Modifier.weight(1f),
-                                    color = if (themedSurfaceMode) pageMuted else Color.White.copy(alpha = .78f),
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                TextButton(onClick = { showClearConfirmation = true }) {
-                                    Text("Rensa", color = blue)
+                                if (completedExpanded) {
+                                    HorizontalDivider(color = border)
+                                    checkedItems.forEachIndexed { index, checked ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .heightIn(min = 56.dp)
+                                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            ReferenceShoppingCheck(
+                                                checked = true,
+                                                lightMode = themedSurfaceMode,
+                                                onClick = { toggleWithUndo(checked) },
+                                            )
+                                            Spacer(Modifier.width(9.dp))
+                                            ShoppingProductPicture(
+                                                name = checked.name,
+                                                modifier = Modifier.size(39.dp),
+                                                loadPhoto = false,
+                                            )
+                                            Spacer(Modifier.width(9.dp))
+                                            Text(
+                                                checked.name,
+                                                modifier = Modifier.weight(1f),
+                                                color = pageMuted,
+                                                fontSize = 13.sp,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                                textDecoration =
+                                                    androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                                            )
+                                            Box {
+                                                IconButton(
+                                                    onClick = { itemMenuId = checked.id },
+                                                    modifier = Modifier.size(32.dp),
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.MoreVert,
+                                                        contentDescription = "Ändra eller ta bort " + checked.name,
+                                                        tint = pageMuted,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
+                                                }
+                                                DropdownMenu(
+                                                    expanded = itemMenuId == checked.id,
+                                                    onDismissRequest = { itemMenuId = null },
+                                                ) {
+                                                    DropdownMenuItem(
+                                                        text = { Text("Ångra avbockning") },
+                                                        onClick = {
+                                                            itemMenuId = null
+                                                            toggleWithUndo(checked)
+                                                        },
+                                                    )
+                                                    DropdownMenuItem(
+                                                        text = { Text("Ändra namn") },
+                                                        onClick = {
+                                                            itemMenuId = null
+                                                            editingItem = checked
+                                                            editingName = checked.name
+                                                        },
+                                                    )
+                                                    DropdownMenuItem(
+                                                        text = { Text("Ta bort vara") },
+                                                        onClick = {
+                                                            itemMenuId = null
+                                                            deletingItem = checked
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        if (index != checkedItems.lastIndex) {
+                                            HorizontalDivider(
+                                                Modifier.padding(start = 50.dp),
+                                                color = border,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
