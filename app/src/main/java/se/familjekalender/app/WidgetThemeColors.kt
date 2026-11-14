@@ -519,7 +519,8 @@ internal object WidgetThemeColors {
         }
         // The reference artwork is the actual widget background, not a mock preview.
         // Existing live event rows, counters, scrolling and PendingIntents sit above it.
-        val materialResource = WidgetReferenceImages.image(style.skin, "material")
+        val materialResource = if (sunset) R.drawable.widget_sunset_material_v2
+            else WidgetReferenceImages.image(style.skin, "material")
         if (materialResource != null) {
             // RemoteViews sends a resource ID, not a large bitmap over Binder.
             // This is important for launcher stability and older Android devices.
@@ -640,10 +641,14 @@ internal object WidgetThemeColors {
         if (sunset) {
             // The artwork is derived from the user's uploaded photograph.
             // Text and data live in RemoteViews; never bake example events into the widget.
-            views.setImageViewResource(R.id.widget_premium_art, R.drawable.widget_sunset_material)
-            views.setInt(R.id.widget_quick_add, "setBackgroundResource", R.drawable.widget_sunset_add)
-            views.setInt(R.id.widget_badge_day, "setBackgroundResource", R.drawable.widget_sunset_badge_day)
-            views.setInt(R.id.widget_badge_number, "setBackgroundResource", R.drawable.widget_sunset_badge_number)
+            views.setImageViewResource(R.id.widget_premium_art, R.drawable.widget_sunset_material_v2)
+            // The uploaded sample's original button graphics included opaque
+            // rectangular pixels. Use clean bevels, preserving live tap targets.
+            views.setInt(R.id.widget_quick_add, "setBackgroundResource", R.drawable.widget_sunset_add_clean)
+            views.setInt(R.id.widget_badge_day, "setBackgroundResource", R.drawable.widget_sunset_badge_top_clean)
+            views.setInt(R.id.widget_badge_number, "setBackgroundResource", R.drawable.widget_sunset_badge_bottom_clean)
+            views.setTextColor(R.id.widget_badge_day, 0xFF241B16.toInt())
+            views.setTextColor(R.id.widget_badge_number, 0xFFFFFAF0.toInt())
             views.setInt(R.id.widget_todo, "setBackgroundResource", R.drawable.widget_sunset_control_clean)
             views.setInt(R.id.widget_shopping, "setBackgroundResource", R.drawable.widget_sunset_control_clean)
             views.setInt(R.id.widget_week_reminders, "setBackgroundResource", R.drawable.widget_sunset_reminder_panel)
@@ -688,9 +693,18 @@ internal object WidgetThemeColors {
 
     fun applyHeader(context: Context, views: RemoteViews) {
         val style = colors(context)
+        val sunset = savedChoice(context) == SUNSET
+        if (sunset) {
+            // A subtle left-to-right dark scrim keeps the actual date legible
+            // against the bright, changing photo without blocking the forest.
+            views.setInt(R.id.widget_list_header_root, "setBackgroundResource",
+                R.drawable.widget_sunset_header_scrim)
+        }
         views.setTextColor(
             R.id.widget_list_header,
-            if (style.skin == Skin.CLASSIC) 0xFFF2F5FC.toInt() else style.muted,
+            if (sunset) 0xFFFFF7EF.toInt()
+            else if (style.skin == Skin.CLASSIC) 0xFFF2F5FC.toInt()
+            else style.muted,
         )
     }
 }
