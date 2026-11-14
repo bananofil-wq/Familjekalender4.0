@@ -1372,46 +1372,13 @@ private fun ShoppingScreen(
             }
         }
 
-    fun categoryFor(name: String): String {
-        val value = name.lowercase(Locale("sv", "SE"))
-        return when {
-            listOf("äpp", "banan", "päron", "apels", "citron", "gurk", "tomat", "sallad", "lök", "potatis", "morot", "paprika", "avokado", "frukt", "grönsak")
-                .any { it in value } -> "Frukt & grönt"
-            listOf("mjölk", "fil", "yoghurt", "ost", "smör", "grädde", "ägg", "kvarg")
-                .any { it in value } -> "Mejeri"
-            listOf("kött", "kyckling", "färs", "korv", "bacon", "fisk", "lax", "skinka")
-                .any { it in value } -> "Kött & fisk"
-            listOf("bröd", "kaffe", "te", "pasta", "ris", "mjöl", "socker", "fling", "konserv", "sås", "krydd")
-                .any { it in value } -> "Skafferi"
-            listOf("fryst", "glass", "pizza", "pommes").any { it in value } -> "Frys"
-            listOf("schampo", "tvål", "tand", "deo", "blöj", "toalett", "hygien").any { it in value } -> "Hygien"
-            listOf("disk", "tvätt", "soppås", "hushåll", "folie", "bakplåt", "rengör").any { it in value } -> "Hushåll"
-            else -> "Övrigt"
-        }
-    }
-
-    val categoryOrder =
-        listOf(
-            "Frukt & grönt",
-            "Mejeri",
-            "Kött & fisk",
-            "Skafferi",
-            "Frys",
-            "Hygien",
-            "Hushåll",
-            "Övrigt",
-        )
-    val categoryEmoji =
-        mapOf(
-            "Frukt & grönt" to "🍏",
-            "Mejeri" to "🥛",
-            "Kött & fisk" to "🥩",
-            "Skafferi" to "🥫",
-            "Frys" to "❄️",
-            "Hygien" to "🧴",
-            "Hushåll" to "🧽",
-            "Övrigt" to "🛒",
-        )
+    // Categories are derived from names, so all family members see the same grouping.
+    fun categoryFor(name: String): String = SmartShoppingCatalog.categoryFor(name)
+    val categoryOrder = SmartShoppingCatalog.categoryOrder
+    val categoryEmoji = SmartShoppingCatalog.categoryEmoji
+    var sortMode by remember { mutableStateOf("Butiksordning") }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+    var previewPhotoName by remember { mutableStateOf<String?>(null) }
 
     val openItems = items.filterNot { it.checked }
     val checkedItems = items.filter { it.checked }
@@ -1427,12 +1394,29 @@ private fun ShoppingScreen(
             (selectedCategory == "Alla" || categoryFor(item.name) == selectedCategory) &&
                 (searchQuery.isBlank() || item.name.contains(searchQuery.trim(), ignoreCase = true))
         }
+    val groupsInOrder =
+        if (sortMode == "A–Ö") categoryOrder.sorted()
+        else categoryOrder
     val visibleGroups =
-        categoryOrder.mapNotNull { category ->
-            filteredOpen.filter { categoryFor(it.name) == category }
-                .takeIf { it.isNotEmpty() }
-                ?.let { category to it }
+        groupsInOrder.mapNotNull { category ->
+            val inCategory = filteredOpen.filter { categoryFor(it.name) == category }
+            val sorted = when (sortMode) {
+                "Senaste" -> inCategory.reversed()
+                else -> inCategory.sortedWith(
+                    compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+                )
+            }
+            sorted.takeIf { it.isNotEmpty() }?.let { category to it }
         }
+
+    val suggestions = SmartShoppingCatalog.suggestions(
+        text,
+        items.map { it.name },
+    )
+    val typedName = text.trim().substringBefore(',').substringBefore(';').trim()
+    val duplicateName = typedName.isNotBlank() &&
+        openItems.any { SmartShoppingCatalog.normalized(it.name) ==
+            SmartShoppingCatalog.normalized(typedName) }
 
     val blue =
         if (themedSurfaceMode) MaterialTheme.colorScheme.primary
@@ -1595,6 +1579,57 @@ private fun ShoppingScreen(
 
                 item {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            "Sortera:",
+                            color = pageMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Box {
+                            Surface(
+                                modifier = Modifier.clickable { sortMenuExpanded = true },
+                                shape = RoundedCornerShape(12.dp),
+                                color = softSurface,
+                                border = BorderStroke(1.dp, border),
+                            ) {
+                                Row(
+                                    Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(sortMode, color = pageText, fontSize = 12.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = pageMuted,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = sortMenuExpanded,
+                                onDismissRequest = { sortMenuExpanded = false },
+                            ) {
+                                listOf("Butiksordning", "A–Ö", "Senaste").forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = { Text(mode) },
+                                        onClick = {
+                                            sortMode = mode
+                                            sortMenuExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -1730,7 +1765,7 @@ private fun ShoppingScreen(
                                         shadowElevation = 3.dp,
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Text(shoppingProductEmoji(item.name), fontSize = 24.sp)
+                                            ShoppingProductPicture(item.name, Modifier.fillMaxSize())
                                         }
                                     }
 
@@ -1807,6 +1842,97 @@ private fun ShoppingScreen(
                 }
             }
 
+            if (typedName.isNotBlank()) {
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .padding(bottom = 82.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = softSurface,
+                    border = BorderStroke(1.dp, border),
+                    shadowElevation = 10.dp,
+                ) {
+                    Column(Modifier.padding(10.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            ShoppingProductPicture(
+                                name = typedName,
+                                modifier = Modifier.size(46.dp),
+                                loadPhoto = previewPhotoName == typedName,
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    typedName,
+                                    color = pageText,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    if (duplicateName) "Finns redan på listan"
+                                    else "Kategori: " + categoryFor(typedName),
+                                    color = if (duplicateName) orange else pageMuted,
+                                    fontSize = 11.sp,
+                                )
+                            }
+                        }
+                        val moreSuggestions = suggestions
+                            .filterNot {
+                                SmartShoppingCatalog.normalized(it) ==
+                                    SmartShoppingCatalog.normalized(typedName)
+                            }
+                            .take(3)
+                        if (moreSuggestions.isNotEmpty()) {
+                            HorizontalDivider(
+                                Modifier.padding(vertical = 8.dp),
+                                color = border,
+                            )
+                            moreSuggestions.forEach { suggested ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable {
+                                            text = suggested
+                                            previewPhotoName = suggested
+                                        }
+                                        .padding(horizontal = 5.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                                ) {
+                                    ShoppingProductPicture(
+                                        name = suggested,
+                                        modifier = Modifier.size(31.dp),
+                                        loadPhoto = false,
+                                    )
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            suggested,
+                                            color = pageText,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            categoryFor(suggested),
+                                            color = pageMuted,
+                                            fontSize = 10.sp,
+                                        )
+                                    }
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Välj " + suggested,
+                                        tint = blue,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Surface(
                 modifier =
                     Modifier.align(Alignment.BottomCenter)
@@ -1824,12 +1950,17 @@ private fun ShoppingScreen(
                 ) {
                     FilledIconButton(
                         onClick = {
+                            val namesAlreadyPresent = openItems
+                                .map { SmartShoppingCatalog.normalized(it.name) }
+                                .toMutableSet()
                             text
                                 .split(',', ';', '\n')
                                 .map { it.trim() }
                                 .filter { it.isNotBlank() }
+                                .filter { namesAlreadyPresent.add(SmartShoppingCatalog.normalized(it)) }
                                 .forEach(onAdd)
                             text = ""
+                            previewPhotoName = null
                         },
                         enabled = text.isNotBlank(),
                         modifier = Modifier.size(50.dp),
@@ -1853,7 +1984,10 @@ private fun ShoppingScreen(
 
                     OutlinedTextField(
                         value = text,
-                        onValueChange = { text = it },
+                        onValueChange = {
+                            text = it
+                            previewPhotoName = null
+                        },
                         placeholder = { Text("Lägg till vara …") },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
