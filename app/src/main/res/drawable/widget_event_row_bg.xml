@@ -1,33 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Nuvarande: raised graphite event card with curved reflective face. -->
+<!-- Deep raised graphite. Shadow gives height, highlights remain restrained. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="4dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#B800050C"/>
-            <corners android:radius="21dp"/>
-        </shape>
-    </item>
-    <item android:bottom="2dp">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#F44F5D6D"
-                android:centerColor="#F52B3645" android:endColor="#FC141C29"/>
-            <corners android:radius="20dp"/>
-            <stroke android:width="1dp" android:color="#B8ABB9CA"/>
-        </shape>
-    </item>
-    <item android:left="2dp" android:right="2dp" android:top="2dp" android:bottom="4dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#00000000"/>
-            <corners android:radius="19dp"/>
-            <stroke android:width="0.65dp" android:color="#466E859D"/>
-        </shape>
-    </item>
-    <item android:left="3dp" android:right="3dp" android:top="2dp"
-        android:height="15dp" android:gravity="top">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#65D4E7FB"
-                android:endColor="#00C0D9F1"/>
-            <corners android:topLeftRadius="18dp" android:topRightRadius="18dp"/>
-        </shape>
-    </item>
+ <item android:top="6dp">
+  <shape android:shape="rectangle"><solid android:color="#E8000309"/><corners android:radius="21dp"/></shape>
+ </item>
+ <item android:left="2dp" android:right="2dp" android:top="3dp" android:bottom="1dp">
+  <shape android:shape="rectangle"><solid android:color="#BC09121D"/><corners android:radius="20dp"/></shape>
+ </item>
+ <item android:bottom="5dp">
+  <shape android:shape="rectangle">
+   <gradient android:angle="270" android:startColor="#FF354251"
+     android:centerColor="#FF24303F" android:endColor="#FF151E2B"/>
+   <corners android:radius="20dp"/>
+   <stroke android:width="1dp" android:color="#A08396AB"/>
+  </shape>
+ </item>
+ <item android:left="3dp" android:right="3dp" android:top="2dp" android:height="9dp" android:gravity="top">
+  <shape android:shape="rectangle">
+   <gradient android:angle="270" android:startColor="#22C8DDF2" android:endColor="#00C8DDF2"/>
+   <corners android:topLeftRadius="17dp" android:topRightRadius="17dp"/>
+  </shape>
+ </item>
 </layer-list>
