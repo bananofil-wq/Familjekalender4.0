@@ -37,4 +37,4 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-# Trigger APK build after Clean theme refresh.
+# Rebuild APK to verify widget typography alignment.
