@@ -187,11 +187,11 @@ internal object WidgetThemeColors {
     }
 
     private fun rowResource(skin: Skin): Int? = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_row
-        Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_row
-        Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_row
-        Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_row
-        Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_row
+        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_row
+        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_row
+        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_row
+        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_row
+        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_row
         Skin.CLASSIC -> null
             Skin.WOOD -> R.drawable.widget_wood_approved_row
             Skin.COPPER -> R.drawable.widget_skin_copper_row
@@ -216,11 +216,11 @@ internal object WidgetThemeColors {
     }
 
     private fun controlResource(skin: Skin): Int = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_control
-        Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_control
-        Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_control
-        Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_control
-        Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_control
+        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_control
+        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_control
+        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_control
+        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_control
+        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_control
         Skin.CLASSIC -> R.drawable.widget_refresh_bg
         Skin.WOOD -> R.drawable.widget_wood_approved_control
         Skin.COPPER -> R.drawable.widget_skin_copper_control
@@ -246,11 +246,11 @@ internal object WidgetThemeColors {
 
     /** Dedicated square photographic + button; do not stretch wide shortcut pills. */
     private fun quickAddResource(skin: Skin): Int = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_add
-        Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_add
-        Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_add
-        Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_add
-        Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_add
+        Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_add
+        Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_add
+        Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_add
+        Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_add
+        Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_add
         else -> controlResource(skin)
     }
 
@@ -285,11 +285,11 @@ internal object WidgetThemeColors {
     }
 
     private fun badgeDayResource(skin: Skin): Int? = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_badge_day
-        Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_badge_day
-        Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_badge_day
-        Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_badge_day
-        Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_badge_day
+        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_badge_day
+        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_badge_day
+        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_badge_day
+        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_badge_day
+        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_badge_day
         Skin.WOOD -> R.drawable.widget_wood_approved_badge_day
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_day
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_day
@@ -313,11 +313,11 @@ internal object WidgetThemeColors {
     }
 
     private fun badgeNumberResource(skin: Skin): Int? = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_badge_number
-        Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_badge_number
-        Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_badge_number
-        Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_badge_number
-        Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_badge_number
+        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_badge_number
+        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_badge_number
+        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_badge_number
+        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_badge_number
+        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_badge_number
         Skin.WOOD -> R.drawable.widget_wood_approved_badge_number
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_number
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_number
@@ -392,27 +392,27 @@ internal object WidgetThemeColors {
         val control = if (style.skin == Skin.CLASSIC) R.drawable.widget_refresh_bg
             else controlResource(style.skin)
         val rem = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_reminder
-            Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_reminder
-            Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_reminder
-            Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_reminder
+            Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
         }
         val remRow = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_reminder_row
-            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_reminder_row
-            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_reminder_row
-            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_reminder_row
-            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_reminder_row
+            Skin.FOREST_WOOD -> R.drawable.widget_clean_forest_wood_reminder_row
+            Skin.OBSIDIAN -> R.drawable.widget_clean_obsidian_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_clean_carbon_red_reminder_row
+            Skin.MIST_FOREST -> R.drawable.widget_clean_mist_forest_reminder_row
+            Skin.NORDIC_DUSK -> R.drawable.widget_clean_nordic_dusk_reminder_row
             else -> R.drawable.widget_reminder_line_bg
         }
         val week = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_week_badge
-            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_week_badge
-            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_week_badge
-            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_week_badge
-            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_week_badge
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_week_badge
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_week_badge
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_week_badge
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_week_badge
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_week_badge
             else -> R.drawable.widget_reminder_week_badge
         }
         return PreviewMaterials(
@@ -560,27 +560,27 @@ internal object WidgetThemeColors {
         // All new skins theme their reminder card too; switching back restores
         // the exact established Nuvarande/Trä reminder resources.
         val reminderBackground = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_exact_forest_wood_reminder
-            Skin.OBSIDIAN -> R.drawable.widget_exact_obsidian_reminder
-            Skin.CARBON_RED -> R.drawable.widget_exact_carbon_red_reminder
-            Skin.MIST_FOREST -> R.drawable.widget_exact_mist_forest_reminder
-            Skin.NORDIC_DUSK -> R.drawable.widget_exact_nordic_dusk_reminder
+            Skin.FOREST_WOOD -> R.drawable.widget_photo_forest_wood_reminder
+            Skin.OBSIDIAN -> R.drawable.widget_photo_obsidian_reminder
+            Skin.CARBON_RED -> R.drawable.widget_photo_carbon_red_reminder
+            Skin.MIST_FOREST -> R.drawable.widget_photo_mist_forest_reminder
+            Skin.NORDIC_DUSK -> R.drawable.widget_photo_nordic_dusk_reminder
             else -> R.drawable.widget_reminder_bg
         }
         val reminderRow = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_reminder_row
-            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_reminder_row
-            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_reminder_row
-            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_reminder_row
-            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_reminder_row
+            Skin.FOREST_WOOD -> R.drawable.widget_clean_forest_wood_reminder_row
+            Skin.OBSIDIAN -> R.drawable.widget_clean_obsidian_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_clean_carbon_red_reminder_row
+            Skin.MIST_FOREST -> R.drawable.widget_clean_mist_forest_reminder_row
+            Skin.NORDIC_DUSK -> R.drawable.widget_clean_nordic_dusk_reminder_row
             else -> R.drawable.widget_reminder_line_bg
         }
         val weekBadge = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_week_badge
-            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_week_badge
-            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_week_badge
-            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_week_badge
-            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_week_badge
+            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_week_badge
+            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_week_badge
+            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_week_badge
+            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_week_badge
+            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_week_badge
             else -> R.drawable.widget_reminder_week_badge
         }
         views.setInt(R.id.widget_week_reminders, "setBackgroundResource", reminderBackground)
@@ -598,7 +598,7 @@ internal object WidgetThemeColors {
             R.id.widget_week_reminder_3,
         ).forEach { id ->
             views.setInt(id, "setBackgroundResource", reminderRow)
-            // The reference reminder pills have an inset accent marker on the
+            // The clean reminder pills have an inset accent marker on the
             // left. Move live text past that marker only for premium skins.
             if (premium != null) {
                 val d = context.resources.displayMetrics.density
