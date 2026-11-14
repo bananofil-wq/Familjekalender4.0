@@ -41,11 +41,16 @@ class FamilyCalendarWidgetWorker(appContext: Context, params: WorkerParameters) 
                         .remove(FamilyCalendarWidget.cachedFamilyPrefKey(widgetId))
                         .apply()
                     val views = FamilyCalendarWidget.baseViews(applicationContext, widgetId)
-                    views.setTextViewText(
-                        R.id.widget_status, "Öppna appen och anslut till familjen"
-                    )
-                    views.setTextViewText(R.id.widget_todo, "✓  To-Do    ›")
-                    views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
+                    if (WidgetThemeColors.savedChoice(applicationContext) == WidgetThemeColors.AURORA) {
+                        views.setTextViewText(R.id.widget_aurora_event1,
+                            "Öppna appen och anslut till familjen")
+                    } else {
+                        views.setTextViewText(
+                            R.id.widget_status, "Öppna appen och anslut till familjen"
+                        )
+                        views.setTextViewText(R.id.widget_todo, "✓  To-Do    ›")
+                        views.setTextViewText(R.id.widget_shopping, "🛒  Inköp    ›")
+                    }
                     views.setTextViewText(R.id.widget_updated, "")
                     manager.updateAppWidget(widgetId, views)
                     manager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_event_list)
