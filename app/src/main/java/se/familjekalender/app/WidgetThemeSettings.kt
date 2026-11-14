@@ -56,15 +56,31 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     var previewChoice by remember { mutableStateOf(activeChoice) }
     var pickerOpen by remember { mutableStateOf(false) }
     var detailsExpanded by remember { mutableStateOf(false) }
+    var widgetApplyStatus by remember { mutableStateOf<String?>(null) }
 
     // A thumbnail changes the actual Android home-screen widget immediately.
     // Previously this only set previewChoice; the widget stayed unchanged
     // unless users found a separate confirmation at the bottom of the dialog.
     fun applyWidgetChoice(choice: String) {
         WidgetThemeColors.saveChoice(context, choice)
+        val persisted = WidgetThemeColors.savedChoice(context)
+        if (persisted != choice) {
+            widgetApplyStatus = "Temat kunde inte sparas. Försök igen."
+            return
+        }
         previewChoice = choice
         activeChoice = choice
-        FamilyCalendarWidget.refreshTheme(context)
+        widgetApplyStatus = try {
+            val refreshed = FamilyCalendarWidget.refreshTheme(context)
+            if (refreshed == 0) {
+                "Temat är sparat, men Android hittar ingen aktiv widget att uppdatera."
+            } else {
+                "Temat är sparat. $refreshed widget(ar) har fått en fullständig uppdatering."
+            }
+        } catch (error: Exception) {
+            android.util.Log.e("WidgetThemeSettings", "Widget theme refresh failed", error)
+            "Temat är sparat men Android kunde inte uppdatera widgeten: ${error.javaClass.simpleName}"
+        }
     }
 
     // Only seven choices. Existing "Nuvarande" is the protected original widget.
@@ -102,6 +118,15 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             "Välj mellan sju widgetteman. Kalenderns eget tema påverkas inte.",
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
         )
+        widgetApplyStatus?.let { status ->
+            Text(
+                text = status,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            )
+        }
+
         // Even before the chooser opens, the selected widget is visible in Settings.
         WidgetMaterialPreview(
             choice = activeChoice,
