@@ -443,6 +443,108 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val visibleBirthdays = if (WidgetFeatureSettings.enabled(
                     context, WidgetFeatureSettings.BIRTHDAYS
                 )) widgetUpcomingBirthdays(today, birthdays).take(2) else emptyList()
+
+            // Premium images are accurate only when content is constrained to
+            // three rows. Merge real entries instead of stacking independent
+            // birthday/private/permanent/week sections on the same backdrop.
+            if (WidgetThemeColors.premiumLook(
+                    WidgetThemeColors.savedChoice(context)
+                ) != null) {
+                val compact = mutableListOf<Triple<String, PendingIntent, Boolean>>()
+                visibleBirthdays.forEachIndexed { index, birthday ->
+                    compact += Triple(
+                        widgetBirthdayLabel(birthday),
+                        openCalendarPendingIntent(context, appWidgetId, 1_230 + index),
+                        false,
+                    )
+                }
+                privateReminders.forEachIndexed { index, reminder ->
+                    compact += Triple(
+                        "🔒 " + reminder.text +
+                            (if (reminder.from.isNotBlank()) " · Från " + reminder.from else ""),
+                        openPrivateInboxIntent(context, appWidgetId, 1_250 + index),
+                        true,
+                    )
+                }
+                activePermanent.forEachIndexed { index, reminder ->
+                    compact += Triple(
+                        permanentReminderLabel(reminder),
+                        openCalendarEventPendingIntent(
+                            context, appWidgetId, reminder.eventId, 1_270 + index,
+                        ),
+                        false,
+                    )
+                }
+                if (showReminders) {
+                    upcomingWeekReminders(today, reminders).forEachIndexed { index, reminder ->
+                        compact += Triple(
+                            weeklyReminderLabel(reminder),
+                            openCalendarPendingIntent(context, appWidgetId, 1_300 + index),
+                            false,
+                        )
+                    }
+                }
+
+                views.setViewVisibility(
+                    R.id.widget_week_reminders,
+                    if (showReminders || compact.isNotEmpty()) View.VISIBLE else View.GONE,
+                )
+                views.setTextViewText(
+                    R.id.widget_week_reminders_title,
+                    if (visibleBirthdays.isEmpty()) "Veckans påminnelser"
+                    else "Påminnelser & födelsedagar",
+                )
+                views.setTextViewText(
+                    R.id.widget_week_reminders_week,
+                    "V${today.get(WeekFields.ISO.weekOfWeekBasedYear())}",
+                )
+                views.setViewVisibility(
+                    R.id.widget_week_reminder_empty,
+                    if (showReminders && compact.isEmpty()) View.VISIBLE else View.GONE,
+                )
+                views.setTextViewText(
+                    R.id.widget_week_reminder_empty,
+                    "Inga påminnelser denna vecka",
+                )
+                val visibleIds = intArrayOf(
+                    R.id.widget_week_reminder_1,
+                    R.id.widget_week_reminder_2,
+                    R.id.widget_week_reminder_3,
+                )
+                visibleIds.forEachIndexed { index, viewId ->
+                    val entry = compact.getOrNull(index)
+                    views.setViewVisibility(
+                        viewId, if (entry == null) View.GONE else View.VISIBLE,
+                    )
+                    views.setTextViewText(viewId, entry?.first ?: "")
+                    if (entry != null) views.setOnClickPendingIntent(viewId, entry.second)
+                }
+                val hidden = compact.drop(visibleIds.size)
+                views.setViewVisibility(
+                    R.id.widget_week_reminder_more,
+                    if (hidden.isEmpty()) View.GONE else View.VISIBLE,
+                )
+                views.setTextViewText(
+                    R.id.widget_week_reminder_more,
+                    if (hidden.isEmpty()) "" else "+${hidden.size} fler  ›",
+                )
+                views.setOnClickPendingIntent(
+                    R.id.widget_week_reminder_more,
+                    if (hidden.any { it.third })
+                        openPrivateInboxIntent(context, appWidgetId, 1_320)
+                    else openCalendarPendingIntent(context, appWidgetId, 1_321),
+                )
+                views.setOnClickPendingIntent(
+                    R.id.widget_week_reminders_title,
+                    openCalendarPendingIntent(context, appWidgetId, 1_322),
+                )
+                views.setOnClickPendingIntent(
+                    R.id.widget_week_reminders_week,
+                    openCalendarPendingIntent(context, appWidgetId, 1_323),
+                )
+                return
+            }
+
             views.setViewVisibility(
                 R.id.widget_week_reminders,
                 if (showReminders || visibleBirthdays.isNotEmpty() ||
@@ -582,9 +684,10 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val manager = AppWidgetManager.getInstance(context)
             val component = ComponentName(context, FamilyCalendarWidget::class.java)
             manager.getAppWidgetIds(component).forEach { appWidgetId ->
-                val styleOnly = RemoteViews(context.packageName, R.layout.widget_family_calendar)
-                WidgetThemeColors.apply(context, styleOnly)
-                manager.partiallyUpdateAppWidget(appWidgetId, styleOnly)
+                // The premium layout has different geometry and view IDs.
+                // Rebuild from the cache instead of applying the classic layout
+                // as an incompatible partial update.
+                manager.updateAppWidget(appWidgetId, baseViews(context, appWidgetId))
                 manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
             }
         }
