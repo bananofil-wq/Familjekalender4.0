@@ -400,6 +400,20 @@ internal object WidgetThemeColors {
             else palette(resolveCleanVisualTheme(choice))
 
     fun previewMaterials(choice: String): PreviewMaterials {
+        if (choice == SUNSET) {
+            return PreviewMaterials(
+                background = R.drawable.widget_sunset_material_v2,
+                badgeDay = R.drawable.widget_sunset_badge_top_clean,
+                badgeNumber = R.drawable.widget_sunset_badge_bottom_clean,
+                todo = R.drawable.widget_sunset_control_clean,
+                shopping = R.drawable.widget_sunset_control_clean,
+                refresh = R.drawable.widget_sunset_add_clean,
+                row = R.drawable.widget_sunset_event_clean,
+                reminder = R.drawable.widget_sunset_reminder_panel,
+                reminderRow = R.drawable.widget_sunset_reminder_clean,
+                weekBadge = R.drawable.widget_sunset_week_badge,
+            )
+        }
         val style = previewPalette(choice)
         val premium = premiumLook(choice)
         val control = when (style.skin) {
