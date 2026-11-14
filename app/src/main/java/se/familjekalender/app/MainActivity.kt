@@ -1405,9 +1405,12 @@ private fun ShoppingScreen(
     lightMode: Boolean = false,
     nordicDarkMode: Boolean = false,
     onBack: () -> Unit,
-    onAdd: (String) -> Unit,
-    onToggle: (SyncShoppingItem) -> Unit,
-    onClear: () -> Unit,
+    onAdd: suspend (String) -> Boolean,
+    onToggle: suspend (SyncShoppingItem) -> Boolean,
+    onClear: suspend (List<SyncShoppingItem>) -> Boolean,
+    onDelete: suspend (SyncShoppingItem) -> Boolean,
+    onRename: suspend (SyncShoppingItem, String) -> Boolean,
+    onRestore: suspend (List<SyncShoppingItem>) -> Boolean,
 ) {
     val themedSurfaceMode = lightMode || nordicDarkMode
     val context = LocalContext.current
@@ -1417,6 +1420,41 @@ private fun ShoppingScreen(
     var searchQuery by remember { mutableStateOf("") }
     var menuExpanded by remember { mutableStateOf(false) }
     var showClearConfirmation by remember { mutableStateOf(false) }
+    var completedExpanded by remember { mutableStateOf(true) }
+    var itemMenuId by remember { mutableStateOf<String?>(null) }
+    var editingItem by remember { mutableStateOf<SyncShoppingItem?>(null) }
+    var editingName by remember { mutableStateOf("") }
+    var deletingItem by remember { mutableStateOf<SyncShoppingItem?>(null) }
+    var busyIds by remember { mutableStateOf(setOf<String>()) }
+    var bulkBusy by remember { mutableStateOf(false) }
+    val shoppingScope = rememberCoroutineScope()
+    val shoppingSnackbar = remember { SnackbarHostState() }
+    val currentItems by rememberUpdatedState(items)
+
+    fun toggleWithUndo(item: SyncShoppingItem) {
+        if (item.id in busyIds) return
+        busyIds = busyIds + item.id
+        shoppingScope.launch {
+            try {
+                if (onToggle(item)) {
+                    busyIds = busyIds - item.id
+                    val result = shoppingSnackbar.showSnackbar(
+                        message = if (item.checked) item.name + " tillbaka i listan"
+                            else item.name + " markerad som klar",
+                        actionLabel = "Ångra",
+                        duration = SnackbarDuration.Long,
+                    )
+                    if (result == SnackbarResult.ActionPerformed &&
+                        currentItems.firstOrNull { it.id == item.id }?.checked == !item.checked
+                    ) {
+                        onToggle(item.copy(checked = !item.checked))
+                    }
+                }
+            } finally {
+                busyIds = busyIds - item.id
+            }
+        }
+    }
 
     val voiceLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -1809,7 +1847,7 @@ private fun ShoppingScreen(
                                     ReferenceShoppingCheck(
                                         checked = false,
                                         lightMode = themedSurfaceMode,
-                                        onClick = { onToggle(item) },
+                                        onClick = { toggleWithUndo(item) },
                                     )
                                     Spacer(Modifier.width(5.dp))
 
@@ -1847,16 +1885,38 @@ private fun ShoppingScreen(
                                     }
 
                                     Spacer(Modifier.width(6.dp))
-                                    IconButton(
-                                        onClick = { },
-                                        modifier = Modifier.size(24.dp),
-                                    ) {
-                                        Icon(
-                                            Icons.Default.MoreVert,
-                                            contentDescription = "Mer för ${item.name}",
-                                            tint = if (themedSurfaceMode) pageText.copy(alpha = .55f) else Color.White.copy(alpha = .78f),
-                                            modifier = Modifier.size(17.dp),
-                                        )
+                                    Box {
+                                        IconButton(
+                                            onClick = { itemMenuId = item.id },
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Default.MoreVert,
+                                                contentDescription = "Ändra eller ta bort " + item.name,
+                                                tint = pageMuted,
+                                                modifier = Modifier.size(19.dp),
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = itemMenuId == item.id,
+                                            onDismissRequest = { itemMenuId = null },
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Ändra namn") },
+                                                onClick = {
+                                                    itemMenuId = null
+                                                    editingItem = item
+                                                    editingName = item.name
+                                                },
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Ta bort vara") },
+                                                onClick = {
+                                                    itemMenuId = null
+                                                    deletingItem = item
+                                                },
+                                            )
+                                        }
                                     }
                                 }
 
