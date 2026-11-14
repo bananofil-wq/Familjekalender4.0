@@ -32,8 +32,9 @@
         android:textStyle="bold"
         android:maxLines="1"
         android:ellipsize="end"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 
     <TextView
         android:layout_width="1dp"
@@ -65,8 +66,9 @@
             android:textSize="12sp"
             android:maxLines="2"
             android:ellipsize="end"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center_horizontal"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
         <TextView
             android:id="@+id/widget_item_live_status"
             android:layout_width="match_parent"
@@ -77,8 +79,9 @@
             android:textStyle="bold"
             android:maxLines="1"
             android:visibility="gone"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center_horizontal"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
     </LinearLayout>
 
     <TextView
@@ -93,5 +96,6 @@
         android:textSize="10sp"
         android:background="@drawable/widget_time_pill"
         android:maxLines="1"
-        android:includeFontPadding="false" />
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 </LinearLayout>
