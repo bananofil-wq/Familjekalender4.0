@@ -283,11 +283,11 @@ internal object WidgetThemeColors {
     }
 
     private fun badgeDayResource(skin: Skin): Int? = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_badge_day
-        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_badge_day
-        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_badge_day
-        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_badge_day
-        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_badge_day
+        Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_badge_day
+        Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_badge_day
+        Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_badge_day
+        Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_badge_day
+        Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_badge_day
         Skin.WOOD -> R.drawable.widget_wood_approved_badge_day
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_day
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_day
@@ -311,11 +311,11 @@ internal object WidgetThemeColors {
     }
 
     private fun badgeNumberResource(skin: Skin): Int? = when (skin) {
-        Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_badge_number
-        Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_badge_number
-        Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_badge_number
-        Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_badge_number
-        Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_badge_number
+        Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_badge_number
+        Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_badge_number
+        Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_badge_number
+        Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_badge_number
+        Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_badge_number
         Skin.WOOD -> R.drawable.widget_wood_approved_badge_number
         Skin.COPPER -> R.drawable.widget_skin_copper_badge_number
         Skin.TITANIUM -> R.drawable.widget_skin_titanium_badge_number
@@ -398,19 +398,19 @@ internal object WidgetThemeColors {
             else -> R.drawable.widget_reminder_bg
         }
         val remRow = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder_row
-            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder_row
-            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder_row
-            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder_row
-            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder_row
+            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_reminder_row
+            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_reminder_row
+            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_reminder_row
+            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_reminder_row
             else -> R.drawable.widget_reminder_line_bg
         }
         val week = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_week_badge
-            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_week_badge
-            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_week_badge
-            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_week_badge
-            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_week_badge
+            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_week_badge
+            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_week_badge
+            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_week_badge
+            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_week_badge
+            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_week_badge
             else -> R.drawable.widget_reminder_week_badge
         }
         return PreviewMaterials(
@@ -566,19 +566,19 @@ internal object WidgetThemeColors {
             else -> R.drawable.widget_reminder_bg
         }
         val reminderRow = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_reminder_row
-            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_reminder_row
-            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_reminder_row
-            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_reminder_row
-            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_reminder_row
+            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_reminder_row
+            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_reminder_row
+            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_reminder_row
+            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_reminder_row
+            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_reminder_row
             else -> R.drawable.widget_reminder_line_bg
         }
         val weekBadge = when (premium?.skin) {
-            Skin.FOREST_WOOD -> R.drawable.widget_premium_forest_wood_week_badge
-            Skin.OBSIDIAN -> R.drawable.widget_premium_obsidian_week_badge
-            Skin.CARBON_RED -> R.drawable.widget_premium_carbon_red_week_badge
-            Skin.MIST_FOREST -> R.drawable.widget_premium_mist_forest_week_badge
-            Skin.NORDIC_DUSK -> R.drawable.widget_premium_nordic_dusk_week_badge
+            Skin.FOREST_WOOD -> R.drawable.widget_ref_forest_wood_week_badge
+            Skin.OBSIDIAN -> R.drawable.widget_ref_obsidian_week_badge
+            Skin.CARBON_RED -> R.drawable.widget_ref_carbon_red_week_badge
+            Skin.MIST_FOREST -> R.drawable.widget_ref_mist_forest_week_badge
+            Skin.NORDIC_DUSK -> R.drawable.widget_ref_nordic_dusk_week_badge
             else -> R.drawable.widget_reminder_week_badge
         }
         views.setInt(R.id.widget_week_reminders, "setBackgroundResource", reminderBackground)
