@@ -104,35 +104,25 @@ internal object WidgetThemeColors {
     fun premiumLook(choice: String): PremiumLook? =
         premiumLooks.firstOrNull { it.id == choice }
 
-    private fun isSupportedChoice(choice: String): Boolean =
-        choice == ORIGINAL ||
-        choice == CleanVisualTheme.CURRENT.name ||
-        choice == CleanVisualTheme.OAK_WOOD.name ||
-        premiumLook(choice) != null
-
-    /** Legacy widget installations keep their current dark glass appearance. */
+    /**
+     * Only "Nuvarande" is supported. Old premium and wood widget selections
+     * are migrated to the original dark family widget at the first read.
+     * This preference is independent of the calendar's appearance settings.
+     */
     fun savedChoice(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val stored = prefs.getString(PREF_KEY, ORIGINAL) ?: ORIGINAL
-        if (isSupportedChoice(stored)) return stored
-        // Legacy widget-only selections are retired from the picker. Preserve
-        // current and approved wood choices without touching calendar settings.
-        prefs.edit().putString(PREF_KEY, CleanVisualTheme.CURRENT.name).apply()
-        return CleanVisualTheme.CURRENT.name
+        if (prefs.getString(PREF_KEY, ORIGINAL) != ORIGINAL) {
+            prefs.edit().putString(PREF_KEY, ORIGINAL).commit()
+        }
+        return ORIGINAL
     }
 
-    fun selectedTheme(context: Context): CleanVisualTheme? {
-        val selected = savedChoice(context)
-        if (selected == ORIGINAL || premiumLook(selected) != null) return null
-        return resolveCleanVisualTheme(selected)
-    }
+    fun selectedTheme(context: Context): CleanVisualTheme? = null
 
     fun saveChoice(context: Context, choice: String) {
-        if (!isSupportedChoice(choice)) return
-        // Save synchronously before publishing updated RemoteViews.
-        // A theme switch must survive an Activity recreation or process restart.
+        // Reject legacy and premium widget theme selections. Only Nuvarande remains.
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(PREF_KEY, choice).commit()
+            .edit().putString(PREF_KEY, ORIGINAL).commit()
     }
 
     private fun skin(theme: CleanVisualTheme): Skin = when (theme) {
