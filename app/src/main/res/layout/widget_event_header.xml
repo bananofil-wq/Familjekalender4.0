@@ -25,6 +25,7 @@
         android:textStyle="bold"
         android:maxLines="1"
         android:ellipsize="end"
-        android:gravity="center_vertical"
-        android:includeFontPadding="false" />
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textAlignment="center" />
 </LinearLayout>
