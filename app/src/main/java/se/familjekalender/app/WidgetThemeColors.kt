@@ -585,7 +585,12 @@ internal object WidgetThemeColors {
             else -> R.drawable.widget_reminder_week_badge
         }
         views.setInt(R.id.widget_week_reminders, "setBackgroundResource", reminderBackground)
-        views.setInt(R.id.widget_week_reminders_week, "setBackgroundResource", weekBadge)
+        // Nuvarande: remove the extra raised capsule behind V46. It was
+        // visually fighting with the week number. Show clean gold text only.
+        views.setInt(
+            R.id.widget_week_reminders_week, "setBackgroundResource",
+            if (premium == null) android.R.color.transparent else weekBadge,
+        )
         views.setTextColor(R.id.widget_week_reminders_week,
             premium?.text ?: 0xFFF0CEA0.toInt())
         intArrayOf(
