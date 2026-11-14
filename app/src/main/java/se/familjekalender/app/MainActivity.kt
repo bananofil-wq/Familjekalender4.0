@@ -1975,17 +1975,31 @@ private fun ShoppingScreen(
     if (showClearConfirmation) {
         AlertDialog(
             onDismissRequest = { showClearConfirmation = false },
-            title = { Text("Rensa bockade?") },
+            title = { Text("Ta bort klara varor?") },
             text = {
                 Text(
-                    "${checkedItems.size} ${if (checkedItems.size == 1) "vara" else "varor"} tas bort från listan."
+                    "Du tar bort " + checkedItems.size +
+                        " klara varor från familjens inköpslista. " +
+                        "Du kan ångra borttagningen direkt efteråt."
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showClearConfirmation = false
-                        onClear()
+                        val snapshot = checkedItems.toList()
+                        shoppingScope.launch {
+                            if (onClear(snapshot)) {
+                                val result = shoppingSnackbar.showSnackbar(
+                                    snapshot.size.toString() + " klara varor borttagna",
+                                    actionLabel = "Ångra",
+                                    duration = SnackbarDuration.Long,
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    onRestore(snapshot)
+                                }
+                            }
+                        }
                     }
                 ) {
                     Text("Ta bort")
@@ -1993,8 +2007,75 @@ private fun ShoppingScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmation = false }) {
-                    Text("Avbryt")
+                    Text("Behåll")
                 }
+            },
+        )
+    }
+
+    deletingItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { deletingItem = null },
+            title = { Text("Ta bort vara?") },
+            text = { Text("Ta bort ”" + item.name + "” från inköpslistan?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deletingItem = null
+                    shoppingScope.launch {
+                        if (onDelete(item)) {
+                            val result = shoppingSnackbar.showSnackbar(
+                                item.name + " borttagen",
+                                actionLabel = "Ångra",
+                                duration = SnackbarDuration.Long,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                onRestore(listOf(item))
+                            }
+                        }
+                    }
+                }) {
+                    Text("Ta bort")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingItem = null }) { Text("Avbryt") }
+            },
+        )
+    }
+
+    editingItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { editingItem = null },
+            title = { Text("Ändra vara") },
+            text = {
+                OutlinedTextField(
+                    value = editingName,
+                    onValueChange = { editingName = it },
+                    label = { Text("Varunamn") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = editingName.isNotBlank(),
+                    onClick = {
+                        val renamed = editingName.trim()
+                        editingItem = null
+                        shoppingScope.launch {
+                            if (renamed != item.name) {
+                                if (onRename(item, renamed)) {
+                                    shoppingSnackbar.showSnackbar("Varan uppdaterad")
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Spara")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingItem = null }) { Text("Avbryt") }
             },
         )
     }
