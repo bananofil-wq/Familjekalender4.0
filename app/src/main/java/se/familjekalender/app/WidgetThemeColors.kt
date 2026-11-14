@@ -678,7 +678,15 @@ internal object WidgetThemeColors {
                 R.id.widget_week_reminder_3,
             ).forEach { id ->
                 views.setInt(id, "setBackgroundResource", R.drawable.widget_sunset_reminder_clean)
+                // Match the reference artwork: reminder labels sit beside the
+                // amber bar, not centered in the middle of each pill.
+                views.setInt(id, "setGravity",
+                    android.view.Gravity.START or android.view.Gravity.CENTER_VERTICAL)
             }
+            // The week number must stay inside the oval on both compact and
+            // expanded launchers. The XML width is fixed; do not inflate it
+            // through the large padding used by the earlier version.
+            views.setTextColor(R.id.widget_week_reminders_week, 0xFFFFF5E8.toInt())
         }
     }
 
