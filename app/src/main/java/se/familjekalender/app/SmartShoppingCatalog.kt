@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.net.HttpURLConnection
 import java.net.URL
@@ -93,7 +94,7 @@ internal object SmartShoppingCatalog {
         ),
         "Snacks & godis" to listOf(
             "chips", "popcorn", "godis", "choklad", "lakrits", "nötmix",
-            "jordnöt", "cashew", "vingummi", "lösgodis", "ostbågar", "kexchoklad",
+            "jordnöt", "nötter", "cashew", "vingummi", "lösgodis", "ostbågar", "kexchoklad",
         ),
         "Frukt & grönt" to listOf(
             "äpp", "banan", "päron", "apelsin", "citron", "lime", "gurk", "tomat",
@@ -139,6 +140,8 @@ internal object SmartShoppingCatalog {
 
     fun categoryFor(name: String): String {
         val key = normalized(name)
+        if (key == "fil") return "Mejeri"
+        if (key == "te") return "Skafferi"
         return rules.firstOrNull { (_, tokens) -> tokens.any { key.contains(it) } }?.first
             ?: "Övrigt"
     }
