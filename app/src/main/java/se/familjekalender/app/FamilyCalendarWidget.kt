@@ -163,12 +163,15 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 // installed for that widget. Publishing counters with the old
                 // classic layout against a premium widget could invalidate
                 // touch targets and leave the selected skin visually stale.
-                val layoutId = if (WidgetThemeColors.premiumLook(
-                        WidgetThemeColors.savedChoice(context)
-                    ) != null) R.layout.widget_family_calendar_premium
+                val premium = WidgetThemeColors.premiumLook(
+                    WidgetThemeColors.savedChoice(context)
+                ) != null
+                val layoutId = if (premium) R.layout.widget_family_calendar_premium
                     else R.layout.widget_family_calendar
                 val views = RemoteViews(context.packageName, layoutId)
-                views.setTextViewText(viewId, label)
+                views.setTextViewText(
+                    viewId, if (premium) widgetPremiumShortcutLabel(label) else label
+                )
                 manager.partiallyUpdateAppWidget(widgetId, views)
             }
         }
@@ -247,8 +250,12 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_status, weekPrefix + statusText)
             // Sync diagnostics belong in app settings; not in the widget's title.
             views.setViewVisibility(R.id.widget_warning, View.GONE)
-            views.setTextViewText(R.id.widget_todo, values?.optString("todo") ?: "✓  To-Do    ›")
-            views.setTextViewText(R.id.widget_shopping, values?.optString("shopping") ?: "🛒  Inköp    ›")
+            val todoLabel = values?.optString("todo") ?: "✓  To-Do    ›"
+            val shoppingLabel = values?.optString("shopping") ?: "🛒  Inköp    ›"
+            views.setTextViewText(R.id.widget_todo,
+                if (premiumWidget) widgetPremiumShortcutLabel(todoLabel) else todoLabel)
+            views.setTextViewText(R.id.widget_shopping,
+                if (premiumWidget) widgetPremiumShortcutLabel(shoppingLabel) else shoppingLabel)
             val dateText =
                 today
                     .format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale("sv", "SE")))
