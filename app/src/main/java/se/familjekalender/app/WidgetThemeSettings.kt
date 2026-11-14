@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,7 +39,10 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
     var activeChoice by remember { mutableStateOf(WidgetThemeColors.savedChoice(context)) }
 
     fun chooseWidget(choice: String) {
-        WidgetThemeColors.saveChoice(context, choice)
+        if (!WidgetThemeColors.saveChoice(context, choice)) {
+            refreshStatus = "Kunde inte spara widgetvalet. Försök igen."
+            return
+        }
         activeChoice = WidgetThemeColors.savedChoice(context)
         refreshStatus = try {
             val count = FamilyCalendarWidget.refreshTheme(context.applicationContext)
@@ -50,6 +54,22 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
         } catch (error: Exception) {
             android.util.Log.e("WidgetThemeSettings", "Could not update widget", error)
             "Valet är sparat, men Android kunde inte uppdatera widgeten."
+        }
+    }
+
+    // Re-apply even when the stored selection changed during APK replacement.
+    // This is a full RemoteViews replacement, not a theme-only partial update.
+    LaunchedEffect(Unit) {
+        activeChoice = WidgetThemeColors.savedChoice(context)
+        if (refreshStatus == null) {
+            refreshStatus = try {
+                val count = FamilyCalendarWidget.refreshTheme(context.applicationContext)
+                if (count == 0) "Ingen Familjekalender-widget hittades på hemskärmen."
+                else "Aktiv: ${if (activeChoice == WidgetThemeColors.SUNSET) "Solnedgång" else "Nuvarande"}. Uppdatering skickad till $count widget(ar)."
+            } catch (error: Exception) {
+                android.util.Log.e("WidgetThemeSettings", "Could not reapply selected widget", error)
+                "Det gick inte att skicka widgetuppdateringen."
+            }
         }
     }
 
@@ -75,6 +95,11 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             "Välj widget här och se förhandsvisningen direkt. Kalenderns teman ändras inte.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
+        )
+        Text(
+            "Aktiv widget: " + if (activeChoice == WidgetThemeColors.SUNSET) "Solnedgång" else "Nuvarande",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),

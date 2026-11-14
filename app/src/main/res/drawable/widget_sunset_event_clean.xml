@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original card framing without baked example text or the stray trailing zero. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:top="2dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#99120E0A" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+    <item android:bottom="2dp">
+        <shape android:shape="rectangle">
+            <gradient android:angle="270"
+                android:startColor="#403D39"
+                android:centerColor="#282827"
+                android:endColor="#1F2020" />
+            <corners android:radius="20dp" />
+            <stroke android:width="1dp" android:color="#61564B" />
+        </shape>
+    </item>
+</layer-list>
