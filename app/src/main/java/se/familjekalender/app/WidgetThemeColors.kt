@@ -615,7 +615,13 @@ internal object WidgetThemeColors {
 
     fun applyEvent(context: Context, views: RemoteViews) {
         val style = colors(context)
-        style.row?.let { views.setInt(R.id.widget_item_root, "setBackgroundResource", it) }
+        if (style.skin == Skin.CARBON_RED) {
+            // Separate matte event cards sit directly on the carbon background.
+            views.setInt(R.id.widget_item_root, "setBackgroundResource",
+                R.drawable.widget_carbon_red_flat_event)
+        } else {
+            style.row?.let { views.setInt(R.id.widget_item_root, "setBackgroundResource", it) }
+        }
         views.setTextColor(R.id.widget_item_who, style.text)
         views.setTextColor(R.id.widget_item_activity, style.text)
         views.setTextColor(R.id.widget_item_live_status, style.muted)
