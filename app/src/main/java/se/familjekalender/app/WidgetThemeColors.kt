@@ -507,6 +507,10 @@ internal object WidgetThemeColors {
             views.setInt(R.id.widget_quick_add, "setBackgroundResource",
                 quickAddResource(style.skin))
             views.setInt(R.id.widget_week_bell, "setColorFilter", premium!!.accent)
+            // Material buttons get real vector symbols instead of Android's
+            // platform-colored emoji (blue shopping cart on red carbon).
+            views.setInt(R.id.widget_todo_icon, "setColorFilter", premium.accent)
+            views.setInt(R.id.widget_shopping_icon, "setColorFilter", premium.accent)
             views.setViewVisibility(R.id.widget_refresh, android.view.View.GONE)
             views.setViewVisibility(R.id.widget_section_separator, android.view.View.GONE)
             views.setTextColor(R.id.widget_week_reminders_title, style.text)
