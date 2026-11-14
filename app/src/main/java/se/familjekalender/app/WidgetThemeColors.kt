@@ -82,7 +82,7 @@ internal object WidgetThemeColors {
             "PREMIUM_CARBON_RED", "Kolfiber Röd", "Tyst kolfibermönster, grafit och dämpade röda accenter", Skin.CARBON_RED,
             0xFF28292B.toInt(), 0xFF121416.toInt(), 0xFF383A3D.toInt(), 0xFF3C4043.toInt(),
             0xFFFAF8F8.toInt(), 0xFFD8D0D0.toInt(), 0xFFE88A84.toInt(),
-            0xFFFFFFFF.toInt(), 0xFFFCF6F5.toInt(), 0xFFFAF8F8.toInt(),
+            0xFF25181A.toInt(), 0xFFFCF6F5.toInt(), 0xFFFAF8F8.toInt(),
             0xFFC36663.toInt(), 0xFF18191C.toInt()
         ),
         PremiumLook(
