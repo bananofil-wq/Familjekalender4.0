@@ -1436,26 +1436,26 @@ private fun ShoppingScreen(
 
     val blue =
         if (themedSurfaceMode) MaterialTheme.colorScheme.primary
-        else Color(0xFF2EA7FF)
+        else SettingsMatchedPalette.accent
     val cyan =
         if (themedSurfaceMode) MaterialTheme.colorScheme.secondary
-        else Color(0xFF6CE9F4)
+        else SettingsMatchedPalette.expandedBorder
     val orange =
         if (themedSurfaceMode) MaterialTheme.colorScheme.tertiary
-        else Color(0xFFFFA13A)
+        else SettingsMatchedPalette.accent
     val pageText = if (themedSurfaceMode) MaterialTheme.colorScheme.onBackground else Color.White
     val pageMuted =
         if (themedSurfaceMode) MaterialTheme.colorScheme.onSurfaceVariant
         else Color.White.copy(alpha = .68f)
     val glass =
         if (themedSurfaceMode) MaterialTheme.colorScheme.surface
-        else Color(0xA4142D49)
+        else SettingsMatchedPalette.surface
     val softSurface =
         if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant
-        else Color(0xA91B3858)
+        else SettingsMatchedPalette.surface
     val border =
         if (themedSurfaceMode) MaterialTheme.colorScheme.outlineVariant
-        else Color(0xFF65BFFF).copy(alpha = .42f)
+        else SettingsMatchedPalette.border
 
     ShoppingPageBackground(lightMode = themedSurfaceMode, themeMode = themeMode) {
         Box(Modifier.fillMaxSize()) {
@@ -1483,25 +1483,13 @@ private fun ShoppingScreen(
                             onClick = onBack,
                         )
                         Spacer(Modifier.width(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else Color(0x99263A4A),
-                            border = BorderStroke(1.dp, orange.copy(alpha = .72f)),
-                            shadowElevation = 5.dp,
-                        ) {
-                            Icon(
-                                Icons.Default.ShoppingCart,
-                                contentDescription = null,
-                                tint = orange,
-                                modifier = Modifier.padding(10.dp).size(31.dp),
-                            )
-                        }
+                        SettingsMatchedIconTile(Icons.Default.ShoppingCart)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
                                 "Inköp",
                                 color = pageText,
-                                fontSize = 30.sp,
+                                fontSize = 27.sp,
                                 fontWeight = FontWeight.Bold,
                                 lineHeight = 32.sp,
                             )
@@ -1564,9 +1552,9 @@ private fun ShoppingScreen(
                             colors =
                                 OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = blue.copy(alpha = .75f),
-                                    unfocusedBorderColor = if (themedSurfaceMode) border else Color.White.copy(alpha = .14f),
-                                    focusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else Color(0xA616304D),
-                                    unfocusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else Color(0x8C16304D),
+                                    unfocusedBorderColor = if (themedSurfaceMode) border else SettingsMatchedPalette.border,
+                                    focusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else SettingsMatchedPalette.surface,
+                                    unfocusedContainerColor = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else SettingsMatchedPalette.surface,
                                 ),
                         )
                     }
@@ -1581,7 +1569,7 @@ private fun ShoppingScreen(
                         shadowElevation = 8.dp,
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
+                            modifier = Modifier.fillMaxWidth().settingsMatchedFill(22.dp).padding(horizontal = 18.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             ShoppingSummaryStat(
@@ -1592,7 +1580,7 @@ private fun ShoppingScreen(
                                 lightMode = themedSurfaceMode,
                                 modifier = Modifier.weight(1f),
                             )
-                            VerticalDivider(Modifier.height(48.dp), color = if (themedSurfaceMode) border else Color.White.copy(alpha = .14f))
+                            VerticalDivider(Modifier.height(48.dp), color = if (themedSurfaceMode) border else SettingsMatchedPalette.border)
                             ShoppingSummaryStat(
                                 value = done,
                                 label = "klara",
@@ -1618,13 +1606,13 @@ private fun ShoppingScreen(
                                 color =
                                     if (selected) blue
                                     else if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant
-                                    else Color(0xA4173350),
+                                    else SettingsMatchedPalette.surface,
                                 border =
                                     BorderStroke(
                                         1.dp,
                                         if (selected) blue.copy(alpha = .45f)
                                         else if (themedSurfaceMode) border
-                                        else Color.White.copy(alpha = .12f),
+                                        else SettingsMatchedPalette.border,
                                     ),
                                 shadowElevation = if (selected) 8.dp else 0.dp,
                             ) {
@@ -1656,7 +1644,7 @@ private fun ShoppingScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(22.dp),
                             color = glass,
-                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color.White.copy(alpha = .10f)),
+                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
                         ) {
                             Text(
                                 if (items.isEmpty()) "Lägg till första varan nedan."
@@ -1677,10 +1665,10 @@ private fun ShoppingScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
                         color = glass,
-                        border = BorderStroke(1.dp, border.copy(alpha = .72f)),
+                        border = BorderStroke(1.dp, border),
                         shadowElevation = 8.dp,
                     ) {
-                        Column(Modifier.fillMaxWidth()) {
+                        Column(Modifier.fillMaxWidth().settingsMatchedFill(20.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1715,7 +1703,7 @@ private fun ShoppingScreen(
                                 )
                             }
 
-                            HorizontalDivider(color = if (themedSurfaceMode) border else Color.White.copy(alpha = .10f))
+                            HorizontalDivider(color = if (themedSurfaceMode) border else SettingsMatchedPalette.border)
 
                             categoryItems.forEachIndexed { index, item ->
                                 Row(
@@ -1737,8 +1725,8 @@ private fun ShoppingScreen(
                                         shape = RoundedCornerShape(12.dp),
                                         color =
                                             if (themedSurfaceMode) MaterialTheme.colorScheme.primaryContainer
-                                            else Color(0xB2264D6C),
-                                        border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color.White.copy(alpha = .16f)),
+                                            else SettingsMatchedPalette.surface,
+                                        border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
                                         shadowElevation = 3.dp,
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
@@ -1781,7 +1769,7 @@ private fun ShoppingScreen(
 
                                 if (index != categoryItems.lastIndex) {
                                     HorizontalDivider(
-                                        color = if (themedSurfaceMode) border else Color.White.copy(alpha = .08f),
+                                        color = if (themedSurfaceMode) border else SettingsMatchedPalette.border,
                                         modifier = Modifier.padding(start = 55.dp),
                                     )
                                 }
@@ -1795,8 +1783,8 @@ private fun ShoppingScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(18.dp),
-                            color = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else Color(0x8C142A43),
-                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color.White.copy(alpha = .08f)),
+                            color = if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant else SettingsMatchedPalette.surface,
+                            border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
@@ -1825,12 +1813,12 @@ private fun ShoppingScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 7.dp),
                 shape = RoundedCornerShape(24.dp),
-                color = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else Color(0xE2173552),
-                border = BorderStroke(1.dp, if (themedSurfaceMode) border else Color(0xFF5CB9F6).copy(alpha = .66f)),
+                color = if (themedSurfaceMode) MaterialTheme.colorScheme.surface else SettingsMatchedPalette.surface,
+                border = BorderStroke(1.dp, if (themedSurfaceMode) border else SettingsMatchedPalette.border),
                 shadowElevation = 14.dp,
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(6.dp),
+                    modifier = Modifier.fillMaxWidth().settingsMatchedFill(24.dp).padding(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
@@ -1850,13 +1838,13 @@ private fun ShoppingScreen(
                             IconButtonDefaults.filledIconButtonColors(
                                 containerColor =
                                     if (themedSurfaceMode) MaterialTheme.colorScheme.primary
-                                    else Color(0xFF23A7FF),
+                                    else SettingsMatchedPalette.accent,
                                 contentColor =
                                     if (themedSurfaceMode) MaterialTheme.colorScheme.onPrimary
                                     else Color.White,
                                 disabledContainerColor =
                                     if (themedSurfaceMode) MaterialTheme.colorScheme.surfaceVariant
-                                    else Color(0xFF4A6680),
+                                    else SettingsMatchedPalette.sectionSurface,
                                 disabledContentColor = Color.White.copy(alpha = .42f),
                             ),
                     ) {
@@ -1943,15 +1931,11 @@ private fun ShoppingPageBackground(
     themeMode: ThemeMode,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    if (lightMode) {
-        Box(
-            Modifier.fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            content = content,
-        )
-    } else {
-        PremiumModeBackground(themeMode = themeMode, content = content)
-    }
+    // Match the Settings page background, without changing the calendar theme.
+    Box(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        content = content,
+    )
 }
 
 @Composable
