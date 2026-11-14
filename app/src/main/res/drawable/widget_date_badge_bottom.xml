@@ -1,25 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ceramic-silver date face with glass top and shaded bottom bevel. -->
+<!-- Subtle white ceramic with a heavier lower bevel, not mirrored. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#FFFFFFFF"
-                android:centerColor="#FFF0F3F8" android:endColor="#FFCBD3E0"/>
-            <corners android:bottomLeftRadius="13dp" android:bottomRightRadius="13dp"/>
-            <stroke android:width="0.8dp" android:color="#C6E9F1FF"/>
-        </shape>
-    </item>
-    <item android:left="2dp" android:right="2dp" android:top="0dp"
-        android:height="9dp" android:gravity="top">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#C4FFFFFF"
-                android:endColor="#00FFFFFF"/>
-        </shape>
-    </item>
-    <item android:left="3dp" android:right="3dp" android:bottom="1dp"
-        android:height="2dp" android:gravity="bottom">
-        <shape android:shape="rectangle"><solid android:color="#558C9CAF"/>
-            <corners android:bottomLeftRadius="10dp" android:bottomRightRadius="10dp"/>
-        </shape>
-    </item>
+ <item android:top="3dp"><shape android:shape="rectangle">
+  <solid android:color="#9E192432"/>
+  <corners android:bottomLeftRadius="13dp" android:bottomRightRadius="13dp"/>
+ </shape></item>
+ <item android:bottom="2dp"><shape android:shape="rectangle">
+  <gradient android:angle="270" android:startColor="#FFF7F9FC"
+   android:centerColor="#FFE6ECF3" android:endColor="#FFC9D2DF"/>
+  <corners android:bottomLeftRadius="13dp" android:bottomRightRadius="13dp"/>
+  <stroke android:width="0.8dp" android:color="#B7C2CCD8"/>
+ </shape></item>
+ <item android:left="3dp" android:right="3dp" android:bottom="2dp" android:height="2dp" android:gravity="bottom">
+  <shape android:shape="rectangle"><solid android:color="#587D8B9D"/>
+   <corners android:bottomLeftRadius="9dp" android:bottomRightRadius="9dp"/>
+  </shape>
+ </item>
 </layer-list>

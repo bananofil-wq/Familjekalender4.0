@@ -1,20 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Red glossy enamel strip of the original floating calendar tile. -->
+<!-- Nuvarande: satin enamel, a narrow highlight rather than glass glare. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#FFFF9EA5"
-                android:centerColor="#FFED6978" android:endColor="#FFD53C50"/>
-            <corners android:topLeftRadius="13dp" android:topRightRadius="13dp"/>
-            <stroke android:width="0.9dp" android:color="#BAFFF4F4"/>
-        </shape>
-    </item>
-    <item android:left="2dp" android:right="2dp" android:top="1dp"
-        android:height="8dp" android:gravity="top">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#95FFFFFF"
-                android:endColor="#08FFFFFF"/>
-            <corners android:topLeftRadius="12dp" android:topRightRadius="12dp"/>
-        </shape>
-    </item>
+ <item android:bottom="2dp"><shape android:shape="rectangle">
+  <gradient android:angle="270" android:startColor="#FFF47D8B"
+   android:centerColor="#FFDE5166" android:endColor="#FFC52B48"/>
+  <corners android:topLeftRadius="13dp" android:topRightRadius="13dp"/>
+  <stroke android:width="0.8dp" android:color="#AEEABAC0"/>
+ </shape></item>
+ <item android:left="2dp" android:right="2dp" android:top="1dp"
+       android:height="4dp" android:gravity="top">
+  <shape android:shape="rectangle"><solid android:color="#32FFFFFF"/>
+   <corners android:topLeftRadius="11dp" android:topRightRadius="11dp"/></shape>
+ </item>
 </layer-list>

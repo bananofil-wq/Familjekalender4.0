@@ -1,38 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Nuvarande: layered smoked-glass body with metal edge and soft optical reflections. -->
+<!-- Outer smoked-slate console, less reflection, stronger physical depth. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:top="6dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#C0000309"/>
-            <corners android:radius="30dp"/>
-        </shape>
-    </item>
-    <item android:bottom="3dp">
-        <shape android:shape="rectangle">
-            <gradient android:angle="315" android:startColor="#FB273442"
-                android:centerColor="#F91B2430" android:endColor="#FB0B101B"/>
-            <corners android:radius="29dp"/>
-            <stroke android:width="1.2dp" android:color="#C2AAB7C9"/>
-        </shape>
-    </item>
-    <item android:left="1dp" android:right="1dp" android:top="1dp" android:bottom="4dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#00000000"/>
-            <corners android:radius="28dp"/>
-            <stroke android:width="0.7dp" android:color="#537589A1"/>
-        </shape>
-    </item>
-    <item android:drawable="@drawable/widget_premium_texture" android:bottom="3dp"/>
-    <item android:left="2dp" android:right="2dp" android:top="2dp" android:height="70dp"
-        android:gravity="top">
-        <shape android:shape="rectangle">
-            <gradient android:angle="270" android:startColor="#3D8EA9C4"
-                android:centerColor="#1B556C87" android:endColor="#00516C86"/>
-            <corners android:topLeftRadius="27dp" android:topRightRadius="27dp"/>
-        </shape>
-    </item>
-    <item android:left="23dp" android:right="23dp" android:top="2dp"
-        android:height="1dp" android:gravity="top">
-        <shape android:shape="rectangle"><solid android:color="#60DFEEFF"/></shape>
-    </item>
+ <item android:top="9dp"><shape android:shape="rectangle">
+  <solid android:color="#E7000309"/><corners android:radius="30dp"/></shape></item>
+ <item android:top="4dp" android:bottom="2dp">
+  <shape android:shape="rectangle">
+   <gradient android:angle="315" android:startColor="#FA253241"
+    android:centerColor="#FC182330" android:endColor="#FF0B121F"/>
+   <corners android:radius="29dp"/>
+   <stroke android:width="1.2dp" android:color="#B38FA1B7"/>
+  </shape>
+ </item>
+ <item android:left="2dp" android:right="2dp" android:top="2dp" android:bottom="6dp">
+  <shape android:shape="rectangle">
+   <solid android:color="#00000000"/>
+   <corners android:radius="28dp"/>
+   <stroke android:width="0.7dp" android:color="#366C849D"/>
+  </shape>
+ </item>
+ <item android:drawable="@drawable/widget_premium_texture" android:bottom="6dp"/>
+ <item android:left="3dp" android:right="3dp" android:top="2dp"
+   android:height="36dp" android:gravity="top">
+  <shape android:shape="rectangle">
+   <gradient android:angle="270" android:startColor="#225F7D9B" android:endColor="#005F7D9B"/>
+   <corners android:topLeftRadius="27dp" android:topRightRadius="27dp"/>
+  </shape>
+ </item>
 </layer-list>
