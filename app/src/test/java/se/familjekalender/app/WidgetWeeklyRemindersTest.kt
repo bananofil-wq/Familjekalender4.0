@@ -8,7 +8,7 @@ import org.junit.Test
 class WidgetWeeklyRemindersTest {
     private val thursday = LocalDate.of(2026, 11, 12)
 
-    @Test fun `includes the full Monday to Sunday week even for past weekdays`() {
+    @Test fun `reminders from previous days disappear but today remains visible`() {
         val rows = listOf(
             WidgetWeeklyReminder(thursday.minusDays(1), "redan passerad"),
             WidgetWeeklyReminder(thursday, "gympapåse"),
@@ -16,7 +16,7 @@ class WidgetWeeklyRemindersTest {
             WidgetWeeklyReminder(thursday.plusDays(4), "nästa måndag"),
         )
         assertEquals(
-            listOf("redan passerad", "gympapåse", "söndag"),
+            listOf("gympapåse", "söndag"),
             upcomingWeekReminders(thursday, rows).map { it.title },
         )
     }
@@ -63,7 +63,7 @@ class WidgetWeeklyRemindersTest {
         assertTrue(label.startsWith("Fre 08:00 · Hugo: Gympapåse"))
     }
 
-    @Test fun `sunday includes Monday to Sunday but not next Monday`() {
+    @Test fun `sunday shows only Sunday and never past weekdays or next Monday`() {
         val sunday = LocalDate.of(2026, 11, 15)
         val reminders = listOf(
             WidgetWeeklyReminder(sunday.minusDays(6), "Måndag"),
@@ -71,10 +71,43 @@ class WidgetWeeklyRemindersTest {
             WidgetWeeklyReminder(sunday.plusDays(1), "Måndag"),
         )
         assertEquals(
-            listOf("Måndag", "Söndag"),
+            listOf("Söndag"),
             upcomingWeekReminders(sunday, reminders).map { it.title },
         )
     }
+    @Test fun `midnight removes yesterday's reminder without removing any events`() {
+        val sunday = LocalDate.of(2026, 11, 15)
+        val rows = listOf(
+            WidgetWeeklyReminder(sunday.minusDays(1), "Lördag"),
+            WidgetWeeklyReminder(sunday, "Söndag"),
+        )
+        assertEquals(listOf("Lördag", "Söndag"),
+            upcomingWeekReminders(sunday.minusDays(1), rows).map { it.title })
+        assertEquals(listOf("Söndag"),
+            upcomingWeekReminders(sunday, rows).map { it.title })
+        // The source list is unchanged; only the view is filtered.
+        assertEquals(2, rows.size)
+        assertEquals(0, weeklyReminderPreview(sunday.plusDays(1), rows).extraCount)
+        assertTrue(weeklyReminderPreview(sunday.plusDays(1), rows).visible.isEmpty())
+    }
+
+    @Test fun `private dated reminders expire but permanent ones remain visible`() {
+        val sunday = LocalDate.of(2026, 11, 15)
+        val reminders = listOf(
+            PrivateReminder("old", "redan passerad", sunday.minusDays(1), "", false),
+            PrivateReminder("today", "idag", sunday, "", false),
+            PrivateReminder("forever", "utan slutdatum", sunday.minusDays(5), "", true),
+        )
+        assertEquals(
+            listOf("forever", "today"),
+            PrivateReminderSync.visibleThisWeek(reminders, sunday).map { it.id },
+        )
+        assertEquals(
+            listOf("forever"),
+            PrivateReminderSync.visibleThisWeek(reminders, sunday.plusDays(1)).map { it.id },
+        )
+    }
+
     @Test fun `persistent reminder remains visible after many months without creating duplicates`() {
         val today = LocalDate.of(2026, 11, 13)
         val reminder = WidgetPermanentReminder(
@@ -96,7 +129,7 @@ class WidgetWeeklyRemindersTest {
     @Test fun `reminders outside current week do not appear in weekly preview`() {
         val friday = LocalDate.of(2026, 11, 13)
         assertEquals(
-            listOf("måndag", "söndag"),
+            listOf("söndag"),
             upcomingWeekReminders(
                 friday,
                 listOf(
