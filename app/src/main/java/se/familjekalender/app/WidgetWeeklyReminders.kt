@@ -27,7 +27,9 @@ internal fun upcomingWeekReminders(
     val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val sunday = monday.plusDays(6)
     return reminders.asSequence()
-        .filter { !it.date.isBefore(monday) && !it.date.isAfter(sunday) }
+        // Keep today's reminders all day, but never show a dated reminder
+        // after its day has passed. This does not delete the underlying event.
+        .filter { !it.date.isBefore(today) && !it.date.isAfter(sunday) }
         .sortedWith(
             compareBy<WidgetWeeklyReminder> { it.date }
                 .thenBy { it.time.ifBlank { "00:00" } }
