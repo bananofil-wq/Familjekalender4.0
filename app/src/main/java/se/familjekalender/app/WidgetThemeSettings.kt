@@ -98,7 +98,6 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        // Only the two original widget choices are available; no horizontal scrolling.
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth(),
@@ -114,8 +113,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { chooseWidget(WidgetThemeColors.ORIGINAL) },
                 ) {
-                    Text(if (activeChoice == WidgetThemeColors.ORIGINAL)
-                        "Vald" else "Välj", fontSize = 12.sp)
+                    Text(if (activeChoice == WidgetThemeColors.ORIGINAL) "Vald: Nuvarande" else "Välj Nuvarande")
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -131,8 +129,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { chooseWidget(WidgetThemeColors.SUNSET) },
                 ) {
-                    Text(if (activeChoice == WidgetThemeColors.SUNSET)
-                        "Vald" else "Välj", fontSize = 12.sp)
+                    Text(if (activeChoice == WidgetThemeColors.SUNSET) "Vald: Solnedgång" else "Välj Solnedgång")
                 }
             }
         }
