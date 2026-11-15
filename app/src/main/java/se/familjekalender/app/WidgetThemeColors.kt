@@ -14,7 +14,6 @@ internal object WidgetThemeColors {
     const val PREF_KEY = "widget_visual_theme"
     const val ORIGINAL = "ORIGINAL_WIDGET"
     const val SUNSET = "PREMIUM_SUNSET"
-    const val AURORA = "AURORA_GLASS"
     // One-time upgrade: the user asked for Solnedgång, but the old APK
     // persisted ORIGINAL_WIDGET even after the new style was installed.
     private const val SUNSET_ACTIVATED = "widget_sunset_activated_20261114_v2"
@@ -132,7 +131,8 @@ internal object WidgetThemeColors {
             return SUNSET
         }
         val choice = prefs.getString(PREF_KEY, SUNSET)
-        return if (choice == ORIGINAL || choice == SUNSET || choice == AURORA) choice else {
+        // If a retired choice is stored, safely migrate to Solnedgång.
+        return if (choice == ORIGINAL || choice == SUNSET) choice else {
             prefs.edit().putString(PREF_KEY, SUNSET).apply()
             SUNSET
         }
@@ -141,7 +141,7 @@ internal object WidgetThemeColors {
     fun selectedTheme(context: Context): CleanVisualTheme? = null
 
     fun saveChoice(context: Context, choice: String): Boolean {
-        val normalized = if (choice in setOf(ORIGINAL, SUNSET, AURORA)) choice else SUNSET
+        val normalized = if (choice == ORIGINAL || choice == SUNSET) choice else SUNSET
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(PREF_KEY, normalized)

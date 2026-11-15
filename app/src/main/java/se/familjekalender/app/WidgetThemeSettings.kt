@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -99,8 +98,6 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        // Keep every choice visible without horizontal scrolling. On narrow phones,
-        // a fixed-width row hid Aurora completely beyond the right screen edge.
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth(),
@@ -116,8 +113,7 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { chooseWidget(WidgetThemeColors.ORIGINAL) },
                 ) {
-                    Text(if (activeChoice == WidgetThemeColors.ORIGINAL)
-                        "Vald" else "Välj", fontSize = 12.sp)
+                    Text(if (activeChoice == WidgetThemeColors.ORIGINAL) "Vald: Nuvarande" else "Välj Nuvarande")
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -133,36 +129,8 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { chooseWidget(WidgetThemeColors.SUNSET) },
                 ) {
-                    Text(if (activeChoice == WidgetThemeColors.SUNSET)
-                        "Vald" else "Välj", fontSize = 12.sp)
+                    Text(if (activeChoice == WidgetThemeColors.SUNSET) "Vald: Solnedgång" else "Välj Solnedgång")
                 }
-            }
-        }
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                "Aurora Glass",
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            AuroraWidgetPreview(
-                modifier = Modifier.width(180.dp).height(232.dp)
-                    .clip(RoundedCornerShape(15.dp)),
-            )
-            Text(
-                "Levande klocka, aktuellt datum och dagens aktiviteter.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
-            )
-            OutlinedButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { chooseWidget(WidgetThemeColors.AURORA) },
-            ) {
-                Text(if (activeChoice == WidgetThemeColors.AURORA)
-                    "Vald: Aurora Glass" else "Välj Aurora Glass")
             }
         }
         refreshStatus?.let {
@@ -217,7 +185,6 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
 }
 
 private fun widgetChoiceLabel(choice: String): String = when (choice) {
-    WidgetThemeColors.AURORA -> "Aurora Glass"
     WidgetThemeColors.SUNSET -> "Solnedgång"
     else -> "Nuvarande"
 }

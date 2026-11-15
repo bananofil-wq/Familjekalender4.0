@@ -166,19 +166,13 @@ class FamilyCalendarWidget : AppWidgetProvider() {
                 val premium = WidgetThemeColors.premiumLook(
                     WidgetThemeColors.savedChoice(context)
                 ) != null
-                val layoutId = if (WidgetThemeColors.savedChoice(context) == WidgetThemeColors.AURORA)
-                    R.layout.widget_family_calendar_aurora
-                    else if (premium) R.layout.widget_family_calendar_premium
+                val layoutId = if (premium) R.layout.widget_family_calendar_premium
                     else R.layout.widget_family_calendar
-                if (WidgetThemeColors.savedChoice(context) == WidgetThemeColors.AURORA) {
-                    manager.updateAppWidget(widgetId, AuroraWidgetViews.build(context, widgetId))
-                } else {
-                    val views = RemoteViews(context.packageName, layoutId)
-                    views.setTextViewText(
-                        viewId, if (premium) widgetPremiumShortcutLabel(label) else label
-                    )
-                    manager.partiallyUpdateAppWidget(widgetId, views)
-                }
+                val views = RemoteViews(context.packageName, layoutId)
+                views.setTextViewText(
+                    viewId, if (premium) widgetPremiumShortcutLabel(label) else label
+                )
+                manager.partiallyUpdateAppWidget(widgetId, views)
             }
         }
 
@@ -212,9 +206,6 @@ class FamilyCalendarWidget : AppWidgetProvider() {
         }
 
         fun baseViews(context: Context, appWidgetId: Int): RemoteViews {
-            if (WidgetThemeColors.savedChoice(context) == WidgetThemeColors.AURORA) {
-                return AuroraWidgetViews.build(context, appWidgetId)
-            }
             // Premium widgets use the compact responsive layout. The two
             // established themes keep their existing scroll layout unchanged.
             val premiumWidget = WidgetThemeColors.premiumLook(
