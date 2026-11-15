@@ -2,18 +2,26 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root" android:layout_width="match_parent"
     android:layout_height="match_parent" android:background="@drawable/widget_aurora_background">
+    <!-- The artwork supplies the accurate frosted-glass materials, volumetric light,
+         sun/cloud/rain and soft shadows. Live text/icons remain separate controls. -->
+    <ImageView android:id="@+id/widget_aurora_art"
+        android:layout_width="match_parent" android:layout_height="544dp"
+        android:scaleType="fitXY" android:src="@drawable/widget_aurora_material"
+        android:contentDescription="@null" android:clickable="false"
+        android:focusable="false" android:importantForAccessibility="no"/>
     <!-- Selected in the EXISTING widget picker; no new appwidget provider. -->
     <TextView android:text="" android:layout_width="114dp" android:layout_height="30dp"
         android:layout_gravity="top|center_horizontal" android:layout_marginTop="13dp"
         android:background="@drawable/widget_aurora_island"/>
-    <TextView android:layout_width="55dp" android:layout_height="47dp"
-        android:layout_gravity="right|top" android:layout_marginTop="30dp"
-        android:layout_marginEnd="20dp" android:text="☾ ✧"
-        android:textSize="26sp" android:textColor="#FFF5F9FF"/>
+    <ImageView android:layout_width="66dp" android:layout_height="54dp"
+        android:layout_gravity="right|top" android:layout_marginTop="27dp"
+        android:layout_marginEnd="20dp" android:scaleType="fitCenter"
+        android:src="@drawable/widget_aurora_moon" android:contentDescription="@null"
+        android:clickable="false" android:focusable="false"/>
     <FrameLayout android:layout_width="match_parent" android:layout_height="180dp"
         android:layout_marginStart="45dp" android:layout_marginEnd="25dp"
-        android:layout_marginTop="109dp" android:background="@drawable/widget_aurora_card"
-        android:elevation="10dp">
+        android:layout_marginTop="109dp" android:background="@android:color/transparent"
+        android:elevation="0dp">
         <TextClock android:id="@+id/widget_aurora_date"
             android:layout_width="190dp" android:layout_height="wrap_content"
             android:layout_marginStart="18dp" android:layout_marginTop="42dp"
@@ -24,12 +32,12 @@
             android:layout_width="190dp" android:layout_height="wrap_content"
             android:layout_marginStart="14dp" android:layout_marginTop="72dp"
             android:format12Hour="HH:mm" android:format24Hour="HH:mm"
-            android:textColor="#FFFCF7FF" android:textSize="62sp"
+            android:textColor="#FFFCF7FF" android:textSize="56sp"
             android:fontFamily="sans-serif-light" android:includeFontPadding="false"
             android:singleLine="true" />
         <FrameLayout android:layout_width="122dp" android:layout_height="102dp"
             android:layout_gravity="top|right" android:layout_marginEnd="12dp"
-            android:layout_marginTop="16dp">
+            android:layout_marginTop="16dp" android:visibility="gone">
             <TextView android:text="" android:layout_width="47dp" android:layout_height="47dp"
                 android:layout_marginStart="66dp" android:layout_marginTop="7dp"
                 android:background="@drawable/widget_aurora_sun"/>
@@ -62,13 +70,17 @@
             android:textSize="15sp" android:textColor="#FFF5E6CB"
             android:singleLine="true"/>
     </FrameLayout>
-    <FrameLayout android:layout_width="match_parent" android:layout_height="179dp"
+    <FrameLayout android:layout_width="match_parent" android:layout_height="200dp"
         android:layout_marginStart="38dp" android:layout_marginEnd="25dp"
-        android:layout_marginTop="314dp" android:background="@drawable/widget_aurora_card"
-        android:elevation="10dp">
-        <FrameLayout android:layout_width="126dp" android:layout_height="126dp"
-            android:layout_marginTop="28dp" android:layout_marginStart="16dp"
-            android:background="@drawable/widget_aurora_ring">
+        android:layout_marginTop="314dp" android:background="@android:color/transparent"
+        android:elevation="0dp">
+        <FrameLayout android:layout_width="138dp" android:layout_height="138dp"
+            android:layout_marginTop="43dp" android:layout_marginStart="20dp"
+            android:background="@android:color/transparent">
+            <ImageView android:id="@+id/widget_aurora_dynamic_ring"
+                android:layout_width="match_parent" android:layout_height="match_parent"
+                android:scaleType="fitCenter" android:contentDescription="@null"
+                android:clickable="false" android:focusable="false"/>
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_gravity="center" android:gravity="center" android:orientation="vertical">
                 <TextView android:id="@+id/widget_aurora_progress_pct"
@@ -82,16 +94,18 @@
         </FrameLayout>
         <LinearLayout android:layout_width="match_parent" android:layout_height="110dp"
             android:layout_marginStart="160dp" android:layout_marginEnd="16dp"
-            android:layout_marginTop="37dp" android:orientation="vertical">
+            android:layout_marginTop="78dp" android:orientation="vertical">
             <LinearLayout android:layout_width="match_parent" android:layout_height="43dp"
                 android:gravity="center_vertical" android:orientation="horizontal">
                 <TextView android:layout_width="24dp" android:layout_height="24dp"
-                    android:text="◷" android:textSize="21sp"
+                    android:text="" android:textSize="21sp"
                     android:gravity="center" android:textColor="#FFF1E2DB"/>
                 <TextView android:id="@+id/widget_aurora_event1"
                     android:layout_width="0dp" android:layout_height="wrap_content"
                     android:layout_weight="1" android:paddingStart="5dp"
-                    android:text="Inga aktiviteter idag" android:textSize="13sp"
+                    android:text="Inga aktiviteter idag" android:textSize="12sp"
+                    android:autoSizeTextType="uniform" android:autoSizeMinTextSize="10sp"
+                    android:autoSizeMaxTextSize="13sp" android:autoSizeStepGranularity="1sp"
                     android:textColor="#FFEEEAE9" android:singleLine="true"
                     android:ellipsize="end"/>
                 <TextView android:layout_width="19dp" android:layout_height="wrap_content"
@@ -102,12 +116,14 @@
             <LinearLayout android:layout_width="match_parent" android:layout_height="43dp"
                 android:gravity="center_vertical" android:orientation="horizontal">
                 <TextView android:layout_width="24dp" android:layout_height="24dp"
-                    android:text="◷" android:textSize="21sp"
+                    android:text="" android:textSize="21sp"
                     android:gravity="center" android:textColor="#FFF1E2DB"/>
                 <TextView android:id="@+id/widget_aurora_event2"
                     android:layout_width="0dp" android:layout_height="wrap_content"
                     android:layout_weight="1" android:paddingStart="5dp"
-                    android:text="" android:textSize="13sp"
+                    android:text="" android:textSize="12sp"
+                    android:autoSizeTextType="uniform" android:autoSizeMinTextSize="10sp"
+                    android:autoSizeMaxTextSize="13sp" android:autoSizeStepGranularity="1sp"
                     android:textColor="#FFEEEAE9" android:singleLine="true"
                     android:ellipsize="end"/>
                 <TextView android:layout_width="19dp" android:layout_height="wrap_content"
