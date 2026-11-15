@@ -12,6 +12,9 @@ import androidx.compose.ui.graphics.toArgb
  */
 internal object WidgetThemeColors {
     const val PREF_KEY = "widget_visual_theme"
+    // Each change generates a new RemoteViewsService adapter identity. Without a
+    // new data URI Pixel Launcher can keep the previous ListView factory/skin.
+    private const val PREF_REVISION = "widget_visual_theme_revision"
     const val ORIGINAL = "ORIGINAL_WIDGET"
     const val SUNSET = "PREMIUM_SUNSET"
     // One-time upgrade: the user asked for Solnedgång, but the old APK
@@ -140,12 +143,22 @@ internal object WidgetThemeColors {
 
     fun selectedTheme(context: Context): CleanVisualTheme? = null
 
+    fun revision(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(PREF_REVISION, 0)
+
+    @Synchronized
     fun saveChoice(context: Context, choice: String): Boolean {
         val normalized = if (choice == ORIGINAL || choice == SUNSET) choice else SUNSET
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // Increment even when reselecting the same theme. This gives users a
+        // reliable way to force the launcher to rebuild a stale list adapter.
+        val nextRevision = if (prefs.getInt(PREF_REVISION, 0) == Int.MAX_VALUE) 1
+            else prefs.getInt(PREF_REVISION, 0) + 1
+        return prefs.edit()
             .putString(PREF_KEY, normalized)
             .putBoolean(SUNSET_ACTIVATED, true)
+            .putInt(PREF_REVISION, nextRevision)
             .commit()
     }
 
