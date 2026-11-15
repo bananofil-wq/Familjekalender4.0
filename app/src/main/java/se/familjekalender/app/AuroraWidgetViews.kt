@@ -79,6 +79,8 @@ internal object AuroraWidgetViews {
         val done = todo.count { it.checked } + shopping.count { it.checked }
         val progress = if (total > 0) ((done * 100.0) / total + 0.5).toInt() else 0
         views.setTextViewText(R.id.widget_aurora_progress_pct, "$progress%")
+        views.setImageViewBitmap(R.id.widget_aurora_dynamic_ring,
+            AuroraProgressArtwork.bitmap(progress))
 
         val oldWidgetCache = context.getSharedPreferences(
             FamilyCalendarWidget.WIDGET_PREFS, Context.MODE_PRIVATE
