@@ -32,17 +32,17 @@ internal object AuroraProgressArtwork {
             intArrayOf(
                 Color.argb(255, 58, 41, 46),
                 Color.argb(255, 57, 43, 43),
-                Color.argb(253, 47, 42, 42),
-                Color.argb(235, 44, 39, 40),
+                Color.argb(255, 47, 42, 42),
+                Color.argb(255, 44, 39, 40),
                 Color.argb(0, 44, 39, 40)
             ),
-            floatArrayOf(0f, 0.57f, 0.81f, 0.92f, 1f),
+            floatArrayOf(0f, 0.57f, 0.86f, 0.95f, 1f),
             Shader.TileMode.CLAMP,
         )
         canvas.drawCircle(c, c, 159f, paint)
         paint.shader = null
 
-        val bounds = RectF(47f, 47f, size - 47f, size - 47f)
+        val bounds = RectF(32f, 32f, size - 32f, size - 32f)
         paint.style = Paint.Style.STROKE
         paint.strokeCap = Paint.Cap.ROUND
 
@@ -55,7 +55,7 @@ internal object AuroraProgressArtwork {
         canvas.drawArc(bounds, -124f, 360f, false, paint)
         paint.color = Color.argb(125, 250, 204, 119)
         paint.strokeWidth = 2.6f
-        canvas.drawCircle(c, c, 133f, paint)
+        canvas.drawCircle(c, c, 149f, paint)
         paint.color = Color.argb(80, 240, 245, 239)
         paint.strokeWidth = 1.5f
         canvas.drawCircle(c, c, 88f, paint)
@@ -91,7 +91,7 @@ internal object AuroraProgressArtwork {
 
             // Offset highlights give the ring genuine thickness, not a flat
             // colored stroke. These are restrained when the ring is empty.
-            val shineBounds = RectF(51f, 51f, size - 51f, size - 51f)
+            val shineBounds = RectF(36f, 36f, size - 36f, size - 36f)
             paint.color = Color.argb(165, 255, 250, 218)
             paint.strokeWidth = 3.1f
             canvas.drawArc(shineBounds, -123f, sweep, false, paint)
