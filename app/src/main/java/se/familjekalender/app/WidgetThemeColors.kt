@@ -131,7 +131,7 @@ internal object WidgetThemeColors {
             return SUNSET
         }
         val choice = prefs.getString(PREF_KEY, SUNSET)
-        // Removed choices (including Aurora Glass) return safely to Solnedgång.
+        // If a retired choice is stored, safely migrate to Solnedgång.
         return if (choice == ORIGINAL || choice == SUNSET) choice else {
             prefs.edit().putString(PREF_KEY, SUNSET).apply()
             SUNSET
