@@ -50,6 +50,15 @@ class FamilyCalendarWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         when (intent.action) {
+            Intent.ACTION_DATE_CHANGED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED -> {
+                // New local day / timezone: expire yesterday's reminders
+                // immediately from the widget, without waiting for network sync.
+                // Events remain in storage and in the calendar history.
+                refreshAllWidgetsFromCache(context)
+            }
+
             Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 refreshAllWidgetsFromCache(context)
                 schedulePeriodicRefresh(context)

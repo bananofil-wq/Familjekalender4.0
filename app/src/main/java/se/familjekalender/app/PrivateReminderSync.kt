@@ -317,11 +317,12 @@ internal object PrivateReminderSync {
         items: List<PrivateReminder>,
         today: LocalDate = LocalDate.now(),
     ): List<PrivateReminder> {
-        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val sunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
         return items.filter {
+            // Permanent reminders intentionally remain visible. Ordinary private
+            // reminders are hidden once their date has passed.
             if (it.permanent) !it.date.isAfter(today)
-            else !it.date.isBefore(monday) && !it.date.isAfter(sunday)
+            else !it.date.isBefore(today) && !it.date.isAfter(sunday)
         }.sortedWith(compareBy<PrivateReminder> { it.date }.thenBy { it.text })
     }
 
