@@ -24,6 +24,14 @@ import java.time.temporal.WeekFields
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+/**
+ * Android launcher caches RemoteViewsService adapters by Intent identity.
+ * Extras alone do not count; theme and revision must be in Intent.data to
+ * ensure activity rows are re-rendered after switching widget appearance.
+ */
+internal fun widgetListIdentity(appWidgetId: Int, choice: String, revision: Int): String =
+    "familjekalender://widget/list/$appWidgetId?theme=$choice&revision=$revision"
+
 class FamilyCalendarWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -285,7 +293,13 @@ class FamilyCalendarWidget : AppWidgetProvider() {
             val serviceIntent =
                 Intent(context, FamilyCalendarWidgetService::class.java).apply {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                    data = Uri.parse("familjekalender://widget/list/$appWidgetId")
+                    data = Uri.parse(
+                        widgetListIdentity(
+                            appWidgetId,
+                            WidgetThemeColors.savedChoice(context),
+                            WidgetThemeColors.revision(context),
+                        )
+                    )
                 }
             views.setRemoteAdapter(R.id.widget_event_list, serviceIntent)
 
@@ -716,14 +730,23 @@ class FamilyCalendarWidget : AppWidgetProvider() {
          * silently reporting success when no widget is installed.
          */
         fun refreshTheme(context: Context): Int {
-            val manager = AppWidgetManager.getInstance(context)
-            val component = ComponentName(context, FamilyCalendarWidget::class.java)
+            val appContext = context.applicationContext
+            val manager = AppWidgetManager.getInstance(appContext)
+            val component = ComponentName(appContext, FamilyCalendarWidget::class.java)
             val widgetIds = manager.getAppWidgetIds(component)
             widgetIds.forEach { appWidgetId ->
-                // Rebuild the complete RemoteViews: a partial update cannot
-                // safely change between classic and premium layout IDs.
-                manager.updateAppWidget(appWidgetId, baseViews(context, appWidgetId))
+                // Layouts are different between Nuvarande and Solnedgång. Always
+                // replace the COMPLETE RemoteViews, then invalidate the adapter.
+                // The data URI carries the new theme revision, preventing Android
+                // from reusing the old themed list when switching back and forth.
+                manager.updateAppWidget(appWidgetId, baseViews(appContext, appWidgetId))
                 manager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_event_list)
+            }
+            if (widgetIds.isNotEmpty()) {
+                // Cancel any ongoing stale worker and re-render with the current
+                // persisted theme. This prevents a previous refresh from
+                // overwriting the freshly selected layout.
+                enqueueRefresh(appContext)
             }
             return widgetIds.size
         }
