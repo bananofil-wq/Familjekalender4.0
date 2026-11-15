@@ -1,8 +1,6 @@
 package se.familjekalender.app
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -101,11 +99,13 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
+        // Keep every choice visible without horizontal scrolling. On narrow phones,
+        // a fixed-width row hid Aurora completely beyond the right screen edge.
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(modifier = Modifier.width(164.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text("Nuvarande", style = MaterialTheme.typography.titleSmall)
                 WidgetMaterialPreview(
                     choice = WidgetThemeColors.ORIGINAL,
@@ -116,10 +116,11 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { chooseWidget(WidgetThemeColors.ORIGINAL) },
                 ) {
-                    Text(if (activeChoice == WidgetThemeColors.ORIGINAL) "Vald: Nuvarande" else "Välj Nuvarande")
+                    Text(if (activeChoice == WidgetThemeColors.ORIGINAL)
+                        "Vald" else "Välj", fontSize = 12.sp)
                 }
             }
-            Column(modifier = Modifier.width(164.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text("Solnedgång", style = MaterialTheme.typography.titleSmall)
                 Image(
                     painter = painterResource(R.drawable.widget_sunset_preview),
@@ -132,22 +133,36 @@ internal fun WidgetThemeSettings(calendarTheme: CleanVisualTheme) {
                     modifier = Modifier.fillMaxWidth(),
                     onClick = { chooseWidget(WidgetThemeColors.SUNSET) },
                 ) {
-                    Text(if (activeChoice == WidgetThemeColors.SUNSET) "Vald: Solnedgång" else "Välj Solnedgång")
+                    Text(if (activeChoice == WidgetThemeColors.SUNSET)
+                        "Vald" else "Välj", fontSize = 12.sp)
                 }
             }
-            Column(modifier = Modifier.width(164.dp)) {
-                Text("Aurora Glass", style = MaterialTheme.typography.titleSmall)
-                AuroraWidgetPreview(
-                    modifier = Modifier.fillMaxWidth().height(190.dp)
-                        .clip(RoundedCornerShape(15.dp)),
-                )
-                OutlinedButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { chooseWidget(WidgetThemeColors.AURORA) },
-                ) {
-                    Text(if (activeChoice == WidgetThemeColors.AURORA)
-                        "Vald: Aurora" else "Välj Aurora")
-                }
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "Aurora Glass",
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            AuroraWidgetPreview(
+                modifier = Modifier.width(180.dp).height(232.dp)
+                    .clip(RoundedCornerShape(15.dp)),
+            )
+            Text(
+                "Levande klocka, aktuellt datum och dagens aktiviteter.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+            )
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { chooseWidget(WidgetThemeColors.AURORA) },
+            ) {
+                Text(if (activeChoice == WidgetThemeColors.AURORA)
+                    "Vald: Aurora Glass" else "Välj Aurora Glass")
             }
         }
         refreshStatus?.let {
