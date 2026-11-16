@@ -295,13 +295,25 @@ object SupabaseSync {
 
     suspend fun loadEvents(session: FamilySession): List<SyncEvent> =
         withContext(Dispatchers.IO) {
-            val result =
-                request(
-                    "GET",
-                    "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source,series_id&family_id=eq.${session.id}&order=starts_at.asc",
-                    familyCode = session.code,
+            // Recurring reminders are stored as separate dated rows. The server
+            // caps unpaged queries (typically 1,000 rows); ordering oldest-first
+            // previously dropped newer weekly occurrences from the widget.
+            // Fetch every page in a stable order so the calendar and widget both
+            // receive the current week's real stored occurrences.
+            val array = JSONArray()
+            var offset = 0
+            val pageSize = 500
+            do {
+                val page = JSONArray(
+                    request(
+                        "GET",
+                        "/rest/v1/calendar_events?select=id,title,starts_at,ends_at,member_id,source,series_id&family_id=eq.${session.id}&order=starts_at.asc,id.asc&limit=$pageSize&offset=$offset",
+                        familyCode = session.code,
+                    )
                 )
-            val array = JSONArray(result)
+                for (index in 0 until page.length()) array.put(page.getJSONObject(index))
+                offset += page.length()
+            } while (page.length() == pageSize)
             buildList {
                 repeat(array.length()) {
                     val row = array.getJSONObject(it)
