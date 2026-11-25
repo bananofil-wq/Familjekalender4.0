@@ -152,7 +152,16 @@ internal fun MinimalCalendarScreen(
 ) {
     val context = LocalContext.current
     val locale = remember { Locale("sv", "SE") }
-    val today = LocalDate.now()
+    // Keep the summary and its open dialog up to date across local midnight.
+    val today by produceState(initialValue = LocalDate.now()) {
+        while (true) {
+            val now = java.time.ZonedDateTime.now()
+            value = now.toLocalDate()
+            val nextMidnight = value.plusDays(1).atStartOfDay(now.zone)
+            val untilMidnight = java.time.Duration.between(now, nextMidnight).toMillis()
+            kotlinx.coroutines.delay(untilMidnight.coerceIn(1L, 60_000L))
+        }
+    }
     var month by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -231,12 +240,13 @@ internal fun MinimalCalendarScreen(
                 .filter { !it.date.isBefore(weekStart) && !it.date.isAfter(weekEnd) }
         }
     val weekReminders =
-        remember(events, weekStart, weekEnd) {
+        remember(events, weekStart, weekEnd, today) {
             events
                 .filter {
-                    !it.date.isBefore(weekStart) &&
+                    isCleanReminderEvent(it) &&
+                        !it.date.isBefore(weekStart) &&
                         !it.date.isAfter(weekEnd) &&
-                        isCleanReminderEvent(it)
+                        (isPermanentReminderSource(it.source) || !it.date.isBefore(today))
                 }
                 .sortedWith(compareBy<SyncEvent> { it.date }.thenBy { it.time }.thenBy { it.title })
         }
